@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "Gymi",
+    "slug": "gymi",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "gymi",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#FFFFFF",
+    "ios": {
+      "bundleIdentifier": "com.gymi.app",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.gymi.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#3355FF",
+        "foregroundImage": "./assets/images/android-icon-foreground.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "single",
+      "bundler": "metro",
+      "name": "Gymi",
+      "shortName": "Gymi",
+      "lang": "en",
+      "themeColor": "#3355FF",
+      "backgroundColor": "#FFFFFF",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#3355FF",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 120
+        }
+      ],
+      "expo-localization",
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

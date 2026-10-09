@@ -1,0 +1,25 @@
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+ios/
+android/
+
+# secrets: never commit these
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.vercel
+supabase/.temp/
+
+# misc
+.DS_Store
+npm-debug.*
+*.log
+*.tsbuildinfo

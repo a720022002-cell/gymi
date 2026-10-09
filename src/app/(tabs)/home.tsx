@@ -1,0 +1,288 @@
+import { router } from 'expo-router';
+import { useState } from 'react';
+import { View } from 'react-native';
+
+import { Glass } from '@/components/Glass';
+import { Icon, type IconName, Mark } from '@/components/Icon';
+import { Bar, Ring } from '@/components/Ring';
+import { Screen } from '@/components/Screen';
+import { Text } from '@/components/Text';
+import { useToast } from '@/components/Toast';
+import { Button, Card, Row, Springy } from '@/components/ui';
+import { useT } from '@/i18n';
+import { useAuth } from '@/lib/auth';
+import { eaten, fmt, SAMPLE } from '@/lib/sampleData';
+import { useSettings } from '@/theme/settings';
+
+function greeting() {
+  const h = new Date().getHours();
+  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+}
+
+export default function Home() {
+  const { t, lang } = useT();
+  const { colors: c } = useSettings();
+  const { profile } = useAuth();
+  const toast = useToast();
+  const soon = () => toast(t('Coming soon'), { icon: 'clock' });
+
+  const name = profile?.name || profile?.username || '';
+  const date = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date());
+
+  return (
+    <Screen
+      title={date}
+      large
+      tabs
+      pre={
+        <Row style={{ justifyContent: 'space-between', marginTop: 2 }}>
+          <Text weight={700} color="sec">
+            {t(greeting())}
+            {name ? `, ${name}` : ''}
+          </Text>
+          <View style={{ backgroundColor: c.card, borderRadius: 12, height: 24, paddingHorizontal: 9, justifyContent: 'center' }}>
+            <Text variant="xs" weight={700} color="sec">
+              {t('Sample data')}
+            </Text>
+          </View>
+        </Row>
+      }
+      right={
+        <Springy onPress={() => router.push('/you')} scaleTo={1.08} accessibilityLabel={t('Profile and settings')}>
+          <Glass style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}>
+            <Text variant="h3" size={16}>
+              {(name[0] ?? '?').toUpperCase()}
+            </Text>
+          </Glass>
+        </Springy>
+      }>
+      <CheckinCard onStart={soon} />
+      {profile?.account_type === 'coach' && profile.coach_status === 'pending' ? <CoachPendingCard /> : null}
+      <CaloriesCard />
+      <WaterCard />
+      <WorkoutCard onStart={soon} />
+      <StreaksCard onPress={soon} />
+      <TipCard />
+      <Button title={t('Edit home')} icon="sliders" kind="glass" style={{ marginTop: 8 }} onPress={soon} />
+    </Screen>
+  );
+}
+
+function CheckinCard({ onStart }: { onStart: () => void }) {
+  const { t } = useT();
+  const { colors: c } = useSettings();
+  return (
+    <Card style={{ backgroundColor: c.cobalt, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <Mark size={38} color="#FFFFFF" stroke={7} />
+      <View style={{ flex: 1 }}>
+        <Text variant="h3" color="#FFFFFF">
+          {t('Morning check-in')}
+        </Text>
+        <Text variant="small" color="rgba(255,255,255,0.85)">
+          {t('Weight, sleep and energy. Under 30 seconds.')}
+        </Text>
+      </View>
+      <Springy onPress={onStart} style={{ height: 40, borderRadius: 20, paddingHorizontal: 14, backgroundColor: '#FFFFFF', justifyContent: 'center' }}>
+        <Text weight={700} size={14} color="#0A0A0B">
+          {t('Start')}
+        </Text>
+      </Springy>
+    </Card>
+  );
+}
+
+function CoachPendingCard() {
+  const { t } = useT();
+  const { colors: c } = useSettings();
+  return (
+    <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <View style={{ width: 36, height: 36, borderRadius: 11, backgroundColor: c.cobalt, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name="clock" size={18} color="#FFFFFF" />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text weight={700}>{t('Coach application under review')}</Text>
+        <Text variant="small" color="sec">
+          {t('Usually within 2 days. We’ll notify you.')}
+        </Text>
+      </View>
+    </Card>
+  );
+}
+
+function CaloriesCard() {
+  const { t } = useT();
+  const { colors: c } = useSettings();
+  const e = eaten();
+  const goal = SAMPLE.kcalGoal + SAMPLE.burned;
+  const left = goal - e.k;
+  const over = left < 0;
+  const g = SAMPLE.macroGoal;
+  return (
+    <Card onPress={() => router.push('/food')} style={{ paddingTop: 22 }}>
+      <View style={{ alignItems: 'center' }}>
+        <Ring value={e.k} max={goal} size={196} stroke={18} color={over ? c.down : c.cobalt}>
+          <Text num size={46} style={{ letterSpacing: -1.84, lineHeight: 50 }}>
+            {fmt(Math.abs(left))}
+          </Text>
+          <Text variant="small" weight={700} color="sec" style={{ marginTop: 4 }}>
+            {t(over ? 'kcal over' : 'kcal left')}
+          </Text>
+        </Ring>
+      </View>
+      <Row style={{ justifyContent: 'space-between', marginVertical: 16, paddingHorizontal: 10 }}>
+        {(
+          [
+            ['Eaten', e.k],
+            ['Goal', SAMPLE.kcalGoal],
+            ['Burned', SAMPLE.burned],
+          ] as const
+        ).map(([label, v]) => (
+          <View key={label} style={{ alignItems: 'center' }}>
+            <Text num size={17}>
+              {fmt(v)}
+            </Text>
+            <Text variant="xs" weight={700} color="sec">
+              {t(label)}
+            </Text>
+          </View>
+        ))}
+      </Row>
+      <Row gap={10}>
+        {(
+          [
+            ['Protein', e.p, g.p, c.cobalt],
+            ['Carbs', e.c, g.c, c.macroC],
+            ['Fat', e.f, g.f, c.macroF],
+          ] as const
+        ).map(([label, v, max, color]) => (
+          <View key={label} style={{ flex: 1 }}>
+            <Text variant="small" color="sec">
+              {t(label)}
+            </Text>
+            <Text num size={16} style={{ marginTop: 1, marginBottom: 6 }}>
+              {fmt(v)}
+              <Text num size={16} weight={500} color="sec">{`/${fmt(max)}g`}</Text>
+            </Text>
+            <Bar value={v} max={max} color={color} />
+          </View>
+        ))}
+      </Row>
+    </Card>
+  );
+}
+
+function WaterCard() {
+  const { t } = useT();
+  const { colors: c } = useSettings();
+  const toast = useToast();
+  const [ml, setMl] = useState(SAMPLE.water.ml);
+  return (
+    <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <Ring value={ml} max={SAMPLE.water.goal} size={64} stroke={7}>
+        <Icon name="drop" size={22} color={c.cobalt} strokeWidth={2} />
+      </Ring>
+      <View style={{ flex: 1 }}>
+        <Text variant="small" weight={700} color="sec">
+          {t('Water')}
+        </Text>
+        <Text num size={22}>
+          {fmt(ml)}
+          <Text num size={15} weight={500} color="sec">{` / ${fmt(SAMPLE.water.goal)} ${t('ml')}`}</Text>
+        </Text>
+      </View>
+      <Springy
+        onPress={() => {
+          setMl((v) => v + 250);
+          toast(t('Added {n} ml water', { n: 250 }), { icon: 'drop' });
+        }}
+        scaleTo={1.08}
+        accessibilityLabel={t('Add 250 ml water')}>
+        <Glass style={{ width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name="plus" size={24} strokeWidth={2.2} />
+        </Glass>
+      </Springy>
+    </Card>
+  );
+}
+
+function WorkoutCard({ onStart }: { onStart: () => void }) {
+  const { t } = useT();
+  const { colors: c } = useSettings();
+  const w = SAMPLE.workout;
+  return (
+    <Card>
+      <Text variant="small" weight={700} color="sec">
+        {t('{w} day', { w: t(w.name) })}
+      </Text>
+      <Text variant="h2" style={{ marginTop: 4 }}>
+        {t('{n} exercises, {m} min', { n: w.exercises, m: w.minutes })}
+      </Text>
+      <Row style={{ justifyContent: 'space-between', marginTop: 12 }}>
+        <Text>{t(w.first)}</Text>
+        <Row gap={2}>
+          <Icon name="up" size={15} color={c.up} strokeWidth={2.4} />
+          <Text num weight={700} color="up" size={15}>{`${w.target} ${t('kg')}`}</Text>
+        </Row>
+      </Row>
+      <View style={{ marginTop: 16 }}>
+        <Button title={t('Start workout')} onPress={onStart} />
+      </View>
+      <Springy onPress={onStart} style={{ alignSelf: 'center', marginTop: 12 }}>
+        <Text variant="small" weight={700} color="link">
+          {t('Can’t train today?')}
+        </Text>
+      </Springy>
+    </Card>
+  );
+}
+
+function StreaksCard({ onPress }: { onPress: () => void }) {
+  const { t } = useT();
+  const { colors: c } = useSettings();
+  const s = SAMPLE.streaks;
+  const box = (key: string, v: number, max: number, icon: IconName, value: string, label: string) => (
+    <View key={key} style={{ flex: 1, backgroundColor: c.inset, borderRadius: 16, paddingVertical: 12, paddingHorizontal: 4, alignItems: 'center' }}>
+      <Ring value={v} max={max} size={46} stroke={5}>
+        <Icon name={icon} size={17} color={c.cobalt} strokeWidth={2} />
+      </Ring>
+      <Text num size={18} style={{ marginTop: 8 }}>
+        {value}
+      </Text>
+      <Text variant="xs" weight={700} color="sec" center style={{ lineHeight: 15 }}>
+        {label}
+      </Text>
+    </View>
+  );
+  return (
+    <Card onPress={onPress}>
+      <Row style={{ justifyContent: 'space-between', marginBottom: 12 }}>
+        <Text weight={700}>{t('Streaks')}</Text>
+        <Icon name="chev" size={18} color={c.sec} />
+      </Row>
+      <Row gap={8}>
+        {box('o', s.overall, s.best, 'flame', t('{n} days', { n: s.overall }), t('Overall'))}
+        {box('w', s.workouts, s.bestWorkouts, 'train', String(s.workouts), t('Workouts in a row'))}
+        {box('c', s.commitment, 100, 'check', `${s.commitment}%`, t('Commitment'))}
+      </Row>
+    </Card>
+  );
+}
+
+function TipCard() {
+  const { t } = useT();
+  const { colors: c } = useSettings();
+  const left = SAMPLE.macroGoal.p - eaten().p;
+  return (
+    <Card onPress={() => router.push('/coach')} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+      <Mark size={26} color={c.cobalt} stroke={5} />
+      <View style={{ flex: 1 }}>
+        <Text variant="small" weight={700} color="sec">
+          {t('Coach tip')}
+        </Text>
+        <Text weight={600} style={{ marginTop: 4 }}>
+          {t('You still need {n} g of protein. A cup of Greek yogurt after training covers most of it.', { n: left })}
+        </Text>
+      </View>
+    </Card>
+  );
+}
