@@ -21,6 +21,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 const env = (k: string, d = '') => Deno.env.get(k) ?? d;
 /** The OpenRouter key; also accepted under the name "OpenRouter". */
 let lastDetail = '';
+let lastModel = '';
 const openrouterKey = () => env('OPENROUTER_API_KEY') || env('OpenRouter') || env('OPENROUTER');
 
 type Part = { text: string } | { image: string; mime: string };
@@ -87,7 +88,12 @@ async function openrouter(system: string, msgs: Msg[], schema?: object, retry = 
   }
   if (!res.ok) throw new Error(res.status === 429 ? 'busy' : lastDetail);
   const data = await res.json();
-  return data?.choices?.[0]?.message?.content ?? '';
+  lastModel = data?.model ?? '';
+  const content = data?.choices?.[0]?.message?.content ?? '';
+  // An empty answer happens on busy free models: try once more.
+  if (!String(content).trim() && retry) return openrouter(system, msgs, schema, false);
+  if (!String(content).trim()) throw new Error('busy');
+  return content;
 }
 
 async function ask(task: string, system: string, msgs: Msg[], schema?: object) {
@@ -166,7 +172,7 @@ Return JSON: {"reply":"...","actions":[...]}`;
         required: ['kcal_100', 'protein_100', 'carbs_100', 'fat_100', 'readable'],
       });
     case 'machine':
-      return ask(task, `You recognize gym machines and equipment from a photo. Names in English (common gym name). If it is not gym equipment, set known=false.`, [
+      return ask(task, `You recognize gym machines and equipment from a photo. "name" is the common English gym name; "name_ar" is the same name in Arabic as Saudi gym-goers say it; "works" lists the main muscles in English and "works_ar" in Arabic. Suggest "sets" (3 or 4) and "reps" (like "10–12") for a normal gym-goer. "search" is 1 to 3 English words to find it in an exercise list. If it is not gym equipment, set known=false.`, [
         { role: 'user', parts: [img(), { text: 'What gym machine or exercise is this?' }] },
       ], {
         type: 'object',
@@ -221,8 +227,10 @@ Deno.serve(async (req) => {
     const { data: ok } = await admin.rpc('ai_take', { p_user: u.user.id, p_limit: Number(env('AI_DAILY_LIMIT', '80')) });
     if (ok === false) return json({ error: 'limit' }, 429);
 
+    lastModel = '';
+    lastDetail = '';
     const result = await run(task, body);
-    return json({ result });
+    return json({ result, model: lastModel || undefined });
   } catch (e) {
     const msg = (e as Error).message;
     console.error(msg);

@@ -77,15 +77,16 @@ export default function MachineScreen() {
 
   const addFound = () => {
     if (!found) return;
-    if (match) return add({ ...toPlanEx(match), sets: Math.round(found.sets || 3), reps: String(found.reps || '10') }, dbExName(match, lang));
+    if (match) return add({ ...toPlanEx(match), sets: Math.round(found.sets || 3), reps: /\d/.test(found.reps ?? '') ? String(found.reps).slice(0, 7) : '10–12' }, dbExName(match, lang));
     addOwn(found.name, found.name_ar);
   };
 
   const addOwn = (n: string, ar?: string) => {
     const nm = n.trim().slice(0, 40);
+    const reps = found && /\d/.test(found.reps ?? '') ? String(found.reps).slice(0, 7) : '10–12';
     if (!nm || !group) return;
     const id = `custom:${nm.toLowerCase().replace(/[^a-z0-9؀-ۿ]+/g, '-')}`;
-    add({ id, sets: 3, reps: '10–12', n: nm, ar: ar ?? (lang === 'ar' ? nm : null), m: group, t: found?.equipment ?? 'Machine' }, nm);
+    add({ id, sets: Math.round(found?.sets || 3), reps, n: nm, ar: ar ?? (lang === 'ar' ? nm : null), m: group, t: found?.equipment ?? 'Machine' }, nm);
   };
 
   const pickers = (
@@ -169,7 +170,7 @@ export default function MachineScreen() {
                     {t('Start with')}
                   </Text>
                   <Text variant="small" weight={700}>
-                    {t('{s} × {r} at a weight you could do 2 more times', { s: Math.round(found.sets || 3), r: found.reps || '10' })}
+                    {t('{s} × {r} at a weight you could do 2 more times', { s: Math.round(found.sets || 3), r: /\d/.test(found.reps ?? '') ? found.reps! : '10–12' })}
                   </Text>
                 </Row>
               </Card>
