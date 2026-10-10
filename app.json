@@ -10,7 +10,10 @@
     "backgroundColor": "#FFFFFF",
     "ios": {
       "bundleIdentifier": "com.gymi.app",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.gymi.app",
@@ -18,7 +21,13 @@
         "backgroundColor": "#3355FF",
         "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "single",
@@ -41,7 +50,29 @@
         }
       ],
       "expo-localization",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Gymi uses the camera to scan food barcodes and take photos of meals, labels and gym machines.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Gymi lets you pick a photo of a meal, a label, a lab report or your progress.",
+          "cameraPermission": "Gymi uses the camera to take photos of meals, labels and gym machines.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#3355FF"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { type ReactNode, useState } from 'react';
 import { Pressable, View } from 'react-native';
@@ -71,6 +72,13 @@ export default function You() {
         <Item icon="lock" title={t('What friends can see')} onPress={() => router.push('/fprivacy')} chevron />
       </List>
 
+      <Label>{t('App')}</Label>
+      <List>
+        <Item icon="heart" title={t('Your readings')} sub={t('Steps, sleep, weight and devices')} onPress={() => router.push('/devices')} chevron />
+        <Item icon="bell" title={t('Notifications')} onPress={() => router.push('/notifications')} chevron />
+        <Item icon="star" title={t('Subscription')} value={t('Free plan')} onPress={() => router.push('/subscription')} chevron />
+      </List>
+
       <Label>{t('Theme')}</Label>
       <Segmented<ThemePref>
         value={s.theme}
@@ -91,6 +99,13 @@ export default function You() {
           sub={t('Turns glass solid. Easier to read.')}
           right={<Toggle value={s.reduceSetting} onChange={s.setReduce} label={t('Reduce transparency')} />}
         />
+      </List>
+
+      <Label>{t('Account')}</Label>
+      <List>
+        <Item icon="key" title={t('Privacy and data')} sub={t('Download or delete your data')} onPress={() => router.push('/privacy')} chevron />
+        <Item icon="doc" title={t('Privacy policy')} onPress={() => router.push({ pathname: '/legal', params: { doc: 'privacy' } })} chevron />
+        <Item icon="book" title={t('Terms of use')} onPress={() => router.push({ pathname: '/legal', params: { doc: 'terms' } })} chevron />
       </List>
 
       <Button title={t('Log out')} kind="soft" color={c.down} style={{ marginTop: 16 }} onPress={() => setConfirm(true)} />
@@ -114,6 +129,9 @@ export default function You() {
         />
         <Button title={t('Cancel')} kind="ghost" style={{ marginTop: 8 }} onPress={() => setConfirm(false)} />
       </Sheet>
+      <Text variant="xs" color="sec" center style={{ marginTop: 16 }}>
+        {`Gymi ${Constants.expoConfig?.version ?? '1.0.0'}`}
+      </Text>
     </Screen>
   );
 }

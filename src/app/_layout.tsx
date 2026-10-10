@@ -19,6 +19,7 @@ import { useEffect } from 'react';
 import { BalanceSheet } from '@/components/food/BalanceSheet';
 import { LogSheet } from '@/components/food/LogSheet';
 import { CheckinSheet } from '@/components/health/CheckinSheet';
+import { ReminderSync } from '@/components/ReminderSync';
 import { ToastProvider } from '@/components/Toast';
 import { AuthProvider } from '@/lib/auth';
 import { FoodProvider } from '@/lib/food';
@@ -88,6 +89,7 @@ function AppStack({ ready }: { ready: boolean }) {
       <LogSheet />
       <BalanceSheet />
       <CheckinSheet />
+      <ReminderSync />
     </>
   );
 }
