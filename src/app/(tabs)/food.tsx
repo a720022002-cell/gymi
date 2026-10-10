@@ -80,7 +80,7 @@ function FoodHome() {
 
       <Card>
         <Row gap={14}>
-          <Ring value={food.eaten.k} max={goal} size={118} stroke={12} color={left < 0 ? c.down : c.cobalt}>
+          <Ring value={food.eaten.k} max={goal + food.burned} size={118} stroke={12} color={left < 0 ? c.down : c.cobalt}>
             <Text num size={26}>
               {fmt(Math.abs(left))}
             </Text>
@@ -93,7 +93,7 @@ function FoodHome() {
               [
                 ['Eaten', food.eaten.k],
                 ['Goal', goal],
-                ['Burned', 0],
+                ['Burned', food.burned],
               ] as const
             ).map(([label, v]) => (
               <Row key={label} style={{ justifyContent: 'space-between' }}>

@@ -21,6 +21,7 @@ import { LogSheet } from '@/components/food/LogSheet';
 import { ToastProvider } from '@/components/Toast';
 import { AuthProvider } from '@/lib/auth';
 import { FoodProvider } from '@/lib/food';
+import { TrainProvider } from '@/lib/train';
 import { SignupDraftProvider } from '@/lib/signupDraft';
 import { SettingsProvider, useSettings } from '@/theme/settings';
 
@@ -46,11 +47,13 @@ export default function RootLayout() {
     <SettingsProvider>
       <AuthProvider>
         <FoodProvider>
-          <SignupDraftProvider>
-            <ToastProvider>
-              <AppStack ready={fontsLoaded || !!fontError} />
-            </ToastProvider>
-          </SignupDraftProvider>
+          <TrainProvider>
+            <SignupDraftProvider>
+              <ToastProvider>
+                <AppStack ready={fontsLoaded || !!fontError} />
+              </ToastProvider>
+            </SignupDraftProvider>
+          </TrainProvider>
         </FoodProvider>
       </AuthProvider>
     </SettingsProvider>

@@ -194,7 +194,7 @@ function Found({ x, code }: { x: Product; code: string }) {
                 onChangeText={(v) => setG(v.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[^\d.]/g, ''))}
                 inputMode="decimal"
                 keyboardType="decimal-pad"
-                style={{ flex: 1, height: 52, borderRadius: 14, paddingHorizontal: 14, backgroundColor: c.inset, fontFamily: fontFor('sora', 600), fontSize: 22, color: c.text, outlineStyle: 'none' } as object}
+                style={{ flex: 1, minWidth: 0, height: 52, borderRadius: 14, paddingHorizontal: 14, backgroundColor: c.inset, fontFamily: fontFor('sora', 600), fontSize: 22, color: c.text, outlineStyle: 'none' } as object}
               />
               <Text weight={700} color="sec">
                 {t(x.unit)}

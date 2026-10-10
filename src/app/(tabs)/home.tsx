@@ -8,6 +8,7 @@ import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { MacroBars } from '@/components/food/MacroBars';
+import { MissedCard, WorkoutCard } from '@/components/train/WorkoutCard';
 import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
@@ -57,7 +58,8 @@ export default function Home() {
       {profile?.account_type === 'coach' && profile.coach_status === 'pending' ? <CoachPendingCard /> : null}
       {food.setupDone ? <CaloriesCard /> : <SetupCard />}
       <WaterCard />
-      <WorkoutCard onStart={soon} />
+      <MissedCard />
+      <WorkoutCard />
       <StreaksCard onPress={soon} />
       {food.setupDone ? <TipCard /> : null}
       <Button title={t('Edit home')} icon="sliders" kind="glass" style={{ marginTop: 8 }} onPress={soon} />
@@ -148,7 +150,7 @@ function CaloriesCard() {
   return (
     <Card onPress={() => router.push('/food')} style={{ paddingTop: 22 }}>
       <View style={{ alignItems: 'center' }}>
-        <Ring value={e.k} max={goal} size={196} stroke={18} color={over ? c.down : c.cobalt}>
+        <Ring value={e.k} max={goal + food.burned} size={196} stroke={18} color={over ? c.down : c.cobalt}>
           <Text num size={46} style={{ letterSpacing: -1.84, lineHeight: 50 }}>
             {fmt(Math.abs(left))}
           </Text>
@@ -162,6 +164,7 @@ function CaloriesCard() {
           [
             ['Eaten', e.k],
             ['Goal', goal],
+            ['Burned', food.burned],
           ] as const
         ).map(([label, v]) => (
           <View key={label} style={{ alignItems: 'center' }}>
@@ -209,40 +212,6 @@ function WaterCard() {
         <Glass style={{ width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' }}>
           <Icon name="plus" size={24} strokeWidth={2.2} />
         </Glass>
-      </Springy>
-    </Card>
-  );
-}
-
-function WorkoutCard({ onStart }: { onStart: () => void }) {
-  const { t } = useT();
-  const { colors: c } = useSettings();
-  const w = SAMPLE.workout;
-  return (
-    <Card>
-      <Row style={{ justifyContent: 'space-between' }}>
-        <Text variant="small" weight={700} color="sec">
-          {t('{w} day', { w: t(w.name) })}
-        </Text>
-        <SampleTag />
-      </Row>
-      <Text variant="h2" style={{ marginTop: 4 }}>
-        {t('{n} exercises, {m} min', { n: w.exercises, m: w.minutes })}
-      </Text>
-      <Row style={{ justifyContent: 'space-between', marginTop: 12 }}>
-        <Text>{t(w.first)}</Text>
-        <Row gap={2}>
-          <Icon name="up" size={15} color={c.up} strokeWidth={2.4} />
-          <Text num weight={700} color="up" size={15}>{`${w.target} ${t('kg')}`}</Text>
-        </Row>
-      </Row>
-      <View style={{ marginTop: 16 }}>
-        <Button title={t('Start workout')} onPress={onStart} />
-      </View>
-      <Springy onPress={onStart} style={{ alignSelf: 'center', marginTop: 12 }}>
-        <Text variant="small" weight={700} color="link">
-          {t('Can’t train today?')}
-        </Text>
       </Springy>
     </Card>
   );

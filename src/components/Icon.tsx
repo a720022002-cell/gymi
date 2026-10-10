@@ -60,12 +60,24 @@ const IC = {
   book: 'M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5zM4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5',
   cal: 'M4 6h16v14H4zM4 10h16M8 3.5V7M16 3.5V7',
   mic: 'M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21',
+  lock: 'M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3',
+  unlock: 'M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 6.8-1.2',
+  grip: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',
+  trophy: 'M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M9.5 17h5v3.5h-5z',
+  play: 'M8 5.5v13l10.5-6.5z',
+  walk: 'M13 4.5h.01M10 21l2-6 3 3v3M8.5 12l1.5-5 3 1 1.5 3.5 2.5 1M10 7 7 9.5V13',
+  bike: 'M5.5 18.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM18.5 18.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM5.5 15l4-7h5l4 7M9.5 8 12 15H5.5M14 5h2.5',
+  run: 'M14 4.5h.01M6 20l3.5-4 2.5 2 1.5-5 3 2.5h2.5M9.5 10.5 12 8l3 1.5-2 4.5M12 8l-3.5 1-2 2.5',
+  grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
+  plane: 'M21 3 3 10.5l7 2.5 2.5 7zM10 13l11-10',
+  body: 'M12 6.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM5 9h14M12 9v6M9 21l3-6 3 6',
+  timer: 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 9v4l2.5 1.5M9.5 2.5h5',
 } as const;
 
 export type IconName = keyof typeof IC;
 
 // Icons that point in a direction and must flip in Arabic.
-const MIRROR: IconName[] = ['back', 'chev'];
+const MIRROR: IconName[] = ['back', 'chev', 'walk', 'run'];
 
 type Props = { name: IconName; size?: number; color?: string; strokeWidth?: number };
 

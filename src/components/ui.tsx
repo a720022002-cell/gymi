@@ -86,6 +86,8 @@ export function Button({
 }) {
   const { colors: c } = useSettings();
   const h = small ? size.buttonSm : size.button;
+  // A small button still fills its space when asked to (alignSelf: 'stretch').
+  const fill = (StyleSheet.flatten(style) as ViewStyle | undefined)?.alignSelf === 'stretch';
   const bg =
     kind === 'primary' ? c.btn : kind === 'cobalt' ? c.cobalt : kind === 'danger' ? c.down : kind === 'soft' ? c.card : 'transparent';
   const fg = color ?? (kind === 'primary' ? c.btnText : kind === 'cobalt' || kind === 'danger' ? '#FFFFFF' : c.text);
@@ -97,7 +99,7 @@ export function Button({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    alignSelf: small ? 'flex-start' : 'stretch',
+    alignSelf: small && !fill ? 'flex-start' : 'stretch',
   };
   const inner = (
     <>
