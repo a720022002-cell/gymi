@@ -1,14 +1,11 @@
 // Gymi AI: the only place that talks to an AI model. The app sends a task; keys never leave the server.
 //
 // Secrets (Supabase > Edge Functions > Secrets):
-//   GEMINI_API_KEY      required for Gemini (the default)
-//   OPENROUTER_API_KEY  optional backup when Gemini is busy, over its limit or refuses the key
-// Model switch (optional secrets):
-//   AI_PROVIDER         'gemini' (default) or 'openrouter'
-//   AI_MODEL            default 'gemini-flash-latest'
-//   AI_MODEL_LITE       for simple tasks, default 'gemini-3.5-flash-lite'
-//   OPENROUTER_MODEL    up to 3, comma separated, tried in order. Default: free Gemma 4 31B, Gemma 4 26B, Nemotron Nano Omni.
-//                       Qwen (needs credits): 'qwen/qwen3-vl-30b-a3b-instruct'
+//   OPENROUTER_API_KEY  (also read as "OpenRouter") the key for OpenRouter, which runs Qwen
+// Model switch (optional secrets; Gymi uses one model and never falls back to another):
+//   AI_PROVIDER         'openrouter' (default, Qwen) or 'gemini'
+//   OPENROUTER_MODEL    default 'qwen/qwen3-vl-235b-a22b-instruct'
+//   GEMINI_API_KEY, AI_MODEL, AI_MODEL_LITE  only used when AI_PROVIDER is 'gemini'
 //   AI_DAILY_LIMIT      requests per person per day, default 80
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -20,6 +17,8 @@ const cors = {
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 const env = (k: string, d = '') => Deno.env.get(k) ?? d;
 /** The OpenRouter key; also accepted under the name "OpenRouter". */
+/** The one model Gymi uses: Qwen3-VL (reads photos, good Arabic). */
+const QWEN = 'qwen/qwen3-vl-235b-a22b-instruct';
 let lastDetail = '';
 let lastModel = '';
 const openrouterKey = () => env('OPENROUTER_API_KEY') || env('OpenRouter') || env('OPENROUTER');
@@ -64,12 +63,7 @@ async function openrouter(system: string, msgs: Msg[], schema?: object, retry = 
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
     body: JSON.stringify({
-      // First choice, then free backups when it's busy (OpenRouter tries them in order).
-      models: env('OPENROUTER_MODEL', 'google/gemma-4-31b-it:free,google/gemma-4-26b-a4b-it:free,nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free')
-        .split(',')
-        .map((x) => x.trim())
-        .filter(Boolean)
-        .slice(0, 3),
+      model: env('OPENROUTER_MODEL', QWEN),
       // Some free models don't take a separate system message, so the instructions go first in the chat.
       messages: msgs.map((m, i) => ({
         role: m.role === 'ai' ? 'assistant' : 'user',
@@ -97,18 +91,9 @@ async function openrouter(system: string, msgs: Msg[], schema?: object, retry = 
 }
 
 async function ask(task: string, system: string, msgs: Msg[], schema?: object) {
-  const provider = env('AI_PROVIDER', env('GEMINI_API_KEY') ? 'gemini' : 'openrouter');
+  const provider = env('AI_PROVIDER', 'openrouter');
   const model = LITE_TASKS.has(task) ? env('AI_MODEL_LITE', 'gemini-3.5-flash-lite') : env('AI_MODEL', 'gemini-flash-latest');
-  let text: string;
-  try {
-    text = provider === 'openrouter' ? await openrouter(system, msgs, schema) : await gemini(model, system, msgs, schema);
-  } catch (e) {
-    // Backup: if the main model is busy or not set up, try the other one when its key exists.
-    const msg = (e as Error).message;
-    if ((msg === 'busy' || msg === 'ai_off') && provider === 'gemini' && openrouterKey()) text = await openrouter(system, msgs, schema);
-    else if ((msg === 'busy' || msg === 'ai_off') && provider === 'openrouter' && env('GEMINI_API_KEY')) text = await gemini(model, system, msgs, schema);
-    else throw e;
-  }
+  const text = provider === 'gemini' ? await gemini(model, system, msgs, schema) : await openrouter(system, msgs, schema);
   // Take the JSON object out of the answer (some models add words or ``` around it).
   const t = text.trim();
   const a = t.indexOf('{');
