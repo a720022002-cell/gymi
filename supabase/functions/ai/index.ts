@@ -2,12 +2,12 @@
 //
 // Secrets (Supabase > Edge Functions > Secrets):
 //   GEMINI_API_KEY      required for Gemini (the default)
-//   OPENROUTER_API_KEY  optional backup (Qwen) when Gemini is busy or over its limit
+//   OPENROUTER_API_KEY  optional backup when Gemini is busy, over its limit or refuses the key
 // Model switch (optional secrets):
 //   AI_PROVIDER         'gemini' (default) or 'openrouter'
 //   AI_MODEL            default 'gemini-flash-latest'
 //   AI_MODEL_LITE       for simple tasks, default 'gemini-3.5-flash-lite'
-//   OPENROUTER_MODEL    default 'qwen/qwen3-vl-30b-a3b-instruct'
+//   OPENROUTER_MODEL    default 'google/gemma-4-31b-it:free' (free). Qwen: 'qwen/qwen3-vl-30b-a3b-instruct' (needs credits)
 //   AI_DAILY_LIMIT      requests per person per day, default 80
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -41,6 +41,11 @@ async function gemini(model: string, system: string, msgs: Msg[], schema?: objec
     }),
   });
   if (res.status === 429 || res.status >= 500) throw new Error('busy');
+  // Key refused (wrong key, or Google blocked the project): treat like "not set up" so the backup is tried.
+  if (res.status === 401 || res.status === 403) {
+    console.error(`gemini ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    throw new Error('ai_off');
+  }
   if (!res.ok) throw new Error(`gemini ${res.status}: ${(await res.text()).slice(0, 300)}`);
   const data = await res.json();
   const text = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('') ?? '';
@@ -54,7 +59,7 @@ async function openrouter(system: string, msgs: Msg[]) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
     body: JSON.stringify({
-      model: env('OPENROUTER_MODEL', 'qwen/qwen3-vl-30b-a3b-instruct'),
+      model: env('OPENROUTER_MODEL', 'google/gemma-4-31b-it:free'),
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: system + '\nAnswer with JSON only.' },
@@ -65,6 +70,7 @@ async function openrouter(system: string, msgs: Msg[]) {
       ],
     }),
   });
+  if (res.status === 401 || res.status === 403) throw new Error('ai_off');
   if (!res.ok) throw new Error(res.status === 429 ? 'busy' : `openrouter ${res.status}`);
   const data = await res.json();
   return data?.choices?.[0]?.message?.content ?? '';
@@ -203,6 +209,6 @@ Deno.serve(async (req) => {
     console.error(msg);
     if (msg === 'ai_off') return json({ error: 'ai_off' }, 503);
     if (msg === 'busy') return json({ error: 'busy' }, 503);
-    return json({ error: 'failed' }, 500);
+    return json({ error: 'failed', detail: msg.slice(0, 200) }, 500);
   }
 });
