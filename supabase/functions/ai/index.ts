@@ -7,7 +7,8 @@
 //   AI_PROVIDER         'gemini' (default) or 'openrouter'
 //   AI_MODEL            default 'gemini-flash-latest'
 //   AI_MODEL_LITE       for simple tasks, default 'gemini-3.5-flash-lite'
-//   OPENROUTER_MODEL    default 'google/gemma-4-31b-it:free' (free). Qwen: 'qwen/qwen3-vl-30b-a3b-instruct' (needs credits)
+//   OPENROUTER_MODEL    up to 3, comma separated, tried in order. Default: free Gemma 4 31B, Gemma 4 26B, Nemotron Nano Omni.
+//                       Qwen (needs credits): 'qwen/qwen3-vl-30b-a3b-instruct'
 //   AI_DAILY_LIMIT      requests per person per day, default 80
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -18,6 +19,9 @@ const cors = {
 };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 const env = (k: string, d = '') => Deno.env.get(k) ?? d;
+/** The OpenRouter key; also accepted under the name "OpenRouter". */
+let lastDetail = '';
+const openrouterKey = () => env('OPENROUTER_API_KEY') || env('OpenRouter') || env('OPENROUTER');
 
 type Part = { text: string } | { image: string; mime: string };
 type Msg = { role: 'user' | 'ai'; parts: Part[] };
@@ -52,50 +56,65 @@ async function gemini(model: string, system: string, msgs: Msg[], schema?: objec
   return text;
 }
 
-async function openrouter(system: string, msgs: Msg[]) {
-  const key = env('OPENROUTER_API_KEY');
+async function openrouter(system: string, msgs: Msg[], schema?: object, retry = true): Promise<string> {
+  const key = openrouterKey();
   if (!key) throw new Error('ai_off');
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
     body: JSON.stringify({
-      model: env('OPENROUTER_MODEL', 'google/gemma-4-31b-it:free'),
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: system + '\nAnswer with JSON only.' },
-        ...msgs.map((m) => ({
-          role: m.role === 'ai' ? 'assistant' : 'user',
-          content: m.parts.map((p) => ('text' in p ? { type: 'text', text: p.text } : { type: 'image_url', image_url: { url: `data:${p.mime};base64,${p.image}` } })),
-        })),
-      ],
+      // First choice, then free backups when it's busy (OpenRouter tries them in order).
+      models: env('OPENROUTER_MODEL', 'google/gemma-4-31b-it:free,google/gemma-4-26b-a4b-it:free,nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free')
+        .split(',')
+        .map((x) => x.trim())
+        .filter(Boolean)
+        .slice(0, 3),
+      // Some free models don't take a separate system message, so the instructions go first in the chat.
+      messages: msgs.map((m, i) => ({
+        role: m.role === 'ai' ? 'assistant' : 'user',
+        content: [
+          ...(i === 0 ? [{ type: 'text', text: `${system}\nAnswer with one JSON object only, no other text.${schema ? `\nIt must follow this JSON schema: ${JSON.stringify(schema)}` : ''}\n\n` }] : []),
+          ...m.parts.map((p) => ('text' in p ? { type: 'text', text: p.text } : { type: 'image_url', image_url: { url: `data:${p.mime};base64,${p.image}` } })),
+        ],
+      })),
     }),
   });
+  if (!res.ok) lastDetail = `openrouter ${res.status}: ${(await res.text()).slice(0, 200)}`;
   if (res.status === 401 || res.status === 403) throw new Error('ai_off');
-  if (!res.ok) throw new Error(res.status === 429 ? 'busy' : `openrouter ${res.status}`);
+  if (res.status === 429 && retry) {
+    await new Promise((r) => setTimeout(r, 1500));
+    return openrouter(system, msgs, schema, false);
+  }
+  if (!res.ok) throw new Error(res.status === 429 ? 'busy' : lastDetail);
   const data = await res.json();
   return data?.choices?.[0]?.message?.content ?? '';
 }
 
 async function ask(task: string, system: string, msgs: Msg[], schema?: object) {
-  const provider = env('AI_PROVIDER', 'gemini');
+  const provider = env('AI_PROVIDER', env('GEMINI_API_KEY') ? 'gemini' : 'openrouter');
   const model = LITE_TASKS.has(task) ? env('AI_MODEL_LITE', 'gemini-3.5-flash-lite') : env('AI_MODEL', 'gemini-flash-latest');
   let text: string;
   try {
-    text = provider === 'openrouter' ? await openrouter(system, msgs) : await gemini(model, system, msgs, schema);
+    text = provider === 'openrouter' ? await openrouter(system, msgs, schema) : await gemini(model, system, msgs, schema);
   } catch (e) {
     // Backup: if the main model is busy or not set up, try the other one when its key exists.
     const msg = (e as Error).message;
-    if ((msg === 'busy' || msg === 'ai_off') && provider === 'gemini' && env('OPENROUTER_API_KEY')) text = await openrouter(system, msgs);
+    if ((msg === 'busy' || msg === 'ai_off') && provider === 'gemini' && openrouterKey()) text = await openrouter(system, msgs, schema);
     else if ((msg === 'busy' || msg === 'ai_off') && provider === 'openrouter' && env('GEMINI_API_KEY')) text = await gemini(model, system, msgs, schema);
     else throw e;
   }
-  const clean = text.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '');
-  return JSON.parse(clean);
+  // Take the JSON object out of the answer (some models add words or ``` around it).
+  const t = text.trim();
+  const a = t.indexOf('{');
+  const b = t.lastIndexOf('}');
+  return JSON.parse(a >= 0 && b > a ? t.slice(a, b + 1) : t);
 }
 
 // ---------------------------------------------------------------------------
 // Tasks
 // ---------------------------------------------------------------------------
+/** Realistic Saudi portions so estimates aren't too low. */
+const PORTIONS = `Use realistic Saudi/Gulf portions. Typical: 1 plate chicken kabsa about 750 kcal (45 g protein), lamb mandi plate about 900 kcal, chicken shawarma wrap about 520 kcal, falafel sandwich about 450 kcal, 1 cup cooked rice about 200 kcal, 1 Arabic bread about 170 kcal, 3 dates about 70 kcal, 1 cup laban about 120 kcal, 1 egg about 75 kcal, Big Mac about 550 kcal.`;
 const LANG = (l: string) => (l === 'ar' ? 'Reply in simple Saudi/Gulf Arabic.' : 'Reply in simple, friendly English.');
 const FOOD_ITEM = {
   type: 'object',
@@ -119,7 +138,7 @@ Keep answers short (2 to 5 sentences), practical and kind. Use local foods when 
 You are not a doctor: for pain, injury or medical questions, suggest seeing a doctor.
 The user's data today (JSON): ${ctx}
 If the user says they ate, drank, walked/ran/cycled/swam, add actions so the app can log it:
-- food: {"type":"food","name":"...","kcal":n,"protein":n,"carbs":n,"fat":n} (estimate a normal portion if no amount is given)
+- food: {"type":"food","name":"...","kcal":n,"protein":n,"carbs":n,"fat":n} (estimate a normal portion if no amount is given). ${PORTIONS}
 - cardio: {"type":"cardio","kind":"Walk|Run|Bike|Swim","minutes":n,"intensity":0|1|2}
 - water: {"type":"water","ml":n}
 Only add actions for things they already did, not plans. Otherwise "actions" is [].
@@ -128,11 +147,11 @@ Return JSON: {"reply":"...","actions":[...]}`;
       return ask(task, system, msgs);
     }
     case 'meal_photo':
-      return ask(task, `You estimate food from a photo for a calorie tracker. ${LANG(lang)} Names short. List each food you see with grams and its calories and macros for that amount. Gulf dishes are common. If it is not food, return items: [] and a note.`, [
+      return ask(task, `You estimate food from a photo for a calorie tracker. ${LANG(lang)} Names short. List each food you see with grams and its calories and macros for that amount. Gulf dishes are common. ${PORTIONS} If it is not food, return items: [] and a note.`, [
         { role: 'user', parts: [img(), { text: `What is on this plate? Estimate each part.${b.note ? ` How it was cooked: ${String(b.note).slice(0, 300)}` : ''}` }] },
       ], FOOD);
     case 'food_text':
-      return ask(task, `You turn a description of food into calories for a tracker. ${LANG(lang)} Names short. Estimate normal portions when no amount is given.`, [
+      return ask(task, `You turn a description of food into calories for a tracker. ${LANG(lang)} Names short. Estimate normal portions when no amount is given. ${PORTIONS}`, [
         { role: 'user', parts: [{ text: String(b.text ?? '').slice(0, 500) }] },
       ], FOOD);
     case 'label_photo':
@@ -196,7 +215,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const task = String(body.task ?? '');
     if (typeof body.image === 'string' && body.image.length > 6_000_000) return json({ error: 'too_big' }, 413);
-    if (!env('GEMINI_API_KEY') && !env('OPENROUTER_API_KEY')) return json({ error: 'ai_off' }, 503);
+    if (!env('GEMINI_API_KEY') && !openrouterKey()) return json({ error: 'ai_off' }, 503);
 
     const admin = createClient(url, env('SUPABASE_SERVICE_ROLE_KEY'));
     const { data: ok } = await admin.rpc('ai_take', { p_user: u.user.id, p_limit: Number(env('AI_DAILY_LIMIT', '80')) });
@@ -207,8 +226,8 @@ Deno.serve(async (req) => {
   } catch (e) {
     const msg = (e as Error).message;
     console.error(msg);
-    if (msg === 'ai_off') return json({ error: 'ai_off' }, 503);
-    if (msg === 'busy') return json({ error: 'busy' }, 503);
+    if (msg === 'ai_off') return json({ error: 'ai_off', detail: lastDetail }, 503);
+    if (msg === 'busy') return json({ error: 'busy', detail: lastDetail }, 503);
     return json({ error: 'failed', detail: msg.slice(0, 200) }, 500);
   }
 });
