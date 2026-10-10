@@ -82,6 +82,9 @@ type Food = {
   burned: number;
   addCardio: (c: Omit<Cardio, 'id' | 'created_at'>) => Promise<Cardio | null>;
   deleteCardio: (id: string) => Promise<void>;
+  /** Steps today (typed in, plus about 110 per minute of walking). */
+  steps: number;
+  setSteps: (n: number) => Promise<void>;
   addWater: (ml: number, kind?: string) => Promise<void>;
   /** Over/under balance sheet (shown above everything). */
   balance: 'over' | 'under' | null;
@@ -107,6 +110,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
   const [moves, setMoves] = useState<Move[]>([]);
   const [water, setWater] = useState(0);
   const [cardio, setCardio] = useState<Cardio[]>([]);
+  const [steps, setStepsState] = useState(0);
   const [balance, openBalance] = useState<'over' | 'under' | null>(null);
   const [logOpen, setLogOpen] = useState(false);
   const planRef = useRef(plan);
@@ -139,13 +143,14 @@ export function FoodProvider({ children }: PropsWithChildren) {
     let alive = true;
     (async () => {
       const weekEnd = addDays(today, 7);
-      const [p, l, s, m, w, cd] = await Promise.all([
+      const [p, l, s, m, w, cd, st] = await Promise.all([
         supabase.from('food_plans').select('*').eq('user_id', userId).maybeSingle(),
         supabase.from('food_logs').select('*').eq('day', today).order('created_at'),
         supabase.from('saved_meals').select('*').order('created_at', { ascending: false }),
         supabase.from('calorie_moves').select('id,day,kcal').gte('day', today).lte('day', weekEnd),
         supabase.from('water_logs').select('ml').eq('day', today),
         supabase.from('cardio_logs').select('id,kind,minutes,intensity,kcal,created_at').eq('day', today).order('created_at'),
+        supabase.from('step_logs').select('steps').eq('day', today).maybeSingle(),
       ]);
       if (!alive) return;
       const base = defaultPlan(Number(profile?.weight_kg ?? 80));
@@ -156,6 +161,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       setMoves((m.data as Move[]) ?? []);
       setWater(((w.data as { ml: number }[]) ?? []).reduce((a, x) => a + x.ml, 0));
       setCardio((cd.data as Cardio[]) ?? []);
+      setStepsState((st.data as { steps: number } | null)?.steps ?? 0);
       setReadyFor(userId);
     })();
     return () => {
@@ -278,6 +284,15 @@ export function FoodProvider({ children }: PropsWithChildren) {
     [today],
   );
 
+  const setSteps = useCallback(
+    async (n: number) => {
+      const v = Math.max(0, Math.min(200000, Math.round(n)));
+      setStepsState(v);
+      if (userId) await supabase.from('step_logs').upsert({ user_id: userId, day: today, steps: v });
+    },
+    [userId, today],
+  );
+
   const deleteCardio = useCallback(async (id: string) => {
     setCardio((xs) => xs.filter((x) => x.id !== id));
     await supabase.from('cardio_logs').delete().eq('id', id);
@@ -313,13 +328,15 @@ export function FoodProvider({ children }: PropsWithChildren) {
       burned,
       addCardio,
       deleteCardio,
+      steps,
+      setSteps,
       addWater,
       balance,
       openBalance,
       logOpen,
       setLogOpen,
     }),
-    [balance, logOpen, ready, today, setupDone, plan, person, draft, savePlan, updatePlan, logs, eaten, target, dayGoal, kcalLeft, addLog, deleteLog, restoreLog, saved, saveMeal, deleteMeal, moves, addMoves, removeMoves, water, cardio, burned, addCardio, deleteCardio, addWater],
+    [balance, logOpen, ready, today, setupDone, plan, person, draft, savePlan, updatePlan, logs, eaten, target, dayGoal, kcalLeft, addLog, deleteLog, restoreLog, saved, saveMeal, deleteMeal, moves, addMoves, removeMoves, water, cardio, burned, addCardio, deleteCardio, steps, setSteps, addWater],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

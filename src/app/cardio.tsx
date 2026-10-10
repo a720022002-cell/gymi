@@ -3,6 +3,7 @@ import { TextInput, View } from 'react-native';
 
 import { Stepper } from '@/components/food/Stepper';
 import { Icon, type IconName } from '@/components/Icon';
+import { Bar, Ring } from '@/components/Ring';
 import { Screen } from '@/components/Screen';
 import { fontFor, Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
@@ -17,6 +18,82 @@ import { useSettings } from '@/theme/settings';
 const ICON: Record<string, IconName> = { Walk: 'walk', Run: 'run', Bike: 'bike', Swim: 'drop' };
 
 /** Log cardio; calories burned are added to today's budget (design: cardio). */
+const STEP_GOAL = 8000;
+
+/** Steps today: typed in for now (phone health data comes later). */
+function StepsCard() {
+  const { t } = useT();
+  const { colors: c } = useSettings();
+  const food = useFood();
+  const [edit, setEdit] = useState(false);
+  const [val, setVal] = useState('');
+  return (
+    <Card>
+      <Row style={{ justifyContent: 'space-between' }}>
+        <View>
+          <Text variant="small" weight={700} color="sec">
+            {t('Steps today')}
+          </Text>
+          <Text num size={30}>
+            {fmt(food.steps)}
+          </Text>
+        </View>
+        <Ring value={food.steps} max={STEP_GOAL} size={64} stroke={7}>
+          <Icon name="walk" size={22} color={c.cobalt} />
+        </Ring>
+      </Row>
+      <View style={{ marginTop: 12 }}>
+        <Bar value={food.steps} max={STEP_GOAL} color={c.cobalt} />
+      </View>
+      {edit ? (
+        <Row gap={8} style={{ marginTop: 12 }}>
+          <TextInput
+            value={val}
+            onChangeText={(v) => setVal(v.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/\D/g, '').slice(0, 6))}
+            autoFocus
+            inputMode="numeric"
+            keyboardType="number-pad"
+            placeholder={String(food.steps)}
+            placeholderTextColor={c.sec}
+            accessibilityLabel={t('Steps today')}
+            style={{ flex: 1, minWidth: 0, height: 44, borderRadius: 12, paddingHorizontal: 12, backgroundColor: c.inset, fontFamily: fontFor('sora', 600), fontSize: 18, color: c.text, outlineStyle: 'none' } as object}
+          />
+          <Button
+            small
+            title={t('Save')}
+            onPress={() => {
+              if (val) food.setSteps(+val);
+              setEdit(false);
+            }}
+          />
+        </Row>
+      ) : (
+        <Row style={{ justifyContent: 'space-between', marginTop: 8 }}>
+          <Text variant="small" color="sec">
+            {t('Goal {n}', { n: fmt(STEP_GOAL) })}
+          </Text>
+          <Row gap={16}>
+            <Springy
+              onPress={() => {
+                setVal('');
+                setEdit(true);
+              }}>
+              <Text variant="small" weight={700} color="link">
+                {t('Type steps')}
+              </Text>
+            </Springy>
+            <Springy onPress={() => food.setSteps(food.steps + 1000)}>
+              <Text variant="small" weight={700} color="link">
+                {t('+ 1,000 steps')}
+              </Text>
+            </Springy>
+          </Row>
+        </Row>
+      )}
+    </Card>
+  );
+}
+
 export default function CardioScreen() {
   const { t } = useT();
   const { colors: c } = useSettings();
@@ -37,8 +114,9 @@ export default function CardioScreen() {
   };
 
   return (
-    <Screen title={t('Cardio')} back>
-      <Text variant="small" weight={700} color="sec" style={{ marginBottom: 8, marginHorizontal: 4 }}>
+    <Screen title={t('Cardio and steps')} back>
+      <StepsCard />
+      <Text variant="small" weight={700} color="sec" style={{ marginTop: 8, marginBottom: 8, marginHorizontal: 4 }}>
         {t('Log cardio')}
       </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
@@ -105,7 +183,15 @@ export default function CardioScreen() {
         onPress={async () => {
           const row = await food.addCardio({ kind: CARDIO[kind][0], minutes: mins, intensity: inten, kcal });
           if (!row) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
-          toast(t('Added {x}: +{n} kcal to today', { x: t(row.kind).toLowerCase(), n: row.kcal }), { icon: 'flame', undo: () => food.deleteCardio(row.id) });
+          const walked = row.kind === 'Walk' ? row.minutes * 110 : 0;
+          if (walked) food.setSteps(food.steps + walked);
+          toast(t('Added {x}: +{n} kcal to today', { x: t(row.kind).toLowerCase(), n: row.kcal }), {
+            icon: 'flame',
+            undo: () => {
+              food.deleteCardio(row.id);
+              if (walked) food.setSteps(Math.max(0, food.steps));
+            },
+          });
         }}
       />
 

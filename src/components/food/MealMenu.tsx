@@ -32,10 +32,17 @@ export function MealMenu({ meal, logged, onClose }: { meal: PlannedMeal | null; 
     toast(t('Changed to {name}. Same calories.', { name: n ? t(n.r.n) : '' }), { ai: true, undo: () => food.updatePlan({ picks: before }) });
   };
 
-  const actions: [IconName, string, () => void, boolean?][] = [
+  const actions: [IconName, string, () => void][] = [
     ['book', 'View recipe', () => { onClose(); router.push({ pathname: '/recipe', params: { key: meal.key } }); }],
     ['swap', 'Change meal', swap],
-    ['sparkle', 'Make from my ingredients', () => toast(t('Coming with the AI coach'), { ai: true }), true],
+    [
+      'sparkle',
+      'Make from my ingredients',
+      () => {
+        onClose();
+        router.push({ pathname: '/coach', params: { ask: t('Make me a {meal} of about {k} kcal using what I have: ', { meal: t(meal.n).toLowerCase(), k: fmt(meal.k) }) } });
+      },
+    ],
   ];
   const canRemove = !food.plan.ramadan && food.plan.meals.length > 2;
 
@@ -48,11 +55,10 @@ export function MealMenu({ meal, logged, onClose }: { meal: PlannedMeal | null; 
         {`${t(meal.n)}, ${fmt(meal.k)} ${t('kcal')}`}
       </Text>
       <View style={{ marginTop: 16, gap: 8 }}>
-        {actions.map(([icon, label, fn, ai]) => (
-          <Springy key={label} onPress={fn} scaleTo={0.985} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 48, borderRadius: 24, backgroundColor: 'rgba(127,127,135,0.12)', opacity: ai ? 0.7 : 1 }}>
+        {actions.map(([icon, label, fn]) => (
+          <Springy key={label} onPress={fn} scaleTo={0.985} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 48, borderRadius: 24, backgroundColor: 'rgba(127,127,135,0.12)' }}>
             <Icon name={icon} size={18} color={c.text} />
             <Text weight={700}>{t(label)}</Text>
-            {ai ? <Text variant="xs" color="sec">{`· ${t('Coming soon')}`}</Text> : null}
           </Springy>
         ))}
         {!logged ? (

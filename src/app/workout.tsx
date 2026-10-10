@@ -34,11 +34,13 @@ export default function WorkoutScreen() {
   if (!p || !w) return <Screen title={t('Workout')} back />;
   const isToday = w === today.name;
   const home = isToday && today.home;
-  const wo = buildWorkout(p, w, { home, short: isToday && today.short, last: train.last });
+  const light = isToday && today.light;
+  const deload = isToday && today.deload;
+  const wo = buildWorkout(p, w, { home, short: isToday && today.short, light, deload, last: train.last });
 
   const start = () => {
     if (train.session) return router.replace('/active');
-    train.startWorkout(w, home, isToday && today.short);
+    train.startWorkout(w, home, isToday && today.short, { light, deload });
     router.replace('/active');
   };
 
@@ -71,6 +73,14 @@ export default function WorkoutScreen() {
           {home || wo.focus ? '. ' : ''}
           {t('{n} exercises, about {m} min.', { n: wo.ex.length, m: wo.min })}
         </Text>
+        {light || deload ? (
+          <Card style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', marginTop: 12 }}>
+            <Icon name="bolt" size={20} color={c.cobalt} />
+            <Text variant="small" style={{ flex: 1 }}>
+              {t(deload ? 'Deload week: weights are about 60% and one set less. Next week you go back to normal.' : 'Lighter today: one set less and about 10% less weight.')}
+            </Text>
+          </Card>
+        ) : null}
         {head(t('Warm-up, 5 min'))}
         {list(WARMUP)}
         {head(t('Exercises'))}
@@ -82,7 +92,7 @@ export default function WorkoutScreen() {
           return (
             <Card key={`${x.id}-${i}`}>
               <Row style={{ alignItems: 'flex-start' }}>
-                <Springy onPress={() => router.push({ pathname: '/exercise', params: { id: x.id } })} style={{ flex: 1 }}>
+                <Springy disabled={x.id.startsWith('custom:')} onPress={() => router.push({ pathname: '/exercise', params: { id: x.id } })} style={{ flex: 1 }}>
                   <Text variant="h3">{info.name}</Text>
                   <Text variant="small" color="sec">
                     {mach ? (lang === 'ar' ? mach[1] : mach[0]) : t(info.type)}

@@ -47,7 +47,7 @@ type Train = {
   last: LastSets;
   best: Record<string, number>;
   session: Session | null;
-  startWorkout: (name: string, home: boolean, short: boolean) => void;
+  startWorkout: (name: string, home: boolean, short: boolean, opts?: { light?: boolean; deload?: boolean; ex?: PlanEx[] }) => void;
   setSession: (s: Session | null) => void;
   finishWorkout: (names: Record<string, string>) => Promise<WorkoutLog | null>;
   /** Workouts finished in a row without missing a planned one (last 8 weeks). */
@@ -190,20 +190,23 @@ export function TrainProvider({ children }: PropsWithChildren) {
   );
 
   const startWorkout = useCallback(
-    (name: string, home: boolean, short: boolean) => {
+    (name: string, home: boolean, short: boolean, opts?: { light?: boolean; deload?: boolean; ex?: PlanEx[] }) => {
       const p = planRef.current;
       if (!p) return;
-      const wo = buildWorkout(p, name, { home, short, last });
+      // A one-off list (Train together) uses the same building rules as a planned workout.
+      const src = opts?.ex ? { ...p, workouts: { ...p.workouts, [name]: { ex: opts.ex, focus: '', min: 0 } } } : p;
+      const wo = buildWorkout(src, name, { home, short, light: opts?.light, deload: opts?.deload, last });
+      const lighter = !!(opts?.light || opts?.deload);
       setSession({
         name,
         start: Date.now(),
         home,
-        ex: wo.ex.map(({ swapped: _s, target: _t, last: ls, sets, ...x }) => ({
+        ex: wo.ex.map(({ swapped: _s, target, last: ls, sets, ...x }) => ({
           ...x,
           tip: false,
           sets: Array.from({ length: sets }, (_, i) => {
             const l = ls[i] ?? ls[ls.length - 1];
-            return { w: '', r: '', done: false, lw: l?.w ?? 0, lr: l?.r ?? topReps(x.reps) };
+            return { w: '', r: '', done: false, lw: lighter ? target : (l?.w ?? 0), lr: l?.r ?? topReps(x.reps) };
           }),
         })),
       });

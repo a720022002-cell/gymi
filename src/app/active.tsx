@@ -118,7 +118,7 @@ export default function Active() {
   return (
     <View style={{ flex: 1 }}>
       <Screen
-        title={s.home ? t('Home workout') : t('{w} workout', { w: t(s.name) })}
+        title={s.home ? t('Home workout') : s.name === 'Together' ? t('Train together') : t('{w} workout', { w: t(s.name) })}
         back
         right={
           <Springy onPress={finish} disabled={saving} scaleTo={1.08}>

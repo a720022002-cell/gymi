@@ -44,6 +44,12 @@ export type TrainPlan = {
   homeDay?: string;
   /** Day the plan was made. Days before it are never "missed". */
   since?: string;
+  /** Today's quick check-in for the recovery score. */
+  checkin?: { day: string; sleep: number; sore: number; energy: number };
+  /** Lighter day (date) and deload week (Sunday of that week). */
+  light?: string;
+  deload?: string;
+  deloadDismissed?: string;
 };
 
 /** A muscle group's name. In Arabic, "Back" alone would mean the back button, so it has its own key. */
@@ -132,7 +138,7 @@ export type LastSets = Record<string, { w: number; r: number }[]>;
 export type BuiltEx = PlanEx & { swapped: boolean; target: number; last: { w: number; r: number }[] };
 
 /** The workout for today, with injury swaps, short or home version, and last time's numbers. */
-export function buildWorkout(plan: TrainPlan, name: string, opts: { home?: boolean; short?: boolean; last: LastSets }) {
+export function buildWorkout(plan: TrainPlan, name: string, opts: { home?: boolean; short?: boolean; light?: boolean; deload?: boolean; last: LastSets }) {
   const home = opts.home;
   const base: PlanEx[] = home ? tplEx(WK.Home.ex) : (plan.workouts[name]?.ex ?? []);
   const inj = plan.injuries;
@@ -143,7 +149,11 @@ export function buildWorkout(plan: TrainPlan, name: string, opts: { home?: boole
     const last = opts.last[id] ?? [];
     return { ...x, id, ...(swap ? { n: undefined, ar: undefined } : {}), swapped: !!swap, last, target: last.length ? Math.max(...last.map((s) => s.w)) : 0 };
   });
+  // Lighter day: one set less and about 10% less weight. Deload week: one set less and about 60%.
+  const cut = opts.deload ? 0.6 : opts.light ? 0.9 : 1;
+  if (cut < 1) ex = ex.map((x) => ({ ...x, sets: Math.max(2, x.sets - 1), target: Math.round((x.target * cut) / 2.5) * 2.5 }));
   let min = home ? WK.Home.min : (plan.workouts[name]?.min ?? workoutMinutes(base));
+  if (cut < 1) min = Math.round((min * 0.85) / 5) * 5;
   if (opts.short && ex.length > 3) {
     ex = ex.slice(0, 3);
     min = 25;
@@ -212,3 +222,21 @@ export const CARDIO: [('Walk' | 'Run' | 'Bike' | 'Swim'), number][] = [
   ['Swim', 7.5],
 ];
 export const cardioKcal = (kind: number, intensity: number, weightKg: number, minutes: number) => Math.round(CARDIO[kind][1] * [0.8, 1, 1.25][intensity] * weightKg * (minutes / 60));
+
+/** Top weight of each finished session for an exercise, newest first. */
+export function topWeights(logs: { day: string; exercises: { id: string; sets: { w: number }[] }[] }[], id: string) {
+  return logs.flatMap((l) => l.exercises.filter((x) => x.id === id).map((x) => Math.max(0, ...x.sets.map((s) => s.w)))).filter((w) => w > 0);
+}
+
+/** Lifts that dropped two sessions in a row (design: deload suggestion). */
+export function droppingLifts(logs: { day: string; exercises: { id: string; n: string; sets: { w: number }[] }[] }[]) {
+  const ids = [...new Set(logs.flatMap((l) => l.exercises.map((x) => x.id)))];
+  return ids.filter((id) => {
+    const w = topWeights(logs, id);
+    return w.length >= 3 && w[0] < w[1] && w[1] < w[2];
+  });
+}
+
+/** Title for a finished or running workout ("Push day", "Home workout", "Train together"). */
+export const workoutTitle = (name: string, t: (s: string, v?: Record<string, string | number>) => string) =>
+  name === 'Home' ? t('Home workout') : name === 'Together' ? t('Train together') : t('{w} day', { w: t(name) });

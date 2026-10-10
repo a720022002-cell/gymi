@@ -1,3 +1,4 @@
+import type React from 'react';
 import { router } from 'expo-router';
 import { createContext, type PropsWithChildren, type ReactNode, useContext, useRef, useState } from 'react';
 import { Animated, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
@@ -26,9 +27,11 @@ type Props = PropsWithChildren<{
   tabs?: boolean;
   /** No top bar at all (Welcome). */
   bare?: boolean;
+  /** To scroll from outside (e.g. to the newest chat message). */
+  scrollRef?: React.Ref<ScrollView>;
 }>;
 
-export function Screen({ title, large, pre, back, onBack, right, tabs, bare, children }: Props) {
+export function Screen({ title, large, pre, back, onBack, right, tabs, bare, scrollRef, children }: Props) {
   const { colors: c } = useSettings();
   const { t } = useT();
   const insets = useSafeAreaInsets();
@@ -58,6 +61,7 @@ export function Screen({ title, large, pre, back, onBack, right, tabs, bare, chi
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
+          ref={scrollRef}
           onScroll={(e) => onScroll(e.nativeEvent.contentOffset.y)}
           scrollEventThrottle={16}
           keyboardShouldPersistTaps="handled"

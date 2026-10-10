@@ -7,7 +7,7 @@ import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { Button, Card, Row } from '@/components/ui';
 import { useT } from '@/i18n';
-import { EX } from '@/lib/training';
+import { EX, workoutTitle } from '@/lib/training';
 import { fmt } from '@/lib/nutrition';
 import { useTrain } from '@/lib/train';
 import { useSettings } from '@/theme/settings';
@@ -35,7 +35,7 @@ export default function Summary() {
           <Icon name="check" size={40} color={c.cobalt} strokeWidth={2.6} />
         </Ring>
         <Text variant="h1" center style={{ marginTop: 16 }}>
-          {t('{w}, done', { w: s.name === 'Home' ? t('Home workout') : t('{w} day', { w: t(s.name) }) })}
+          {t('{w}, done', { w: workoutTitle(s.name, t) })}
         </Text>
         <Text color="sec" center style={{ marginTop: 4 }}>
           {t('Great work. It’s saved and will show in grey next time.')}

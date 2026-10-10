@@ -5,7 +5,7 @@ import { View } from 'react-native';
 import { useT } from '@/i18n';
 import { fmt } from '@/lib/nutrition';
 import { useTrain } from '@/lib/train';
-import { applyShift, buildWorkout, DAYS_LONG, exInfo, shiftPlan } from '@/lib/training';
+import { applyShift, buildWorkout, DAYS_LONG, exInfo, shiftPlan, weekStart, workoutTitle } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
 
 import { OkChip } from '../food/Chips';
@@ -21,9 +21,11 @@ export function useToday() {
   const p = train.plan;
   const home = !!p && (p.homeMode || p.homeDay === train.today);
   const short = !!p && p.short === train.today;
+  const light = !!p && p.light === train.today;
+  const deload = !!p && p.deload === weekStart(train.today);
   const name = train.todayName;
-  const wo = p && name ? buildWorkout(p, name, { home, short, last: train.last }) : null;
-  return { name, home, short, wo, skipped: !!p?.skipped[train.today], done: !!train.todayLog };
+  const wo = p && name ? buildWorkout(p, name, { home, short, light, deload, last: train.last }) : null;
+  return { name, home, short, light, deload, wo, skipped: !!p?.skipped[train.today], done: !!train.todayLog };
 }
 
 /** Next planned workout after today, like "Pull on Thursday". */
@@ -148,7 +150,7 @@ export function WorkoutCard() {
       <Card>
         <Row style={{ justifyContent: 'space-between' }}>
           <Text variant="small" weight={700} color="sec">
-            {train.todayLog.name === 'Home' ? t('Home workout') : t('{w} day', { w: t(train.todayLog.name) })}
+            {workoutTitle(train.todayLog.name, t)}
           </Text>
           <OkChip label={t('Done')} />
         </Row>
@@ -208,7 +210,7 @@ export function WorkoutCard() {
         <Text variant="small" weight={700} color="sec">
           {today.home ? t('Home workout') : t('{w} day', { w: t(today.name) })}
         </Text>
-        {today.short ? <OkChip label={t('Short version')} /> : null}
+        {today.short ? <OkChip label={t('Short version')} /> : today.deload ? <OkChip label={t('Deload week')} /> : today.light ? <OkChip label={t('Lighter today')} /> : null}
       </Row>
       <Text variant="h2" style={{ marginTop: 4 }}>
         {t('{n} exercises, {m} min', { n: wo.ex.length, m: wo.min })}

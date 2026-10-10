@@ -8,11 +8,13 @@ import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
+import { DeloadCard, RecoveryCard } from '@/components/train/RecoveryCard';
 import { TrainSetup } from '@/components/train/TrainSetup';
 import { MissedCard, WorkoutCard } from '@/components/train/WorkoutCard';
 import { Button, Card, Row, Springy, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
+import { fmt } from '@/lib/nutrition';
 import { useTrain } from '@/lib/train';
 import { DAYS } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
@@ -47,14 +49,17 @@ export default function Train() {
       <Card>
         <WeekStrip />
       </Card>
+      <RecoveryCard />
       <MissedCard />
       <WorkoutCard />
+      <DeloadCard />
       <HomeModeCard />
 
       <Section title={t('Plan')} />
       <List
         rows={[
           ['cal', t('Weekly plan'), t('{split}, {n} days a week', { split: t(train.plan!.split), n: train.plan!.week.filter((d) => d.w).length }), () => router.push('/weekplan')],
+          ['friends', t('Train together'), t('One workout, the right sets for each person'), () => router.push('/together')],
         ]}
       />
       <Section title={t('Tools')} />
@@ -93,7 +98,8 @@ function ToolsList() {
     <List
       rows={[
         ['book', t('Exercise library'), t('Filter by equipment and muscle'), () => router.push('/library')],
-        ['walk', t('Cardio'), food.burned ? t('{n} kcal burned today', { n: food.burned }) : t('Walk, run, bike or swim'), () => router.push('/cardio')],
+        ['camera', t('Unknown machine?'), t('Take a photo and add it'), () => router.push('/machine')],
+        ['walk', t('Cardio and steps'), t('{s} steps today', { s: fmt(food.steps) }) + (food.burned ? `${t(', ')}${t('{n} kcal burned today', { n: food.burned })}` : ''), () => router.push('/cardio')],
       ]}
     />
   );
