@@ -23,3 +23,4 @@ supabase/.temp/
 npm-debug.*
 *.log
 *.tsbuildinfo
+__pycache__/
