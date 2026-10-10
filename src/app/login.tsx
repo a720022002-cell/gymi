@@ -10,9 +10,10 @@ import { useToast } from '@/components/Toast';
 import { Button, ErrorText } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
+import { EMAIL_CODES } from '@/lib/config';
 import { emailError, passwordError } from '@/lib/validation';
 
-type Mode = 'login' | 'forgot' | 'reset';
+type Mode = 'login' | 'forgot' | 'reset' | 'sent';
 
 export default function LogIn() {
   const { t } = useT();
@@ -48,7 +49,7 @@ export default function LogIn() {
     const r = await auth.sendReset(email);
     setBusy(false);
     if (r.error) return setError(r.error);
-    setMode('reset');
+    setMode(EMAIL_CODES ? 'reset' : 'sent');
   };
 
   const saveNew = async () => {
@@ -63,7 +64,7 @@ export default function LogIn() {
     router.replace('/');
   };
 
-  const back = mode === 'login' ? undefined : () => { setMode(mode === 'reset' ? 'forgot' : 'login'); setError(null); };
+  const back = mode === 'login' ? undefined : () => { setMode(mode === 'reset' || mode === 'sent' ? 'forgot' : 'login'); setError(null); };
 
   return (
     <Screen title={t(mode === 'login' ? 'Log in' : 'Forgot password')} back onBack={back}>
@@ -114,7 +115,7 @@ export default function LogIn() {
         <View>
           <Text variant="h1">{t('Reset your password')}</Text>
           <Text color="sec" style={{ marginTop: 4 }}>
-            {t('We’ll email you a 6-digit code.')}
+            {t(EMAIL_CODES ? 'We’ll email you a 6-digit code.' : 'We’ll email you a link to set a new password.')}
           </Text>
           <Field
             label={t('Email')}
@@ -129,8 +130,21 @@ export default function LogIn() {
           />
           <ErrorText>{error ? t(error) : null}</ErrorText>
           <View style={{ marginTop: 24 }}>
-            <Button title={t('Send code')} onPress={sendReset} loading={busy} />
+            <Button title={t(EMAIL_CODES ? 'Send code' : 'Send link')} onPress={sendReset} loading={busy} />
           </View>
+        </View>
+      ) : mode === 'sent' ? (
+        <View>
+          <Text variant="h1">{t('Check your email')}</Text>
+          <Text color="sec" style={{ marginTop: 4 }}>
+            {t('We sent a link to')} <Text weight={700}>{email}</Text>
+            {'. '}
+            {t('Open it on this phone to choose a new password.')}
+          </Text>
+          <Text variant="xs" color="sec" style={{ marginTop: 12 }}>
+            {t('Can’t find it? Check your spam folder.')}
+          </Text>
+          <Button title={t('Back to log in')} kind="soft" style={{ marginTop: 24 }} onPress={() => setMode('login')} />
         </View>
       ) : (
         <View>

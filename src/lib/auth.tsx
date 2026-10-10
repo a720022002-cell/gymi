@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
+import { siteUrl } from './config';
 import { friendlyAuthError, supabase, supabaseConfigured } from './supabase';
 
 export type Profile = {
@@ -43,7 +44,10 @@ type Auth = {
   }) => Promise<Result>;
   verifySignup: (email: string, code: string) => Promise<Result>;
   resendSignup: (email: string) => Promise<Result>;
+  /** Has the email link been tapped? Tries to log in with the password from step 1. */
+  checkConfirmed: (email: string, password: string) => Promise<Result>;
   logIn: (identifier: string, password: string) => Promise<Result>;
+  setNewPassword: (password: string) => Promise<Result>;
   sendReset: (email: string) => Promise<Result>;
   resetWithCode: (email: string, code: string, password: string) => Promise<Result>;
   updateProfile: (patch: Partial<Profile>) => Promise<Result>;
@@ -108,7 +112,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
         const { data, error } = await supabase.auth.signUp({
           email: email.trim().toLowerCase(),
           password,
-          options: { data: { username, name: name.trim(), phone, account_type: accountType, language } },
+          options: {
+            data: { username, name: name.trim(), phone, account_type: accountType, language },
+            emailRedirectTo: `${siteUrl()}/signup?step=about`,
+          },
         });
         if (error) return err(error);
         // Supabase hides "email already used" by returning a user with no identities.
@@ -125,8 +132,25 @@ export function AuthProvider({ children }: PropsWithChildren) {
       },
 
       async resendSignup(email) {
-        const { error } = await supabase.auth.resend({ type: 'signup', email: email.trim().toLowerCase() });
+        const { error } = await supabase.auth.resend({
+          type: 'signup',
+          email: email.trim().toLowerCase(),
+          options: { emailRedirectTo: `${siteUrl()}/signup?step=about` },
+        });
         return err(error);
+      },
+
+      async checkConfirmed(email, password) {
+        const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+        if (error) return err(error);
+        await loadProfile(data.user?.id);
+        return { error: null };
+      },
+
+      async setNewPassword(password) {
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) return err(error);
+        return { error: null };
       },
 
       async logIn(identifier, password) {
@@ -147,7 +171,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       },
 
       async sendReset(email) {
-        const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase());
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+          redirectTo: `${siteUrl()}/reset-password`,
+        });
         return err(error);
       },
 

@@ -14,7 +14,8 @@ export const supabase: SupabaseClient = createClient(url ?? 'https://not-configu
     storage: Platform.OS === 'web' ? undefined : AsyncStorage, // web uses localStorage
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    // Email links come back to the website with the login in the address; pick it up.
+    detectSessionInUrl: Platform.OS === 'web',
   },
 });
 
@@ -22,7 +23,7 @@ export const supabase: SupabaseClient = createClient(url ?? 'https://not-configu
 export function friendlyAuthError(message?: string): string {
   const m = (message ?? '').toLowerCase();
   if (m.includes('invalid login credentials')) return 'That email, username or password is not right.';
-  if (m.includes('email not confirmed')) return 'Please verify your email first.';
+  if (m.includes('email not confirmed')) return 'Please confirm your email first. Tap the link we sent you.';
   if (m.includes('token has expired') || m.includes('otp_expired') || m.includes('invalid otp') || m.includes('expired'))
     return 'That code is wrong or expired. Try again or resend it.';
   if (m.includes('already registered') || m.includes('already been registered')) return 'This email already has an account. Log in instead.';

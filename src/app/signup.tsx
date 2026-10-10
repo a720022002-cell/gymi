@@ -12,6 +12,7 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, ErrorText, Label, Option, ProgDots, Row, Segmented } from '@/components/ui';
 import { Wheel } from '@/components/Wheel';
 import { useT } from '@/i18n';
+import { EMAIL_CODES } from '@/lib/config';
 import { profileComplete, useAuth } from '@/lib/auth';
 import { useSignupDraft } from '@/lib/signupDraft';
 import {
@@ -292,7 +293,26 @@ function Verify({ onBack, onVerified }: { onBack: () => void; onVerified: () => 
     const r = await auth.resendSignup(form.email);
     if (r.error) return setError(r.error);
     setLeft(30);
-    toast(t('New code sent'), { icon: 'mail' });
+    toast(t(EMAIL_CODES ? 'New code sent' : 'New link sent'), { icon: 'mail' });
+  };
+
+  // Link mode: tapping the link in another tab logs this tab in too; move on when it does.
+  const loggedIn = !!auth.session;
+  useEffect(() => {
+    if (!EMAIL_CODES && sent && loggedIn) {
+      form.password = '';
+      form.password2 = '';
+      onVerified();
+    }
+  }, [sent, loggedIn, onVerified]);
+
+  const checkLink = async () => {
+    setBusy(true);
+    setError(null);
+    const r = await auth.checkConfirmed(form.email, form.password);
+    setBusy(false);
+    if (r.error) return setError(r.error);
+    toast(t('Email confirmed'), { icon: 'check' });
   };
 
   if (!sent)
@@ -300,7 +320,7 @@ function Verify({ onBack, onVerified }: { onBack: () => void; onVerified: () => 
       <View>
         <Text variant="h1">{t('Verify your account')}</Text>
         <Text color="sec" style={{ marginTop: 4 }}>
-          {t('We’ll send you a 6-digit code. Where should it go?')}
+          {t(EMAIL_CODES ? 'We’ll send you a 6-digit code. Where should it go?' : 'We’ll email you a link to confirm it’s you.')}
         </Text>
         <View style={{ marginTop: 16 }}>
           <Option icon="mail" title={t('Email')} subtitle={form.email} selected />
@@ -308,9 +328,38 @@ function Verify({ onBack, onVerified }: { onBack: () => void; onVerified: () => 
         </View>
         {error ? <ErrorText>{t(error)}</ErrorText> : null}
         <View style={{ marginTop: 24 }}>
-          <Button title={t('Send code')} onPress={send} loading={busy} />
+          <Button title={t(EMAIL_CODES ? 'Send code' : 'Send link')} onPress={send} loading={busy} />
         </View>
         <Button title={t('Change my details')} kind="ghost" style={{ marginTop: 8 }} onPress={onBack} />
+      </View>
+    );
+
+  if (!EMAIL_CODES)
+    return (
+      <View>
+        <Text variant="h1">{t('Check your email')}</Text>
+        <Text color="sec" style={{ marginTop: 4 }}>
+          {t('We sent a link to')} <Text weight={700}>{form.email}</Text>
+          {'. '}
+          {t('Open it on this phone and tap “Confirm email address”. It brings you back here.')}
+        </Text>
+        {error ? <ErrorText>{t(error)}</ErrorText> : null}
+        <View style={{ marginTop: 24 }}>
+          <Button title={t('I’ve confirmed my email')} onPress={checkLink} loading={busy} />
+        </View>
+        <View style={{ alignItems: 'center', marginTop: 16 }}>
+          {left > 0 ? (
+            <Text variant="small" weight={700} color="sec">{t('Resend link in 0:{s}', { s: String(left).padStart(2, '0') })}</Text>
+          ) : (
+            <Pressable onPress={resend} hitSlop={8}>
+              <Text variant="small" weight={700} color="link">{t('Resend link')}</Text>
+            </Pressable>
+          )}
+        </View>
+        <Text variant="xs" color="sec" center style={{ marginTop: 8 }}>
+          {t('Can’t find it? Check your spam folder.')}
+        </Text>
+        <Button title={t('Change my details')} kind="ghost" style={{ marginTop: 16 }} onPress={onBack} />
       </View>
     );
 
