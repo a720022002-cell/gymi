@@ -2,8 +2,10 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
+import { GymHoursEditor } from '@/components/coach/GymHours';
 import { Field } from '@/components/Field';
 import { Screen } from '@/components/Screen';
+import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Chip, Label, Row, Segmented } from '@/components/ui';
 import { useT } from '@/i18n';
@@ -54,6 +56,15 @@ export default function CoachProfileScreen() {
         ))}
       </Row>
       {v.coach_type !== 'Online' ? <Field label={t('Gym')} value={v.gym} onChangeText={(x) => set({ gym: x })} placeholder={t('Fitness Time, Olaya')} maxLength={80} /> : null}
+      {v.coach_type !== 'Online' ? (
+        <>
+          <Label>{t('When you’re at the gym')}</Label>
+          <GymHoursEditor value={v.hours ?? []} onChange={(h) => set({ hours: h })} />
+          <Text variant="xs" color="sec" style={{ marginTop: 6, marginHorizontal: 4 }}>
+            {t('Clients can ask to meet you at these times.')}
+          </Text>
+        </>
+      ) : null}
       <Field label={t('City')} value={v.city} onChangeText={(x) => set({ city: x })} placeholder={t('Riyadh')} maxLength={60} />
       <Field label={t('Years coaching')} value={v.years == null ? '' : String(v.years)} onChangeText={(x) => set({ years: num(x, 60) })} keyboardType="number-pad" ltr />
       <Label>{t('Social media and website')}</Label>
@@ -81,7 +92,7 @@ export default function CoachProfileScreen() {
         onPress={async () => {
           if (!uid) return;
           setBusy(true);
-          const ok = await saveCoachProfile(uid, v);
+          const ok = await saveCoachProfile(uid, { ...v, hours: v.coach_type === 'Online' ? [] : (v.hours ?? []).filter((h) => h.days.length) });
           setBusy(false);
           toast(ok ? t('Coach profile saved') : t('Couldn’t save. Please try again.'), { icon: ok ? 'check' : 'warn' });
           if (ok) router.back();

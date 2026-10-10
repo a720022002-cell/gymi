@@ -2,11 +2,25 @@ import { supabase } from './supabase';
 import type { PlanEx } from './training';
 
 export type Package = { id: string; name: string; price: number; weeks: number; desc: string };
-export type CoachCard = { id: string; name: string | null; username: string; bio: string; specialties: string[]; city: string; gym: string; price_month: number | null; years: number | null; clients: number; coach_type: string; packages: Package[]; spots: number; socials: Record<string, string> };
-export type MyCoach = { id: string; coach_id: string; name: string | null; username: string; status: 'active' | 'requested'; kcal: number | null; protein: number | null; bio: string | null; specialties: string[] | null };
+export type CoachCard = { id: string; name: string | null; username: string; bio: string; specialties: string[]; city: string; gym: string; price_month: number | null; years: number | null; clients: number; coach_type: string; packages: Package[]; spots: number; socials: Record<string, string>; hours: GymHours[] };
+/** When an in-person coach is at the gym. days: 0 = Sunday … 6 = Saturday, times as "17:00". */
+export type GymHours = { days: number[]; from: string; to: string };
+
+/** One-hour meeting slots inside a coach's hours on one day. */
+export function hourSlots(hours: GymHours[], day: number) {
+  const out: string[] = [];
+  for (const h of hours.filter((x) => x.days.includes(day))) {
+    const [a, m] = h.from.split(':').map(Number);
+    const [b, bm] = h.to.split(':').map(Number);
+    for (let x = a; x * 60 + m + 60 <= b * 60 + bm; x++) out.push(`${String(x).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+  }
+  return [...new Set(out)].sort();
+}
+
+export type MyCoach = { id: string; coach_id: string; name: string | null; username: string; status: 'active' | 'requested'; kcal: number | null; protein: number | null; bio: string | null; specialties: string[] | null; gym: string | null; coach_type: string | null; hours: GymHours[] };
 export type ClientLink = { id: string; client_id: string | null; name: string | null; username: string | null; status: 'invited' | 'requested' | 'active'; code: string | null; kcal: number | null; protein: number | null; created_at: string; last_day: string | null; streak: number | null; package: string | null; program_id: string | null; meal_plan_id: string | null };
 export type Message = { id: string; link_id: string; sender: string; text: string; created_at: string };
-export type CoachProfile = { bio: string; specialties: string[]; city: string; gym: string; price_month: number | null; years: number | null; listed: boolean; coach_type: string; packages: Package[]; max_clients: number; socials: Record<string, string> };
+export type CoachProfile = { bio: string; specialties: string[]; city: string; gym: string; price_month: number | null; years: number | null; listed: boolean; coach_type: string; packages: Package[]; max_clients: number; socials: Record<string, string>; hours: GymHours[] };
 export type ClientSummary = {
   name: string | null;
   username: string;
@@ -23,7 +37,7 @@ export type ClientSummary = {
   water: { day: string; ml: number }[];
 };
 
-export const EMPTY_COACH: CoachProfile = { bio: '', specialties: [], city: '', gym: '', price_month: null, years: null, listed: true, coach_type: 'Personal', packages: [], max_clients: 20, socials: {} };
+export const EMPTY_COACH: CoachProfile = { bio: '', specialties: [], city: '', gym: '', price_month: null, years: null, listed: true, coach_type: 'Personal', packages: [], max_clients: 20, socials: {}, hours: [] };
 export const SOCIALS: [string, string][] = [
   ['Instagram', '@yourname'],
   ['TikTok', '@yourname'],
@@ -71,7 +85,7 @@ export async function sendMessage(link: string, text: string) {
 }
 
 export async function getCoachProfile(uid: string): Promise<CoachProfile | null> {
-  const { data } = await supabase.from('coach_profiles').select('bio,specialties,city,gym,price_month,years,listed,coach_type,packages,max_clients,socials').eq('user_id', uid).maybeSingle();
+  const { data } = await supabase.from('coach_profiles').select('bio,specialties,city,gym,price_month,years,listed,coach_type,packages,max_clients,socials,hours').eq('user_id', uid).maybeSingle();
   return (data as CoachProfile) ?? null;
 }
 export async function saveCoachProfile(uid: string, p: CoachProfile) {
@@ -94,7 +108,9 @@ export const ageOf = (dob: string | null) => {
 export type ProgEx = PlanEx;
 export type ProgDay = { name: string; ex: ProgEx[] };
 export type Program = { id: string; name: string; days: ProgDay[]; updated_at?: string };
-export type PlanMeal = { n: string; t: string; k: number; p: number; d: string };
+/** One ingredient of a coach's meal, with its share of calories and macros. */
+export type PlanIng = { id: string; n: string; g: number; k: number; p: number; c: number; f: number };
+export type PlanMeal = { n: string; t: string; k: number; p: number; d: string; c?: number; f?: number; ing?: PlanIng[] };
 export type MealPlan = { id: string; name: string; meals: PlanMeal[]; updated_at?: string };
 
 export async function listPrograms() {
@@ -135,7 +151,7 @@ export const requestCoachPackage = async (id: string, pkg: string) => (await rpc
 // ---------------------------------------------------------------------------
 // Coach application
 // ---------------------------------------------------------------------------
-export type Application = { id: string; coach_type: string; gym: string; city: string; years: string; specialties: string[]; certs: string; socials: Record<string, string>; bio: string; status: 'pending' | 'approved' | 'rejected' | 'withdrawn'; reason: string | null; created_at: string; reviewed_at: string | null };
+export type Application = { id: string; coach_type: string; gym: string; city: string; years: string; specialties: string[]; certs: string; socials: Record<string, string>; bio: string; hours: GymHours[]; status: 'pending' | 'approved' | 'rejected' | 'withdrawn'; reason: string | null; created_at: string; reviewed_at: string | null };
 export async function myApplication() {
   const { data } = await supabase.from('coach_applications').select('*').neq('status', 'withdrawn').order('created_at', { ascending: false }).limit(1).maybeSingle();
   return (data as Application) ?? null;

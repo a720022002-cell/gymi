@@ -9,7 +9,8 @@ import { useToast } from '@/components/Toast';
 import { Button, Chip, ErrorText, Label, Row, Segmented } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
-import { applyCoach, SOCIALS, SPECIALTIES } from '@/lib/coaching';
+import { GymHoursEditor } from '@/components/coach/GymHours';
+import { applyCoach, type GymHours, SOCIALS, SPECIALTIES } from '@/lib/coaching';
 
 const YEARS = ['Under 1', '1 to 2', '3 to 5', '6 to 10', 'Over 10'];
 
@@ -26,6 +27,7 @@ export default function CoachApply() {
   const [certs, setCerts] = useState('');
   const [bio, setBio] = useState('');
   const [socials, setSocials] = useState<Record<string, string>>({});
+  const [hours, setHours] = useState<GymHours[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const send = async () => {
@@ -34,7 +36,7 @@ export default function CoachApply() {
     if (!spec.length) return setErr(t('Pick at least one thing you help with.'));
     setErr(null);
     setBusy(true);
-    const ok = await applyCoach({ coach_type: type, gym: gym.trim(), city: city.trim(), years, specialties: spec, certs: certs.trim(), socials, bio: bio.trim() });
+    const ok = await applyCoach({ coach_type: type, gym: gym.trim(), city: city.trim(), years, specialties: spec, certs: certs.trim(), socials, bio: bio.trim(), hours: type === 'Online' ? [] : hours.filter((h) => h.days.length) });
     setBusy(false);
     if (!ok) return toast(t('Couldn’t send. Please try again.'), { icon: 'warn' });
     await refreshProfile().catch(() => null);
@@ -57,6 +59,15 @@ export default function CoachApply() {
         onChange={setType}
       />
       {type !== 'Online' ? <Field label={t('The gym you coach at')} value={gym} onChangeText={setGym} placeholder={t('Fitness Time, Olaya')} maxLength={80} /> : null}
+      {type !== 'Online' ? (
+        <>
+          <Label optional={t('(optional)')}>{t('When you’re at the gym')}</Label>
+          <GymHoursEditor value={hours} onChange={setHours} />
+          <Text variant="xs" color="sec" style={{ marginTop: 6, marginHorizontal: 4 }}>
+            {t('Clients can ask to meet you at these times.')}
+          </Text>
+        </>
+      ) : null}
       <Field label={t('City')} value={city} onChangeText={setCity} placeholder={t('Riyadh')} maxLength={60} />
       <Label>{t('Years coaching')}</Label>
       <Row gap={8} style={{ flexWrap: 'wrap' }}>

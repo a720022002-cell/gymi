@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
+import { hoursText } from '@/components/coach/GymHours';
 import { Thinking } from '@/components/food/Thinking';
 import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
@@ -16,7 +17,7 @@ import { useSettings } from '@/theme/settings';
 
 /** A coach's page with a request button (design: coachpage). */
 export default function CoachPage() {
-  const { t } = useT();
+  const { t, lang } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -99,6 +100,14 @@ export default function CoachPage() {
           <Icon name="train" size={16} color={c.sec} />
           <Text variant="small" color="sec">
             {[v.gym, v.city].filter(Boolean).join(', ')}
+          </Text>
+        </Row>
+      ) : null}
+      {v.coach_type !== 'Online' && v.hours?.length ? (
+        <Row gap={8} style={{ marginHorizontal: 4, marginBottom: 12, alignItems: 'flex-start' }}>
+          <Icon name="clock" size={16} color={c.sec} />
+          <Text variant="small" color="sec" style={{ flex: 1 }}>
+            {t('At the gym: {h}', { h: hoursText(v.hours, t, lang) })}
           </Text>
         </Row>
       ) : null}

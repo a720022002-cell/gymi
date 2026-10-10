@@ -65,7 +65,7 @@ export default function MyMeals() {
             <Text variant="small" color="sec" num>
               {t('{k} kcal · {p} g protein', { k: fmt(x.k), p: x.p })}
             </Text>
-            <Button small kind="soft" icon="plus" title={t('Log')} onPress={() => logFood({ name: x.d ? `${x.n}: ${x.d}`.slice(0, 120) : x.n, kcal: x.k, protein: x.p, carbs: 0, fat: 0, meal: x.n }, toast, t)} />
+            <Button small kind="soft" icon="plus" title={t('Log')} onPress={() => logFood({ name: x.d ? `${x.n}: ${x.d}`.slice(0, 120) : x.n, kcal: x.k, protein: x.p, carbs: x.c ?? 0, fat: x.f ?? 0, meal: x.n }, toast, t)} />
           </Row>
         </Card>
       ))}
