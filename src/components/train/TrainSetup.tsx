@@ -46,7 +46,8 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
       if (name && ex.length) workouts[name] = { ex, focus: String(w.focus ?? '').slice(0, 60), min: workoutMinutes(ex) };
     }
     const week: Day[] = DAYS.map(() => ({ w: null, lock: false }));
-    for (const d of result.week ?? []) if (d.day >= 0 && d.day <= 6 && workouts[d.workout]) week[d.day].w = d.workout;
+    // Keep exactly the number of days you picked.
+    for (const d of (result.week ?? []).filter((x) => x.day >= 0 && x.day <= 6 && workouts[x.workout]).slice(0, days)) week[d.day].w = d.workout;
     if (!week.some((d) => d.w)) {
       toast(t('The AI plan didn’t work out, so I used a ready-made one.'), { icon: 'info' });
       return null;

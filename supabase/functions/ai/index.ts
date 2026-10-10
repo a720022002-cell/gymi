@@ -171,7 +171,7 @@ Return JSON: {"reply":"...","actions":[...]}`;
       });
     case 'plan': {
       const system = `You are a strength coach. Build a weekly gym plan as JSON. Use ONLY exercise ids from the list given. 4 to 7 exercises per workout, big lifts first. Respect injuries: avoid exercises that stress them. Short English workout names like "Push", "Pull", "Legs", "Upper", "Lower", "Full body". Spread workouts with rest days where possible (weekday 0 = Sunday).`;
-      return ask(task, system, [{ role: 'user', parts: [{ text: JSON.stringify({ days: b.days, injuries: b.injuries, level: b.level, exercises: b.exercises }) }] }], {
+      return ask(task, `${system} Use exactly ${Number(b.days) || 3} training days a week, no more and no less.`, [{ role: 'user', parts: [{ text: JSON.stringify({ days: b.days, injuries: b.injuries, level: b.level, exercises: b.exercises }) }] }], {
         type: 'object',
         properties: {
           split: { type: 'string' },
