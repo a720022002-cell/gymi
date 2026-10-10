@@ -25,7 +25,7 @@ export async function askAI<T>(task: string, body: Record<string, unknown>): Pro
 /** A friendly message for an AI error. */
 export function aiErrorText(e: AiError) {
   return {
-    ai_off: 'The AI isn’t set up yet. It works as soon as the Gemini key is added.',
+    ai_off: 'The AI isn’t set up yet. It works as soon as the AI key is added.',
     limit: 'You reached today’s AI limit. It resets tomorrow.',
     busy: 'The AI is busy right now. Try again in a minute.',
     auth: 'Please log in again.',

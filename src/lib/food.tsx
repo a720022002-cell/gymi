@@ -34,6 +34,8 @@ export type SavedMeal = {
 
 export type Move = { id: string; day: string; kcal: number };
 
+export type WaterLog = { id: string; ml: number; kind: string; created_at: string };
+
 export type Cardio = { id: string; kind: 'Walk' | 'Run' | 'Bike' | 'Swim'; minutes: number; intensity: number; kcal: number; created_at: string };
 
 export type NewLog = {
@@ -77,6 +79,8 @@ type Food = {
   addMoves: (m: { day: string; kcal: number }[]) => Promise<Move[]>;
   removeMoves: (ids: string[]) => Promise<void>;
   water: number;
+  waterLogs: WaterLog[];
+  deleteWater: (id: string) => Promise<WaterLog | null>;
   /** Cardio logged today. Its calories are added to today's budget. */
   cardio: Cardio[];
   burned: number;
@@ -108,7 +112,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
   const [logs, setLogs] = useState<FoodLog[]>([]);
   const [saved, setSaved] = useState<SavedMeal[]>([]);
   const [moves, setMoves] = useState<Move[]>([]);
-  const [water, setWater] = useState(0);
+  const [waterLogs, setWaterLogs] = useState<WaterLog[]>([]);
   const [cardio, setCardio] = useState<Cardio[]>([]);
   const [steps, setStepsState] = useState(0);
   const [balance, openBalance] = useState<'over' | 'under' | null>(null);
@@ -148,7 +152,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
         supabase.from('food_logs').select('*').eq('day', today).order('created_at'),
         supabase.from('saved_meals').select('*').order('created_at', { ascending: false }),
         supabase.from('calorie_moves').select('id,day,kcal').gte('day', today).lte('day', weekEnd),
-        supabase.from('water_logs').select('ml').eq('day', today),
+        supabase.from('water_logs').select('id,ml,kind,created_at').eq('day', today).order('created_at'),
         supabase.from('cardio_logs').select('id,kind,minutes,intensity,kcal,created_at').eq('day', today).order('created_at'),
         supabase.from('step_logs').select('steps').eq('day', today).maybeSingle(),
       ]);
@@ -159,7 +163,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       setLogs((l.data as FoodLog[]) ?? []);
       setSaved((s.data as SavedMeal[]) ?? []);
       setMoves((m.data as Move[]) ?? []);
-      setWater(((w.data as { ml: number }[]) ?? []).reduce((a, x) => a + x.ml, 0));
+      setWaterLogs((w.data as WaterLog[]) ?? []);
       setCardio((cd.data as Cardio[]) ?? []);
       setStepsState((st.data as { steps: number } | null)?.steps ?? 0);
       setReadyFor(userId);
@@ -203,6 +207,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
     [logs],
   );
   const dayGoal = useCallback((day: string) => target.k + moves.filter((m) => m.day === day).reduce((a, m) => a + m.kcal, 0), [target.k, moves]);
+  const water = useMemo(() => waterLogs.reduce((a, x) => a + x.ml, 0), [waterLogs]);
   const burned = cardio.reduce((a, x) => a + x.kcal, 0);
   const kcalLeft = dayGoal(today) + burned - eaten.k;
 
@@ -267,12 +272,23 @@ export function FoodProvider({ children }: PropsWithChildren) {
 
   const addWater = useCallback(
     async (ml: number, kind = 'Water') => {
-      setWater((w) => w + ml);
-      const { error } = await supabase.from('water_logs').insert({ day: today, ml, kind });
-      if (error) setWater((w) => w - ml);
+      const tmp: WaterLog = { id: `tmp-${Date.now()}`, ml, kind, created_at: new Date().toISOString() };
+      setWaterLogs((xs) => [...xs, tmp]);
+      const { data, error } = await supabase.from('water_logs').insert({ day: today, ml, kind }).select('id,ml,kind,created_at').single();
+      setWaterLogs((xs) => (error || !data ? xs.filter((x) => x.id !== tmp.id) : xs.map((x) => (x.id === tmp.id ? (data as WaterLog) : x))));
     },
     [today],
   );
+
+  const deleteWater = useCallback(async (id: string) => {
+    let removed: WaterLog | null = null;
+    setWaterLogs((xs) => {
+      removed = xs.find((x) => x.id === id) ?? null;
+      return xs.filter((x) => x.id !== id);
+    });
+    if (!id.startsWith('tmp-')) await supabase.from('water_logs').delete().eq('id', id);
+    return removed;
+  }, []);
 
   const addCardio = useCallback(
     async (c: Omit<Cardio, 'id' | 'created_at'>) => {
@@ -324,6 +340,8 @@ export function FoodProvider({ children }: PropsWithChildren) {
       addMoves,
       removeMoves,
       water,
+      waterLogs,
+      deleteWater,
       cardio,
       burned,
       addCardio,
@@ -336,7 +354,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       logOpen,
       setLogOpen,
     }),
-    [balance, logOpen, ready, today, setupDone, plan, person, draft, savePlan, updatePlan, logs, eaten, target, dayGoal, kcalLeft, addLog, deleteLog, restoreLog, saved, saveMeal, deleteMeal, moves, addMoves, removeMoves, water, cardio, burned, addCardio, deleteCardio, steps, setSteps, addWater],
+    [balance, logOpen, ready, today, setupDone, plan, person, draft, savePlan, updatePlan, logs, eaten, target, dayGoal, kcalLeft, addLog, deleteLog, restoreLog, saved, saveMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, addCardio, deleteCardio, steps, setSteps, addWater],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

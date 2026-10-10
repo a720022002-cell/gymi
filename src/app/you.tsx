@@ -41,6 +41,13 @@ export default function You() {
         <Item icon="user" title={t('Account type')} value={t(profile?.account_type === 'coach' ? 'Coach (under review)' : 'Member')} />
       </List>
 
+      <Label>{t('Health')}</Label>
+      <List>
+        <Item icon="pill" title={t('Vitamins and supplements')} onPress={() => router.push('/vitamins')} chevron />
+        <Item icon="doc" title={t('Blood tests')} onPress={() => router.push('/blood')} chevron />
+        <Item icon="share" title={t('Reports')} onPress={() => router.push('/report')} chevron />
+      </List>
+
       <Label>{t('Theme')}</Label>
       <Segmented<ThemePref>
         value={s.theme}

@@ -18,9 +18,11 @@ import { useEffect } from 'react';
 
 import { BalanceSheet } from '@/components/food/BalanceSheet';
 import { LogSheet } from '@/components/food/LogSheet';
+import { CheckinSheet } from '@/components/health/CheckinSheet';
 import { ToastProvider } from '@/components/Toast';
 import { AuthProvider } from '@/lib/auth';
 import { FoodProvider } from '@/lib/food';
+import { HealthProvider } from '@/lib/health';
 import { TrainProvider } from '@/lib/train';
 import { SignupDraftProvider } from '@/lib/signupDraft';
 import { SettingsProvider, useSettings } from '@/theme/settings';
@@ -48,11 +50,13 @@ export default function RootLayout() {
       <AuthProvider>
         <FoodProvider>
           <TrainProvider>
-            <SignupDraftProvider>
-              <ToastProvider>
-                <AppStack ready={fontsLoaded || !!fontError} />
-              </ToastProvider>
-            </SignupDraftProvider>
+            <HealthProvider>
+              <SignupDraftProvider>
+                <ToastProvider>
+                  <AppStack ready={fontsLoaded || !!fontError} />
+                </ToastProvider>
+              </SignupDraftProvider>
+            </HealthProvider>
           </TrainProvider>
         </FoodProvider>
       </AuthProvider>
@@ -83,6 +87,7 @@ function AppStack({ ready }: { ready: boolean }) {
       </Stack>
       <LogSheet />
       <BalanceSheet />
+      <CheckinSheet />
     </>
   );
 }

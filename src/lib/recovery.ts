@@ -4,7 +4,7 @@ import { EX, type Muscle } from './training';
 
 export type RecoveryInput = {
   today: string;
-  checkin?: { day: string; sleep: number; sore: number; energy: number };
+  checkin?: { day: string; sleep: number | null; sore: number | null; energy: number | null } | null;
   logs: WorkoutLog[];
   protein: { eaten: number; target: number } | null;
   water: { ml: number; goal: number };
@@ -23,21 +23,24 @@ function loadRatio(logs: WorkoutLog[], today: string) {
 /** Recovery score from 5 to 99 and what went into it (design: recScore, simpler without a watch). */
 export function recovery(x: RecoveryInput) {
   const c = x.checkin?.day === x.today ? x.checkin : undefined;
-  const sleep = c ? clamp(((c.sleep - 5) / 3) * 100, 0, 100) : 75;
-  const sore = c ? [100, 70, 35][c.sore] : 80;
-  const energy = c ? [45, 80, 100][c.energy] : 80;
+  const sl = c?.sleep ?? null;
+  const so = c?.sore ?? null;
+  const en = c?.energy ?? null;
+  const sleep = sl != null ? clamp(((sl - 5) / 3) * 100, 0, 100) : 75;
+  const sore = so != null ? [100, 70, 35][so] : 80;
+  const energy = en != null ? [45, 80, 100][en] : 80;
   const acwr = loadRatio(x.logs, x.today);
   const load = clamp(100 - Math.abs(acwr - 1) * 120, 30, 100);
   const fuel = x.protein && x.protein.target ? clamp((x.protein.eaten / x.protein.target) * 100, 40, 100) : 75;
   const score = Math.round(clamp(sleep * 0.3 + sore * 0.2 + energy * 0.15 + load * 0.2 + fuel * 0.15, 5, 99));
   const parts = [
-    { key: 'Sleep', icon: 'moon', value: Math.round(sleep), sub: c ? { t: '{n} h last night', n: c.sleep } : null },
-    { key: 'Soreness', icon: 'body', value: sore, sub: c ? { t: ['None', 'A little', 'Very sore'][c.sore] } : null },
-    { key: 'Energy', icon: 'bolt', value: energy, sub: c ? { t: ['Tired', 'Normal', 'Great'][c.energy] } : null },
+    { key: 'Sleep', icon: 'moon', value: Math.round(sleep), sub: sl != null ? { t: '{n} h last night', n: sl } : null },
+    { key: 'Soreness', icon: 'body', value: sore, sub: so != null ? { t: ['None', 'A little', 'Very sore'][so] } : null },
+    { key: 'Energy', icon: 'bolt', value: energy, sub: en != null ? { t: ['Tired', 'Normal', 'Great'][en] } : null },
     { key: 'Training load', icon: 'train', value: Math.round(load), sub: { t: '{n}× your usual', n: Math.round(acwr * 10) / 10 } },
     { key: 'Nutrition', icon: 'food', value: Math.round(fuel), sub: x.protein ? { t: '{a} of {b} g protein', a: Math.round(x.protein.eaten), b: Math.round(x.protein.target) } : null },
   ] as const;
-  return { score, parts, acwr, checked: !!c, sleepH: c?.sleep, sore: c?.sore ?? 0 };
+  return { score, parts, acwr, checked: sl != null || so != null || en != null, sleepH: sl ?? undefined, sore: so ?? 0 };
 }
 
 export const recLabel = (v: number): [string, 'up' | 'cobalt' | 'sec' | 'down'] =>

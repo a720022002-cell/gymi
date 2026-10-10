@@ -3,6 +3,7 @@ import { View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
+import { useHealth } from '@/lib/health';
 import { recLabel, recovery } from '@/lib/recovery';
 import { useTrain } from '@/lib/train';
 import { droppingLifts, EX, weekStart } from '@/lib/training';
@@ -18,9 +19,10 @@ import { Button, Card, Row, Springy } from '../ui';
 export function useRecovery() {
   const train = useTrain();
   const food = useFood();
+  const { todayCheckin: ci } = useHealth();
   const input = {
     today: train.today,
-    checkin: train.plan?.checkin,
+    checkin: ci ? { day: ci.day, sleep: ci.sleep_h, sore: ci.sore, energy: ci.energy } : null,
     logs: train.logs,
     protein: food.setupDone ? { eaten: food.eaten.p, target: food.target.p } : null,
     water: { ml: food.water, goal: food.plan.water || 2800 },

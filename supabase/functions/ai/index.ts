@@ -188,6 +188,25 @@ Return JSON: {"reply":"...","actions":[...]}`;
         required: ['split', 'week', 'workouts'],
       });
     }
+    case 'report':
+      return ask(task, `You are a friendly fitness coach writing a short progress report. ${LANG(lang)} Use simple words and the real numbers given. Each point is one short sentence. Never give medical advice. "well": 2 or 3 things that went well. "improve": 2 or 3 things to improve, each with one small action. "focus": one clear goal for the next period.`, [
+        { role: 'user', parts: [{ text: JSON.stringify(b.stats ?? {}).slice(0, 4000) }] },
+      ], {
+        type: 'object',
+        properties: { well: { type: 'array', items: { type: 'string' } }, improve: { type: 'array', items: { type: 'string' } }, focus: { type: 'string' } },
+        required: ['well', 'improve', 'focus'],
+      });
+    case 'blood':
+      return ask(task, `You read lab reports (blood tests). ${LANG(lang)} for "title" only; keep test names in English as printed. List every test value you can read with its unit and the normal range printed on the report ("low" and "high" numbers; null if not printed). "flag" is -1 if below the range, 1 if above, 0 if inside or unknown. "day" is the report date as YYYY-MM-DD if printed, else empty. Never add advice, causes or treatment. If it is not a lab report, return values: [].`, [
+        { role: 'user', parts: [img(), { text: 'Read the values in this lab report.' }] },
+      ], {
+        type: 'object',
+        properties: {
+          title: { type: 'string' }, day: { type: 'string' },
+          values: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, value: { type: 'number' }, unit: { type: 'string' }, low: { type: 'number' }, high: { type: 'number' }, flag: { type: 'number' } }, required: ['name', 'value', 'unit', 'flag'] } },
+        },
+        required: ['values'],
+      });
     default:
       throw new Error('unknown_task');
   }

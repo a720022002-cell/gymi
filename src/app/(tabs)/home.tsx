@@ -13,8 +13,9 @@ import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { useFood } from '@/lib/food';
+import { useHealth } from '@/lib/health';
+import { useStreaks } from '@/lib/useProgress';
 import { fmt } from '@/lib/nutrition';
-import { SAMPLE } from '@/lib/sampleData';
 import { useSettings } from '@/theme/settings';
 
 function greeting() {
@@ -26,6 +27,7 @@ export default function Home() {
   const { t, lang } = useT();
   const { profile } = useAuth();
   const food = useFood();
+  const health = useHealth();
   const toast = useToast();
   const soon = () => toast(t('Coming soon'), { icon: 'clock' });
 
@@ -54,13 +56,13 @@ export default function Home() {
           </Glass>
         </Springy>
       }>
-      <CheckinCard onStart={soon} />
+      {health.ready && !health.todayCheckin ? <CheckinCard onStart={() => health.setCheckinOpen(true)} /> : null}
       {profile?.account_type === 'coach' && profile.coach_status === 'pending' ? <CoachPendingCard /> : null}
       {food.setupDone ? <CaloriesCard /> : <SetupCard />}
       <WaterCard />
       <MissedCard />
       <WorkoutCard />
-      <StreaksCard onPress={soon} />
+      <StreaksCard />
       {food.setupDone ? <TipCard /> : null}
       <Button title={t('Edit home')} icon="sliders" kind="glass" style={{ marginTop: 8 }} onPress={soon} />
     </Screen>
@@ -105,18 +107,6 @@ function CoachPendingCard() {
         </Text>
       </View>
     </Card>
-  );
-}
-
-function SampleTag() {
-  const { t } = useT();
-  const { colors: c } = useSettings();
-  return (
-    <View style={{ backgroundColor: c.inset, borderRadius: 12, height: 24, paddingHorizontal: 9, justifyContent: 'center' }}>
-      <Text variant="xs" weight={700} color="sec">
-        {t('Sample')}
-      </Text>
-    </View>
   );
 }
 
@@ -189,7 +179,7 @@ function WaterCard() {
   const food = useFood();
   const goal = food.plan.water || 2800;
   return (
-    <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+    <Card onPress={() => router.push('/water')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
       <Ring value={food.water} max={goal} size={64} stroke={7}>
         <Icon name="drop" size={22} color={c.cobalt} strokeWidth={2} />
       </Ring>
@@ -217,10 +207,10 @@ function WaterCard() {
   );
 }
 
-function StreaksCard({ onPress }: { onPress: () => void }) {
+function StreaksCard() {
   const { t } = useT();
   const { colors: c } = useSettings();
-  const s = SAMPLE.streaks;
+  const s = useStreaks();
   const box = (key: string, v: number, max: number, icon: IconName, value: string, label: string) => (
     <View key={key} style={{ flex: 1, backgroundColor: c.inset, borderRadius: 16, paddingVertical: 12, paddingHorizontal: 4, alignItems: 'center' }}>
       <Ring value={v} max={max} size={46} stroke={5}>
@@ -235,18 +225,15 @@ function StreaksCard({ onPress }: { onPress: () => void }) {
     </View>
   );
   return (
-    <Card onPress={onPress}>
+    <Card onPress={() => router.push({ pathname: '/progress', params: { tab: 'streaks' } })}>
       <Row style={{ justifyContent: 'space-between', marginBottom: 12 }}>
         <Text weight={700}>{t('Streaks')}</Text>
-        <Row gap={6}>
-          <SampleTag />
-          <Icon name="chev" size={18} color={c.sec} />
-        </Row>
+        <Icon name="chev" size={18} color={c.sec} />
       </Row>
       <Row gap={8}>
         {box('o', s.overall, s.best, 'flame', t('{n} days', { n: s.overall }), t('Overall'))}
         {box('w', s.workouts, s.bestWorkouts, 'train', String(s.workouts), t('Workouts in a row'))}
-        {box('c', s.commitment, 100, 'check', `${s.commitment}%`, t('Commitment'))}
+        {box('c', s.commitment ?? 0, 100, 'check', s.commitment == null ? '–' : `${s.commitment}%`, t('Commitment'))}
       </Row>
     </Card>
   );

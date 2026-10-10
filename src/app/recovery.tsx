@@ -11,7 +11,8 @@ import { useRecovery } from '@/components/train/RecoveryCard';
 import { useToday } from '@/components/train/WorkoutCard';
 import { Button, Card, Chip, Row } from '@/components/ui';
 import { useT } from '@/i18n';
-import { muscleReady, recLabel, recTips } from '@/lib/recovery';
+import { useHealth } from '@/lib/health';
+import { muscleReady, recLabel, recovery, recTips } from '@/lib/recovery';
 import { useTrain } from '@/lib/train';
 import { muscleLabel, MUSCLES } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
@@ -24,8 +25,9 @@ export default function RecoveryScreen() {
   const train = useTrain();
   const today = useToday();
   const { input, r } = useRecovery();
-  const ci = train.plan?.checkin?.day === train.today ? train.plan.checkin : undefined;
-  const [sleep, setSleep] = useState(ci?.sleep ?? 7);
+  const health = useHealth();
+  const ci = health.todayCheckin;
+  const [sleep, setSleep] = useState(ci?.sleep_h ?? 7);
   const [sore, setSore] = useState<number | null>(ci?.sore ?? null);
   const [energy, setEnergy] = useState<number | null>(ci?.energy ?? null);
   const [label, tone] = recLabel(r.score);
@@ -35,7 +37,8 @@ export default function RecoveryScreen() {
 
   const save = () => {
     if (sore === null || energy === null) return;
-    train.updatePlan({ checkin: { day: train.today, sleep, sore, energy } });
+    const score = recovery({ ...input, checkin: { day: train.today, sleep, sore, energy } }).score;
+    health.saveCheckin({ sleep_h: sleep, sore, energy, score });
     toast(t('Saved. Your score is updated.'), { icon: 'check' });
   };
 
