@@ -7,6 +7,7 @@ import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
 import { Avatar } from '@/components/social/Avatar';
 import { List, ListRow } from '@/components/social/List';
+import { PartnerCycles } from '@/components/social/PartnerCycles';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, NavButton, Row, Segmented, Springy } from '@/components/ui';
@@ -30,6 +31,7 @@ import {
   myChallenges,
   myFriends,
   myGroups,
+  myGroupSessions,
   removeFriendship,
   sendRequest,
   timeAgo,
@@ -41,15 +43,18 @@ type Tab = 'friends' | 'groups' | 'activity';
 /** Gym Bros: friends, groups and challenges, and your friends' activity (design: friends). */
 export default function Friends() {
   const { t } = useT();
+  const { colors: c } = useSettings();
   const [tab, setTab] = useState<Tab>('friends');
   const [friends, setFriends] = useState<FriendRow[] | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [items, setItems] = useState<FeedItem[] | null>(null);
   const [adding, setAdding] = useState(false);
+  const [live, setLive] = useState<Awaited<ReturnType<typeof myGroupSessions>>>([]);
 
   const load = useCallback(async () => {
-    const [f, g, c, a] = await Promise.all([myFriends(), myGroups(), myChallenges(), feed()]);
+    const [f, g, c, a, ls] = await Promise.all([myFriends(), myGroups(), myChallenges(), feed(), myGroupSessions()]);
+    setLive(ls);
     setFriends(f);
     setGroups(g);
     setChallenges(c);
@@ -64,6 +69,20 @@ export default function Friends() {
 
   return (
     <Screen title={t('Gym Bros')} large tabs right={<NavButton icon="userplus" label={t('Add a friend')} onPress={() => setAdding(true)} />}>
+      {live.map((x) => (
+        <Card key={x.id} onPress={() => router.push({ pathname: '/groupactive', params: { id: x.id } })} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: c.gAi }}>
+          <Icon name="users" size={22} color={c.cobalt} />
+          <View style={{ flex: 1 }}>
+            <Text weight={700}>{x.joined ? t('Group workout in progress') : t('{n} invited you to train together', { n: x.host_name ?? '' })}</Text>
+            <Text variant="small" color="sec">
+              {t('{n} people', { n: x.members })}
+            </Text>
+          </View>
+          <Text variant="small" weight={700} color="link">
+            {t(x.joined ? 'Open' : 'Join')}
+          </Text>
+        </Card>
+      ))}
       <Segmented<Tab>
         value={tab}
         options={[
@@ -137,6 +156,7 @@ function FriendsTab({ friends, reload, onAdd }: { friends: FriendRow[] | null; r
           </List>
         </>
       ) : null}
+      <PartnerCycles />
       {accepted.length ? (
         <>
           <SecHead title={t('Friends')} />

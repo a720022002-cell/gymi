@@ -72,6 +72,12 @@
         {
           "color": "#3355FF"
         }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Gymi uses Face ID to lock your cycle tracking if you turn that on."
+        }
       ]
     ],
     "experiments": {

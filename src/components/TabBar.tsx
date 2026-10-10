@@ -12,6 +12,13 @@ import { Icon, type IconName, Mark } from './Icon';
 import { Text } from './Text';
 import { Springy } from './ui';
 
+export const COACH_TABS: { name: string; label: string; icon: IconName }[] = [
+  { name: 'cclients', label: 'Clients', icon: 'users' },
+  { name: 'cprog', label: 'Programs', icon: 'cal' },
+  { name: 'cmsg', label: 'Messages', icon: 'send' },
+  { name: 'cme', label: 'Me', icon: 'user' },
+];
+
 export const TABS: { name: string; label: string; icon: IconName }[] = [
   { name: 'home', label: 'Home', icon: 'home' },
   { name: 'food', label: 'Food', icon: 'food' },
@@ -32,7 +39,9 @@ export function TabBar({ state, navigation, mini, setMini }: BottomTabBarProps &
   const { t } = useT();
   const insets = useSafeAreaInsets();
   const [rowW, setRowW] = useState(0);
-  const idx = state.index;
+  const current = state.routes[state.index]?.name;
+  const tabs = COACH_TABS.some((x) => x.name === current) ? COACH_TABS : TABS;
+  const idx = Math.max(0, tabs.findIndex((x) => x.name === current));
 
   const width = useState(() => new Animated.Value(0))[0]; // 0 = full, 1 = mini
   const pill = useState(() => new Animated.Value(idx))[0];
@@ -50,7 +59,7 @@ export function TabBar({ state, navigation, mini, setMini }: BottomTabBarProps &
   const bottom = width.interpolate({ inputRange: [0, 1], outputRange: [24 + insets.bottom, 18 + insets.bottom] });
   const aiSize = width.interpolate({ inputRange: [0, 1], outputRange: [60, 54] });
   const aiBottom = width.interpolate({ inputRange: [0, 1], outputRange: [26 + insets.bottom, 18 + insets.bottom] });
-  const tabW = (rowW - 8) / TABS.length;
+  const tabW = (rowW - 8) / tabs.length;
   const active = isDark ? c.link : c.cobalt;
 
   return (
@@ -71,11 +80,11 @@ export function TabBar({ state, navigation, mini, setMini }: BottomTabBarProps &
                   width: tabW,
                   borderRadius: 28,
                   backgroundColor: c.pill,
-                  transform: [{ translateX: pill.interpolate({ inputRange: [0, 4], outputRange: [0, (isRTL ? -1 : 1) * tabW * 4] }) }],
+                  transform: [{ translateX: pill.interpolate({ inputRange: [0, 4], outputRange: [0, (isRTL ? -1 : 1) * tabW * 4], extrapolate: 'extend' }) }],
                 }}
               />
             ) : null}
-            {TABS.map((tab, i) => {
+            {tabs.map((tab, i) => {
               const on = i === idx;
               if (mini && !on) return null;
               return (

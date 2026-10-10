@@ -175,3 +175,58 @@ export function timeAgo(iso: string, t: (s: string, v?: Record<string, string | 
 
 /** Days left in a challenge, counting today. */
 export const daysLeft = (end: string, today: string) => Math.max(0, Math.round((new Date(`${end}T12:00:00`).getTime() - new Date(`${today}T12:00:00`).getTime()) / 864e5) + 1);
+
+export type Showcase = { badges: { id: string; name: string; icon: string; level: number; tiers: number[]; v: number; unit: string }[]; prs: { id: string; n: string; w: number }[] };
+export async function getShowcase(uid: string): Promise<Showcase> {
+  const { data } = await supabase.from('profile_showcase').select('badges,prs').eq('user_id', uid).maybeSingle();
+  return (data as Showcase) ?? { badges: [], prs: [] };
+}
+export async function saveShowcase(uid: string, s: Showcase) {
+  const { error } = await supabase.from('profile_showcase').upsert({ user_id: uid, ...s, updated_at: new Date().toISOString() });
+  return !error;
+}
+export async function friendShowcase(id: string) {
+  const { data } = await supabase.rpc('friend_showcase', { p_id: id });
+  return (data as Showcase | null) ?? null;
+}
+
+export const INVITE_BASE = 'https://gymi-inky.vercel.app/welcome?ref=';
+export async function myReferrals() {
+  const { data } = await supabase.rpc('my_referrals');
+  return (data as { name: string | null; username: string; joined: string }[] | null) ?? [];
+}
+export async function claimReferral(username: string) {
+  const { data } = await supabase.rpc('claim_referral', { p_username: username });
+  return (data as string | null) ?? 'failed';
+}
+
+// ---------------------------------------------------------------------------
+// Live group workouts
+// ---------------------------------------------------------------------------
+export type SessionEx = { id: string; type: number };
+export type GroupSession = { id: string; host: string; workout: SessionEx[]; status: 'open' | 'live' | 'done'; started_at: string | null };
+export type SessionMember = { user_id: string; name: string | null; username: string; level: 'Beginner' | 'Intermediate' | 'Advanced'; joined: boolean; done: Record<string, number>; updated_at: string };
+export async function startGroupSession(workout: SessionEx[], members: string[], levels: string[], myLevel: string) {
+  const { data, error } = await supabase.rpc('start_group_session', { p_workout: workout, p_members: members, p_levels: levels, p_my_level: myLevel });
+  return error ? null : (data as string);
+}
+export async function myGroupSessions() {
+  const { data } = await supabase.rpc('my_group_sessions');
+  return (data as { id: string; host: string; host_name: string | null; status: string; created_at: string; members: number; joined: boolean }[] | null) ?? [];
+}
+export async function getGroupSession(id: string) {
+  const { data } = await supabase.from('group_sessions').select('id,host,workout,status,started_at').eq('id', id).maybeSingle();
+  return (data as GroupSession) ?? null;
+}
+export async function sessionBoard(id: string) {
+  const { data } = await supabase.rpc('group_session_board', { p_id: id });
+  return (data as SessionMember[] | null) ?? [];
+}
+export async function updateMySession(id: string, uid: string, patch: { joined?: boolean; done?: Record<string, number> }) {
+  const { error } = await supabase.from('group_session_members').update({ ...patch, updated_at: new Date().toISOString() }).eq('session_id', id).eq('user_id', uid);
+  return !error;
+}
+export async function setSessionStatus(id: string, status: 'live' | 'done') {
+  const { data } = await supabase.rpc('set_group_session_status', { p_id: id, p_status: status });
+  return !!data;
+}

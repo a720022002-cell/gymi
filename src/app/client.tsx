@@ -11,15 +11,15 @@ import { Sheet } from '@/components/Sheet';
 import { Avatar } from '@/components/social/Avatar';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
-import { Button, Card, Row } from '@/components/ui';
+import { Button, Card, Chip, Row } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
-import { ageOf, type ClientLink, clientSummary, type ClientSummary, coachList, endCoaching, getNote, saveNote, setTargets } from '@/lib/coaching';
+import { ageOf, assign, type ClientLink, clientSummary, type ClientSummary, coachList, endCoaching, getNote, listMealPlans, listPrograms, type MealPlan, type Program, saveNote, setTargets } from '@/lib/coaching';
 import { fmt, GOALS } from '@/lib/nutrition';
 import { fx, shortDate } from '@/lib/progress';
 import { useSettings } from '@/theme/settings';
 
-type Data = { link: string; s: ClientSummary | null; l: ClientLink | null; note: string };
+type Data = { link: string; s: ClientSummary | null; l: ClientLink | null; note: string; progs: Program[]; meals: MealPlan[] };
 
 /** Coach: one client's progress, targets, private notes and messages (design: client). */
 export default function ClientScreen() {
@@ -33,8 +33,8 @@ export default function ClientScreen() {
   const [tg, setTg] = useState<{ k: number; p: number } | null>(null);
 
   const load = useCallback(async () => {
-    const [s, all, n] = await Promise.all([clientSummary(id), coachList(), getNote(id)]);
-    setD({ link, s, l: all.find((x) => x.id === link) ?? null, note: n });
+    const [s, all, n, progs, meals] = await Promise.all([clientSummary(id), coachList(), getNote(id), listPrograms(), listMealPlans()]);
+    setD({ link, s, l: all.find((x) => x.id === link) ?? null, note: n, progs, meals });
   }, [id, link]);
 
   useEffect(() => {
@@ -116,6 +116,40 @@ export default function ClientScreen() {
         {stat(t('Sleep'), sleep != null ? `${fx(sleep)} ${t('h')}` : '–', lastScore != null ? t('Recovery {n}%', { n: lastScore }) : undefined)}
         {stat(t('Water'), water != null ? `${fx(water / 1000)} L` : '–', t('Average, last 7 days'))}
       </View>
+      <Card>
+        <Text weight={700}>{t('Their plan from you')}</Text>
+        {l.package ? (
+          <Text variant="small" color="sec" style={{ marginTop: 2 }}>
+            {t('Package: {p}', { p: l.package })}
+          </Text>
+        ) : null}
+        <Text variant="xs" weight={700} color="sec" style={{ marginTop: 10 }}>
+          {t('Workout program')}
+        </Text>
+        <Row gap={6} style={{ flexWrap: 'wrap', marginTop: 6 }}>
+          <Chip title={t('None')} on={!l.program_id} onPress={async () => (await assign(link, null, l.meal_plan_id), load())} />
+          {data.progs.map((x) => (
+            <Chip key={x.id} title={x.name} on={l.program_id === x.id} onPress={async () => {
+              if (await assign(link, x.id, l.meal_plan_id)) toast(t('{p} sent to {n}', { p: x.name, n: name }), { icon: 'check' });
+              load();
+            }} />
+          ))}
+          <Chip title={`+ ${t('New')}`} onPress={() => router.push('/progedit')} />
+        </Row>
+        <Text variant="xs" weight={700} color="sec" style={{ marginTop: 10 }}>
+          {t('Meal plan')}
+        </Text>
+        <Row gap={6} style={{ flexWrap: 'wrap', marginTop: 6 }}>
+          <Chip title={t('None')} on={!l.meal_plan_id} onPress={async () => (await assign(link, l.program_id, null), load())} />
+          {data.meals.map((x) => (
+            <Chip key={x.id} title={x.name} on={l.meal_plan_id === x.id} onPress={async () => {
+              if (await assign(link, l.program_id, x.id)) toast(t('{p} sent to {n}', { p: x.name, n: name }), { icon: 'check' });
+              load();
+            }} />
+          ))}
+          <Chip title={`+ ${t('New')}`} onPress={() => router.push('/mealedit')} />
+        </Row>
+      </Card>
       {w.length > 1 ? (
         <Card>
           <Row style={{ justifyContent: 'space-between' }}>

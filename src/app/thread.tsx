@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { type ScrollView, TextInput, View } from 'react-native';
 
@@ -19,7 +19,7 @@ export default function Thread() {
   const toast = useToast();
   const { session } = useAuth();
   const me = session?.user.id;
-  const { link, name } = useLocalSearchParams<{ link: string; name?: string }>();
+  const { link, name, client } = useLocalSearchParams<{ link: string; name?: string; client?: string }>();
   const [list, setList] = useState<{ link: string; m: Message[] } | null>(null);
   const [text, setText] = useState('');
   const scroll = useRef<ScrollView>(null);
@@ -62,6 +62,7 @@ export default function Thread() {
 
   return (
     <Screen title={name || t('Messages')} back scrollRef={scroll}>
+      {client ? <Button small kind="ghost" title={t('View {n}’s progress', { n: name ?? '' })} style={{ alignSelf: 'center', marginBottom: 8 }} onPress={() => router.push({ pathname: '/client', params: { link, id: client } })} /> : null}
       {m.length ? (
         m.map((x) => {
           const mine = x.sender === me;

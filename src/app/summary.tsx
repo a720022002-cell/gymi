@@ -1,9 +1,11 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { View } from 'react-native';
 
 import { Icon, Mark } from '@/components/Icon';
 import { Ring } from '@/components/Ring';
 import { Screen } from '@/components/Screen';
+import { ShareWorkoutSheet } from '@/components/social/ShareWorkoutSheet';
 import { Text } from '@/components/Text';
 import { Button, Card, Row } from '@/components/ui';
 import { useT } from '@/i18n';
@@ -18,6 +20,7 @@ export default function Summary() {
   const { colors: c } = useSettings();
   const train = useTrain();
   const { id } = useLocalSearchParams<{ id?: string }>();
+  const [share, setShare] = useState(false);
   const s = train.logs.find((l) => l.id === id) ?? train.logs[0];
   if (!s)
     return (
@@ -107,7 +110,9 @@ export default function Summary() {
           {t('About {n} kcal burned. Have your post-workout meal within 2 hours.', { n: s.kcal })}
         </Text>
       </Card>
+      <Button kind="glass" icon="share" title={t('Share your workout')} style={{ marginTop: 8 }} onPress={() => setShare(true)} />
       <Button title={t('Done')} style={{ marginTop: 8 }} onPress={() => router.replace('/home')} />
+      <ShareWorkoutSheet log={s} open={share} onClose={() => setShare(false)} />
     </Screen>
   );
 }

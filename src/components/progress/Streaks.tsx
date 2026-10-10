@@ -67,7 +67,7 @@ export function Streaks({ sub, setSub }: { sub: number; setSub: (n: number) => v
   );
 }
 
-function BadgeIcon({ b, size }: { b: Badge; size: number }) {
+export function BadgeIcon({ b, size }: { b: Badge; size: number }) {
   const { colors: c } = useSettings();
   const L = badgeLevel(b);
   const max = b.tiers.length;

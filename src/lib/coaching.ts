@@ -1,10 +1,12 @@
 import { supabase } from './supabase';
+import type { PlanEx } from './training';
 
-export type CoachCard = { id: string; name: string | null; username: string; bio: string; specialties: string[]; city: string; gym: string; price_month: number | null; years: number | null; clients: number };
+export type Package = { id: string; name: string; price: number; weeks: number; desc: string };
+export type CoachCard = { id: string; name: string | null; username: string; bio: string; specialties: string[]; city: string; gym: string; price_month: number | null; years: number | null; clients: number; coach_type: string; packages: Package[]; spots: number; socials: Record<string, string> };
 export type MyCoach = { id: string; coach_id: string; name: string | null; username: string; status: 'active' | 'requested'; kcal: number | null; protein: number | null; bio: string | null; specialties: string[] | null };
-export type ClientLink = { id: string; client_id: string | null; name: string | null; username: string | null; status: 'invited' | 'requested' | 'active'; code: string | null; kcal: number | null; protein: number | null; created_at: string; last_day: string | null; streak: number | null };
+export type ClientLink = { id: string; client_id: string | null; name: string | null; username: string | null; status: 'invited' | 'requested' | 'active'; code: string | null; kcal: number | null; protein: number | null; created_at: string; last_day: string | null; streak: number | null; package: string | null; program_id: string | null; meal_plan_id: string | null };
 export type Message = { id: string; link_id: string; sender: string; text: string; created_at: string };
-export type CoachProfile = { bio: string; specialties: string[]; city: string; gym: string; price_month: number | null; years: number | null; listed: boolean };
+export type CoachProfile = { bio: string; specialties: string[]; city: string; gym: string; price_month: number | null; years: number | null; listed: boolean; coach_type: string; packages: Package[]; max_clients: number; socials: Record<string, string> };
 export type ClientSummary = {
   name: string | null;
   username: string;
@@ -20,6 +22,17 @@ export type ClientSummary = {
   checkins: { day: string; sleep_h: number | null; energy: number | null; sore: number | null; score: number | null }[];
   water: { day: string; ml: number }[];
 };
+
+export const EMPTY_COACH: CoachProfile = { bio: '', specialties: [], city: '', gym: '', price_month: null, years: null, listed: true, coach_type: 'Personal', packages: [], max_clients: 20, socials: {} };
+export const SOCIALS: [string, string][] = [
+  ['Instagram', '@yourname'],
+  ['TikTok', '@yourname'],
+  ['Snapchat', 'yourname'],
+  ['X', '@yourname'],
+  ['YouTube', '@yourchannel'],
+  ['WhatsApp', '+966 5X XXX XXXX'],
+  ['Website', 'yoursite.com'],
+];
 
 export const SPECIALTIES = ['Fat loss', 'Muscle', 'Strength', 'Beginners', 'Women', 'Nutrition', 'Sports', 'Rehab'];
 
@@ -58,7 +71,7 @@ export async function sendMessage(link: string, text: string) {
 }
 
 export async function getCoachProfile(uid: string): Promise<CoachProfile | null> {
-  const { data } = await supabase.from('coach_profiles').select('bio,specialties,city,gym,price_month,years,listed').eq('user_id', uid).maybeSingle();
+  const { data } = await supabase.from('coach_profiles').select('bio,specialties,city,gym,price_month,years,listed,coach_type,packages,max_clients,socials').eq('user_id', uid).maybeSingle();
   return (data as CoachProfile) ?? null;
 }
 export async function saveCoachProfile(uid: string, p: CoachProfile) {
@@ -74,3 +87,61 @@ export const ageOf = (dob: string | null) => {
   if (now.getMonth() + 1 < m || (now.getMonth() + 1 === m && now.getDate() < d)) a--;
   return a;
 };
+
+// ---------------------------------------------------------------------------
+// Programs and meal plans (coach side) and what clients see
+// ---------------------------------------------------------------------------
+export type ProgEx = PlanEx;
+export type ProgDay = { name: string; ex: ProgEx[] };
+export type Program = { id: string; name: string; days: ProgDay[]; updated_at?: string };
+export type PlanMeal = { n: string; t: string; k: number; p: number; d: string };
+export type MealPlan = { id: string; name: string; meals: PlanMeal[]; updated_at?: string };
+
+export async function listPrograms() {
+  const { data } = await supabase.from('coach_programs').select('id,name,days,updated_at').order('updated_at', { ascending: false });
+  return (data as Program[]) ?? [];
+}
+export async function saveProgram(p: Omit<Program, 'id'> & { id?: string }) {
+  const row = { name: p.name.trim().slice(0, 60) || 'Program', days: p.days, updated_at: new Date().toISOString() };
+  const q = p.id ? supabase.from('coach_programs').update(row).eq('id', p.id) : supabase.from('coach_programs').insert(row);
+  const { data, error } = await q.select('id,name,days,updated_at').single();
+  return error ? null : (data as Program);
+}
+export async function deleteProgram(id: string) {
+  const { error } = await supabase.from('coach_programs').delete().eq('id', id);
+  return !error;
+}
+export async function listMealPlans() {
+  const { data } = await supabase.from('coach_meal_plans').select('id,name,meals,updated_at').order('updated_at', { ascending: false });
+  return (data as MealPlan[]) ?? [];
+}
+export async function saveMealPlan(p: Omit<MealPlan, 'id'> & { id?: string }) {
+  const row = { name: p.name.trim().slice(0, 60) || 'Meal plan', meals: p.meals, updated_at: new Date().toISOString() };
+  const q = p.id ? supabase.from('coach_meal_plans').update(row).eq('id', p.id) : supabase.from('coach_meal_plans').insert(row);
+  const { data, error } = await q.select('id,name,meals,updated_at').single();
+  return error ? null : (data as MealPlan);
+}
+export async function deleteMealPlan(id: string) {
+  const { error } = await supabase.from('coach_meal_plans').delete().eq('id', id);
+  return !error;
+}
+export const assign = async (link: string, program: string | null, meal: string | null) => !!(await rpc<boolean>('coach_assign', { p_link: link, p_program: program, p_meal: meal }));
+export const myCoachPlans = async () => await rpc<{ program: Program | null; meals: MealPlan | null }>('my_coach_plans');
+export type InboxRow = { link_id: string; client_id: string; name: string | null; username: string; last_text: string | null; last_sender: string | null; last_at: string | null };
+export const coachInbox = async () => (await rpc<InboxRow[]>('coach_inbox')) ?? [];
+export const broadcast = async (text: string) => (await rpc<number>('coach_broadcast', { p_text: text })) ?? 0;
+export const requestCoachPackage = async (id: string, pkg: string) => (await rpc<string>('request_coach_package', { p_coach: id, p_package: pkg })) ?? 'failed';
+
+// ---------------------------------------------------------------------------
+// Coach application
+// ---------------------------------------------------------------------------
+export type Application = { id: string; coach_type: string; gym: string; city: string; years: string; specialties: string[]; certs: string; socials: Record<string, string>; bio: string; status: 'pending' | 'approved' | 'rejected' | 'withdrawn'; reason: string | null; created_at: string; reviewed_at: string | null };
+export async function myApplication() {
+  const { data } = await supabase.from('coach_applications').select('*').neq('status', 'withdrawn').order('created_at', { ascending: false }).limit(1).maybeSingle();
+  return (data as Application) ?? null;
+}
+export async function applyCoach(a: Omit<Application, 'id' | 'status' | 'reason' | 'created_at' | 'reviewed_at'>) {
+  const { error } = await supabase.rpc('apply_coach', { p: a });
+  return !error;
+}
+export const withdrawApplication = async () => !!(await rpc<boolean>('withdraw_coach_application'));

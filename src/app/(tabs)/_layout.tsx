@@ -27,6 +27,10 @@ export default function TabsLayout() {
         <Tabs.Screen name="train" />
         <Tabs.Screen name="progress" />
         <Tabs.Screen name="friends" />
+        <Tabs.Screen name="cclients" />
+        <Tabs.Screen name="cprog" />
+        <Tabs.Screen name="cmsg" />
+        <Tabs.Screen name="cme" />
       </Tabs>
     </TabChromeContext.Provider>
   );

@@ -1,9 +1,12 @@
-import { Redirect, router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { useEffect } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 
 import { Logo } from '@/components/Logo';
+import { REF_KEY } from '@/components/ReferralClaim';
 import { Text } from '@/components/Text';
 import { Button } from '@/components/ui';
 import { useT } from '@/i18n';
@@ -17,6 +20,11 @@ export default function Welcome() {
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const { accountType, setAccountType } = useSignupDraft();
+  const { ref } = useLocalSearchParams<{ ref?: string }>();
+  // Remember who invited you; it's saved once your account is ready.
+  useEffect(() => {
+    if (ref && /^[a-z][a-z0-9._]{2,19}$/.test(ref.toLowerCase())) AsyncStorage.setItem(REF_KEY, ref.toLowerCase()).catch(() => {});
+  }, [ref]);
 
   if (session) return <Redirect href="/" />;
 

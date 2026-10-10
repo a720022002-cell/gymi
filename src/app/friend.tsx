@@ -16,7 +16,8 @@ import { useT } from '@/i18n';
 import { MEAS_INFO } from '@/lib/health';
 import { fmt } from '@/lib/nutrition';
 import { fx, shortDate } from '@/lib/progress';
-import { displayName, type FriendProfile, friendProfile, myFriends, removeFriendship } from '@/lib/social';
+import { displayName, type FriendProfile, friendProfile, friendShowcase, myFriends, removeFriendship, type Showcase } from '@/lib/social';
+import { BadgeIcon } from '@/components/progress/Streaks';
 import { useSettings } from '@/theme/settings';
 
 /** A friend's profile: only what they chose to share (design: friend). */
@@ -25,12 +26,12 @@ export default function FriendScreen() {
   const { colors: c } = useSettings();
   const toast = useToast();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [p, setP] = useState<{ id: string; v: FriendProfile | null } | null>(null);
+  const [p, setP] = useState<{ id: string; v: FriendProfile | null; sc: Showcase | null } | null>(null);
   const [confirm, setConfirm] = useState(false);
 
   useEffect(() => {
     let alive = true;
-    friendProfile(id).then((v) => alive && setP({ id, v }));
+    Promise.all([friendProfile(id), friendShowcase(id)]).then(([v, sc]) => alive && setP({ id, v, sc }));
     return () => {
       alive = false;
     };
@@ -71,6 +72,18 @@ export default function FriendScreen() {
           </Row>
         ) : null}
       </View>
+      {p?.sc?.badges?.length ? (
+        <Row gap={16} style={{ justifyContent: 'center', marginTop: 16 }}>
+          {p.sc.badges.map((b) => (
+            <View key={b.id} style={{ width: 76, alignItems: 'center' }}>
+              <BadgeIcon b={b} size={48} />
+              <Text variant="xs" weight={700} center style={{ marginTop: 6 }}>
+                {t(b.name)}
+              </Text>
+            </View>
+          ))}
+        </Row>
+      ) : null}
       <Row gap={6} style={{ justifyContent: 'center', marginTop: 16, marginBottom: 8 }}>
         <Icon name="lock" size={14} color={c.sec} />
         <Text variant="small" color="sec">
@@ -96,7 +109,24 @@ export default function FriendScreen() {
           </Card>
         </>
       ) : null}
-      {s.prs && f.prs?.length ? (
+      {p?.sc?.prs?.length ? (
+        <>
+          <Text variant="small" weight={700} color="sec" style={{ marginTop: 12, marginBottom: 8, marginHorizontal: 4 }}>
+            {t('Records {n} shows', { n: name })}
+          </Text>
+          <List>
+            {p.sc.prs.map((r, i) => (
+              <ListRow key={r.id} first={!i}>
+                <Icon name="trophy" size={18} color={c.cobalt} />
+                <Text weight={700} style={{ flex: 1 }}>
+                  {r.n}
+                </Text>
+                <Text num weight={700}>{`${fx(Number(r.w))} ${t('kg')}`}</Text>
+              </ListRow>
+            ))}
+          </List>
+        </>
+      ) : s.prs && f.prs?.length ? (
         <>
           <Text variant="small" weight={700} color="sec" style={{ marginTop: 12, marginBottom: 8, marginHorizontal: 4 }}>
             {t('Personal records')}

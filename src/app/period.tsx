@@ -9,6 +9,8 @@ import { Icon, type IconName } from '@/components/Icon';
 import { Ring } from '@/components/Ring';
 import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
+import { BarChart } from '@/components/Charts';
+import { FriendPicker } from '@/components/social/FriendPicker';
 import { List, ListRow } from '@/components/social/List';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
@@ -29,6 +31,12 @@ import {
   DEFAULT_CYCLE,
   deleteAllCycle,
   deletePeriod,
+  getPartner,
+  type Partner,
+  partnerSummary,
+  phaseOn,
+  savePartner,
+  setAnon as setAnonMode,
   endPeriod,
   loadCycle,
   type Period,
@@ -37,14 +45,17 @@ import {
   SINGLE,
   startPeriod,
 } from '@/lib/cycle';
+import { lockSupported, unlock } from '@/lib/biolock';
 import { useFood } from '@/lib/food';
+import { useHealth } from '@/lib/health';
+import { useTrain } from '@/lib/train';
 import { addDays } from '@/lib/nutrition';
 import { shortDate } from '@/lib/progress';
 import { useSettings } from '@/theme/settings';
 
 const ROSE = '#E11D48';
-type Tab = 'today' | 'calendar' | 'learn';
-type State = { settings: CycleSettings; periods: Period[]; logs: Record<string, CycleLog> };
+type Tab = 'today' | 'calendar' | 'insights' | 'learn';
+type State = { settings: CycleSettings; periods: Period[]; logs: Record<string, CycleLog>; anon: boolean };
 
 /** Cycle tracking: phase, predictions, log, calendar and learn (design: period). Private to you. */
 export default function PeriodScreen() {
@@ -56,10 +67,19 @@ export default function PeriodScreen() {
   const [tab, setTab] = useState<Tab>('today');
   const [modeOpen, setModeOpen] = useState(false);
   const [setOpen, setSetOpen] = useState(false);
+  const [unlocked, setUnlocked] = useState(false);
+  const { today } = useFood();
 
   const load = useCallback(async () => {
-    if (uid) setSt(await loadCycle(uid));
-  }, [uid]);
+    if (!uid) return;
+    const v = await loadCycle(uid);
+    setSt(v);
+    // Keep what your partner sees up to date (only what you chose to share).
+    if (!v.anon) {
+      const pt = await getPartner();
+      if (pt) await savePartner(uid, pt, partnerSummary(cycleNow(v.periods, v.settings, today), pt.share, v.settings.mode));
+    }
+  }, [uid, today]);
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -86,6 +106,18 @@ export default function PeriodScreen() {
         <Thinking message={t('Loading')} />
       </Screen>
     );
+  if (st.settings.lock && lockSupported && !unlocked)
+    return (
+      <Screen title={t('Cycle')} back>
+        <Card style={{ alignItems: 'center', paddingVertical: 28 }}>
+          <Icon name="lock" size={34} color={c.cobalt} />
+          <Text variant="h3" style={{ marginTop: 8 }}>
+            {t('Cycle tracking is locked')}
+          </Text>
+          <Button title={t('Unlock')} style={{ marginTop: 12, alignSelf: 'stretch' }} onPress={async () => setUnlocked(await unlock(t('Unlock cycle tracking')))} />
+        </Card>
+      </Screen>
+    );
   const m = CY_MODES[st.settings.mode];
   const pregLike = st.settings.mode === 'preg' || st.settings.mode === 'post';
   const tabs: { value: Tab; label: string }[] = pregLike
@@ -96,6 +128,7 @@ export default function PeriodScreen() {
     : [
         { value: 'today', label: t('Today') },
         { value: 'calendar', label: t('Calendar') },
+        { value: 'insights', label: t('Insights') },
         { value: 'learn', label: t('Learn') },
       ];
   const cur = tabs.some((x) => x.value === tab) ? tab : 'today';
@@ -115,7 +148,15 @@ export default function PeriodScreen() {
       </Card>
       <Segmented<Tab> value={cur} options={tabs} onChange={setTab} />
       <View style={{ height: 14 }} />
-      {cur === 'today' ? <TodayTab st={st} reload={load} uid={uid ?? ''} /> : cur === 'calendar' ? <CalendarTab st={st} reload={load} /> : <LearnTab />}
+      {st.anon ? (
+        <Row gap={6} style={{ marginHorizontal: 4, marginBottom: 10 }}>
+          <Icon name="lock" size={14} color={c.sec} />
+          <Text variant="small" color="sec">
+            {t('Anonymous mode is on. Cycle data stays on this phone.')}
+          </Text>
+        </Row>
+      ) : null}
+      {cur === 'today' ? <TodayTab st={st} reload={load} uid={uid ?? ''} /> : cur === 'calendar' ? <CalendarTab st={st} reload={load} /> : cur === 'insights' ? <InsightsTab st={st} /> : <LearnTab />}
       <Text variant="xs" color="sec" center style={{ marginTop: 16 }}>
         {t('Predictions are estimates and can’t be used as birth control. Not medical advice. Cycle data is never shared with friends or coaches.')}
       </Text>
@@ -524,6 +565,69 @@ function CalendarTab({ st, reload }: { st: State; reload: () => void }) {
   );
 }
 
+function InsightsTab({ st }: { st: State }) {
+  const { t } = useT();
+  const { colors: c } = useSettings();
+  const health = useHealth();
+  const train = useTrain();
+  const PH = ['Period', 'Follicular', 'Ovulation', 'Luteal'] as const;
+  const counts: Record<string, Record<string, number>> = { Period: {}, Follicular: {}, Ovulation: {}, Luteal: {} };
+  for (const [day, lg] of Object.entries(st.logs)) {
+    const ph = phaseOn(day, st.periods, st.settings);
+    if (!ph) continue;
+    for (const [cat, items] of Object.entries(lg)) if (cat !== 'Flow') for (const it of items) counts[ph][it] = (counts[ph][it] ?? 0) + 1;
+  }
+  const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+  const byPhase = (vals: { day: string; v: number }[]) => PH.map((ph) => avg(vals.filter((x) => phaseOn(x.day, st.periods, st.settings) === ph).map((x) => x.v)));
+  const vol = byPhase(train.logs.filter((l) => l.volume > 0).map((l) => ({ day: l.day, v: l.volume })));
+  const wt = byPhase(health.weights.map((w) => ({ day: w.day, v: w.value })));
+  const tips: { icon: IconName; title: string; body: string }[] = [];
+  for (const ph of PH) {
+    const top = Object.entries(counts[ph]).sort((a, b) => b[1] - a[1])[0];
+    if (top && top[1] >= 2) tips.push({ icon: 'body', title: t('{x} in your {p} phase', { x: t(top[0]), p: t(ph).toLowerCase() }), body: t('You logged it on {n} days in this phase.', { n: top[1] }) });
+  }
+  if (wt[3] != null && wt[1] != null && wt[3] - wt[1] >= 0.3) tips.push({ icon: 'scale', title: t('Water weight before your period'), body: t('Your weight is about {n} kg higher in the luteal phase than the follicular phase. It drops again after your period starts.', { n: Math.round((wt[3] - wt[1]) * 10) / 10 }) });
+  const best = vol.map((v, i) => [v ?? -1, i] as const).sort((a, b) => b[0] - a[0])[0];
+  if (best && best[0] > 0) tips.push({ icon: 'trophy', title: t('Your strongest phase'), body: t('Your training volume is highest in the {p} phase. Plan heavy sessions then.', { p: t(PH[best[1]]).toLowerCase() }) });
+  const enough = st.periods.length >= 1 && (Object.keys(st.logs).length >= 3 || train.logs.length >= 3);
+  return (
+    <View>
+      {enough && tips.length ? (
+        tips.map((x) => (
+          <Card key={x.title} style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
+            <View style={{ width: 34, height: 34, borderRadius: 11, backgroundColor: c.cobalt, alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name={x.icon} size={18} color="#FFFFFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text weight={700}>{x.title}</Text>
+              <Text variant="small" color="sec" style={{ marginTop: 2 }}>
+                {x.body}
+              </Text>
+            </View>
+          </Card>
+        ))
+      ) : (
+        <Card style={{ alignItems: 'center', paddingVertical: 20 }}>
+          <Icon name="sparkle" size={28} color={c.cobalt} />
+          <Text variant="small" color="sec" center style={{ marginTop: 8 }}>
+            {t('Log your periods, symptoms and workouts for a cycle or two. Then the patterns we find show here.')}
+          </Text>
+        </Card>
+      )}
+      {vol.some((v) => v != null) ? (
+        <Card>
+          <Text variant="xs" weight={700} color="sec">
+            {t('Average training volume per session (kg)')}
+          </Text>
+          <View style={{ marginTop: 8 }}>
+            <BarChart values={vol.map((v) => (v == null ? null : Math.round(v)))} labels={PH.map((p) => t(p))} highlight={best?.[1] ?? -1} />
+          </View>
+        </Card>
+      ) : null}
+    </View>
+  );
+}
+
 const ARTICLES: [string, string, string][] = [
   ['Cycle basics', 'The 4 phases of your cycle, simply explained', 'Your cycle has 4 phases: your period, the follicular phase (energy rises), ovulation (an egg is released), and the luteal phase (progesterone rises, hunger and water weight can go up). A normal cycle is 21 to 35 days.'],
   ['Training', 'How to train in each phase', 'Follicular phase: push heavier and try PRs. Ovulation: still strong, warm up well. Luteal: keep weights, drop a set if tired. Period: train as you feel; light movement can ease cramps.'],
@@ -693,6 +797,22 @@ function SettingsSheet({ st, uid, onDone }: { st: State; uid: string; onDone: ()
   const toast = useToast();
   const [s, setS] = useState<CycleSettings>(st.settings ?? DEFAULT_CYCLE);
   const [del, setDel] = useState(false);
+  const [anon, setAnonState] = useState(st.anon);
+  const [anonBusy, setAnonBusy] = useState(false);
+  const [partner, setPartner] = useState<Partner | null>(null);
+  const [partnerLoaded, setPartnerLoaded] = useState(false);
+  const { today } = useFood();
+  useEffect(() => {
+    let alive = true;
+    getPartner().then((p) => {
+      if (!alive) return;
+      setPartner(p);
+      setPartnerLoaded(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
   return (
     <View>
       <Text variant="h2">{t('Cycle settings')}</Text>
@@ -717,19 +837,78 @@ function SettingsSheet({ st, uid, onDone }: { st: State; uid: string; onDone: ()
           </Text>
         </Stepper>
       </Card>
+      <Label>{t('Privacy')}</Label>
+      <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={{ flex: 1 }}>
+          <Text weight={700}>{t('Anonymous mode')}</Text>
+          <Text variant="xs" color="sec">
+            {t('Cycle data is kept only on this phone, not on our server. It won’t move to a new phone and partner sharing turns off.')}
+          </Text>
+        </View>
+        <Toggle
+          value={anon}
+          onChange={async (v) => {
+            setAnonBusy(true);
+            await setAnonMode(uid, v);
+            setAnonBusy(false);
+            setAnonState(v);
+            toast(t(v ? 'Anonymous mode on. Cycle data is now only on this phone.' : 'Anonymous mode off. Cycle data is saved to your account again.'), { icon: 'lock' });
+          }}
+          label={t('Anonymous mode')}
+        />
+      </Card>
+      {anonBusy ? <Thinking message={t('Moving your cycle data')} /> : null}
+      {lockSupported ? (
+        <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={{ flex: 1 }}>
+            <Text weight={700}>{t('Lock with Face ID')}</Text>
+            <Text variant="xs" color="sec">
+              {t('Ask for Face ID or your fingerprint to open cycle tracking')}
+            </Text>
+          </View>
+          <Toggle value={!!s.lock} onChange={(v) => setS({ ...s, lock: v })} label={t('Lock with Face ID')} />
+        </Card>
+      ) : null}
       <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <View style={{ flex: 1 }}>
           <Text weight={700}>{t('Hidden from Gym Bros and coaches')}</Text>
           <Text variant="xs" color="sec">
-            {t('Cycle data is never shared. Always on.')}
+            {t('Friends, groups and coaches never see cycle data.')}
           </Text>
         </View>
-        <Toggle value onChange={() => {}} label={t('Hidden from Gym Bros and coaches')} />
+        <Icon name="lock" size={18} color="#15803D" />
       </Card>
+      {!anon ? (
+        <>
+          <Label>{t('Share with my partner')}</Label>
+          <Card>
+            <Text variant="small" color="sec">
+              {t('Pick one friend from Gym Bros. They see only what you choose, never your logs.')}
+            </Text>
+            <View style={{ marginTop: 10 }}>
+              <FriendPicker value={partner ? [partner.partner_id] : []} onChange={(v) => setPartner(v.length ? { partner_id: v[v.length - 1], share: partner?.share ?? { phase: true, period: true, fertile: false } } : null)} />
+            </View>
+            {partner ? (
+              <Row gap={8} style={{ flexWrap: 'wrap' }}>
+                {(
+                  [
+                    ['phase', 'Phase'],
+                    ['period', 'Period dates'],
+                    ['fertile', 'Fertile window'],
+                  ] as const
+                ).map(([k, l]) => (
+                  <Chip key={k} title={t(l)} on={partner.share[k]} onPress={() => setPartner({ ...partner, share: { ...partner.share, [k]: !partner.share[k] } })} />
+                ))}
+              </Row>
+            ) : null}
+          </Card>
+        </>
+      ) : null}
       <Button
         title={t('Save')}
         onPress={async () => {
           const ok = await saveSettings(uid, s);
+          if (!anon && partnerLoaded) await savePartner(uid, partner, partner ? partnerSummary(cycleNow(st.periods, s, today), partner.share, s.mode) : null);
           toast(ok ? t('Saved') : t('Couldn’t save. Please try again.'), { icon: ok ? 'check' : 'warn' });
           onDone();
         }}

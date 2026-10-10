@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { View } from 'react-native';
 
 import { Glass } from '@/components/Glass';
@@ -14,7 +14,9 @@ import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
-import { useHomeLayout } from '@/lib/homeLayout';
+import { useCoachMode } from '@/lib/coachMode';
+import { RING_NAMES, type RingKey, useHomeLayout } from '@/lib/homeLayout';
+import { useTrain } from '@/lib/train';
 import { fx } from '@/lib/progress';
 import { useStreaks } from '@/lib/useProgress';
 import { fmt } from '@/lib/nutrition';
@@ -31,7 +33,9 @@ export default function Home() {
   const food = useFood();
   const health = useHealth();
   const [layout] = useHomeLayout();
+  const [coachMode] = useCoachMode();
 
+  if (coachMode && profile?.account_type === 'coach' && profile.coach_status === 'approved') return <Redirect href="/cclients" />;
   const name = profile?.name || profile?.username || '';
   const date = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date());
 
@@ -130,15 +134,16 @@ function CoachPendingCard() {
 function ClientsCard() {
   const { t } = useT();
   const { colors: c } = useSettings();
+  const [, setCoachMode] = useCoachMode();
   return (
-    <Card onPress={() => router.push('/clients')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+    <Card onPress={() => (setCoachMode(true), router.replace('/cclients'))} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
       <View style={{ width: 36, height: 36, borderRadius: 11, backgroundColor: c.cobalt, alignItems: 'center', justifyContent: 'center' }}>
         <Icon name="users" size={18} color="#FFFFFF" />
       </View>
       <View style={{ flex: 1 }}>
         <Text weight={700}>{t('Your clients')}</Text>
         <Text variant="small" color="sec">
-          {t('Requests, progress and messages')}
+          {t('Open the coach view: clients, programs and messages')}
         </Text>
       </View>
       <Icon name="chev" size={18} color={c.sec} />
@@ -183,6 +188,8 @@ function CaloriesCard() {
   const { t } = useT();
   const { colors: c } = useSettings();
   const food = useFood();
+  const train = useTrain();
+  const [layout] = useHomeLayout();
   const e = food.eaten;
   const goal = food.dayGoal(food.today);
   const left = food.kcalLeft;
@@ -190,14 +197,50 @@ function CaloriesCard() {
   return (
     <Card onPress={() => router.push('/food')} style={{ paddingTop: 22 }}>
       <View style={{ alignItems: 'center' }}>
-        <Ring value={e.k} max={goal + food.burned} size={196} stroke={18} color={over ? c.down : c.cobalt}>
-          <Text num size={46} style={{ letterSpacing: -1.84, lineHeight: 50 }}>
-            {fmt(Math.abs(left))}
-          </Text>
-          <Text variant="small" weight={700} color="sec" style={{ marginTop: 4 }}>
-            {t(over ? 'kcal over' : 'kcal left')}
-          </Text>
-        </Ring>
+        {(() => {
+          const val: Record<RingKey, [number, number]> = {
+            calories: [e.k, goal + food.burned],
+            protein: [e.p, food.target.p],
+            water: [food.water, food.plan.water || 2800],
+            steps: [food.steps, 8000],
+            workouts: [train.doneIdx.size, Math.max(1, train.plan?.days ?? 3)],
+          };
+          const cols = [over ? c.down : c.cobalt, c.up, '#F59E0B'];
+          const rs = layout.rings;
+          const center = (
+            <View style={{ alignItems: 'center' }}>
+              <Text num size={rs.length > 2 ? 30 : rs.length > 1 ? 36 : 46} style={{ letterSpacing: -1.2, lineHeight: rs.length > 2 ? 34 : 50 }}>
+                {fmt(Math.abs(left))}
+              </Text>
+              <Text variant="small" weight={700} color="sec" style={{ marginTop: 2 }}>
+                {t(over ? 'kcal over' : 'kcal left')}
+              </Text>
+            </View>
+          );
+          const nest = (i: number): React.ReactNode =>
+            i >= rs.length ? center : (
+              <Ring value={val[rs[i]][0]} max={val[rs[i]][1]} size={196 - i * 40} stroke={rs.length > 1 ? 14 : 18} color={cols[i]}>
+                {nest(i + 1)}
+              </Ring>
+            );
+          return (
+            <>
+              {nest(0)}
+              {rs.length > 1 ? (
+                <Row gap={12} style={{ marginTop: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+                  {rs.map((k, i) => (
+                    <Row key={k} gap={5}>
+                      <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: cols[i] }} />
+                      <Text variant="xs" weight={700} color="sec">
+                        {`${t(RING_NAMES[k])} ${Math.round((val[k][0] / Math.max(1, val[k][1])) * 100)}%`}
+                      </Text>
+                    </Row>
+                  ))}
+                </Row>
+              ) : null}
+            </>
+          );
+        })()}
       </View>
       <Row style={{ justifyContent: 'space-around', marginVertical: 16, paddingHorizontal: 10 }}>
         {(

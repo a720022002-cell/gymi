@@ -4,9 +4,9 @@ import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { List, ListRow } from '@/components/social/List';
 import { Text } from '@/components/Text';
-import { Springy, Toggle } from '@/components/ui';
+import { Chip, Label, Row, Springy, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
-import { HOME_NAMES, useHomeLayout } from '@/lib/homeLayout';
+import { HOME_NAMES, RING_NAMES, RINGS, useHomeLayout } from '@/lib/homeLayout';
 import { useSettings } from '@/theme/settings';
 
 /** Edit home: move cards up or down and turn off what you don't need (design: customize). */
@@ -23,7 +23,24 @@ export default function Customize() {
   };
   return (
     <Screen title={t('Edit home')} back>
-      <Text color="sec" style={{ marginTop: -8, marginBottom: 16 }}>
+      <Label>{t('Rings on Home (up to 3)')}</Label>
+      <Row gap={8} style={{ flexWrap: 'wrap', marginBottom: 16 }}>
+        {RINGS.map((k) => {
+          const i = l.rings.indexOf(k);
+          return (
+            <Chip
+              key={k}
+              title={`${i >= 0 && l.rings.length > 1 ? `${i + 1} ` : ''}${t(RING_NAMES[k])}`}
+              on={i >= 0}
+              onPress={() => {
+                if (i >= 0) return l.rings.length > 1 && save({ ...l, rings: l.rings.filter((x) => x !== k) });
+                if (l.rings.length < 3) save({ ...l, rings: [...l.rings, k] });
+              }}
+            />
+          );
+        })}
+      </Row>
+      <Text color="sec" style={{ marginBottom: 16 }}>
         {t('Move cards up or down. Turn off what you don’t need.')}
       </Text>
       <List>

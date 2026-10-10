@@ -10,7 +10,7 @@ import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Row } from '@/components/ui';
 import { useT } from '@/i18n';
-import { type CoachCard, listCoaches, requestCoach } from '@/lib/coaching';
+import { type CoachCard, listCoaches, requestCoach, requestCoachPackage } from '@/lib/coaching';
 import { fmt } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
 
@@ -22,6 +22,7 @@ export default function CoachPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [k, setK] = useState<{ id: string; v: CoachCard | null } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pkg, setPkg] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -101,6 +102,25 @@ export default function CoachPage() {
           </Text>
         </Row>
       ) : null}
+      {v.packages?.length ? (
+        <>
+          <Text variant="small" weight={700} color="sec" style={{ marginHorizontal: 4, marginBottom: 8 }}>
+            {t('Packages')}
+          </Text>
+          {v.packages.map((k) => (
+            <Card key={k.id} onPress={() => setPkg(k.name)} style={{ borderWidth: 2, borderColor: pkg === k.name ? c.cobalt : 'transparent' }}>
+              <Row style={{ justifyContent: 'space-between' }}>
+                <Text weight={700}>{k.name}</Text>
+                <Text num weight={700}>{t('{n} SAR', { n: fmt(k.price) })}</Text>
+              </Row>
+              <Text variant="small" color="sec">
+                {t('{n} weeks', { n: k.weeks })}
+                {k.desc ? ` · ${k.desc}` : ''}
+              </Text>
+            </Card>
+          ))}
+        </>
+      ) : null}
       <Card style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
         <Icon name="info" size={18} color={c.sec} />
         <Text variant="small" color="sec" style={{ flex: 1 }}>
@@ -110,10 +130,11 @@ export default function CoachPage() {
       <Button
         icon="send"
         title={t('Ask {n} to coach me', { n: name })}
+        disabled={!!v.packages?.length && !pkg}
         loading={busy}
         onPress={async () => {
           setBusy(true);
-          const r = await requestCoach(v.id);
+          const r = pkg ? await requestCoachPackage(v.id, pkg) : await requestCoach(v.id);
           setBusy(false);
           if (r === 'ok') {
             toast(t('Request sent. {n} will reply soon.', { n: name }), { icon: 'send' });

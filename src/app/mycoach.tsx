@@ -92,6 +92,20 @@ export default function MyCoachScreen() {
               </Text>
             )}
           </Card>
+          <Card onPress={() => router.push('/myprog')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <Icon name="train" size={20} color={c.cobalt} />
+            <Text weight={700} style={{ flex: 1 }}>
+              {t('My program')}
+            </Text>
+            <Icon name="chev" size={18} color={c.sec} />
+          </Card>
+          <Card onPress={() => router.push('/mymeals')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <Icon name="food" size={20} color={c.cobalt} />
+            <Text weight={700} style={{ flex: 1 }}>
+              {t('My meals')}
+            </Text>
+            <Icon name="chev" size={18} color={c.sec} />
+          </Card>
           <Button icon="send" title={t('Message {n}', { n: name })} onPress={() => router.push({ pathname: '/thread', params: { link: k.id, name } })} />
           <Card style={{ marginTop: 12, flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
             <Icon name="lock" size={18} color={c.sec} />

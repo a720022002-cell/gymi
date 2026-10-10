@@ -10,30 +10,12 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
-import { displayName, type FriendRow, myFriends } from '@/lib/social';
+import { displayName, type FriendRow, myFriends, startGroupSession } from '@/lib/social';
 import { useTrain } from '@/lib/train';
 import { exInfo, muscleLabel, type PlanEx } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
 
-type Level = 'Beginner' | 'Intermediate' | 'Advanced';
-type Person = { name: string; level: Level; me?: boolean };
-const LEVELS: Level[] = ['Beginner', 'Intermediate', 'Advanced'];
-const COLORS = ['#3355FF', '#15803D', '#B45309', '#7C3AED', '#DB2777'];
-
-/** One full-body workout for the group (design: together). 1 = main lift, 0 = extra, 2 = timed. */
-const TOG: [string, number][] = [
-  ['bench', 1],
-  ['pulldown', 1],
-  ['squat', 1],
-  ['shoulder', 0],
-  ['cablerow', 0],
-  ['plank', 2],
-];
-function scheme(level: Level, type: number): { sets: number; reps: number; timed: boolean } {
-  if (type === 2) return { sets: 3, reps: level === 'Beginner' ? 30 : level === 'Advanced' ? 60 : 45, timed: true };
-  if (type === 1) return { Beginner: { sets: 3, reps: 10 }, Intermediate: { sets: 4, reps: 8 }, Advanced: { sets: 4, reps: 6 } }[level] as { sets: number; reps: number } & { timed: false };
-  return { sets: 3, reps: level === 'Advanced' ? 10 : 12, timed: false };
-}
+import { COLORS, LEVELS, type Level, type Person, scheme, TOG } from '@/lib/together';
 
 /** Train together: one workout for up to 5 people, the right sets and reps for each level. */
 export default function Together() {
@@ -123,7 +105,7 @@ export default function Together() {
                   <Chip
                     key={f.id}
                     title={`+ ${displayName(f)}`}
-                    onPress={() => (people.length >= 4 ? toast(t('Up to 4 friends at a time'), { icon: 'info' }) : setPeople([...people, { name: displayName(f), level }]))}
+                    onPress={() => (people.length >= 4 ? toast(t('Up to 4 friends at a time'), { icon: 'info' }) : setPeople([...people, { name: displayName(f), level, id: f.id }]))}
                   />
                 ))}
             </Row>
@@ -141,7 +123,7 @@ export default function Together() {
         </Text>
         <Button title={t('Build our workout')} disabled={!people.length} style={{ marginTop: 16 }} onPress={() => setReady(true)} />
         <Text variant="xs" color="sec" center style={{ marginTop: 10 }}>
-          {t('Inviting friends from the app and syncing everyone’s phone come with Gym Bros.')}
+          {t('Pick friends from Gym Bros to train live together: everyone sees each other’s sets.')}
         </Text>
       </Screen>
     );
@@ -210,7 +192,21 @@ export default function Together() {
           {t('Everyone picks their own weight. When you start, your last weights show in grey like always.')}
         </Text>
       </Row>
-      <Button icon="play" title={t('Start together now')} style={{ marginTop: 16 }} onPress={start} />
+      {people.some((p) => p.id) ? (
+        <Button
+          icon="users"
+          title={t('Start live with friends')}
+          style={{ marginTop: 16 }}
+          onPress={async () => {
+            const ids = people.filter((p) => p.id);
+            const sid = await startGroupSession(TOG.map(([id, type]) => ({ id, type })), ids.map((p) => p.id as string), ids.map((p) => p.level), myLevel);
+            if (!sid) return toast(t('Couldn’t start. Please try again.'), { icon: 'warn' });
+            toast(t('Invite sent. Friends join from Gym Bros.'), { icon: 'users' });
+            router.replace({ pathname: '/groupactive', params: { id: sid } });
+          }}
+        />
+      ) : null}
+      <Button icon="play" kind={people.some((p) => p.id) ? 'glass' : 'primary'} title={t(people.some((p) => p.id) ? 'Start on my phone only' : 'Start together now')} style={{ marginTop: people.some((p) => p.id) ? 8 : 16 }} onPress={start} />
       <Button kind="glass" title={t('Change people')} style={{ marginTop: 8 }} onPress={() => setReady(false)} />
     </Screen>
   );

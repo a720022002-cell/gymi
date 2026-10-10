@@ -9,7 +9,10 @@ import { Sheet } from '@/components/Sheet';
 import { Text } from '@/components/Text';
 import { Button, Label, Segmented, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
+import { useIsAdmin } from '@/lib/admin';
+import { useCoachMode } from '@/lib/coachMode';
 import { useAuth } from '@/lib/auth';
+import { useFood } from '@/lib/food';
 import { type ThemePref, useSettings } from '@/theme/settings';
 
 /** "You": profile summary and the settings we need for Phase 1 testing. */
@@ -19,6 +22,9 @@ export default function You() {
   const c = s.colors;
   const { profile, logOut } = useAuth();
   const [confirm, setConfirm] = useState(false);
+  const admin = useIsAdmin();
+  const food = useFood();
+  const [, setCoachMode] = useCoachMode();
   const name = profile?.name || profile?.username || '';
 
   return (
@@ -37,16 +43,32 @@ export default function You() {
 
       <Label>{t('Profile')}</Label>
       <List>
+        <Item icon="trophy" title={t('Your profile')} sub={t('Badges and records friends see')} onPress={() => router.push('/profile')} chevron />
+        <Item icon="lock" title={t('Account details')} sub={t('Name, username, email, phone, password')} onPress={() => router.push('/account')} chevron />
+        <Item icon="userplus" title={t('Invite friends')} sub={t('Share your link')} onPress={() => router.push('/invite')} chevron />
         <Item icon="mail" title={t('Email')} value={profile?.email ?? ''} />
         <Item icon="phone" title={t('Phone number')} value={profile?.phone ?? ''} />
         <Item icon="user" title={t('Account type')} value={t(profile?.account_type === 'coach' ? 'Coach (under review)' : 'Member')} />
       </List>
 
+      {admin ? (
+        <>
+          <Label>{t('Gymi team')}</Label>
+          <List>
+            <Item icon="key" title={t('Admin')} sub={t('Coach approvals, users and numbers')} onPress={() => router.push('/admin')} chevron />
+          </List>
+        </>
+      ) : null}
+
       {profile?.account_type === 'coach' ? (
         <>
           <Label>{t('Coaching')}</Label>
           <List>
-            <Item icon="users" title={t('Clients')} sub={profile.coach_status === 'approved' ? undefined : t('Coach application under review')} onPress={() => router.push('/clients')} chevron />
+            {profile.coach_status === 'approved' ? (
+              <Item icon="users" title={t('Open the coach view')} sub={t('Clients, programs and messages')} onPress={() => (setCoachMode(true), router.replace('/cclients'))} chevron />
+            ) : (
+              <Item icon="clock" title={t('Coach application')} sub={t(profile.coach_status === 'rejected' ? 'Not approved. See why.' : 'Under review')} onPress={() => router.push('/coachapp')} chevron />
+            )}
             <Item icon="coach" title={t('Coach profile')} onPress={() => router.push('/cprofile')} chevron />
           </List>
         </>
@@ -55,6 +77,7 @@ export default function You() {
           <Label>{t('Coaching')}</Label>
           <List>
             <Item icon="coach" title={t('My coach')} sub={t('Find a coach or enter a code')} onPress={() => router.push('/mycoach')} chevron />
+            <Item icon="star" title={t('Apply as a coach')} sub={t('Coach clients on Gymi')} onPress={() => router.push('/coachapp')} chevron />
           </List>
         </>
       )}
@@ -93,6 +116,12 @@ export default function You() {
       <Label>{t('Settings')}</Label>
       <List>
         <Item icon="globe" title={t('Language')} value={s.lang === 'ar' ? 'العربية' : 'English'} onPress={() => router.push('/language')} chevron />
+        <Item
+          icon="moon"
+          title={t('Ramadan mode')}
+          sub={t('Meals and water around iftar and suhoor')}
+          right={<Toggle value={!!food.plan.ramadan} onChange={(v) => food.updatePlan({ ramadan: v })} label={t('Ramadan mode')} />}
+        />
         <Item
           icon="sliders"
           title={t('Reduce transparency')}
