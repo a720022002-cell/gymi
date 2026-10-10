@@ -44,19 +44,21 @@ export function LogSheet() {
         <Icon name="search" size={20} color={c.sec} />
         <Text color="sec">{t('Search Saudi dishes, restaurants…')}</Text>
       </Springy>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
-        {tiles.map(([icon, title, sub, fn, ai]) => (
-          <Springy key={title} onPress={fn} scaleTo={0.97} style={{ width: '48%', flexGrow: 1, borderRadius: 22, padding: 16, backgroundColor: 'rgba(127,127,135,0.1)', opacity: ai ? 0.7 : 1 }}>
-            <Icon name={icon} size={26} color={c.cobalt} />
-            <Text weight={700} style={{ marginTop: 8 }}>
-              {t(title)}
-            </Text>
-            <Text variant="xs" color="sec">
-              {ai ? t('Coming soon') : t(sub)}
-            </Text>
-          </Springy>
-        ))}
-      </View>
+      {[tiles.slice(0, 2), tiles.slice(2)].map((pair, r) => (
+        <View key={r} style={{ flexDirection: 'row', gap: 10, marginTop: r ? 10 : 12 }}>
+          {pair.map(([icon, title, sub, fn, ai]) => (
+            <Springy key={title} onPress={fn} scaleTo={0.97} style={{ flex: 1, minHeight: 112, borderRadius: 22, padding: 16, backgroundColor: 'rgba(127,127,135,0.1)', opacity: ai ? 0.7 : 1 }}>
+              <Icon name={icon} size={26} color={c.cobalt} />
+              <Text weight={700} numberOfLines={1} style={{ marginTop: 8 }}>
+                {t(title)}
+              </Text>
+              <Text variant="xs" color="sec" numberOfLines={2}>
+                {ai ? t('Coming soon') : t(sub)}
+              </Text>
+            </Springy>
+          ))}
+        </View>
+      ))}
       <Springy onPress={soon} scaleTo={0.985} style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, padding: 14, backgroundColor: 'rgba(127,127,135,0.1)', opacity: 0.7 }}>
         <Icon name="edit" size={20} color={c.cobalt} />
         <View style={{ flex: 1 }}>

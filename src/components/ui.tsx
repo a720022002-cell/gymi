@@ -39,6 +39,11 @@ export function Springy({
     }
   }
   if (outer.flex != null) inner.flex = 1;
+  // Percent widths are relative to the parent, so they belong on the outer Pressable too.
+  if (typeof inner.width === 'string') {
+    outer.width = inner.width;
+    delete inner.width;
+  }
   const to = (v: number) =>
     Animated.spring(s, { toValue: v, useNativeDriver: true, speed: 40, bounciness: 10 }).start();
   return (
