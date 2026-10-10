@@ -16,8 +16,11 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
+import { BalanceSheet } from '@/components/food/BalanceSheet';
+import { LogSheet } from '@/components/food/LogSheet';
 import { ToastProvider } from '@/components/Toast';
 import { AuthProvider } from '@/lib/auth';
+import { FoodProvider } from '@/lib/food';
 import { SignupDraftProvider } from '@/lib/signupDraft';
 import { SettingsProvider, useSettings } from '@/theme/settings';
 
@@ -42,11 +45,13 @@ export default function RootLayout() {
   return (
     <SettingsProvider>
       <AuthProvider>
-        <SignupDraftProvider>
-          <ToastProvider>
-            <AppStack ready={fontsLoaded || !!fontError} />
-          </ToastProvider>
-        </SignupDraftProvider>
+        <FoodProvider>
+          <SignupDraftProvider>
+            <ToastProvider>
+              <AppStack ready={fontsLoaded || !!fontError} />
+            </ToastProvider>
+          </SignupDraftProvider>
+        </FoodProvider>
       </AuthProvider>
     </SettingsProvider>
   );
@@ -73,6 +78,8 @@ function AppStack({ ready }: { ready: boolean }) {
         <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
         <Stack.Screen name="welcome" options={{ animation: 'fade' }} />
       </Stack>
+      <LogSheet />
+      <BalanceSheet />
     </>
   );
 }

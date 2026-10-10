@@ -38,11 +38,11 @@ export function Sheet({ open, onClose, children }: PropsWithChildren<{ open: boo
           maxHeight: '85%',
           transform: [{ translateY: a.interpolate({ inputRange: [0, 1], outputRange: [700, 0] }) }],
         }}>
-        <Glass sheet style={{ borderRadius: 40, overflow: 'hidden', maxHeight: '100%' }}>
+        <Glass sheet style={{ borderRadius: 40, overflow: 'hidden', flexShrink: 1 }}>
           <View style={{ height: 30, alignItems: 'center', justifyContent: 'center' }}>
             <View style={{ width: 38, height: 5, borderRadius: 3, backgroundColor: c.sec, opacity: 0.45 }} />
           </View>
-          <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
+          <ScrollView style={{ flexGrow: 0, flexShrink: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
             {children}
           </ScrollView>
         </Glass>
