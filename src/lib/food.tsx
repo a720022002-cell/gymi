@@ -68,6 +68,8 @@ type Food = {
   target: Macros;
   /** Today's calorie goal including calories moved from or to other days. */
   dayGoal: (day: string) => number;
+  /** Calories and protein set by your coach (they replace your own targets). */
+  coachTargets: { kcal: number; protein: number; name: string } | null;
   kcalLeft: number;
   addLog: (l: NewLog) => Promise<FoodLog | null>;
   deleteLog: (id: string) => Promise<FoodLog | null>;
@@ -117,6 +119,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
   const [steps, setStepsState] = useState(0);
   const [balance, openBalance] = useState<'over' | 'under' | null>(null);
   const [logOpen, setLogOpen] = useState(false);
+  const [coachTargets, setCoachTargets] = useState<Food['coachTargets']>(null);
   const planRef = useRef(plan);
   const logsRef = useRef(logs);
   useEffect(() => {
@@ -147,7 +150,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
     let alive = true;
     (async () => {
       const weekEnd = addDays(today, 7);
-      const [p, l, s, m, w, cd, st] = await Promise.all([
+      const [p, l, s, m, w, cd, st, mc] = await Promise.all([
         supabase.from('food_plans').select('*').eq('user_id', userId).maybeSingle(),
         supabase.from('food_logs').select('*').eq('day', today).order('created_at'),
         supabase.from('saved_meals').select('*').order('created_at', { ascending: false }),
@@ -155,6 +158,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
         supabase.from('water_logs').select('id,ml,kind,created_at').eq('day', today).order('created_at'),
         supabase.from('cardio_logs').select('id,kind,minutes,intensity,kcal,created_at').eq('day', today).order('created_at'),
         supabase.from('step_logs').select('steps').eq('day', today).maybeSingle(),
+        supabase.rpc('my_coach'),
       ]);
       if (!alive) return;
       const base = defaultPlan(Number(profile?.weight_kg ?? 80));
@@ -166,6 +170,8 @@ export function FoodProvider({ children }: PropsWithChildren) {
       setWaterLogs((w.data as WaterLog[]) ?? []);
       setCardio((cd.data as Cardio[]) ?? []);
       setStepsState((st.data as { steps: number } | null)?.steps ?? 0);
+      const coach = ((mc.data as { status: string; kcal: number | null; protein: number | null; name: string | null; username: string }[] | null) ?? [])[0];
+      setCoachTargets(coach?.status === 'active' && coach.kcal && coach.protein ? { kcal: coach.kcal, protein: coach.protein, name: coach.name || coach.username } : null);
       setReadyFor(userId);
     })();
     return () => {
@@ -201,7 +207,11 @@ export function FoodProvider({ children }: PropsWithChildren) {
     [userId],
   );
 
-  const target = useMemo(() => targets(plan), [plan]);
+  const target = useMemo(() => {
+    const base = targets(plan);
+    if (!coachTargets) return base;
+    return { k: coachTargets.kcal, p: coachTargets.protein, f: base.f, c: Math.max(0, Math.round((coachTargets.kcal - coachTargets.protein * 4 - base.f * 9) / 4)) };
+  }, [plan, coachTargets]);
   const eaten = useMemo(
     () => logs.reduce((a, x) => ({ k: a.k + +x.kcal, p: a.p + +x.protein, c: a.c + +x.carbs, f: a.f + +x.fat }), { k: 0, p: 0, c: 0, f: 0 }),
     [logs],
@@ -329,6 +339,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       eaten,
       target,
       dayGoal,
+      coachTargets,
       kcalLeft,
       addLog,
       deleteLog,
@@ -354,7 +365,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       logOpen,
       setLogOpen,
     }),
-    [balance, logOpen, ready, today, setupDone, plan, person, draft, savePlan, updatePlan, logs, eaten, target, dayGoal, kcalLeft, addLog, deleteLog, restoreLog, saved, saveMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, addCardio, deleteCardio, steps, setSteps, addWater],
+    [balance, logOpen, ready, today, setupDone, plan, person, draft, savePlan, updatePlan, logs, eaten, target, dayGoal, coachTargets, kcalLeft, addLog, deleteLog, restoreLog, saved, saveMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, addCardio, deleteCardio, steps, setSteps, addWater],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

@@ -58,6 +58,8 @@ export default function Home() {
       }>
       {health.ready && !health.todayCheckin ? <CheckinCard onStart={() => health.setCheckinOpen(true)} /> : null}
       {profile?.account_type === 'coach' && profile.coach_status === 'pending' ? <CoachPendingCard /> : null}
+      {profile?.account_type === 'coach' && profile.coach_status === 'approved' ? <ClientsCard /> : null}
+      {food.coachTargets ? <CoachSetCard name={food.coachTargets.name} /> : null}
       {food.setupDone ? <CaloriesCard /> : <SetupCard />}
       <WaterCard />
       <MissedCard />
@@ -106,6 +108,39 @@ function CoachPendingCard() {
           {t('Usually within 2 days. We’ll notify you.')}
         </Text>
       </View>
+    </Card>
+  );
+}
+
+function ClientsCard() {
+  const { t } = useT();
+  const { colors: c } = useSettings();
+  return (
+    <Card onPress={() => router.push('/clients')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <View style={{ width: 36, height: 36, borderRadius: 11, backgroundColor: c.cobalt, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name="users" size={18} color="#FFFFFF" />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text weight={700}>{t('Your clients')}</Text>
+        <Text variant="small" color="sec">
+          {t('Requests, progress and messages')}
+        </Text>
+      </View>
+      <Icon name="chev" size={18} color={c.sec} />
+    </Card>
+  );
+}
+
+function CoachSetCard({ name }: { name: string }) {
+  const { t } = useT();
+  const { colors: c } = useSettings();
+  return (
+    <Card onPress={() => router.push('/mycoach')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <Icon name="coach" size={22} color={c.cobalt} />
+      <Text variant="small" style={{ flex: 1 }}>
+        {t('Your calories and protein are set by {n}.', { n: name })}
+      </Text>
+      <Icon name="chev" size={18} color={c.sec} />
     </Card>
   );
 }

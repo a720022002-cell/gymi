@@ -4,6 +4,7 @@ import { AppState } from 'react-native';
 
 import { useAuth } from './auth';
 import { addDays, localDay } from './nutrition';
+import { shareWorkout } from './social';
 import { supabase } from './supabase';
 import { buildWorkout, type Day, effectiveWeek, type LastSets, type PlanEx, topReps, type TrainPlan, weekdayOf, weekStart, workoutKcal } from './training';
 
@@ -260,6 +261,8 @@ export function TrainProvider({ children }: PropsWithChildren) {
       const log = { ...(data as WorkoutLog), volume: +data.volume };
       setLogs((xs) => [log, ...xs]);
       setSession(null);
+      // Friends see it in Gym Bros, if you share workouts.
+      if (userId) shareWorkout(userId, { name: log.name, minutes: log.minutes, volume: log.volume, prs: log.prs ?? [] }).catch(() => {});
       return log;
     },
     [session, userId, today, best, last, profile?.weight_kg, setSession],

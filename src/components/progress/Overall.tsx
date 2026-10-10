@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { View } from 'react-native';
 
 import { useT } from '@/i18n';
+import { useAuth } from '@/lib/auth';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { fmt } from '@/lib/nutrition';
@@ -26,6 +27,7 @@ export type PTab = 'overall' | 'body' | 'recovery' | 'streaks';
 export function Overall({ go }: { go: (t: PTab, sub?: number) => void }) {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
+  const { profile } = useAuth();
   const food = useFood();
   const train = useTrain();
   const health = useHealth();
@@ -177,6 +179,20 @@ export function Overall({ go }: { go: (t: PTab, sub?: number) => void }) {
         </>
       ) : null}
 
+      {profile?.gender === 'female' ? (
+        <Card onPress={() => router.push('/period')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={{ width: 36, height: 36, borderRadius: 11, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="drop" size={18} color="#E11D48" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text weight={700}>{t('Cycle')}</Text>
+            <Text variant="small" color="sec">
+              {t('Explains changes in weight, hunger and recovery')}
+            </Text>
+          </View>
+          <Icon name="chev" size={18} color={c.sec} />
+        </Card>
+      ) : null}
       <Card onPress={() => router.push('/health')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <View style={{ width: 36, height: 36, borderRadius: 11, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
           <Icon name="doc" size={18} color={c.cobalt} />

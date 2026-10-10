@@ -41,11 +41,34 @@ export default function You() {
         <Item icon="user" title={t('Account type')} value={t(profile?.account_type === 'coach' ? 'Coach (under review)' : 'Member')} />
       </List>
 
+      {profile?.account_type === 'coach' ? (
+        <>
+          <Label>{t('Coaching')}</Label>
+          <List>
+            <Item icon="users" title={t('Clients')} sub={profile.coach_status === 'approved' ? undefined : t('Coach application under review')} onPress={() => router.push('/clients')} chevron />
+            <Item icon="coach" title={t('Coach profile')} onPress={() => router.push('/cprofile')} chevron />
+          </List>
+        </>
+      ) : (
+        <>
+          <Label>{t('Coaching')}</Label>
+          <List>
+            <Item icon="coach" title={t('My coach')} sub={t('Find a coach or enter a code')} onPress={() => router.push('/mycoach')} chevron />
+          </List>
+        </>
+      )}
+
       <Label>{t('Health')}</Label>
       <List>
+        {profile?.gender === 'female' ? <Item icon="drop" title={t('Cycle')} sub={t('Private. Never shared.')} onPress={() => router.push('/period')} chevron /> : null}
         <Item icon="pill" title={t('Vitamins and supplements')} onPress={() => router.push('/vitamins')} chevron />
         <Item icon="doc" title={t('Blood tests')} onPress={() => router.push('/blood')} chevron />
         <Item icon="share" title={t('Reports')} onPress={() => router.push('/report')} chevron />
+      </List>
+
+      <Label>{t('Gym Bros')}</Label>
+      <List>
+        <Item icon="lock" title={t('What friends can see')} onPress={() => router.push('/fprivacy')} chevron />
       </List>
 
       <Label>{t('Theme')}</Label>
