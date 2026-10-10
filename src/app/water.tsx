@@ -67,6 +67,24 @@ export default function WaterScreen() {
         )}
       </Card>
 
+      {food.plan.ramadan ? (
+        <Card>
+          <Row gap={8}>
+            <Icon name="moon" size={20} color={c.cobalt} />
+            <Text weight={700} style={{ flex: 1 }}>
+              {t('Ramadan: drink between iftar and suhoor')}
+            </Text>
+          </Row>
+          <Row gap={4} style={{ marginTop: 10 }}>
+            {Array.from({ length: 10 }, (_, i) => (
+              <View key={i} style={{ flex: 1, height: 22, borderRadius: 6, backgroundColor: i < Math.round((food.water / goal) * 10) ? c.cobalt : c.track }} />
+            ))}
+          </Row>
+          <Text variant="small" color="sec" style={{ marginTop: 8 }}>
+            {t('About 1 glass (300 ml) every hour from iftar until suhoor.')}
+          </Text>
+        </Card>
+      ) : null}
       <Text variant="small" weight={700} color="sec" style={{ marginTop: 16, marginBottom: 8, marginHorizontal: 4 }}>
         {t('Today')}
       </Text>

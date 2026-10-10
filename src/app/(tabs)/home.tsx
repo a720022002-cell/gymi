@@ -14,6 +14,8 @@ import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
+import { useHomeLayout } from '@/lib/homeLayout';
+import { fx } from '@/lib/progress';
 import { useStreaks } from '@/lib/useProgress';
 import { fmt } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
@@ -28,8 +30,7 @@ export default function Home() {
   const { profile } = useAuth();
   const food = useFood();
   const health = useHealth();
-  const toast = useToast();
-  const soon = () => toast(t('Coming soon'), { icon: 'clock' });
+  const [layout] = useHomeLayout();
 
   const name = profile?.name || profile?.username || '';
   const date = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date());
@@ -60,13 +61,27 @@ export default function Home() {
       {profile?.account_type === 'coach' && profile.coach_status === 'pending' ? <CoachPendingCard /> : null}
       {profile?.account_type === 'coach' && profile.coach_status === 'approved' ? <ClientsCard /> : null}
       {food.coachTargets ? <CoachSetCard name={food.coachTargets.name} /> : null}
-      {food.setupDone ? <CaloriesCard /> : <SetupCard />}
-      <WaterCard />
-      <MissedCard />
-      <WorkoutCard />
-      <StreaksCard />
-      {food.setupDone ? <TipCard /> : null}
-      <Button title={t('Edit home')} icon="sliders" kind="glass" style={{ marginTop: 8 }} onPress={soon} />
+      {layout.order
+        .filter((k) => !layout.hidden.includes(k))
+        .map((k) =>
+          k === 'calories' ? (
+            food.setupDone ? <CaloriesCard key={k} /> : <SetupCard key={k} />
+          ) : k === 'water' ? (
+            <WaterCard key={k} />
+          ) : k === 'workout' ? (
+            <View key={k}>
+              <MissedCard />
+              <WorkoutCard />
+            </View>
+          ) : k === 'readings' ? (
+            <ReadingsCard key={k} />
+          ) : k === 'streak' ? (
+            <StreaksCard key={k} />
+          ) : food.setupDone ? (
+            <TipCard key={k} />
+          ) : null,
+        )}
+      <Button title={t('Edit home')} icon="sliders" kind="glass" style={{ marginTop: 8 }} onPress={() => router.push('/customize')} />
     </Screen>
   );
 }
@@ -238,6 +253,41 @@ function WaterCard() {
           <Icon name="plus" size={24} strokeWidth={2.2} />
         </Glass>
       </Springy>
+    </Card>
+  );
+}
+
+function ReadingsCard() {
+  const { t } = useT();
+  const { colors: c } = useSettings();
+  const food = useFood();
+  const health = useHealth();
+  const w = health.weights.at(-1);
+  const sl = [...health.checkins].reverse().find((x) => x.sleep_h != null);
+  const items: [IconName, string, string][] = [
+    ['walk', fmt(food.steps), t('Steps')],
+    ['scale', w ? `${fx(w.value)}` : '–', t('kg')],
+    ['moon', sl ? `${fx(sl.sleep_h as number)}` : '–', t('h sleep')],
+  ];
+  return (
+    <Card onPress={() => router.push('/devices')}>
+      <Row style={{ justifyContent: 'space-between', marginBottom: 12 }}>
+        <Text weight={700}>{t('Your readings')}</Text>
+        <Icon name="chev" size={18} color={c.sec} />
+      </Row>
+      <Row gap={8}>
+        {items.map(([i, v, l]) => (
+          <View key={l} style={{ flex: 1, backgroundColor: c.inset, borderRadius: 16, padding: 12 }}>
+            <Icon name={i} size={18} color={c.cobalt} />
+            <Text num size={18} style={{ marginTop: 6 }}>
+              {v}
+            </Text>
+            <Text variant="xs" weight={700} color="sec">
+              {l}
+            </Text>
+          </View>
+        ))}
+      </Row>
     </Card>
   );
 }

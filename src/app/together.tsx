@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { Field } from '@/components/Field';
@@ -10,6 +10,7 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
+import { displayName, type FriendRow, myFriends } from '@/lib/social';
 import { useTrain } from '@/lib/train';
 import { exInfo, muscleLabel, type PlanEx } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
@@ -46,6 +47,14 @@ export default function Together() {
   const [name, setName] = useState('');
   const [level, setLevel] = useState<Level>('Intermediate');
   const [ready, setReady] = useState(false);
+  const [friends, setFriends] = useState<FriendRow[]>([]);
+  useEffect(() => {
+    let alive = true;
+    myFriends().then((f) => alive && setFriends(f.filter((x) => x.status === 'accepted')));
+    return () => {
+      alive = false;
+    };
+  }, []);
   const all: Person[] = [{ name: t('You'), level: myLevel, me: true }, ...people];
 
   const addPerson = () => {
@@ -105,6 +114,20 @@ export default function Together() {
           </View>
         ) : null}
         <Card style={{ marginTop: 16 }}>
+          {friends.filter((f) => !people.some((p) => p.name === displayName(f))).length ? (
+            <Row gap={8} style={{ flexWrap: 'wrap', marginBottom: 4 }}>
+              {friends
+                .filter((f) => !people.some((p) => p.name === displayName(f)))
+                .slice(0, 8)
+                .map((f) => (
+                  <Chip
+                    key={f.id}
+                    title={`+ ${displayName(f)}`}
+                    onPress={() => (people.length >= 4 ? toast(t('Up to 4 friends at a time'), { icon: 'info' }) : setPeople([...people, { name: displayName(f), level }]))}
+                  />
+                ))}
+            </Row>
+          ) : null}
           <Field label={t('Friend’s name')} value={name} onChangeText={setName} onSubmitEditing={addPerson} placeholder={t('Ahmed')} maxLength={20} />
           <Row gap={8} style={{ flexWrap: 'wrap', marginTop: 10 }}>
             {LEVELS.map((l) => (
