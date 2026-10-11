@@ -8,7 +8,6 @@ import { MacrosSheet } from '@/components/food/MacrosSheet';
 import { ProteinSlider } from '@/components/food/ProteinSlider';
 import { Stepper } from '@/components/food/Stepper';
 import { TimeField } from '@/components/food/TimeField';
-import { ModeCard } from '@/components/food/ModeCard';
 import { WaterGoalSheet } from '@/components/food/WaterGoalSheet';
 import { Screen } from '@/components/Screen';
 import { fontFor, Text } from '@/components/Text';
@@ -38,7 +37,6 @@ export default function FoodResults() {
   const tg = targets(f);
   const rest = Math.round(bmr(f.weight, food.person) / 10) * 10;
   const low = tg.k < rest;
-  const adv = f.mode !== 'beginner';
 
   useEffect(() => {
     if (!food.draft) food.setDraft({ ...food.plan });
@@ -64,7 +62,6 @@ export default function FoodResults() {
       perKg: Math.round(Math.min(3.5, Math.max(1.2, v)) * 10) / 10,
       carbG: null,
     });
-  const beginnerNote = () => toast(t('Calories and protein are set for you. Switch to Advanced to change them.'), { icon: 'info' });
   const adjK = (d: number) =>
     set({
       kcal: Math.min(6000, Math.max(800, tg.k + d)),
@@ -99,19 +96,13 @@ export default function FoodResults() {
             <Text variant="small" weight={700} color="sec">
               {t('Daily calories')}
             </Text>
-            {adv ? (
-              <View style={{ marginTop: 8 }}>
-                <Stepper onMinus={() => adjK(-50)} onPlus={() => adjK(50)} labels={[t('Less'), t('More')]}>
-                  <Text num size={44} style={{ letterSpacing: -1.7, lineHeight: 50 }}>
-                    {fmt(tg.k)}
-                  </Text>
-                </Stepper>
-              </View>
-            ) : (
-              <Text num size={44} center style={{ letterSpacing: -1.7, lineHeight: 50, marginTop: 8 }}>
-                {fmt(tg.k)}
-              </Text>
-            )}
+            <View style={{ marginTop: 8 }}>
+              <Stepper onMinus={() => adjK(-50)} onPlus={() => adjK(50)} labels={[t('Less'), t('More')]}>
+                <Text num size={44} style={{ letterSpacing: -1.7, lineHeight: 50 }}>
+                  {fmt(tg.k)}
+                </Text>
+              </Stepper>
+            </View>
             <Text variant="small" weight={700} color="sec" center style={{ marginTop: 4 }}>
               {t('kcal a day, {goal}', {
                 goal: t(GOALS[f.goal]).toLowerCase(),
@@ -143,8 +134,7 @@ export default function FoodResults() {
               </Text>
               <Text num>{`${tg.p} ${t('g')}`}</Text>
             </Row>
-            {adv ? (
-              <View>
+            <View>
                 <View style={{ marginTop: 12, alignItems: 'center' }}>
                   <View style={{ width: 220 }}>
                     <Stepper onMinus={() => setPk(f.perKg - 0.1)} onPlus={() => setPk(f.perKg + 0.1)} size={40} bg={c.inset} labels={[t('Less protein'), t('More protein')]}>
@@ -191,19 +181,12 @@ export default function FoodResults() {
                   </View>
                 ) : null}
               </View>
-            ) : (
-              <Text variant="small" color="sec" style={{ marginTop: 4 }}>
-                {t('{n} g for each kg of body weight', {
-                  n: f.perKg.toFixed(1),
-                })}
-              </Text>
-            )}
           </Card>
 
           <Card>
             <Row style={{ justifyContent: 'space-between' }}>
               <Text weight={700}>{t('Macros')}</Text>
-              <Springy onPress={() => (adv ? setMacrosOpen(true) : beginnerNote())}>
+              <Springy onPress={() => setMacrosOpen(true)}>
                 <Row gap={4}>
                   <Icon name="edit" size={14} color={c.link} />
                   <Text variant="small" weight={700} color="link">
@@ -222,7 +205,7 @@ export default function FoodResults() {
               ).map(([a, g, m]) => (
                 <Springy
                   key={a}
-                  onPress={() => (adv ? setMacrosOpen(true) : beginnerNote())}
+                  onPress={() => setMacrosOpen(true)}
                   style={{
                     flex: 1,
                     backgroundColor: c.inset,
@@ -275,22 +258,11 @@ export default function FoodResults() {
             </Row>
           </Card>
 
-          <ModeCard mode={f.mode} onChange={(mode) => set({ mode })} />
-
           <Button kind="glass" title={t('Next: meal times and training')} style={{ marginTop: 16 }} onPress={() => setTab('schedule')} />
         </View>
       ) : (
         <Schedule f={f} set={set} />
       )}
-      {!adv ? (
-        <Row gap={8} style={{ marginTop: 8, alignItems: 'flex-start' }}>
-          <Icon name="info" size={18} color={c.sec} />
-          <Text variant="small" color="sec" style={{ flex: 1 }}>
-            {t('Calories and protein are set for you. Switch to Advanced to change them.')}
-          </Text>
-        </Row>
-      ) : null}
-
       <Button title={t('Save my plan')} style={{ marginTop: 24 }} onPress={save} loading={saving} />
 
       <MacrosSheet

@@ -7,7 +7,6 @@ import { Icon, type IconName } from '@/components/Icon';
 import { OkChip, Tag, WarnChip } from '@/components/food/Chips';
 import { MacroBars } from '@/components/food/MacroBars';
 import { MealMenu } from '@/components/food/MealMenu';
-import { ModeCard } from '@/components/food/ModeCard';
 import { ReminderBell } from '@/components/food/ReminderBell';
 import { SetupWizard } from '@/components/food/SetupWizard';
 import { Thinking } from '@/components/food/Thinking';
@@ -15,7 +14,6 @@ import { Ring } from '@/components/Ring';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
-import { Sheet } from '@/components/Sheet';
 import { Button, Card, Row, Segmented, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useCycleToday } from '@/lib/cyclePhase';
@@ -59,7 +57,6 @@ function FoodHome() {
   const logFood = useLogFood();
   const [tab, setTab] = useState<'logged' | 'plan'>('logged');
   const [menuFor, setMenuFor] = useState<PlannedMeal | null>(null);
-  const [modeOpen, setModeOpen] = useState(false);
   const coach = food.coach;
   const fast = food.plan.ramadan ? fastTimes(food.plan.city, food.today) : null;
   // Cut or bulk, weight flat for 2 weeks, not dismissed in the last 2 weeks, and the coach isn't in charge.
@@ -401,7 +398,6 @@ function FoodHome() {
               ? []
               : ([
                   ['sliders', 'My targets', t('Calories, protein, meal times'), () => router.push('/food-results')],
-                  ['gear', 'Mode', food.plan.mode === 'beginner' ? t('Beginner') : t('Advanced'), () => setModeOpen(true)],
                 ] as [IconName, string, string, () => void][])),
           ] as [IconName, string, string, () => void][]
         ).map(([icon, title, sub, fn], i) => (
@@ -428,16 +424,6 @@ function FoodHome() {
       </Text>
 
       <MealMenu meal={menuFor} logged={!!menuFor && loggedKeys.has(menuFor.key)} onClose={() => setMenuFor(null)} />
-      <Sheet open={modeOpen} onClose={() => setModeOpen(false)}>
-        <ModeCard
-          mode={food.plan.mode}
-          onChange={(mode) => {
-            food.updatePlan({ mode });
-            toast(t(mode === 'beginner' ? 'Beginner mode: everything is set for you' : 'Advanced mode: you can edit every number'), { icon: 'sliders' });
-          }}
-        />
-        <Button title={t('Done')} onPress={() => setModeOpen(false)} />
-      </Sheet>
     </Screen>
   );
 }
