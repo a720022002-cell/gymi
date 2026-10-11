@@ -116,6 +116,8 @@ export default function LoggedScreen() {
                 ['Carbs', `${Math.round(f.carbs_100 * 10) / 10} ${t('g')}`],
                 ['Fat', `${Math.round(f.fat_100 * 10) / 10} ${t('g')}`],
                 ...(f.sugar_100 != null ? ([['Sugar', `${Math.round(f.sugar_100 * 10) / 10} ${t('g')}`]] as const) : []),
+                ...(f.fiber_100 != null ? ([['Fiber', `${Math.round(+f.fiber_100 * 10) / 10} ${t('g')}`]] as const) : []),
+                ...(f.sodium_100 != null ? ([['Sodium', `${Math.round(+f.sodium_100)} ${t('mg')}`]] as const) : []),
               ] as const
             ).map(([a, b], i) => (
               <Row key={a} style={{ justifyContent: 'space-between', marginTop: i ? 10 : 0 }}>

@@ -4,7 +4,7 @@ export type Part = { key: string; en: string; ar: string; g: number; k: number; 
 
 export type DbFood = {
   id: string;
-  source: 'usda' | 'gymi' | 'off';
+  source: 'usda' | 'gymi' | 'off' | 'user';
   category: 'basic' | 'gulf' | 'rest' | 'usda' | 'product';
   name_en: string;
   name_ar: string | null;
@@ -21,6 +21,8 @@ export type DbFood = {
   carbs_100: number;
   fat_100: number;
   sugar_100: number | null;
+  fiber_100?: number | null;
+  sodium_100?: number | null;
   parts: Part[] | null;
   sugar_high: boolean;
   fat_high: boolean;
