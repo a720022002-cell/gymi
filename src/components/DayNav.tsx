@@ -16,55 +16,98 @@ import { Button, Row, Springy } from './ui';
 const fmtDay = (day: string, lang: 'en' | 'ar', o: Intl.DateTimeFormatOptions) =>
   new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', o).format(new Date(`${day}T12:00:00`));
 
-/** "Today", "Yesterday", or the date. */
-export function useDayLabel() {
-  const { t, lang } = useT();
-  const food = useFood();
-  return (day: string, long = false) =>
-    day === food.today ? t('Today') : day === addDays(food.today, -1) ? t('Yesterday') : fmtDay(day, lang, long ? { weekday: 'long', month: 'short', day: 'numeric' } : { weekday: 'short', month: 'short', day: 'numeric' });
-}
-
-/** Go back and forward one day, or tap the date for the calendar. Logs, water and cardio follow the day you pick. */
+/** A strip of seven days ending today (like Apple Fitness): tap a day, ‹ › for the week before or after, the month for the calendar.
+ * Days with food logged have a dot. Logs, water and cardio follow the day you pick. */
 export function DayNav() {
-  const { t } = useT();
+  const { t, lang } = useT();
   const { colors: c } = useSettings();
   const food = useFood();
-  const label = useDayLabel();
   const [cal, setCal] = useState(false);
-  const arrow = (dir: -1 | 1) => {
-    const off = dir === 1 && food.isToday;
-    return (
-      <Springy
-        disabled={off}
-        onPress={() => food.setDay(addDays(food.day, dir))}
-        scaleTo={0.9}
-        accessibilityLabel={t(dir === -1 ? 'Day before' : 'Next day')}
-        style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: c.card, opacity: off ? 0.35 : 1 }}>
-        <Icon name={dir === -1 ? 'back' : 'chev'} size={20} strokeWidth={2.2} />
-      </Springy>
-    );
+  // Seven days ending today (today on the right); the arrows move a whole week back or forward.
+  const back = Math.round((new Date(`${food.today}T12:00:00`).getTime() - new Date(`${food.day}T12:00:00`).getTime()) / 864e5);
+  const end = addDays(food.today, -7 * Math.floor(back / 7));
+  const start = addDays(end, -6);
+  const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  const lastWeek = end >= food.today;
+  const [logged, setLogged] = useState<{ start: string; days: Set<string> } | null>(null);
+  const count = food.logs.length;
+
+  useEffect(() => {
+    let alive = true;
+    supabase
+      .from('food_logs')
+      .select('day')
+      .gte('day', start)
+      .lte('day', end)
+      .then(({ data }) => alive && setLogged({ start, days: new Set((data ?? []).map((x: { day: string }) => x.day)) }));
+    return () => {
+      alive = false;
+    };
+  }, [start, end, count]);
+
+  // Same weekday in the week before or after (never past today).
+  const week = (n: number) => {
+    const d = addDays(food.day, n * 7);
+    food.setDay(d > food.today ? food.today : d);
   };
+  const chevron = (n: -1 | 1) => (
+    <Springy
+      disabled={n === 1 && lastWeek}
+      onPress={() => week(n)}
+      scaleTo={0.85}
+      accessibilityLabel={t(n === -1 ? 'Week before' : 'Next week')}
+      style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', opacity: n === 1 && lastWeek ? 0.25 : 1 }}>
+      <Icon name={n === -1 ? 'back' : 'chev'} size={17} color={c.sec} strokeWidth={2.4} />
+    </Springy>
+  );
+
   return (
-    <View style={{ marginBottom: 14 }}>
-      <Row gap={8}>
-        {arrow(-1)}
-        <Springy
-          onPress={() => setCal(true)}
-          scaleTo={0.98}
-          accessibilityLabel={t('Pick a day')}
-          style={{ flex: 1, height: 44, borderRadius: 22, backgroundColor: c.card, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-          <Icon name="cal" size={18} color={c.cobalt} />
-          <Text weight={700}>{label(food.day, true)}</Text>
+    <View style={{ marginBottom: 14, backgroundColor: c.card, borderRadius: 22, paddingTop: 8, paddingBottom: 10, paddingHorizontal: 6 }}>
+      <Row style={{ justifyContent: 'space-between', paddingHorizontal: 4 }}>
+        <Springy onPress={() => setCal(true)} scaleTo={0.97} accessibilityLabel={t('Pick a day')} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 6 }}>
+          <Text weight={700}>{fmtDay(food.day, lang, { month: 'long', year: 'numeric' })}</Text>
+          <Icon name="chevd" size={15} color={c.sec} strokeWidth={2.4} />
         </Springy>
-        {arrow(1)}
+        <Row gap={2}>
+          {!food.isToday ? (
+            <Springy onPress={() => food.setDay(food.today)} style={{ paddingHorizontal: 10, height: 28, borderRadius: 14, justifyContent: 'center', backgroundColor: 'rgba(51,85,255,0.14)', marginEnd: 4 }}>
+              <Text variant="xs" weight={700} style={{ color: c.cobalt }}>
+                {t('Today')}
+              </Text>
+            </Springy>
+          ) : null}
+          {chevron(-1)}
+          {chevron(1)}
+        </Row>
       </Row>
-      {!food.isToday ? (
-        <Springy onPress={() => food.setDay(food.today)} style={{ alignSelf: 'center', marginTop: 8, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 14, backgroundColor: 'rgba(51,85,255,0.14)' }}>
-          <Text variant="small" weight={700} style={{ color: c.cobalt }}>
-            {t('Back to today')}
-          </Text>
-        </Springy>
-      ) : null}
+      <View style={{ flexDirection: 'row', marginTop: 4 }}>
+        {days.map((d) => {
+          const sel = d === food.day;
+          const today = d === food.today;
+          const future = d > food.today;
+          const dot = logged?.start === start && logged.days.has(d);
+          return (
+            <Springy
+              key={d}
+              disabled={future}
+              onPress={() => food.setDay(d)}
+              scaleTo={0.9}
+              accessibilityLabel={fmtDay(d, lang, { weekday: 'long', month: 'long', day: 'numeric' })}
+              accessibilityState={{ selected: sel }}
+              style={{ flex: 1, alignItems: 'center', gap: 4, opacity: future ? 0.3 : 1 }}>
+              <Text variant="xs" weight={700} color={sel || today ? undefined : 'sec'} style={today && !sel ? { color: c.cobalt } : undefined}>
+                {fmtDay(d, lang, { weekday: lang === 'ar' ? 'short' : 'narrow' })}
+              </Text>
+              <View style={{ width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: sel ? (today ? c.cobalt : c.text) : 'transparent' }}>
+                <Text num size={16} weight={sel || today ? 800 : 600} style={{ color: sel ? (today ? '#FFFFFF' : c.bg) : today ? c.cobalt : c.text }}>
+                  {Number(d.slice(8))}
+                </Text>
+              </View>
+              <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: dot ? (sel ? c.cobalt : c.sec) : 'transparent' }} />
+            </Springy>
+          );
+        })}
+      </View>
       <CalendarSheet key={food.day} open={cal} onClose={() => setCal(false)} />
     </View>
   );
