@@ -109,7 +109,8 @@ export const SPREAD: Record<number, number[]> = { 2: [0, 3], 3: [0, 2, 4], 4: [0
 /** True when some muscle is trained only once a week (design: onceNote). */
 export function onceNote(seq: string[]) {
   const c = { push: 0, pull: 0, legs: 0 };
-  seq.forEach((w) => {
+  // "Push 2" counts as a push day too.
+  seq.map((w) => w.replace(/ \d+$/, '')).forEach((w) => {
     if (w === 'Push') c.push++;
     if (w === 'Pull') c.pull++;
     if (w === 'Legs' || w === 'Lower') c.legs++;
@@ -163,6 +164,35 @@ export function planFromProgram(p: { name: string; days: { name: string; ex: Pla
     week[spots[i]].w = name;
   });
   return { days: n, injuries: [], split: p.name, week, workouts, machines: {}, homeMode: false, skipped: {}, dismiss: {} };
+}
+
+/** A free workout name based on another one: "Push" → "Push 2", "Push 3"… */
+export function copyName(workouts: Record<string, unknown>, base: string) {
+  const root = base.replace(/ \d+$/, '');
+  let n = 2;
+  while (workouts[`${root} ${n}`]) n++;
+  return `${root} ${n}`;
+}
+
+/**
+ * Give every repeated workout its own copy, so each day can have different exercises:
+ * Push, Pull, Legs, Push, Pull, Legs → Push, Pull, Legs, Push 2, Pull 2, Legs 2.
+ */
+export function splitRepeats(plan: TrainPlan): Partial<TrainPlan> {
+  const workouts = { ...plan.workouts };
+  const seen = new Set<string>();
+  const week = plan.week.map((d) => {
+    if (!d.w) return d;
+    if (!seen.has(d.w)) {
+      seen.add(d.w);
+      return d;
+    }
+    const name = copyName(workouts, d.w);
+    workouts[name] = { ...workouts[d.w], ex: workouts[d.w].ex.map((x) => ({ ...x })) };
+    return { ...d, w: name };
+  });
+  const order = week.filter((d) => d.w).map((d) => d.w as string);
+  return { workouts, week, queue: order, override: undefined };
 }
 
 /** Workouts in the order they come in the week (each once). */

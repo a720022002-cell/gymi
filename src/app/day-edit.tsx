@@ -11,7 +11,7 @@ import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { toPlanEx } from '@/lib/exercisesDb';
 import { useTrain } from '@/lib/train';
-import { DAYS_LONG, exInfo, type PlanEx, type TrainPlan, workoutMinutes } from '@/lib/training';
+import { copyName, DAYS_LONG, exInfo, type PlanEx, type TrainPlan, workoutMinutes } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
 
 /** Edit a workout: name, exercises, sets and reps (design: dayedit). */
@@ -52,6 +52,16 @@ export default function DayEdit() {
     if (wParam) router.setParams({ w: n });
   };
 
+  // This day gets its own copy of the workout, so changes don't touch the other days.
+  const onlyThisDay = () => {
+    const n = copyName(p.workouts, w);
+    const fix = (wk: TrainPlan['week']) => wk.map((x, j) => (j === d && x.w === w ? { ...x, w: n } : x));
+    train.updatePlan({ workouts: { ...p.workouts, [n]: { ...W, ex: W.ex.map((x) => ({ ...x })) } }, week: fix(p.week), override: p.override ? { ...p.override, week: fix(p.override.week) } : undefined });
+    setName(n);
+    router.setParams({ w: n });
+    toast(t('{day} now has its own workout: {w}', { day: t(DAYS_LONG[d]), w: t(n) }), { icon: 'check' });
+  };
+
   const del = (i: number) => {
     const it = W.ex[i];
     setEx(W.ex.filter((_, j) => j !== i));
@@ -75,9 +85,16 @@ export default function DayEdit() {
         accessibilityLabel={t('Workout name')}
         style={{ marginTop: 4, fontFamily: fontFor('sora', 600), fontSize: 24, color: c.text, borderBottomWidth: 2, borderStyle: 'dashed', borderColor: c.line, paddingVertical: 4, outlineStyle: 'none', textAlign: lang === 'ar' ? 'right' : 'left' } as object}
       />
-      <Text variant="xs" color="sec" style={{ marginTop: 4 }}>
-        {t('Changes apply every day this workout is planned.')}
-      </Text>
+      {days > 1 && p.type !== 'order' ? (
+        <Card style={{ marginTop: 10 }}>
+          <Text variant="small">{t('This workout is on {n} days. Changes apply to all of them.', { n: days })}</Text>
+          <Button small kind="soft" icon="copy" title={t('Change only {day}', { day: t(DAYS_LONG[d]) })} style={{ marginTop: 8, alignSelf: 'stretch' }} onPress={onlyThisDay} />
+        </Card>
+      ) : (
+        <Text variant="xs" color="sec" style={{ marginTop: 4 }}>
+          {t(p.type === 'order' ? 'Changes apply every time this workout comes up.' : 'Changes apply every day this workout is planned.')}
+        </Text>
+      )}
 
       <View style={{ marginTop: 12 }}>
         {W.ex.length ? (

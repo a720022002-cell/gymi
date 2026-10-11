@@ -16,7 +16,9 @@ function fill(s: string, vars?: Vars) {
  * Use {name} placeholders for values: t('Hi, {name}', { name }).
  */
 export function translate(lang: 'en' | 'ar', en: string, vars?: Vars) {
-  const s = lang === 'ar' ? (AR[en] ?? en) : en;
+  // "Push 2": translate the name and keep the number (second copies of a workout).
+  const numbered = lang === 'ar' && !AR[en] ? /^(.+) (\d+)$/.exec(en) : null;
+  const s = lang === 'ar' ? (AR[en] ?? (numbered && AR[numbered[1]] ? `${AR[numbered[1]]} ${numbered[2]}` : en)) : en;
   return fill(s, vars);
 }
 

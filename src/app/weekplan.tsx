@@ -8,10 +8,11 @@ import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { CoachBanner } from '@/components/train/CoachBanner';
 import { DaySheet } from '@/components/train/DaySheet';
+import { Sheet } from '@/components/Sheet';
 import { Button, Card, Row, Segmented, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useTrain } from '@/lib/train';
-import { DAYS, DAYS_LONG, type Day, onceNote, orderNext, weekOrder } from '@/lib/training';
+import { copyName, DAYS, DAYS_LONG, type Day, onceNote, orderNext, splitRepeats, weekOrder } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
 
 const ROW = 64;
@@ -26,6 +27,7 @@ export default function WeekPlan() {
   const [open, setOpen] = useState<number | null>(null);
   const [over, setOver] = useState<number | null>(null);
   const [dragging, setDragging] = useState<number | null>(null);
+  const [adding, setAdding] = useState(false);
   const week = train.week;
   if (!train.plan) return <Screen title={t('Weekly plan')} back />;
   const plan = train.plan;
@@ -70,6 +72,28 @@ export default function WeekPlan() {
   const ord = orderNext(plan, train.logs, train.today);
   const earliestIdx = Math.round((new Date(`${ord.earliest}T12:00:00`).getTime() - new Date(`${train.today}T12:00:00`).getTime()) / 864e5);
   const earliest = earliestIdx <= 0 ? t('today') : earliestIdx === 1 ? t('tomorrow') : t(DAYS_LONG[(train.todayIdx + earliestIdx) % 7]);
+  // Workouts planned on more than one day share the same exercises until you split them.
+  const repeated = [...new Set(plan.week.filter((d) => d.w).map((d) => d.w as string))].filter((w) => plan.week.filter((d) => d.w === w).length > 1);
+  const split = () => {
+    train.updatePlan(splitRepeats(plan));
+    toast(t('Each day now has its own workout. Tap one to change its exercises.'), { icon: 'check' });
+  };
+  const addToOrder = (from: string | null) => {
+    const name = from ? copyName(plan.workouts, from) : copyName(plan.workouts, t('Workout'));
+    const W = from ? { ...plan.workouts[from], ex: plan.workouts[from].ex.map((x) => ({ ...x })) } : { ex: [], focus: '', min: 0 };
+    train.updatePlan({ workouts: { ...plan.workouts, [name]: W }, queue: [...ord.queue, name] });
+    setAdding(false);
+    router.push({ pathname: '/day-edit', params: { w: name } });
+  };
+  const removeFromOrder = (w: string) => {
+    const q = ord.queue.filter((x) => x !== w);
+    const workouts = { ...plan.workouts };
+    // Keep the workout if a fixed day still uses it.
+    if (!plan.week.some((d) => d.w === w)) delete workouts[w];
+    const before = { workouts: plan.workouts, queue: ord.queue };
+    train.updatePlan({ workouts, queue: q });
+    toast(t('Removed {name}', { name: t(w) }), { icon: 'trash', undo: () => train.updatePlan(before) });
+  };
   const moveQ = (i: number) => {
     const q = [...ord.queue];
     [q[i - 1], q[i]] = [q[i], q[i - 1]];
@@ -111,6 +135,17 @@ export default function WeekPlan() {
           </Text>
         </Card>
       ) : null}
+      {repeated.length ? (
+        <Card style={{ marginTop: 12 }}>
+          <Row gap={10} style={{ alignItems: 'flex-start' }}>
+            <Icon name="swap" size={20} color={c.cobalt} />
+            <Text variant="small" style={{ flex: 1 }}>
+              {t('{w} are on more than one day with the same exercises. Want a different workout each time?', { w: repeated.map((x) => t(x)).join(t(', ')) })}
+            </Text>
+          </Row>
+          <Button small kind="soft" title={t('Make each day different')} style={{ marginTop: 10, alignSelf: 'stretch' }} onPress={split} />
+        </Card>
+      ) : null}
       {type === 'order' ? (
         <View>
           <Card style={{ marginTop: 12 }}>
@@ -129,7 +164,7 @@ export default function WeekPlan() {
           </Text>
           <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden' }}>
             {ord.queue.map((w, i) => (
-              <Row key={w} gap={12} style={{ minHeight: 56, paddingHorizontal: 14, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
+              <Row key={w} gap={10} style={{ minHeight: 56, paddingHorizontal: 14, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
                 <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: w === ord.next ? c.cobalt : c.inset }}>
                   <Text num size={13} color={w === ord.next ? '#FFFFFF' : c.text}>
                     {i + 1}
@@ -144,9 +179,18 @@ export default function WeekPlan() {
                 <Springy disabled={!i} onPress={() => moveQ(i)} accessibilityLabel={t('Move up')} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', opacity: i ? 1 : 0.3 }}>
                   <Icon name="up" size={14} strokeWidth={2.2} />
                 </Springy>
+                {ord.queue.length > 1 ? (
+                  <Springy onPress={() => removeFromOrder(w)} accessibilityLabel={t('Remove {name}', { name: t(w) })} style={{ width: 32, height: 36, alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon name="trash" size={15} color={c.down} />
+                  </Springy>
+                ) : null}
               </Row>
             ))}
           </View>
+          <Button small kind="soft" icon="plus" title={t('Add a workout')} style={{ marginTop: 10, alignSelf: 'stretch' }} onPress={() => setAdding(true)} />
+          <Text variant="xs" color="sec" style={{ marginTop: 6, marginHorizontal: 4 }}>
+            {t('Tap a workout to change its exercises.')}
+          </Text>
           {ord.next && ord.queue.length > 1 ? (
             <Text variant="small" color="sec" style={{ marginTop: 8, marginHorizontal: 4 }}>
               {t('When you finish {a}, {b} moves to the top.', { a: t(ord.next), b: t(ord.queue[(ord.idx + 1) % ord.queue.length]) })}
@@ -212,6 +256,18 @@ export default function WeekPlan() {
       )}
       <Button title={t('Save plan')} style={{ marginTop: 20 }} onPress={() => (fresh ? router.replace('/train') : router.back())} />
       <DaySheet d={open} onClose={() => setOpen(null)} />
+      <Sheet open={adding} onClose={() => setAdding(false)}>
+        <Text variant="h2">{t('Add a workout')}</Text>
+        <Text variant="small" color="sec" style={{ marginTop: 4, marginBottom: 12 }}>
+          {t('Start from a copy and change it, or start empty.')}
+        </Text>
+        {Object.keys(plan.workouts)
+          .filter((w) => ord.queue.includes(w))
+          .map((w) => (
+            <Button key={w} kind="soft" icon="copy" title={t('Copy of {w}', { w: t(w) })} style={{ marginBottom: 8, alignSelf: 'stretch' }} onPress={() => addToOrder(w)} />
+          ))}
+        <Button kind="soft" icon="plus" title={t('New empty workout')} style={{ alignSelf: 'stretch' }} onPress={() => addToOrder(null)} />
+      </Sheet>
     </Screen>
   );
 }
