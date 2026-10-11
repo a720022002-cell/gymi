@@ -176,9 +176,23 @@ export default function Active() {
             <Card key={`${x.id}-${ei}`}>
               <Row style={{ justifyContent: 'space-between' }}>
                 <Row gap={6} style={{ flex: 1 }}>
-                  <Text variant="h3" style={{ flexShrink: 1 }}>
-                    {info.name}
-                  </Text>
+                  {x.id.startsWith('custom:') ? (
+                    <Text variant="h3" style={{ flexShrink: 1 }}>
+                      {info.name}
+                    </Text>
+                  ) : (
+                    // Tap the name for pictures and how to do it; the workout keeps going.
+                    <Springy
+                      onPress={() => router.push({ pathname: '/exercise', params: { id: x.id } })}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('How to do {x}', { x: info.name })}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 }}>
+                      <Text variant="h3" style={{ flexShrink: 1 }}>
+                        {info.name}
+                      </Text>
+                      <Icon name="info" size={16} color={c.sec} />
+                    </Springy>
+                  )}
                   {a === 'up' ? <Icon name="up" size={18} color={c.up} strokeWidth={2.6} /> : a === 'down' ? <Icon name="down" size={18} color={c.down} strokeWidth={2.6} /> : a === 'same' ? <Text variant="small" weight={700} color="sec">{t('same')}</Text> : null}
                 </Row>
                 <Text variant="small" weight={700} color="sec">
@@ -251,6 +265,18 @@ export default function Active() {
             </Card>
           );
         })}
+        <Card onPress={() => router.push({ pathname: '/machine', params: { live: '1' } })} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="camera" size={20} color={c.cobalt} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text weight={700}>{t('Don’t know a machine?')}</Text>
+            <Text variant="small" color="sec">
+              {t('Take a photo. I’ll name it and add it to this workout.')}
+            </Text>
+          </View>
+          <Icon name="chev" size={18} color={c.sec} />
+        </Card>
         <View style={{ height: rest ? 300 : 90 }} />
       </Screen>
 

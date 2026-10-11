@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
@@ -15,7 +15,7 @@ import { type AiError, aiErrorText, askAI } from '@/lib/ai';
 import { type DbExercise, dbExName, searchExercises, toPlanEx } from '@/lib/exercisesDb';
 import { type Photo, takePhoto } from '@/lib/photo';
 import { useTrain } from '@/lib/train';
-import { DAYS_LONG, type Equipment, EX, type Muscle, muscleGroup, muscleLabel, MUSCLES_FINE, type PlanEx, workoutMinutes } from '@/lib/training';
+import { DAYS_LONG, type Equipment, EX, type Muscle, muscleGroup, muscleLabel, MUSCLES_FINE, type PlanEx, topReps, workoutMinutes } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
 
 type Found = { known: boolean; name: string; name_ar?: string; group: Muscle; works?: string; works_ar?: string; equipment: Equipment; sets?: number; reps?: string; search?: string };
@@ -26,6 +26,8 @@ export default function MachineScreen() {
   const { colors: c } = useSettings();
   const toast = useToast();
   const train = useTrain();
+  // Opened from a workout in progress: add the exercise to that workout right away.
+  const live = useLocalSearchParams<{ live?: string }>().live === '1' && !!train.session;
   const [photo, setPhoto] = useState<Photo | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<AiError | null>(null);
@@ -68,6 +70,14 @@ export default function MachineScreen() {
   };
 
   const add = (pe: PlanEx, label: string) => {
+    const s = train.session;
+    if (live && s) {
+      if (s.ex.some((x) => x.id === pe.id)) return toast(t('{x} is already in this workout', { x: label }), { icon: 'info' });
+      const { sets, ...rest } = pe;
+      train.setSession({ ...s, ex: [...s.ex, { ...rest, tip: false, sets: Array.from({ length: Math.max(1, sets) }, () => ({ w: '', r: '', done: false, lw: 0, lr: topReps(pe.reps) })) }] });
+      toast(t('{x} added to this workout', { x: label }), { ai: true });
+      return router.back();
+    }
     const p = train.plan;
     if (!p || !target) return;
     const W = p.workouts[target] ?? { ex: [], focus: '', min: 0 };
@@ -102,7 +112,7 @@ export default function MachineScreen() {
     return pick ? (lang === 'ar' ? pick.ar : pick.en) : null;
   })();
 
-  const pickers = (
+  const pickers = live ? null : (
     <View>
       <Text variant="small" weight={700} color="sec" style={{ marginTop: 16, marginBottom: 8 }}>
         {t('Add to')}
@@ -116,7 +126,7 @@ export default function MachineScreen() {
     </View>
   );
 
-  if (!train.setupDone)
+  if (!train.setupDone && !live)
     return (
       <Screen title={t('Unknown machine?')} back>
         <Card style={{ alignItems: 'center', paddingVertical: 24 }}>
@@ -198,7 +208,7 @@ export default function MachineScreen() {
                 ) : null}
               </Card>
               {pickers}
-              <Button title={target ? t('Add to {w}', { w: t(target) }) : t('Add to log')} disabled={!target} style={{ marginTop: 16 }} onPress={addFound} />
+              <Button title={live ? t('Add to this workout') : target ? t('Add to {w}', { w: t(target) }) : t('Add to log')} disabled={!live && !target} style={{ marginTop: 16 }} onPress={addFound} />
               <Button kind="glass" icon="edit" title={t('Not right? Name it myself')} style={{ marginTop: 8 }} onPress={() => setOwn(true)} />
               <Button kind="ghost" title={t('Take another photo')} style={{ marginTop: 4 }} onPress={() => snap(true)} />
             </View>
@@ -243,8 +253,8 @@ export default function MachineScreen() {
               </Row>
               {pickers}
               <Button
-                title={target ? t('Add to {w}', { w: t(target) }) : t('Add exercise')}
-                disabled={!name.trim() || !target}
+                title={live ? t('Add to this workout') : target ? t('Add to {w}', { w: t(target) }) : t('Add exercise')}
+                disabled={!name.trim() || (!live && !target)}
                 style={{ marginTop: 16 }}
                 onPress={() => {
                   setTried(true);
