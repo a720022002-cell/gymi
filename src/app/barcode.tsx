@@ -7,7 +7,8 @@ import { ManualCode } from '@/components/food/ManualCode';
 import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
-import { Button, Card } from '@/components/ui';
+import { Glass } from '@/components/Glass';
+import { Button, Card, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useSettings } from '@/theme/settings';
 
@@ -17,6 +18,7 @@ export default function Barcode() {
   const { colors: c } = useSettings();
   const [perm, ask] = useCameraPermissions();
   const [manual, setManual] = useState(false);
+  const [torch, setTorch] = useState(false);
   const done = useRef(false);
 
   const found = (code: string) => {
@@ -29,8 +31,19 @@ export default function Barcode() {
     <Screen title={t('Scan barcode')} back>
       {perm?.granted ? (
         <View style={{ height: 380, borderRadius: 28, overflow: 'hidden', backgroundColor: '#000' }}>
-          <CameraView style={{ flex: 1 }} facing="back" barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e'] }} onBarcodeScanned={(r) => found(r.data)} />
+          <CameraView style={{ flex: 1 }} facing="back" enableTorch={torch} barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e'] }} onBarcodeScanned={(r) => found(r.data)} />
           <View pointerEvents="none" style={{ position: 'absolute', left: 40, right: 40, top: 150, height: 80, borderRadius: 16, borderWidth: 3, borderColor: '#FFFFFF' }} />
+          <Springy
+            onPress={() => setTorch(!torch)}
+            scaleTo={1.08}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: torch }}
+            accessibilityLabel={t('Flash')}
+            style={{ position: 'absolute', top: 14, end: 14 }}>
+            <Glass style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="bolt" size={20} color={torch ? '#FACC15' : '#FFFFFF'} />
+            </Glass>
+          </Springy>
         </View>
       ) : (
         <Card style={{ alignItems: 'center', paddingVertical: 24 }}>

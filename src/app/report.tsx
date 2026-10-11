@@ -16,11 +16,11 @@ import { useAuth } from '@/lib/auth';
 import { useFood } from '@/lib/food';
 import { addDays, fmt } from '@/lib/nutrition';
 import { fx, shortDate } from '@/lib/progress';
-import { daysBetween, reportRange, type ReportStats, useReportData, useReportStats } from '@/lib/report';
+import { type CoachSummary, daysBetween, loadSavedReport, reportRange, type ReportStats, saveReport, useReportData, useReportStats } from '@/lib/report';
 import { useSettings } from '@/theme/settings';
 
 type Mode = 'week' | 'month' | 'custom';
-type Coach = { well: string[]; improve: string[]; focus: string };
+type Coach = CoachSummary;
 
 /** Reports for a week, a month or any dates, with a coach summary (design: report). */
 export default function ReportScreen() {
@@ -90,19 +90,26 @@ function ReportBody({ stats: s, label, a, b, c }: { stats: ReportStats; label: s
   const { t, lang } = useT();
   const { profile } = useAuth();
   const key = `gymi.report.${profile?.id ?? ''}.${a}.${b}.${lang}`;
-  const [coach, setCoach] = useState<{ key: string; v: Coach } | null>(null);
+  // null v: checked, nothing saved for this period yet.
+  const [coach, setCoach] = useState<{ key: string; v: Coach | null } | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<AiError | null>(null);
 
+  // A summary saved for this period shows straight away (this phone first, then your account).
   useEffect(() => {
     let alive = true;
-    AsyncStorage.getItem(key)
-      .then((v) => alive && v && setCoach({ key, v: JSON.parse(v) }))
-      .catch(() => {});
+    (async () => {
+      const local = await AsyncStorage.getItem(key).catch(() => null);
+      if (local) return alive && setCoach({ key, v: JSON.parse(local) as Coach });
+      const saved = await loadSavedReport(a, b, lang).catch(() => null);
+      if (!alive) return;
+      setCoach({ key, v: saved });
+      if (saved) AsyncStorage.setItem(key, JSON.stringify(saved)).catch(() => {});
+    })();
     return () => {
       alive = false;
     };
-  }, [key]);
+  }, [key, a, b, lang]);
 
   const write = async () => {
     setBusy(true);
@@ -132,6 +139,7 @@ function ReportBody({ stats: s, label, a, b, c }: { stats: ReportStats; label: s
     const v = { well: (result.well ?? []).slice(0, 3), improve: (result.improve ?? []).slice(0, 3), focus: result.focus ?? '' };
     setCoach({ key, v });
     AsyncStorage.setItem(key, JSON.stringify(v)).catch(() => {});
+    if (profile?.id) saveReport(profile.id, a, b, lang, v).catch(() => {});
   };
 
   const tiles: [string, string][] = [
@@ -140,7 +148,8 @@ function ReportBody({ stats: s, label, a, b, c }: { stats: ReportStats; label: s
     [t('Protein goal'), s.proteinGoal ? t('{a} of {b} days', { a: s.proteinDays[0], b: s.proteinDays[1] }) : '–'],
     [t('Sleep'), s.sleepAvg != null ? t('{n} h avg', { n: fx(s.sleepAvg) }) : '–'],
   ];
-  const v = coach?.key === key ? coach.v : null;
+  const checked = coach?.key === key;
+  const v = checked ? coach.v : null;
 
   return (
     <View>
@@ -196,6 +205,8 @@ function ReportBody({ stats: s, label, a, b, c }: { stats: ReportStats; label: s
         <Card>
           <Thinking message={t('Writing your report')} />
         </Card>
+      ) : !checked ? (
+        <View style={{ height: 120 }} />
       ) : v ? (
         <>
           <Card>

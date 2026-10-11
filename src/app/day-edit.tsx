@@ -20,16 +20,17 @@ export default function DayEdit() {
   const { colors: c } = useSettings();
   const toast = useToast();
   const train = useTrain();
-  const { d: dParam } = useLocalSearchParams<{ d: string }>();
+  const { d: dParam, w: wParam, add } = useLocalSearchParams<{ d?: string; w?: string; add?: string }>();
   const d = Number(dParam ?? 0);
   const p = train.plan;
-  const w = train.week[d]?.w ?? null;
+  // A workout by name (plans in order have no fixed day), or the one on day d.
+  const w = wParam && p?.workouts[wParam] ? wParam : (train.week[d]?.w ?? null);
   const [name, setName] = useState(w ?? '');
-  const [pick, setPick] = useState<number | null>(null); // -1 = add, i = replace
-  if (!p || !w)
+  const [pick, setPick] = useState<number | null>(add ? -1 : null); // -1 = add, i = replace
+  if (!p || !w || train.coach)
     return (
       <Screen title={t('Edit workout')} back>
-        <Text color="sec">{t('This day is a rest day.')}</Text>
+        <Text color="sec">{t(train.coach ? 'Your coach manages this workout.' : 'This day is a rest day.')}</Text>
       </Screen>
     );
   const W = p.workouts[w] ?? { ex: [], focus: '', min: 0 };
@@ -47,7 +48,8 @@ export default function DayEdit() {
     const workouts = { ...p.workouts, [n]: W };
     delete workouts[w];
     const fix = (wk: TrainPlan['week']) => wk.map((x) => (x.w === w ? { ...x, w: n } : x));
-    train.updatePlan({ workouts, week: fix(p.week), override: p.override ? { ...p.override, week: fix(p.override.week) } : undefined });
+    train.updatePlan({ workouts, week: fix(p.week), override: p.override ? { ...p.override, week: fix(p.override.week) } : undefined, queue: p.queue?.map((x) => (x === w ? n : x)) });
+    if (wParam) router.setParams({ w: n });
   };
 
   const del = (i: number) => {
@@ -58,10 +60,12 @@ export default function DayEdit() {
 
   return (
     <Screen title={t('Edit workout')} back>
-      <Text variant="small" weight={700} color="sec">
-        {t(DAYS_LONG[d])}
-        {days > 1 ? ` ${t('and {n} more', { n: days - 1 })}` : ''}
-      </Text>
+      {p.type !== 'order' ? (
+        <Text variant="small" weight={700} color="sec">
+          {t(DAYS_LONG[d])}
+          {days > 1 ? ` ${t('and {n} more', { n: days - 1 })}` : ''}
+        </Text>
+      ) : null}
       <TextInput
         value={name === w ? t(w) : name}
         onChangeText={setName}

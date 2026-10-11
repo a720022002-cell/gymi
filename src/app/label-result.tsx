@@ -127,7 +127,7 @@ export default function LabelResult() {
           <Field label={t('Sugar')} optional={t('(optional)')} value={v.s} onChangeText={set('s')} inputMode="decimal" ltr unit={t('g')} />
           <Field label={t('How much you ate')} value={v.g} onChangeText={set('g')} inputMode="decimal" ltr unit={t(unit)} />
           <Row gap={8} style={{ marginTop: 8, flexWrap: 'wrap' }}>
-            {[30, 50, 100, 200].map((g) => (
+            {[30, 45, 60, 100].map((g) => (
               <Chip key={g} title={`${g} ${t(unit)}`} on={num(v.g) === g} onPress={() => setV({ ...v, g: String(g) })} />
             ))}
           </Row>

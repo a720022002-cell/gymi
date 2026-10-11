@@ -4,9 +4,19 @@ import { useCallback, useEffect, useState } from 'react';
 export const HOME_CARDS = ['calories', 'water', 'workout', 'readings', 'streak', 'insight'] as const;
 export type HomeCard = (typeof HOME_CARDS)[number];
 export const HOME_NAMES: Record<HomeCard, string> = { calories: 'Calories', water: 'Water', workout: 'Today’s workout', readings: 'Your readings', streak: 'Streaks', insight: 'Coach tip' };
-export const RINGS = ['calories', 'protein', 'water', 'steps', 'workouts'] as const;
+/** What the main ring on Home can show (design: RINGS). */
+export const RINGS = ['calories', 'protein', 'water', 'steps', 'recovery', 'workouts', 'commit'] as const;
 export type RingKey = (typeof RINGS)[number];
-export const RING_NAMES: Record<RingKey, string> = { calories: 'Calories', protein: 'Protein', water: 'Water', steps: 'Steps', workouts: 'Workouts' };
+export const RING_NAMES: Record<RingKey, string> = { calories: 'Calories', protein: 'Protein', water: 'Water', steps: 'Steps', recovery: 'Recovery', workouts: 'Workouts this week', commit: 'Commitment' };
+export const RING_INFO: Record<RingKey, { icon: 'food' | 'check' | 'drop' | 'walk' | 'pulse' | 'train' | 'flame'; desc: string }> = {
+  calories: { icon: 'food', desc: 'Calories left, with protein, carbs and fat' },
+  protein: { icon: 'check', desc: 'Grams of protein toward your goal' },
+  water: { icon: 'drop', desc: 'Water toward your daily goal' },
+  steps: { icon: 'walk', desc: 'Steps from your phone or watch' },
+  recovery: { icon: 'pulse', desc: 'How ready your body is today' },
+  workouts: { icon: 'train', desc: 'Workouts done vs planned' },
+  commit: { icon: 'flame', desc: 'How well you stuck to your plan this week' },
+};
 export type HomeLayout = { order: HomeCard[]; hidden: HomeCard[]; rings: RingKey[] };
 const KEY = 'gymi.home.v1';
 const DEFAULT: HomeLayout = { order: [...HOME_CARDS], hidden: [], rings: ['calories'] };

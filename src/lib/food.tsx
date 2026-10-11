@@ -2,6 +2,7 @@ import { createContext, type PropsWithChildren, useCallback, useContext, useEffe
 import { AppState } from 'react-native';
 
 import { useAuth } from './auth';
+import type { MealPlan } from './coaching';
 import { addDays, ageFromIso, defaultPlan, type FoodPlan, localDay, type Macros, type Person, targets } from './nutrition';
 import { supabase } from './supabase';
 
@@ -30,7 +31,13 @@ export type SavedMeal = {
   protein: number;
   carbs: number;
   fat: number;
+  /** Shareable code like MEAL-K7Q2. */
+  code: string;
+  /** The code this meal was copied from (added by code). */
+  from_code: string | null;
 };
+
+export type NewSavedMeal = Omit<SavedMeal, 'id' | 'code' | 'from_code'> & { code?: string; from_code?: string | null };
 
 export type Move = { id: string; day: string; kcal: number };
 
@@ -68,15 +75,21 @@ type Food = {
   target: Macros;
   /** Today's calorie goal including calories moved from or to other days. */
   dayGoal: (day: string) => number;
-  /** Calories and protein set by your coach (they replace your own targets). */
+  /** Calories and protein set by your coach, or the totals of the coach's meal plan (they replace your own targets). */
   coachTargets: { kcal: number; protein: number; name: string } | null;
+  /** Your active coach (they manage your food plan). */
+  coach: { name: string; link: string } | null;
+  /** The meal plan your coach sent, if any. */
+  coachMeals: MealPlan | null;
   kcalLeft: number;
   addLog: (l: NewLog) => Promise<FoodLog | null>;
   deleteLog: (id: string) => Promise<FoodLog | null>;
   restoreLog: (l: FoodLog) => Promise<void>;
   saved: SavedMeal[];
-  saveMeal: (m: Omit<SavedMeal, 'id'>) => Promise<SavedMeal | null>;
+  saveMeal: (m: NewSavedMeal) => Promise<SavedMeal | null>;
   deleteMeal: (id: string) => Promise<void>;
+  /** Copy someone's meal into your saved meals by its code. */
+  addMealByCode: (code: string) => Promise<{ status: 'ok' | 'not_found' | 'exists' | 'failed'; meal?: SavedMeal }>;
   moves: Move[];
   addMoves: (m: { day: string; kcal: number }[]) => Promise<Move[]>;
   removeMoves: (ids: string[]) => Promise<void>;
@@ -98,6 +111,9 @@ type Food = {
   /** Log food sheet. */
   logOpen: boolean;
   setLogOpen: (v: boolean) => void;
+  /** Text to open "Type what you ate" with (null = open the menu). */
+  typeSeed: string | null;
+  openTyping: (text: string) => void;
 };
 
 const Ctx = createContext<Food | null>(null);
@@ -118,8 +134,19 @@ export function FoodProvider({ children }: PropsWithChildren) {
   const [cardio, setCardio] = useState<Cardio[]>([]);
   const [steps, setStepsState] = useState(0);
   const [balance, openBalance] = useState<'over' | 'under' | null>(null);
-  const [logOpen, setLogOpen] = useState(false);
+  const [logOpen, setLogOpenState] = useState(false);
+  const [typeSeed, setTypeSeed] = useState<string | null>(null);
   const [coachTargets, setCoachTargets] = useState<Food['coachTargets']>(null);
+  const [coach, setCoach] = useState<Food['coach']>(null);
+  const [coachMeals, setCoachMeals] = useState<MealPlan | null>(null);
+  const setLogOpen = useCallback((v: boolean) => {
+    setLogOpenState(v);
+    if (!v) setTypeSeed(null);
+  }, []);
+  const openTyping = useCallback((text: string) => {
+    setTypeSeed(text);
+    setLogOpenState(true);
+  }, []);
   const planRef = useRef(plan);
   const logsRef = useRef(logs);
   useEffect(() => {
@@ -150,7 +177,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
     let alive = true;
     (async () => {
       const weekEnd = addDays(today, 7);
-      const [p, l, s, m, w, cd, st, mc] = await Promise.all([
+      const [p, l, s, m, w, cd, st, mc, mp] = await Promise.all([
         supabase.from('food_plans').select('*').eq('user_id', userId).maybeSingle(),
         supabase.from('food_logs').select('*').eq('day', today).order('created_at'),
         supabase.from('saved_meals').select('*').order('created_at', { ascending: false }),
@@ -159,6 +186,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
         supabase.from('cardio_logs').select('id,kind,minutes,intensity,kcal,created_at').eq('day', today).order('created_at'),
         supabase.from('step_logs').select('steps').eq('day', today).maybeSingle(),
         supabase.rpc('my_coach'),
+        supabase.rpc('my_coach_plans'),
       ]);
       if (!alive) return;
       const base = defaultPlan(Number(profile?.weight_kg ?? 80));
@@ -170,8 +198,21 @@ export function FoodProvider({ children }: PropsWithChildren) {
       setWaterLogs((w.data as WaterLog[]) ?? []);
       setCardio((cd.data as Cardio[]) ?? []);
       setStepsState((st.data as { steps: number } | null)?.steps ?? 0);
-      const coach = ((mc.data as { status: string; kcal: number | null; protein: number | null; name: string | null; username: string }[] | null) ?? [])[0];
-      setCoachTargets(coach?.status === 'active' && coach.kcal && coach.protein ? { kcal: coach.kcal, protein: coach.protein, name: coach.name || coach.username } : null);
+      const co = ((mc.data as { id: string; status: string; kcal: number | null; protein: number | null; name: string | null; username: string }[] | null) ?? [])[0];
+      const active = co?.status === 'active';
+      const plan = active ? ((mp.data as { meals: MealPlan | null } | null)?.meals ?? null) : null;
+      const planK = plan ? plan.meals.reduce((a, x) => a + (+x.k || 0), 0) : 0;
+      const planP = plan ? plan.meals.reduce((a, x) => a + (+x.p || 0), 0) : 0;
+      setCoach(active ? { name: co.name || co.username, link: co.id } : null);
+      setCoachMeals(plan && plan.meals.length ? plan : null);
+      // The coach's meal plan sets the day's calories and protein; otherwise the numbers the coach typed in.
+      setCoachTargets(
+        active && planK > 0 && planP > 0
+          ? { kcal: Math.round(planK), protein: Math.round(planP), name: co.name || co.username }
+          : active && co.kcal && co.protein
+            ? { kcal: co.kcal, protein: co.protein, name: co.name || co.username }
+            : null,
+      );
       setReadyFor(userId);
     })();
     return () => {
@@ -258,10 +299,22 @@ export function FoodProvider({ children }: PropsWithChildren) {
     if (data) setLogs((xs) => [...xs, data as FoodLog].sort((a, b) => a.created_at.localeCompare(b.created_at)));
   }, []);
 
-  const saveMeal = useCallback(async (m: Omit<SavedMeal, 'id'>) => {
+  const saveMeal = useCallback(async (m: NewSavedMeal) => {
     const { data } = await supabase.from('saved_meals').insert(m).select('*').single();
-    if (data) setSaved((xs) => [data as SavedMeal, ...xs]);
+    if (data) setSaved((xs) => [data as SavedMeal, ...xs.filter((x) => x.id !== (data as SavedMeal).id)]);
     return (data as SavedMeal) ?? null;
+  }, []);
+
+  const addMealByCode = useCallback(async (code: string): Promise<{ status: 'ok' | 'not_found' | 'exists' | 'failed'; meal?: SavedMeal }> => {
+    const { data, error } = await supabase.rpc('add_meal_by_code', { p_code: code });
+    const r = data as { status: string; meal?: SavedMeal } | null;
+    if (error || !r) return { status: 'failed' as const };
+    if (r.status === 'ok' && r.meal) {
+      const meal = { ...r.meal, kcal: +r.meal.kcal, protein: +r.meal.protein, carbs: +r.meal.carbs, fat: +r.meal.fat };
+      setSaved((xs) => [meal, ...xs]);
+      return { status: 'ok' as const, meal };
+    }
+    return { status: r.status === 'not_found' || r.status === 'exists' ? r.status : 'failed' };
   }, []);
 
   const deleteMeal = useCallback(async (id: string) => {
@@ -340,6 +393,8 @@ export function FoodProvider({ children }: PropsWithChildren) {
       target,
       dayGoal,
       coachTargets,
+      coach,
+      coachMeals,
       kcalLeft,
       addLog,
       deleteLog,
@@ -347,6 +402,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       saved,
       saveMeal,
       deleteMeal,
+      addMealByCode,
       moves,
       addMoves,
       removeMoves,
@@ -364,8 +420,10 @@ export function FoodProvider({ children }: PropsWithChildren) {
       openBalance,
       logOpen,
       setLogOpen,
+      typeSeed,
+      openTyping,
     }),
-    [balance, logOpen, ready, today, setupDone, plan, person, draft, savePlan, updatePlan, logs, eaten, target, dayGoal, coachTargets, kcalLeft, addLog, deleteLog, restoreLog, saved, saveMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, addCardio, deleteCardio, steps, setSteps, addWater],
+    [balance, logOpen, setLogOpen, typeSeed, openTyping, coach, coachMeals, addMealByCode, ready, today, setupDone, plan, person, draft, savePlan, updatePlan, logs, eaten, target, dayGoal, coachTargets, kcalLeft, addLog, deleteLog, restoreLog, saved, saveMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, addCardio, deleteCardio, steps, setSteps, addWater],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

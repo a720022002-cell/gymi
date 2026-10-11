@@ -7,7 +7,10 @@ export type AdminStats = { users: number; new_week: number; active_today: number
 export type CoachQueueRow = {
   user_id: string; name: string | null; username: string; email: string | null; phone: string | null; coach_status: 'pending' | 'approved' | 'rejected' | null; joined: string;
   app_id: string | null; coach_type: string | null; gym: string | null; city: string | null; years: string | null; specialties: string[] | null; certs: string | null; socials: Record<string, string> | null; bio: string | null; applied: string | null; reason: string | null;
+  cert_files?: { path: string; name: string }[]; hours?: { days: number[]; from: string; to: string }[];
 };
+/** Reasons the team can pick when a coach isn't approved (design: adminreject). */
+export const REJECT_REASONS = ['Certificate not readable', 'Certificate not recognized', 'Missing gym details', 'Not enough experience'];
 export type AdminUser = { id: string; name: string | null; username: string; email: string | null; account_type: string; coach_status: string | null; joined: string; last_day: string | null; is_admin: boolean };
 
 const rpc = async <T>(fn: string, args?: Record<string, unknown>) => {

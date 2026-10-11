@@ -3,6 +3,8 @@ import { View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
+import { useCycleToday } from '@/lib/cyclePhase';
+import { phoneSource, useDevices } from '@/lib/devices';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { fmt } from '@/lib/nutrition';
@@ -27,7 +29,9 @@ export type PTab = 'overall' | 'body' | 'recovery' | 'streaks';
 export function Overall({ go }: { go: (t: PTab, sub?: number) => void }) {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
+  const dev = useDevices(session?.user.id);
+  const cycle = useCycleToday();
   const food = useFood();
   const train = useTrain();
   const health = useHealth();
@@ -83,6 +87,13 @@ export function Overall({ go }: { go: (t: PTab, sub?: number) => void }) {
     </Springy>
   );
   const arrow = (d: number) => (d < 0 ? '↓' : '↑');
+  // Newest value from the watch or phone in the last week.
+  const devLast = (k: 'steps' | 'hr_rest' | 'hrv') => [...dev.days].reverse().find((d) => d[k] != null)?.[k] ?? null;
+  const watch: [string, string][] = [
+    [t('Steps'), devLast('steps') != null ? fmt(devLast('steps') as number) : '–'],
+    [t('Resting HR'), devLast('hr_rest') != null ? t('{n} bpm', { n: devLast('hr_rest') as number }) : '–'],
+    [t('HRV'), devLast('hrv') != null ? t('{n} ms', { n: Math.round(devLast('hrv') as number) }) : '–'],
+  ];
   const last7 = s.c7.parts;
 
   return (
@@ -179,13 +190,44 @@ export function Overall({ go }: { go: (t: PTab, sub?: number) => void }) {
         </>
       ) : null}
 
+      {dev.hasData ? (
+        <>
+          <SecHead title={t('From your watch')} link={t('See all')} onLink={() => router.push('/devices')} />
+          <Row gap={8}>
+            {watch.map(([k, v]) => (
+              <Card key={k} onPress={() => router.push('/devices')} style={{ flex: 1, alignItems: 'center', paddingHorizontal: 6, paddingVertical: 12 }}>
+                <Text num size={16} numberOfLines={1}>
+                  {v}
+                </Text>
+                <Text variant="xs" weight={700} color="sec">
+                  {k}
+                </Text>
+              </Card>
+            ))}
+          </Row>
+        </>
+      ) : dev.ready ? (
+        <Card onPress={() => router.push('/devices')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16 }}>
+          <View style={{ width: 36, height: 36, borderRadius: 11, backgroundColor: c.cobalt, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="heart" size={18} color="#FFFFFF" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text weight={700}>{phoneSource === 'health_connect' ? t('Connect Health Connect') : t('Connect Apple Health or WHOOP')}</Text>
+            <Text variant="small" color="sec">
+              {t('Add steps, heart rate and HRV here')}
+            </Text>
+          </View>
+          <Icon name="chev" size={18} color={c.sec} />
+        </Card>
+      ) : null}
+
       {profile?.gender === 'female' ? (
         <Card onPress={() => router.push('/period')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <View style={{ width: 36, height: 36, borderRadius: 11, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
             <Icon name="drop" size={18} color="#E11D48" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text weight={700}>{t('Cycle')}</Text>
+            <Text weight={700}>{cycle ? t('Cycle: day {n}, {p} phase', { n: cycle.day, p: t(cycle.phase).toLowerCase() }) : t('Cycle')}</Text>
             <Text variant="small" color="sec">
               {t('Explains changes in weight, hunger and recovery')}
             </Text>

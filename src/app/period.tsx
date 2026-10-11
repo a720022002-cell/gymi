@@ -1,3 +1,4 @@
+import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
@@ -24,6 +25,10 @@ import {
   CY_MODES,
   CY_PLAN,
   type CycleLog,
+  type CycleReminders,
+  DEFAULT_PARTNER_SHARE,
+  dueDate,
+  nextFertile,
   type CycleMode,
   cycleNow,
   type CycleSettings,
@@ -46,6 +51,9 @@ import {
   startPeriod,
 } from '@/lib/cycle';
 import { lockSupported, unlock } from '@/lib/biolock';
+import { shareCyclePdf } from '@/lib/cyclePdf';
+import { cycleRemindersSupported, scheduleCycleReminders } from '@/lib/cycleReminders';
+import { INVITE_BASE } from '@/lib/social';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { useTrain } from '@/lib/train';
@@ -74,12 +82,21 @@ export default function PeriodScreen() {
     if (!uid) return;
     const v = await loadCycle(uid);
     setSt(v);
+    // Reminders follow your latest periods.
+    const n = cycleNow(v.periods, v.settings, today);
+    const tracking = v.settings.mode !== 'preg' && v.settings.mode !== 'post';
+    scheduleCycleReminders(
+      tracking ? (v.settings.reminders ?? {}) : {},
+      n ? { next: n.next, fertileFrom: n.fertileFrom, cycle: n.cycle } : null,
+      reminderTexts(t),
+      v.settings.mode === 'preg' && v.settings.checklist?.visitRemind ? v.settings.checklist.visit : null,
+    ).catch(() => {});
     // Keep what your partner sees up to date (only what you chose to share).
     if (!v.anon) {
       const pt = await getPartner();
-      if (pt) await savePartner(uid, pt, partnerSummary(cycleNow(v.periods, v.settings, today), pt.share, v.settings.mode));
+      if (pt) await savePartner(uid, pt, partnerSummary(n, pt.share, v.settings.mode, v.logs[today], today));
     }
-  }, [uid, today]);
+  }, [uid, today, t]);
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -195,12 +212,13 @@ function TodayTab({ st, reload, uid }: { st: State; reload: () => void; uid: str
   const [logOpen, setLogOpen] = useState(false);
   const [pastOpen, setPastOpen] = useState(false);
   const s = st.settings;
-  if (s.mode === 'preg') return <Pregnancy week={s.preg_week ?? 12} set={async (w) => (await saveSettings(uid, { ...s, preg_week: w }), reload())} />;
+  if (s.mode === 'preg') return <Pregnancy s={s} save={async (next) => (await saveSettings(uid, next), reload())} />;
   if (s.mode === 'post') return <AfterBirth week={s.post_week ?? 2} set={async (w) => (await saveSettings(uid, { ...s, post_week: w }), reload())} />;
   const now = cycleNow(st.periods, s, today);
   const lg = st.logs[today] ?? {};
   const logged = Object.values(lg).flat();
   const ttc = s.mode === 'ttc';
+  const fw = now ? nextFertile(now, today) : null;
 
   const start = async () => {
     const p = await startPeriod(today);
@@ -250,11 +268,11 @@ function TodayTab({ st, reload, uid }: { st: State; reload: () => void; uid: str
               </View>
               <View style={{ flex: 1, backgroundColor: c.inset, borderRadius: 14, padding: 10 }}>
                 <Text variant="xs" weight={700} color="sec">
-                  {t('Fertile window')}
+                  {fw?.next ? t('Next fertile window') : t('Fertile window')}
                 </Text>
-                <Text weight={700}>{`${shortDate(now.fertileFrom, lang)} – ${shortDate(now.fertileTo, lang)}`}</Text>
+                <Text weight={700}>{`${shortDate(fw?.from ?? now.fertileFrom, lang)} – ${shortDate(fw?.to ?? now.fertileTo, lang)}`}</Text>
                 <Text variant="xs" color="sec">
-                  {t('Ovulation about {d}', { d: shortDate(now.ovDay, lang) })}
+                  {t('Ovulation about {d}', { d: shortDate(fw?.ov ?? now.ovDay, lang) })}
                 </Text>
               </View>
             </Row>
@@ -310,17 +328,20 @@ function TodayTab({ st, reload, uid }: { st: State; reload: () => void; uid: str
       {now ? (
         <>
           <Text variant="small" weight={700} color="sec" style={{ marginTop: 8, marginBottom: 8, marginHorizontal: 4 }}>
-            {t('Your plan this phase')}
+            {t('How it changes your coaching today')}
           </Text>
           <Card>
+            <Text variant="small" color="sec">
+              {t('Day {n}, {p} phase. Your food, training and recovery advice use this.', { n: now.day, p: t(now.phase).toLowerCase() })}
+            </Text>
             {(
               [
-                ['train', 'Training', CY_PLAN[now.phase].t],
-                ['food', 'Food', CY_PLAN[now.phase].f],
-                ['pulse', 'Recovery', CY_PLAN[now.phase].r],
+                ['train', 'Training', CY_PLAN[now.phase].t, '/train', 'Open training'],
+                ['food', 'Food', CY_PLAN[now.phase].f, '/food', 'Open food'],
+                ['pulse', 'Recovery', CY_PLAN[now.phase].r, '/recovery', 'Open recovery'],
               ] as const
-            ).map(([i, n, x]) => (
-              <Row key={n} gap={12} style={{ alignItems: 'flex-start', marginTop: 8 }}>
+            ).map(([i, n, x, to, label]) => (
+              <Row key={n} gap={12} style={{ alignItems: 'flex-start', marginTop: 12 }}>
                 <View style={{ width: 34, height: 34, borderRadius: 11, backgroundColor: c.cobalt, alignItems: 'center', justifyContent: 'center' }}>
                   <Icon name={i} size={17} color="#FFFFFF" />
                 </View>
@@ -330,6 +351,9 @@ function TodayTab({ st, reload, uid }: { st: State; reload: () => void; uid: str
                   </Text>
                   <Text variant="small" color="sec">
                     {t(x)}
+                  </Text>
+                  <Text variant="small" weight={700} color="link" onPress={() => router.push(to)} accessibilityRole="link" style={{ marginTop: 2 }}>
+                    {t(label)}
                   </Text>
                 </View>
               </Row>
@@ -566,8 +590,12 @@ function CalendarTab({ st, reload }: { st: State; reload: () => void }) {
 }
 
 function InsightsTab({ st }: { st: State }) {
-  const { t } = useT();
+  const { t, lang } = useT();
   const { colors: c } = useSettings();
+  const toast = useToast();
+  const { profile } = useAuth();
+  const { today } = useFood();
+  const [making, setMaking] = useState(false);
   const health = useHealth();
   const train = useTrain();
   const PH = ['Period', 'Follicular', 'Ovulation', 'Luteal'] as const;
@@ -624,17 +652,90 @@ function InsightsTab({ st }: { st: State }) {
           </View>
         </Card>
       ) : null}
+      <Text variant="small" weight={700} color="sec" style={{ marginTop: 8, marginBottom: 8, marginHorizontal: 4 }}>
+        {t('For your doctor')}
+      </Text>
+      <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <Icon name="doc" size={20} />
+        <View style={{ flex: 1 }}>
+          <Text weight={700}>{t('Cycle health report')}</Text>
+          <Text variant="small" color="sec">
+            {t('Cycle lengths, period days, symptoms and notes as a PDF')}
+          </Text>
+        </View>
+        <Button
+          small
+          title={t('Create')}
+          loading={making}
+          disabled={!st.periods.length}
+          onPress={async () => {
+            setMaking(true);
+            const ok = await shareCyclePdf(cycleReport(st, today, t, lang, profile?.name ?? ''), `gymi-cycle-report-${today}.pdf`);
+            setMaking(false);
+            toast(ok ? t('Report ready to share') : t('Couldn’t create the report. Please try again.'), { icon: ok ? 'doc' : 'warn' });
+          }}
+        />
+      </Card>
     </View>
   );
 }
 
+const esc = (x: string) => x.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/** Cycle health report for a doctor, as printable HTML (made into a PDF on the phone). */
+function cycleReport(st: State, today: string, t: ReturnType<typeof useT>['t'], lang: 'en' | 'ar', name: string) {
+  const av = averages(st.periods, st.settings);
+  const sorted = [...st.periods].sort((a, b) => a.start_day.localeCompare(b.start_day));
+  const days = (a: string, b: string) => Math.round((new Date(`${b}T12:00:00`).getTime() - new Date(`${a}T12:00:00`).getTime()) / 864e5);
+  const date = (d: string) => new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(`${d}T12:00:00`));
+  const rows = sorted
+    .slice(-12)
+    .map((p) => {
+      const i = sorted.indexOf(p);
+      const next = sorted[i + 1];
+      return `<tr><td>${date(p.start_day)}</td><td>${p.end_day ? days(p.start_day, p.end_day) + 1 : '–'}</td><td>${next ? days(p.start_day, next.start_day) : '–'}</td></tr>`;
+    })
+    .reverse()
+    .join('');
+  const from = addDays(today, -180);
+  const counts: Record<string, number> = {};
+  const logs = Object.entries(st.logs)
+    .filter(([d]) => d >= from)
+    .sort((a, b) => b[0].localeCompare(a[0]));
+  for (const [, lg] of logs) for (const [cat, xs] of Object.entries(lg)) if (cat === 'Symptoms' || cat === 'Mood') for (const x of xs) counts[x] = (counts[x] ?? 0) + 1;
+  const top = Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 12)
+    .map(([k, n]) => `<li>${esc(t(k))}: ${t('{n} days', { n })}</li>`)
+    .join('');
+  const logRows = logs
+    .slice(0, 60)
+    .map(([d, lg]) => `<tr><td>${date(d)}</td><td>${esc((lg.Flow ?? []).map((x) => t(x)).join(', '))}</td><td>${esc((lg.Symptoms ?? []).map((x) => t(x)).join(', '))}</td><td>${esc((lg.Mood ?? []).map((x) => t(x)).join(', '))}</td></tr>`)
+    .join('');
+  return `<!doctype html><html dir="${lang === 'ar' ? 'rtl' : 'ltr'}"><head><meta charset="utf-8"><title></title><style>
+body{font-family:-apple-system,Helvetica,Arial,sans-serif;color:#111;margin:32px;font-size:13px}h1{font-size:22px;margin:0}h2{font-size:15px;margin:22px 0 8px}
+.sec{color:#666}table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid #ddd;padding:6px;text-align:start;vertical-align:top}th{font-size:12px;color:#666}
+.grid{display:flex;gap:12px}.box{flex:1;border:1px solid #ddd;border-radius:10px;padding:10px}.big{font-size:18px;font-weight:700}</style></head><body>
+<h1>${esc(t('Cycle health report'))}</h1><div class="sec">${esc(name)}${name ? ' · ' : ''}${esc(t('Made with Gymi on {d}', { d: date(today) }))}</div>
+<h2>${esc(t('Summary'))}</h2><div class="grid">
+<div class="box"><div class="big">${t('{n} days', { n: av.cycle })}</div><div class="sec">${esc(t('Average cycle'))}</div></div>
+<div class="box"><div class="big">${t('{n} days', { n: av.bleed })}</div><div class="sec">${esc(t('Average period'))}</div></div>
+<div class="box"><div class="big">${av.varies == null ? '–' : t('{n} days', { n: av.varies })}</div><div class="sec">${esc(t('Cycle length varies by'))}</div></div></div>
+<h2>${esc(t('Periods'))}</h2><table><tr><th>${esc(t('Started'))}</th><th>${esc(t('Period days'))}</th><th>${esc(t('Cycle length (days)'))}</th></tr>${rows}</table>
+${top ? `<h2>${esc(t('Most logged symptoms and moods (last 6 months)'))}</h2><ul>${top}</ul>` : ''}
+${logRows ? `<h2>${esc(t('Daily logs'))}</h2><table><tr><th>${esc(t('Date'))}</th><th>${esc(t('Flow'))}</th><th>${esc(t('Symptoms'))}</th><th>${esc(t('Mood'))}</th></tr>${logRows}</table>` : ''}
+<p class="sec" style="margin-top:24px">${esc(t('Logged by the user in Gymi. Predictions are estimates. This is not a diagnosis.'))}</p></body></html>`;
+}
+
 const ARTICLES: [string, string, string][] = [
   ['Cycle basics', 'The 4 phases of your cycle, simply explained', 'Your cycle has 4 phases: your period, the follicular phase (energy rises), ovulation (an egg is released), and the luteal phase (progesterone rises, hunger and water weight can go up). A normal cycle is 21 to 35 days.'],
+  ['Hormones', 'What estrogen and progesterone do to energy and hunger', 'Estrogen rises after your period and peaks before ovulation. Many women feel more energy and strength then. After ovulation progesterone rises: body temperature goes up a little, hunger can grow and you may hold more water. Both drop before your period, which can bring low mood or cramps.'],
   ['Training', 'How to train in each phase', 'Follicular phase: push heavier and try PRs. Ovulation: still strong, warm up well. Luteal: keep weights, drop a set if tired. Period: train as you feel; light movement can ease cramps.'],
   ['Nutrition', 'Iron, magnesium and cravings', 'You lose iron during your period, so eat red meat, lentils or spinach with vitamin C. Magnesium (nuts, dark chocolate) can help cramps. Cravings in the luteal phase are normal; plan a protein snack.'],
   ['Fertility', 'How the fertile window works', 'An egg lives about a day after ovulation, and sperm can live up to 5 days. So the fertile window is the 5 days before ovulation and the day of it. Ovulation is usually about 14 days before your next period.'],
   ['Pregnancy', 'Safe exercise when you’re pregnant', 'Most women can keep training at a moderate effort: you should be able to talk. Avoid maximum lifts, holding your breath and contact sports. Always check with your doctor first.'],
   ['After birth', 'Pelvic floor and returning to the gym', 'Start with breathing, pelvic floor work and walks. After your doctor clears you, add light strength and rebuild your core. Running and jumping usually come back from about week 12.'],
+  ['Perimenopause', 'Hot flashes, sleep and staying strong', 'Perimenopause is the years before your periods stop, often from your 40s. Hormones go up and down, so cycles change and hot flashes, night sweats and poor sleep are common. Lifting weights 2 to 3 times a week and enough protein help keep bones and muscle strong. A cool bedroom helps sleep.'],
   ['When to see a doctor', 'Very painful, heavy or missing periods', 'See a doctor if your periods are very painful, very heavy, last more than 7 days, come less than 21 or more than 35 days apart, or stop for 3 months when you’re not pregnant.'],
 ];
 
@@ -658,6 +759,25 @@ function LearnTab() {
           </ListRow>
         ))}
       </List>
+      <Text variant="xs" color="sec" style={{ marginHorizontal: 4, marginBottom: 12 }}>
+        {t('Health articles are reviewed by doctors before release.')}
+      </Text>
+      <Text variant="small" weight={700} color="sec" style={{ marginTop: 8, marginBottom: 8, marginHorizontal: 4 }}>
+        {t('Private community')}
+      </Text>
+      <Card style={{ opacity: 0.7 }}>
+        <Row style={{ justifyContent: 'space-between' }}>
+          <Text weight={700}>{t('Women-only, anonymous')}</Text>
+          <View style={{ backgroundColor: c.inset, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
+            <Text variant="xs" weight={700} color="sec">
+              {t('Coming soon')}
+            </Text>
+          </View>
+        </Row>
+        <Text variant="small" color="sec" style={{ marginTop: 4 }}>
+          {t('Anonymous. Only women can join. Your name and photo are never shown.')}
+        </Text>
+      </Card>
       <Sheet open={open != null} onClose={() => setOpen(null)}>
         {open != null ? (
           <View>
@@ -676,14 +796,36 @@ function LearnTab() {
   );
 }
 
+const reminderTexts = (t: ReturnType<typeof useT>['t']) => ({
+  title: 'Gymi',
+  period: t('Your period may start in about 2 days.'),
+  fertile: t('Your fertile window starts today.'),
+  log: t('Take a moment to log how you feel today.'),
+  visit: t('Doctor visit tomorrow.'),
+});
+
 const SIZES = ['poppy seed', 'sesame seed', 'lentil', 'blueberry', 'raspberry', 'grape', 'kumquat', 'fig', 'lime', 'lemon', 'peach', 'apple', 'avocado', 'onion', 'sweet potato', 'mango', 'banana', 'carrot', 'papaya', 'grapefruit', 'cantaloupe', 'cauliflower', 'lettuce', 'cabbage', 'coconut', 'pineapple', 'squash', 'honeydew', 'watermelon'];
 
-function Pregnancy({ week: w, set }: { week: number; set: (w: number) => void }) {
-  const { t } = useT();
+function Pregnancy({ s, save }: { s: CycleSettings; save: (next: CycleSettings) => void }) {
+  const { t, lang } = useT();
   const { colors: c } = useSettings();
+  const toast = useToast();
+  const { today } = useFood();
+  const w = s.preg_week ?? 12;
+  const set = (pw: number) => save({ ...s, preg_week: pw });
+  const ck = s.checklist ?? {};
+  // Daily items (folic acid, water, protein) start fresh each day; the visit date stays.
+  const daily = ck.day === today ? ck : { visit: ck.visit, visitRemind: ck.visitRemind };
+  const setCk = (patch: Partial<NonNullable<CycleSettings['checklist']>>) => save({ ...s, checklist: { ...daily, ...patch, day: today } });
   const tri = w < 14 ? 1 : w < 28 ? 2 : 3;
   const size = SIZES[Math.max(0, Math.min(28, Math.floor((w - 4) / 1.2)))];
+  const due = dueDate(w, today);
   const tips = ['Keep effort moderate: you should be able to talk while training.', 'No maximum lifts, no holding your breath, no contact sports.', ...(w >= 20 ? ['Avoid long time lying flat on your back. Use an incline bench instead.'] : []), 'Stop and call your doctor if you feel pain, dizziness or bleeding.'];
+  const items: ['folic' | 'water' | 'protein', string, string][] = [
+    ['folic', 'Take folic acid daily', 'Add it in Vitamins'],
+    ['water', 'Drink 10 cups of water', ''],
+    ['protein', 'Get 70 to 100 g protein', ''],
+  ];
   return (
     <View>
       <Card style={{ alignItems: 'center', paddingVertical: 22 }}>
@@ -700,6 +842,9 @@ function Pregnancy({ week: w, set }: { week: number; set: (w: number) => void })
         </Ring>
         <Text variant="h3" center style={{ marginTop: 16 }}>
           {t('Your baby is about the size of a {x}', { x: t(size) })}
+        </Text>
+        <Text variant="small" color="sec">
+          {t('Due around {d}', { d: new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(`${due}T12:00:00`)) })}
         </Text>
         <Row gap={8} style={{ marginTop: 12 }}>
           <Button small kind="soft" icon="minus" title="" onPress={() => set(Math.max(4, w - 1))} />
@@ -727,7 +872,68 @@ function Pregnancy({ week: w, set }: { week: number; set: (w: number) => void })
             </Text>
           </Row>
         ))}
+        <Row gap={12} style={{ marginTop: 12, backgroundColor: c.inset, borderRadius: 14, padding: 12 }}>
+          <View style={{ flex: 1 }}>
+            <Text variant="small" weight={700}>
+              {t('Adjust my workouts for pregnancy')}
+            </Text>
+            <Text variant="xs" color="sec">
+              {t('Lighter weights, safer exercises')}
+            </Text>
+          </View>
+          <Toggle
+            value={!!s.preg_adjust}
+            label={t('Adjust my workouts for pregnancy')}
+            onChange={(v) => {
+              save({ ...s, preg_adjust: v });
+              toast(t(v ? 'Workouts will be adjusted for pregnancy' : 'Workouts back to normal'), { icon: 'check' });
+            }}
+          />
+        </Row>
       </Card>
+      <Text variant="small" weight={700} color="sec" style={{ marginBottom: 8, marginHorizontal: 4 }}>
+        {t('Checklist')}
+      </Text>
+      <List>
+        {items.map(([k, a, b], i) => (
+          <ListRow key={k} first={!i} onPress={() => setCk({ [k]: !daily[k] })}>
+            <View style={{ width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: daily[k] ? c.cobalt : 'transparent', borderWidth: daily[k] ? 0 : 2, borderColor: c.line }}>
+              {daily[k] ? <Icon name="check" size={14} color="#FFFFFF" strokeWidth={3} /> : null}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text weight={700}>{t(a)}</Text>
+              {b ? (
+                <Text variant="xs" color="link" onPress={() => router.push('/vitamins')}>
+                  {t(b)}
+                </Text>
+              ) : null}
+            </View>
+          </ListRow>
+        ))}
+        <ListRow>
+          <Icon name="cal" size={20} color={c.cobalt} />
+          <View style={{ flex: 1 }}>
+            <Text weight={700}>{t('Next doctor visit')}</Text>
+            <Text variant="xs" color="sec">
+              {daily.visit ? (daily.visitRemind ? t('Reminder the day before') : t('No reminder')) : t('Set a reminder')}
+            </Text>
+          </View>
+          <DateField value={daily.visit && daily.visit >= today ? daily.visit : addDays(today, 14)} onChange={(v) => setCk({ visit: v, visitRemind: true })} label={t('Next doctor visit')} max={addDays(today, 300)} />
+        </ListRow>
+        {daily.visit ? (
+          <ListRow>
+            <Text weight={700} style={{ flex: 1 }}>
+              {t('Remind me the day before')}
+            </Text>
+            <Toggle value={!!daily.visitRemind} label={t('Remind me the day before')} onChange={(v) => setCk({ visitRemind: v })} />
+          </ListRow>
+        ) : null}
+      </List>
+      {daily.visit && daily.visitRemind && !cycleRemindersSupported ? (
+        <Text variant="xs" color="sec" style={{ marginHorizontal: 4, marginBottom: 8 }}>
+          {t('Reminders work in the Gymi phone app.')}
+        </Text>
+      ) : null}
       <Text variant="xs" color="sec" center>
         {t('Always check with your doctor before starting or changing exercise in pregnancy.')}
       </Text>
@@ -795,6 +1001,8 @@ function AfterBirth({ week: w, set }: { week: number; set: (w: number) => void }
 function SettingsSheet({ st, uid, onDone }: { st: State; uid: string; onDone: () => void }) {
   const { t } = useT();
   const toast = useToast();
+  const { profile } = useAuth();
+  const { colors: c } = useSettings();
   const [s, setS] = useState<CycleSettings>(st.settings ?? DEFAULT_CYCLE);
   const [del, setDel] = useState(false);
   const [anon, setAnonState] = useState(st.anon);
@@ -837,6 +1045,46 @@ function SettingsSheet({ st, uid, onDone }: { st: State; uid: string; onDone: ()
           </Text>
         </Stepper>
       </Card>
+      {s.mode !== 'preg' && s.mode !== 'post' ? (
+        <>
+          <Label>{t('Reminders')}</Label>
+          <List>
+            {(
+              [
+                ['period', 'Period coming', '2 days before'],
+                ['fertile', 'Fertile window', 'When it starts'],
+                ['log', 'Daily log reminder', 'Every evening at 9:00 PM'],
+              ] as const
+            ).map(([k, a, b], i) => (
+              <ListRow key={k} first={!i}>
+                <View style={{ flex: 1 }}>
+                  <Text weight={700}>{t(a)}</Text>
+                  <Text variant="xs" color="sec">
+                    {t(b)}
+                  </Text>
+                </View>
+                <Toggle
+                  value={!!s.reminders?.[k]}
+                  label={t(a)}
+                  onChange={async (v) => {
+                    const r: CycleReminders = { ...s.reminders, [k]: v };
+                    setS({ ...s, reminders: r });
+                    if (!v) return;
+                    const n = cycleNow(st.periods, s, today);
+                    const res = await scheduleCycleReminders(r, n ? { next: n.next, fertileFrom: n.fertileFrom, cycle: n.cycle } : null, reminderTexts(t), null, true);
+                    if (res === 'denied') toast(t('Turn on notifications for Gymi in your phone settings.'), { icon: 'bell' });
+                  }}
+                />
+              </ListRow>
+            ))}
+          </List>
+          {!cycleRemindersSupported ? (
+            <Text variant="xs" color="sec" style={{ marginHorizontal: 4, marginTop: -4 }}>
+              {t('Reminders work in the Gymi phone app.')}
+            </Text>
+          ) : null}
+        </>
+      ) : null}
       <Label>{t('Privacy')}</Label>
       <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <View style={{ flex: 1 }}>
@@ -871,6 +1119,15 @@ function SettingsSheet({ st, uid, onDone }: { st: State; uid: string; onDone: ()
       ) : null}
       <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <View style={{ flex: 1 }}>
+          <Text weight={700}>{t('Use temperature from my watch')}</Text>
+          <Text variant="xs" color="sec">
+            {anon ? t('Not available in anonymous mode') : t('Apple Watch or Oura. Makes ovulation predictions better. Needs the Gymi phone app and a connected device.')}
+          </Text>
+        </View>
+        {anon ? null : <Toggle value={!!s.temp_watch} onChange={(v) => setS({ ...s, temp_watch: v })} label={t('Use temperature from my watch')} />}
+      </Card>
+      <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={{ flex: 1 }}>
           <Text weight={700}>{t('Hidden from Gym Bros and coaches')}</Text>
           <Text variant="xs" color="sec">
             {t('Friends, groups and coaches never see cycle data.')}
@@ -886,7 +1143,7 @@ function SettingsSheet({ st, uid, onDone }: { st: State; uid: string; onDone: ()
               {t('Pick one friend from Gym Bros. They see only what you choose, never your logs.')}
             </Text>
             <View style={{ marginTop: 10 }}>
-              <FriendPicker value={partner ? [partner.partner_id] : []} onChange={(v) => setPartner(v.length ? { partner_id: v[v.length - 1], share: partner?.share ?? { phase: true, period: true, fertile: false } } : null)} />
+              <FriendPicker value={partner ? [partner.partner_id] : []} onChange={(v) => setPartner(v.length ? { partner_id: v[v.length - 1], share: partner?.share ?? DEFAULT_PARTNER_SHARE } : null)} />
             </View>
             {partner ? (
               <Row gap={8} style={{ flexWrap: 'wrap' }}>
@@ -895,20 +1152,43 @@ function SettingsSheet({ st, uid, onDone }: { st: State; uid: string; onDone: ()
                     ['phase', 'Phase'],
                     ['period', 'Period dates'],
                     ['fertile', 'Fertile window'],
+                    ['mood', 'Mood'],
+                    ['sym', 'Symptoms'],
                   ] as const
                 ).map(([k, l]) => (
-                  <Chip key={k} title={t(l)} on={partner.share[k]} onPress={() => setPartner({ ...partner, share: { ...partner.share, [k]: !partner.share[k] } })} />
+                  <Chip key={k} title={t(l)} on={!!partner.share[k]} onPress={() => setPartner({ ...partner, share: { ...partner.share, [k]: !partner.share[k] } })} />
                 ))}
               </Row>
             ) : null}
+            <View style={{ height: 1, backgroundColor: c.line, marginVertical: 12 }} />
+            <Text variant="small" color="sec">
+              {t('Partner not on Gymi yet? Send them a link. After they join, add each other as friends and pick them here.')}
+            </Text>
+            <Button
+              small
+              kind="glass"
+              icon="copy"
+              title={t('Copy invite link')}
+              style={{ marginTop: 10, alignSelf: 'flex-start' }}
+              onPress={async () => {
+                const u = profile?.username ?? '';
+                const msg = t('Join me on Gymi and add me as a friend: @{u} {link}', { u, link: `${INVITE_BASE}${encodeURIComponent(u)}` });
+                try {
+                  await Clipboard.setStringAsync(msg);
+                  toast(t('Invite link copied'), { icon: 'copy' });
+                } catch {
+                  toast(msg, { icon: 'copy' });
+                }
+              }}
+            />
           </Card>
         </>
       ) : null}
       <Button
         title={t('Save')}
         onPress={async () => {
-          const ok = await saveSettings(uid, s);
-          if (!anon && partnerLoaded) await savePartner(uid, partner, partner ? partnerSummary(cycleNow(st.periods, s, today), partner.share, s.mode) : null);
+          const ok = await saveSettings(uid, anon ? { ...s, temp_watch: false } : s);
+          if (!anon && partnerLoaded) await savePartner(uid, partner, partner ? partnerSummary(cycleNow(st.periods, s, today), partner.share, s.mode, st.logs[today], today) : null);
           toast(ok ? t('Saved') : t('Couldn’t save. Please try again.'), { icon: ok ? 'check' : 'warn' });
           onDone();
         }}

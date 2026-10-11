@@ -26,6 +26,7 @@ export function useRecovery() {
     logs: train.logs,
     protein: food.setupDone ? { eaten: food.eaten.p, target: food.target.p } : null,
     water: { ml: food.water, goal: food.plan.water || 2800 },
+    tools: train.recTools,
   };
   return { input, r: recovery(input) };
 }

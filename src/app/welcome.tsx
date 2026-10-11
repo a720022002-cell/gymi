@@ -21,9 +21,11 @@ export default function Welcome() {
   const { session } = useAuth();
   const { accountType, setAccountType } = useSignupDraft();
   const { ref } = useLocalSearchParams<{ ref?: string }>();
-  // Remember who invited you; it's saved once your account is ready.
+  // Remember who invited you (their invite code, or a username from older links); used once your account is ready.
   useEffect(() => {
-    if (ref && /^[a-z][a-z0-9._]{2,19}$/.test(ref.toLowerCase())) AsyncStorage.setItem(REF_KEY, ref.toLowerCase()).catch(() => {});
+    const r = (ref ?? '').trim();
+    if (/^[A-Za-z0-9]{2,12}-[A-Za-z0-9]{3}$/.test(r)) AsyncStorage.setItem(REF_KEY, r.toUpperCase()).catch(() => {});
+    else if (/^[a-z][a-z0-9._]{2,19}$/.test(r.toLowerCase())) AsyncStorage.setItem(REF_KEY, r.toLowerCase()).catch(() => {});
   }, [ref]);
 
   if (session) return <Redirect href="/" />;

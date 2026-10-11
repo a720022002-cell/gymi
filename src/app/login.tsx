@@ -1,24 +1,26 @@
 import { Redirect, router } from 'expo-router';
-import { useState } from 'react';
-import { View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, View } from 'react-native';
 
 import { Field, PasswordMeter } from '@/components/Field';
 import { OtpInput } from '@/components/OtpInput';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
-import { Button, ErrorText } from '@/components/ui';
+import { Button, ErrorText, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
-import { useAuth } from '@/lib/auth';
+import { maskEmail, useAuth } from '@/lib/auth';
 import { EMAIL_CODES } from '@/lib/config';
 import { emailError, passwordError } from '@/lib/validation';
+import { useSettings } from '@/theme/settings';
 
-type Mode = 'login' | 'forgot' | 'reset' | 'sent';
+type Mode = 'login' | 'code' | 'forgot' | 'reset' | 'sent';
 
 export default function LogIn() {
   const { t } = useT();
   const auth = useAuth();
   const toast = useToast();
+  const { colors: c } = useSettings();
   const [mode, setMode] = useState<Mode>('login');
   const [id, setId] = useState('');
   const [pw, setPw] = useState('');
@@ -27,6 +29,15 @@ export default function LogIn() {
   const [newPw, setNewPw] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Login code (new phone): where it went, the code, and "don't ask again on this phone".
+  const [codeTo, setCodeTo] = useState('');
+  const [trust, setTrust] = useState(true);
+  const [left, setLeft] = useState(0);
+  useEffect(() => {
+    if (left <= 0) return;
+    const id = setTimeout(() => setLeft(left - 1), 1000);
+    return () => clearTimeout(id);
+  }, [left]);
 
   if (auth.session && mode === 'login' && !busy) return <Redirect href="/" />;
 
@@ -38,8 +49,36 @@ export default function LogIn() {
     const r = await auth.logIn(id, pw);
     setBusy(false);
     if (r.error) return setError(r.error);
+    if (r.codeFailed) toast(t('We couldn’t send a login code, so you’re logged in without one.'), { icon: 'info' });
+    if (r.code) {
+      setCodeTo(r.code);
+      setCode('');
+      setLeft(30);
+      setMode('code');
+      return;
+    }
     toast(t('Welcome back'), { icon: 'check' });
     router.replace('/');
+  };
+
+  const checkCode = async (v: string) => {
+    setBusy(true);
+    setError(null);
+    const r = await auth.verifyLoginCode(codeTo, v, trust);
+    setBusy(false);
+    if (r.error) {
+      setCode('');
+      return setError(r.error);
+    }
+    toast(t('Verified. Welcome back.'), { icon: 'check' });
+    router.replace('/');
+  };
+
+  const resendCode = async () => {
+    const r = await auth.sendLoginCode(codeTo);
+    if (r.error) return setError(r.error);
+    setLeft(30);
+    toast(t('New code sent'), { icon: 'mail' });
   };
 
   const sendReset = async () => {
@@ -65,10 +104,47 @@ export default function LogIn() {
   };
 
   const back = mode === 'login' ? undefined : () => { setMode(mode === 'reset' || mode === 'sent' ? 'forgot' : 'login'); setError(null); };
+  const otherAccount = () => {
+    setMode('login');
+    setId('');
+    setPw('');
+    setCode('');
+    setError(null);
+  };
 
   return (
-    <Screen title={t(mode === 'login' ? 'Log in' : 'Forgot password')} back onBack={back}>
-      {mode === 'login' ? (
+    <Screen title={t(mode === 'login' || mode === 'code' ? 'Log in' : 'Forgot password')} back onBack={back}>
+      {mode === 'code' ? (
+        <View>
+          <Text variant="h1">{t('Check it’s you')}</Text>
+          <Text color="sec" style={{ marginTop: 4 }}>
+            {t('We sent a 6-digit code to')} <Text weight={700}>{maskEmail(codeTo)}</Text>
+          </Text>
+          <OtpInput value={code} onChange={(v) => { setCode(v); setError(null); }} onComplete={checkCode} error={!!error} />
+          <View style={{ minHeight: 18, marginTop: 6 }}>
+            {busy ? (
+              <Text variant="small" color="sec" center>{t('Checking…')}</Text>
+            ) : error ? (
+              <Text size={12.5} weight={600} color="down" center>{t(error)}</Text>
+            ) : null}
+          </View>
+          <View style={{ alignItems: 'center', marginTop: 4 }}>
+            {left > 0 ? (
+              <Text variant="small" weight={700} color="sec">{t('Resend code in 0:{s}', { s: String(left).padStart(2, '0') })}</Text>
+            ) : (
+              <Pressable onPress={resendCode} hitSlop={8}>
+                <Text variant="small" weight={700} color="link">{t('Resend code')}</Text>
+              </Pressable>
+            )}
+          </View>
+          <Button title={t('Send the code by text message instead')} kind="ghost" style={{ marginTop: 16 }} onPress={() => toast(t('Text messages are coming soon. Use the email code for now.'), { icon: 'info' })} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 12 }}>
+            <Toggle value={trust} onChange={setTrust} label={t('Don’t ask for a code on this phone again')} />
+            <Text variant="small" style={{ flexShrink: 1 }}>{t('Don’t ask for a code on this phone again')}</Text>
+          </View>
+          <Button title={t('Use a different account')} kind="ghost" color={c.sec} style={{ marginTop: 8 }} onPress={otherAccount} />
+        </View>
+      ) : mode === 'login' ? (
         <View>
           <Text variant="h1">{t('Welcome back')}</Text>
           <Text color="sec" style={{ marginTop: 4 }}>

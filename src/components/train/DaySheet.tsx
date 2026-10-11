@@ -53,7 +53,7 @@ export function DaySheet({ d, onClose }: { d: number | null; onClose: () => void
         <Text variant="small" color="sec" style={{ marginTop: 8 }}>
           {t('Rest is where muscle grows. A walk or light stretching is a good idea.')}
         </Text>
-        {!day.lock ? (
+        {!day.lock && !train.coach && p.type !== 'order' ? (
           <View>
             <Text variant="small" weight={700} color="sec" style={{ marginTop: 16, marginBottom: 8 }}>
               {t('Train this day instead')}
@@ -95,16 +95,25 @@ export function DaySheet({ d, onClose }: { d: number | null; onClose: () => void
         <Text variant="h2" style={{ flex: 1 }}>
           {t('{w} day', { w: t(w) })}
         </Text>
-        <Button
-          small
-          kind="glass"
-          icon="edit"
-          title={t('Edit')}
-          onPress={() => {
-            onClose();
-            router.push({ pathname: '/day-edit', params: { d: String(d) } });
-          }}
-        />
+        {train.coach ? (
+          <Row gap={4}>
+            <Icon name="lock" size={12} color={c.sec} />
+            <Text variant="xs" weight={700} color="sec">
+              {t('From your coach')}
+            </Text>
+          </Row>
+        ) : (
+          <Button
+            small
+            kind="glass"
+            icon="edit"
+            title={t('Edit')}
+            onPress={() => {
+              onClose();
+              router.push({ pathname: '/day-edit', params: { d: String(d), w } });
+            }}
+          />
+        )}
       </Row>
       <Text variant="small" color="sec">
         {t('{n} exercises, {s} sets, about {m} min.', { n: b.ex.length, s: sets, m: W?.min ?? b.min })}
@@ -142,9 +151,23 @@ export function DaySheet({ d, onClose }: { d: number | null; onClose: () => void
           })}
         </View>
       ) : (
-        <Text color="sec" center style={{ marginTop: 16 }}>
-          {t('No exercises yet.')}
-        </Text>
+        <View style={{ marginTop: 12, backgroundColor: c.inset, borderRadius: 22, padding: 16, alignItems: 'center' }}>
+          <Text variant="small" color="sec" center>
+            {t('No exercises yet.')}
+          </Text>
+          {!train.coach ? (
+            <Button
+              small
+              icon="plus"
+              title={t('Add exercises')}
+              style={{ marginTop: 12 }}
+              onPress={() => {
+                onClose();
+                router.push({ pathname: '/day-edit', params: { d: String(d), w, add: '1' } });
+              }}
+            />
+          ) : null}
+        </View>
       )}
       <Row gap={10} style={{ marginTop: 12 }}>
         <View style={{ flex: 1 }}>

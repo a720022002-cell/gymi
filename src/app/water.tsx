@@ -1,7 +1,9 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { TextInput, View } from 'react-native';
 
-import { Stepper } from '@/components/food/Stepper';
+import { ReminderBell, useReminder } from '@/components/food/ReminderBell';
+import { WaterGoalSheet } from '@/components/food/WaterGoalSheet';
 import { Choices } from '@/components/health/bits';
 import { Icon, type IconName } from '@/components/Icon';
 import { Ring } from '@/components/Ring';
@@ -9,10 +11,11 @@ import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
-import { Button, Card, Chip, ErrorText, Label, NavButton, Row, Springy } from '@/components/ui';
+import { Button, Card, Chip, Label, NavButton, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
-import { calcPlan, fmt } from '@/lib/nutrition';
+import { calcPlan, fmt, fmtTime } from '@/lib/nutrition';
+import { fastTimes } from '@/lib/prayer';
 import { fx } from '@/lib/progress';
 import { useSettings } from '@/theme/settings';
 
@@ -28,6 +31,8 @@ export default function WaterScreen() {
   const goal = food.plan.water || 2800;
   const [drink, setDrink] = useState(false);
   const [goalOpen, setGoalOpen] = useState(false);
+  const reminder = useReminder('water');
+  const fast = food.plan.ramadan ? fastTimes(food.plan.city, food.today) : null;
 
   const add = async (ml: number, kind = 'Water') => {
     await food.addWater(ml, kind);
@@ -37,7 +42,15 @@ export default function WaterScreen() {
   const time = (iso: string) => new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
 
   return (
-    <Screen title={t('Water')} back right={<NavButton icon="plus" label={t('Add a drink')} onPress={() => setDrink(true)} />}>
+    <Screen
+      title={t('Water')}
+      back
+      right={
+        <Row gap={6}>
+          <ReminderBell kind="water" />
+          <NavButton icon="plus" label={t('Add a drink')} onPress={() => setDrink(true)} />
+        </Row>
+      }>
       <Card style={{ alignItems: 'center', paddingVertical: 26 }}>
         <Ring value={food.water} max={goal} size={210} stroke={20}>
           <Icon name="drop" size={26} color={c.cobalt} strokeWidth={2} />
@@ -67,12 +80,20 @@ export default function WaterScreen() {
         )}
       </Card>
 
-      {food.plan.ramadan ? (
+      {fast ? (
         <Card>
           <Row gap={8}>
             <Icon name="moon" size={20} color={c.cobalt} />
             <Text weight={700} style={{ flex: 1 }}>
               {t('Ramadan: drink between iftar and suhoor')}
+            </Text>
+          </Row>
+          <Row style={{ justifyContent: 'space-between', marginTop: 12 }}>
+            <Text variant="small" weight={700}>
+              {t('Iftar {time}', { time: fmtTime(fast.maghrib, lang) })}
+            </Text>
+            <Text variant="small" weight={700}>
+              {t('Suhoor {time}', { time: fmtTime(fast.fajr, lang) })}
             </Text>
           </Row>
           <Row gap={4} style={{ marginTop: 10 }}>
@@ -122,12 +143,46 @@ export default function WaterScreen() {
           <Text color="sec">{t('Nothing yet today. Tap + to add a glass.')}</Text>
         </Card>
       )}
-      <Text variant="xs" color="sec" center style={{ marginTop: 12 }}>
-        {t('Water reminders come with the phone app.')}
+      <Text variant="small" weight={700} color="sec" style={{ marginTop: 16, marginBottom: 8, marginHorizontal: 4 }}>
+        {t('Reminders')}
       </Text>
+      <Springy onPress={() => router.push('/notifications')} scaleTo={0.99} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingHorizontal: 16, backgroundColor: c.card, borderRadius: 22 }}>
+        <View style={{ width: 34, height: 34, borderRadius: 11, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name="bell" size={18} color={reminder.on ? c.cobalt : c.text} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text weight={700}>{t('Water reminders')}</Text>
+          <Text variant="small" color="sec">
+            {reminder.on ? reminder.summary : t('Off')}
+          </Text>
+        </View>
+        <Icon name="chev" size={16} color={c.sec} />
+      </Springy>
+      <Button
+        kind="glass"
+        icon="bell"
+        title={t('Preview a reminder')}
+        style={{ marginTop: 12 }}
+        onPress={() =>
+          toast(goal - food.water > 0 ? t('Time for a glass of water. You’re {n} ml behind.', { n: fmt(goal - food.water) }) : t('Water goal done for today. Nice.'), {
+            icon: 'drop',
+            action: { label: t('Settings'), fn: () => router.push('/notifications') },
+          })
+        }
+      />
 
       <DrinkSheet open={drink} onClose={() => setDrink(false)} onAdd={(ml, k) => (setDrink(false), add(ml, k))} />
-      <GoalSheet open={goalOpen} onClose={() => setGoalOpen(false)} />
+      <WaterGoalSheet
+        open={goalOpen}
+        onClose={() => setGoalOpen(false)}
+        value={goal}
+        suggested={calcPlan(food.plan, food.person).water}
+        onSave={(v) => {
+          food.updatePlan({ water: v });
+          setGoalOpen(false);
+          toast(t('Water goal set to {n} L a day', { n: fx(v / 1000) }), { icon: 'drop' });
+        }}
+      />
     </Screen>
   );
 }
@@ -156,50 +211,6 @@ function DrinkSheet({ open, onClose, onAdd }: { open: boolean; onClose: () => vo
       <Label>{t('Drink')}</Label>
       <Choices options={KINDS} value={kind} onChange={setKind} icons={KINDS.map((k) => KIND_ICON[k])} />
       <Button title={t('Add {n} ml', { n: ml })} disabled={!(ml > 0)} style={{ marginTop: 16 }} onPress={() => onAdd(ml, KINDS[kind])} />
-    </Sheet>
-  );
-}
-
-function GoalSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { t } = useT();
-  const toast = useToast();
-  const food = useFood();
-  const sug = calcPlan(food.plan, food.person).water;
-  const [v, setV] = useState(food.plan.water || 2800);
-  const ok = v >= 1000 && v <= 6000;
-  return (
-    <Sheet open={open} onClose={onClose}>
-      <Text variant="h2">{t('Daily water goal')}</Text>
-      <Text variant="small" color="sec" style={{ marginTop: 4 }}>
-        {t('Suggested for you: {n} L, based on your weight and activity.', { n: fx(sug / 1000) })}
-      </Text>
-      <Card style={{ marginTop: 12 }}>
-        <Stepper onMinus={() => setV(Math.max(500, v - 100))} onPlus={() => setV(Math.min(8000, v + 100))} labels={[t('Less'), t('More')]}>
-          <Text num size={34}>
-            {fmt(v)}
-          </Text>
-          <Text variant="xs" weight={700} color="sec">
-            {t('ml a day')}
-          </Text>
-        </Stepper>
-      </Card>
-      <Row gap={8} style={{ flexWrap: 'wrap' }}>
-        {[2000, 2500, 3000, 3500, 4000].map((x) => (
-          <Chip key={x} title={`${fx(x / 1000)} L`} on={v === x} onPress={() => setV(x)} />
-        ))}
-      </Row>
-      <ErrorText>{ok ? null : t('Pick a goal between 1,000 and 6,000 ml.')}</ErrorText>
-      {v !== sug ? <Button kind="ghost" small title={t('Use suggested ({n} L)', { n: fx(sug / 1000) })} style={{ marginTop: 8 }} onPress={() => setV(sug)} /> : null}
-      <Button
-        title={t('Save')}
-        disabled={!ok}
-        style={{ marginTop: 16 }}
-        onPress={() => {
-          food.updatePlan({ water: v });
-          onClose();
-          toast(t('Water goal set to {n} L a day', { n: fx(v / 1000) }), { icon: 'drop' });
-        }}
-      />
     </Sheet>
   );
 }

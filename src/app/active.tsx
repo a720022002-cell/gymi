@@ -13,8 +13,10 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { restDone } from '@/lib/beep';
+import { canListen, listen, stopListening } from '@/lib/speech';
 import { type Session, type SessionEx, useTrain } from '@/lib/train';
 import { exInfo, topReps } from '@/lib/training';
+import { matchExercise, parseSet } from '@/lib/voiceSet';
 import { useSettings } from '@/theme/settings';
 
 const REST = 90;
@@ -47,6 +49,7 @@ export default function Active() {
   const [rest, setRest] = useState<{ end: number; total: number } | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [heard, setHeard] = useState<string | null>(null);
 
   // Tick every quarter second; end the rest when its time is up.
   const restRef = useRef(rest);
@@ -86,13 +89,13 @@ export default function Active() {
   const setField = (ei: number, si: number, k: 'w' | 'r', v: string) =>
     update((x) => ({ ...x, ex: x.ex.map((e, i) => (i !== ei ? e : { ...e, sets: e.sets.map((st, j) => (j === si ? { ...st, [k]: v } : st)) })) }));
 
-  const markSet = (ei: number, si: number) => {
+  const markSet = (ei: number, si: number, said?: { w: string; r: string }) => {
     const x = s.ex[ei];
     const st = x.sets[si];
     const info = exInfo(x, lang);
-    if (st.done) return update((ss) => ({ ...ss, ex: ss.ex.map((e, i) => (i !== ei ? e : { ...e, sets: e.sets.map((y, j) => (j === si ? { ...y, done: false } : y)) })) }));
-    const w = st.w === '' ? String(st.lw || 0) : st.w;
-    const r = st.r === '' ? String(st.lr) : st.r;
+    if (st.done && !said) return update((ss) => ({ ...ss, ex: ss.ex.map((e, i) => (i !== ei ? e : { ...e, sets: e.sets.map((y, j) => (j === si ? { ...y, done: false } : y)) })) }));
+    const w = said?.w ?? (st.w === '' ? String(st.lw || 0) : st.w);
+    const r = said?.r ?? (st.r === '' ? String(st.lr) : st.r);
     const easy = +r >= topReps(x.reps) && +w >= st.lw && info.type !== 'Bodyweight' && !info.timed && +w > 0;
     const next: Session = {
       ...s,
@@ -102,6 +105,34 @@ export default function Active() {
     const more = next.ex.some((e) => e.sets.some((z) => !z.done));
     if (more) setRest({ end: Date.now() + REST * 1000, total: REST });
     else toast(t('All sets done. Tap Finish.'), { ai: true });
+  };
+
+  // Say a set: "Bench 80 kilos, 10 reps" fills and finishes the next set of that exercise (design: voiceSet).
+  const voiceSet = async () => {
+    if (heard !== null) return stopListening();
+    if (!canListen()) return toast(t('Voice input isn’t available here. Type your sets instead.'), { icon: 'mic' });
+    setHeard('');
+    const text = await listen(lang);
+    if (!text) {
+      setHeard(null);
+      return toast(t('I didn’t catch that. Try “Bench 80 kilos, 10 reps”.'), { icon: 'mic' });
+    }
+    setHeard(text);
+    setTimeout(() => setHeard(null), 1500);
+    const { w, r } = parseSet(text);
+    if (w === null && r === null) return toast(t('I didn’t catch the weight or reps. Try “80 kilos, 10 reps”.'), { icon: 'mic' });
+    const named = matchExercise(text, s.ex.map((x) => `${exInfo(x, 'en').name} ${lang === 'ar' ? exInfo(x, 'ar').name : ''}`));
+    const ei = named >= 0 ? named : s.ex.findIndex((x) => x.sets.some((y) => !y.done));
+    if (ei < 0) return toast(t('All sets are already logged'), { icon: 'info' });
+    const x = s.ex[ei];
+    const si = x.sets.findIndex((y) => !y.done);
+    const name = exInfo(x, lang).name;
+    if (si < 0) return toast(t('All {x} sets are already logged', { x: name }), { icon: 'info' });
+    const timed = exInfo(x, lang).timed;
+    const ww = timed ? '' : String(w ?? (x.sets[si].w || x.sets[si].lw || 0));
+    const rr = String(r ?? (x.sets[si].r || x.sets[si].lr));
+    markSet(ei, si, { w: ww, r: rr });
+    toast(timed ? t('Logged {x}: {r} s', { x: name, r: rr }) : t('Logged {x}: {w} kg × {r}', { x: name, w: ww, r: rr }), { ai: true });
   };
 
   const finish = async () => {
@@ -256,9 +287,18 @@ export default function Active() {
                 {t('Tap ✓ after each set')}
               </Text>
             </View>
+            <Springy onPress={voiceSet} scaleTo={0.92} accessibilityLabel={t('Log a set by voice')} style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: heard !== null ? c.cobalt : c.inset }}>
+              <Icon name="mic" size={20} color={heard !== null ? '#FFFFFF' : c.text} />
+            </Springy>
             <Button small kind="glass" icon="timer" title={t('Rest')} onPress={() => setRest({ end: Date.now() + REST * 1000, total: REST })} />
           </Glass>
         )}
+        {heard !== null ? (
+          <Glass style={{ position: 'absolute', bottom: 76, alignSelf: 'center', borderRadius: 22, paddingHorizontal: 16, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Icon name="mic" size={18} color={c.cobalt} />
+            <Text weight={700}>{heard ? `“${heard}”` : t('Listening…')}</Text>
+          </Glass>
+        ) : null}
       </View>
 
       <Sheet open={confirm} onClose={() => setConfirm(false)}>

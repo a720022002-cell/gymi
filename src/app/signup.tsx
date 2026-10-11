@@ -2,6 +2,7 @@ import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
+import { GymHoursEditor } from '@/components/coach/GymHours';
 import { Field, PasswordMeter } from '@/components/Field';
 import { Icon } from '@/components/Icon';
 import { OtpInput } from '@/components/OtpInput';
@@ -9,11 +10,12 @@ import { PhoneField } from '@/components/PhoneField';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
-import { Button, Card, ErrorText, Label, Option, ProgDots, Row, Segmented } from '@/components/ui';
+import { Button, Card, Chip, ErrorText, Label, Option, ProgDots, Row, Segmented, Springy } from '@/components/ui';
 import { Wheel } from '@/components/Wheel';
 import { useT } from '@/i18n';
 import { EMAIL_CODES } from '@/lib/config';
 import { profileComplete, useAuth } from '@/lib/auth';
+import { applyCoach, type GymHours, myApplication, SOCIALS, SPECIALTIES } from '@/lib/coaching';
 import { useSignupDraft } from '@/lib/signupDraft';
 import {
   ageFrom,
@@ -40,9 +42,11 @@ export default function SignUp() {
   const auth = useAuth();
   const { step: stepParam } = useLocalSearchParams<{ step?: string }>();
   const [step, setStep] = useState<Step>(stepParam === 'about' ? 2 : 0);
+  const { accountType } = useSignupDraft();
+  const isCoach = (auth.profile?.account_type ?? accountType) === 'coach';
 
-  // Logged in with a finished profile: nothing to do here.
-  if (auth.session && profileComplete(auth.profile)) return <Redirect href="/home" />;
+  // Logged in with a finished profile: nothing to do here (coaches still send their application on step 3).
+  if (auth.session && profileComplete(auth.profile) && !(isCoach && step === 2)) return <Redirect href="/home" />;
   // Step 3 needs a logged-in user.
   if (step === 2 && !auth.session && !auth.loading) return <Redirect href="/welcome" />;
 
@@ -51,7 +55,7 @@ export default function SignUp() {
       <ProgDots step={step} />
       {step === 0 ? <Basics onNext={() => setStep(1)} /> : null}
       {step === 1 ? <Verify onBack={() => setStep(0)} onVerified={() => setStep(2)} /> : null}
-      {step === 2 ? <About /> : null}
+      {step === 2 ? isCoach ? <CoachApplication /> : <About /> : null}
     </Screen>
   );
 }
@@ -409,7 +413,6 @@ function About() {
   const [weight, setWeight] = useState('');
   const [e, setE] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
-  const isCoach = auth.profile?.account_type === 'coach';
   const thisYear = new Date().getFullYear();
 
   const liveHeight = height && (Number(height) > 230 || (height.length >= 3 && Number(height) < 120)) ? 'Height must be 120 to 230 cm.' : '';
@@ -439,7 +442,8 @@ function About() {
     setBusy(false);
     if (r.error) return setE({ save: r.error });
     toast(t('Welcome to Gymi'), { icon: 'check' });
-    router.replace('/home');
+    // Home asks "Got an invite code?" next, then opens the morning check-in.
+    router.replace({ pathname: '/home', params: { welcome: '1' } });
   };
 
   return (
@@ -448,14 +452,6 @@ function About() {
       <Text color="sec" style={{ marginTop: 4 }}>
         {t('We use this to work out your calories. You can change it later.')}
       </Text>
-      {isCoach ? (
-        <Card style={{ marginTop: 16, flexDirection: 'row', gap: 12, alignItems: 'flex-start', padding: 14 }}>
-          <Icon name="info" size={18} color={c.cobalt} />
-          <Text variant="small" style={{ flex: 1 }}>
-            {t('Our team checks every coach before they can take clients. You can use Gymi for your own training while you wait.')}
-          </Text>
-        </Card>
-      ) : null}
 
       <Label>{t('Gender')}</Label>
       <Segmented
@@ -541,6 +537,183 @@ function About() {
       <View style={{ marginTop: 24 }}>
         <Button title={t('Continue')} onPress={save} loading={busy} />
       </View>
+    </View>
+  );
+}
+
+/* ---------- Step 3 for coaches: the coach application, in two pages ---------- */
+const COACH_TYPES: { k: string; name: string; desc: string; icon: 'user' | 'globe' | 'users' }[] = [
+  { k: 'Personal', name: 'Personal coach', desc: 'In person at a gym', icon: 'user' },
+  { k: 'Online', name: 'Online coach', desc: 'Plans and check-ins in the app', icon: 'globe' },
+  { k: 'Both', name: 'Both', desc: 'In person and online', icon: 'users' },
+];
+// Same choices as the coach application screen (the Gymi team's review reads these).
+const YEARS = ['Under 1', '1 to 2', '3 to 5', '6 to 10', 'Over 10'];
+
+function CoachApplication() {
+  const { t } = useT();
+  const { colors: c } = useSettings();
+  const auth = useAuth();
+  const toast = useToast();
+  const [page, setPage] = useState(0);
+  const [type, setType] = useState<string | null>(null);
+  const [gym, setGym] = useState('');
+  const [hours, setHours] = useState<GymHours[]>([]);
+  const [years, setYears] = useState<string | null>(null);
+  const [spec, setSpec] = useState<string[]>([]);
+  const [certs, setCerts] = useState('');
+  const [socials, setSocials] = useState<Record<string, string>>({});
+  const [bio, setBio] = useState('');
+  const [e, setE] = useState<Errors>({});
+  const [busy, setBusy] = useState(false);
+  const [hasApp, setHasApp] = useState(false);
+
+  // Already applied (e.g. came back through the email link): go home.
+  useEffect(() => {
+    let alive = true;
+    myApplication().then((a) => alive && a && setHasApp(true));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  if (hasApp) return <Redirect href="/home" />;
+
+  const check = () => {
+    const er: Errors = {};
+    if (!type) er.ctype = 'Pick how you coach.';
+    else if (type !== 'Online' && !gym.trim()) er.gym = 'Add the gym you coach at.';
+    if (!years) er.cyears = 'Pick one.';
+    setE(er);
+    return !Object.keys(er).length;
+  };
+
+  const next = async () => {
+    if (!check()) return setPage(0);
+    if (page === 0) return setPage(1);
+    setBusy(true);
+    const clean = Object.fromEntries(Object.entries(socials).map(([k, v]) => [k, v.trim()]).filter(([, v]) => v));
+    const ok = await applyCoach({
+      coach_type: type!,
+      gym: type === 'Online' ? '' : gym.trim(),
+      city: '',
+      years: years!,
+      specialties: spec,
+      certs: certs.trim(),
+      socials: clean,
+      bio: bio.trim(),
+      hours: type === 'Online' ? [] : hours.filter((h) => h.days.length),
+    });
+    setBusy(false);
+    if (!ok) return setE({ save: 'Couldn’t send. Please try again.' });
+    await auth.refreshProfile().catch(() => null);
+    toast(t('Application sent. We usually reply within 2 days.'), { icon: 'check' });
+    router.replace('/home');
+    setTimeout(() => router.push('/coachapp'), 400);
+  };
+
+  return (
+    <View>
+      <Text variant="h1">{t(page ? 'Proof and links' : 'Your coach application')}</Text>
+      <Text color="sec" style={{ marginTop: 4 }}>
+        {t(page ? 'Optional, but it helps us approve you faster.' : 'Tell us how you coach. It takes 2 minutes.')}
+      </Text>
+      {page === 0 ? (
+        <>
+          <Card style={{ marginTop: 16, flexDirection: 'row', gap: 12, alignItems: 'flex-start', padding: 14 }}>
+            <Icon name="info" size={18} color={c.cobalt} />
+            <Text variant="small" style={{ flex: 1 }}>
+              {t('Our team checks every coach before they can take clients. You can use Gymi for your own training while you wait.')}
+            </Text>
+          </Card>
+          <Label>{t('How do you coach?')}</Label>
+          <Row gap={8} style={{ alignItems: 'stretch' }}>
+            {COACH_TYPES.map((x) => (
+              <Springy
+                key={x.k}
+                onPress={() => {
+                  setType(x.k);
+                  setE({ ...e, ctype: undefined });
+                }}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: type === x.k }}
+                style={{ flex: 1, backgroundColor: c.card, borderRadius: 18, paddingVertical: 12, paddingHorizontal: 6, alignItems: 'center', borderWidth: 2, borderColor: type === x.k ? c.cobalt : 'transparent' }}>
+                <Icon name={x.icon} size={22} color={type === x.k ? c.cobalt : c.sec} />
+                <Text variant="small" weight={700} center style={{ marginTop: 4 }}>
+                  {t(x.name)}
+                </Text>
+                <Text variant="xs" color="sec" center style={{ marginTop: 2, lineHeight: 15 }}>
+                  {t(x.desc)}
+                </Text>
+              </Springy>
+            ))}
+          </Row>
+          <ErrorText>{e.ctype ? t(e.ctype) : null}</ErrorText>
+          {type && type !== 'Online' ? (
+            <>
+              <Field
+                label={t('The gym you coach at')}
+                value={gym}
+                onChangeText={(v) => {
+                  setGym(v);
+                  setE({ ...e, gym: undefined });
+                }}
+                placeholder={t('Fitness Time, Olaya')}
+                maxLength={80}
+                error={e.gym ? t(e.gym) : null}
+              />
+              <Label optional={t('(optional)')}>{t('When you’re at the gym')}</Label>
+              <Text variant="xs" color="sec" style={{ marginTop: -4, marginBottom: 8, marginHorizontal: 4 }}>
+                {t('Clients can ask to meet you at these times.')}
+              </Text>
+              <GymHoursEditor value={hours} onChange={setHours} />
+            </>
+          ) : null}
+          <Label>{t('Years coaching')}</Label>
+          <Row gap={8} style={{ flexWrap: 'wrap' }}>
+            {YEARS.map((y) => (
+              <Chip
+                key={y}
+                title={t(y)}
+                on={years === y}
+                onPress={() => {
+                  setYears(y);
+                  setE({ ...e, cyears: undefined });
+                }}
+              />
+            ))}
+          </Row>
+          <ErrorText>{e.cyears ? t(e.cyears) : null}</ErrorText>
+          <Label>{t('You specialize in')}</Label>
+          <Row gap={8} style={{ flexWrap: 'wrap' }}>
+            {SPECIALTIES.map((x) => (
+              <Chip key={x} title={t(x)} on={spec.includes(x)} onPress={() => setSpec(spec.includes(x) ? spec.filter((y) => y !== x) : [...spec, x])} />
+            ))}
+          </Row>
+        </>
+      ) : (
+        <>
+          <Field
+            label={t('Certificates')}
+            optional={t('(optional)')}
+            value={certs}
+            onChangeText={setCerts}
+            placeholder={t('For example: ACE, NASM, ISSA, or a local license')}
+            multiline
+            maxLength={500}
+            style={{ minHeight: 72, paddingTop: 12 }}
+          />
+          <Label optional={t('(optional)')}>{t('Social media and website')}</Label>
+          {SOCIALS.slice(0, 4).map(([k, ph]) => (
+            <Field key={k} label={k} value={socials[k] ?? ''} onChangeText={(v) => setSocials({ ...socials, [k]: v })} placeholder={ph} autoCapitalize="none" autoCorrect={false} maxLength={80} ltr />
+          ))}
+          <Field label={t('About you')} optional={t('(optional)')} value={bio} onChangeText={setBio} placeholder={t('Who you coach and how')} multiline maxLength={200} style={{ minHeight: 84, paddingTop: 12 }} />
+        </>
+      )}
+      <ErrorText>{e.save ? t(e.save) : null}</ErrorText>
+      <View style={{ marginTop: 24 }}>
+        <Button title={t(page ? 'Send application' : 'Next')} onPress={next} loading={busy} />
+      </View>
+      {page ? <Button title={t('Back')} kind="ghost" style={{ marginTop: 8 }} onPress={() => setPage(0)} /> : null}
     </View>
   );
 }

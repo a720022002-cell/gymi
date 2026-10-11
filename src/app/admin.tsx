@@ -1,6 +1,8 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { Linking, TextInput, View } from 'react-native';
+
+import { hoursText } from '@/components/coach/GymHours';
 
 import { Thinking } from '@/components/food/Thinking';
 import { Icon } from '@/components/Icon';
@@ -12,7 +14,8 @@ import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, ErrorText, Row, Segmented } from '@/components/ui';
 import { useT } from '@/i18n';
-import { type AdminStats, adminStats, type AdminUser, adminUsers, coachQueue, type CoachQueueRow, decideCoach, useIsAdmin } from '@/lib/admin';
+import { type AdminStats, adminStats, type AdminUser, adminUsers, coachQueue, type CoachQueueRow, decideCoach, REJECT_REASONS, useIsAdmin } from '@/lib/admin';
+import { certUrl } from '@/lib/coaching';
 import { fmt } from '@/lib/nutrition';
 import { shortDate } from '@/lib/progress';
 import { useSettings } from '@/theme/settings';
@@ -105,6 +108,7 @@ function Overview({ go }: { go: (t: Tab) => void }) {
 
 function Coaches() {
   const { t, lang } = useT();
+  const [pick, setPick] = useState<string | null>(null);
   const { colors: c } = useSettings();
   const toast = useToast();
   const [list, setList] = useState<CoachQueueRow[] | null>(null);
@@ -126,12 +130,14 @@ function Coaches() {
   const rows = list.filter((x) => x.coach_status === f);
   const decide = async (approve: boolean) => {
     if (!open) return;
-    if (!approve && !reason.trim()) return;
-    const ok = await decideCoach(open.user_id, approve, approve ? undefined : reason.trim());
+    const why = [pick ? t(pick) : '', reason.trim()].filter(Boolean).join('. ');
+    if (!approve && !why) return;
+    const ok = await decideCoach(open.user_id, approve, approve ? undefined : why);
     toast(ok ? t(approve ? '{n} is now an approved coach' : '{n} was not approved', { n: open.name || open.username }) : t('Couldn’t save. Please try again.'), { icon: ok ? 'check' : 'warn' });
     setOpen(null);
     setReject(false);
     setReason('');
+    setPick(null);
     load();
   };
   return (
@@ -182,6 +188,7 @@ function Coaches() {
                   ['Years coaching', open.years],
                   ['Specialties', open.specialties?.map((s) => t(s)).join(', ')],
                   ['Certificates', open.certs],
+                  ['When they’re at the gym', open.hours?.length ? hoursText(open.hours, t, lang) : null],
                   ['Social media', open.socials ? Object.entries(open.socials).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join('\n') : null],
                   ['About', open.bio],
                   ['Reason given', open.reason],
@@ -196,6 +203,32 @@ function Coaches() {
                     <Text variant="small">{v}</Text>
                   </View>
                 ))}
+              {open.cert_files?.length ? (
+                <View style={{ marginTop: 8 }}>
+                  <Text variant="xs" weight={700} color="sec">
+                    {t('Certificate files')}
+                  </Text>
+                  {open.cert_files.map((f) => (
+                    <Button
+                      key={f.path}
+                      small
+                      kind="ghost"
+                      icon="doc"
+                      title={f.name}
+                      style={{ alignSelf: 'flex-start' }}
+                      onPress={async () => {
+                        const u = await certUrl(f.path);
+                        if (u) Linking.openURL(u).catch(() => {});
+                        else toast(t('Couldn’t open the file.'), { icon: 'warn' });
+                      }}
+                    />
+                  ))}
+                </View>
+              ) : open.app_id ? (
+                <Text variant="small" color="sec" style={{ marginTop: 8 }}>
+                  {t('No certificate uploaded')}
+                </Text>
+              ) : null}
               {!open.app_id ? (
                 <Text variant="small" color="sec" style={{ marginTop: 8 }}>
                   {t('Signed up as a coach without filling the application form.')}
@@ -204,18 +237,26 @@ function Coaches() {
             </Card>
             {reject ? (
               <View>
-                <Text weight={700}>{t('Why not? They will see this.')}</Text>
+                <Text weight={700}>{t('Why not approved?')}</Text>
+                <Text variant="small" color="sec">
+                  {t('The applicant sees this.')}
+                </Text>
+                <Row gap={8} style={{ flexWrap: 'wrap', marginTop: 10 }}>
+                  {REJECT_REASONS.map((r) => (
+                    <Chip key={r} title={t(r)} on={pick === r} onPress={() => setPick(pick === r ? null : r)} />
+                  ))}
+                </Row>
                 <TextInput
                   value={reason}
                   onChangeText={setReason}
                   multiline
                   maxLength={300}
-                  placeholder={t('For example: The certificate photo is not readable. Please upload a clearer copy.')}
+                  placeholder={t('Add a note (optional)')}
                   placeholderTextColor={c.sec}
                   style={{ marginTop: 8, minHeight: 80, borderRadius: 14, backgroundColor: c.card, padding: 12, fontSize: 15, color: c.text, textAlignVertical: 'top' }}
                 />
-                <ErrorText>{reason.trim() ? null : t('Write a short reason.')}</ErrorText>
-                <Button kind="danger" title={t('Send decision')} disabled={!reason.trim()} style={{ marginTop: 8 }} onPress={() => decide(false)} />
+                <ErrorText>{reason.trim() || pick ? null : t('Pick a reason or write one.')}</ErrorText>
+                <Button kind="danger" title={t('Send decision')} disabled={!reason.trim() && !pick} style={{ marginTop: 8 }} onPress={() => decide(false)} />
               </View>
             ) : (
               <>

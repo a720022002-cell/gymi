@@ -13,9 +13,10 @@ import { DEFAULT_SHARE, getShare, saveShare, type Share } from '@/lib/social';
 const ITEMS: [keyof Share, string][] = [
   ['workouts', 'Workouts you finish'],
   ['prs', 'Personal records'],
-  ['streak', 'Streaks'],
+  ['streak', 'Streaks and badges'],
   ['weight', 'Weight and trend'],
   ['body', 'Body measurements'],
+  ['photos', 'Progress photos'],
 ];
 
 /** What friends can see (design: fprivacy). */

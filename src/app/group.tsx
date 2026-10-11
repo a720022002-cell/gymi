@@ -32,6 +32,7 @@ export default function GroupScreen() {
   const [text, setText] = useState('');
   const [adding, setAdding] = useState(false);
   const [pick, setPick] = useState<string[]>([]);
+  const [leaving, setLeaving] = useState(false);
 
   const load = useCallback(async () => {
     const [g, board, posts] = await Promise.all([supabase.from('groups').select('name').eq('id', id).maybeSingle(), groupBoard(id), groupFeed(id)]);
@@ -79,7 +80,7 @@ export default function GroupScreen() {
       </View>
       <Row gap={10} style={{ marginTop: 16 }}>
         <Button icon="trophy" title={t('Group challenge')} style={{ flex: 1 }} onPress={() => router.push({ pathname: '/newchallenge', params: { group: d.board.filter((b) => b.user_id !== me).map((b) => b.user_id).join(',') } })} />
-        <Button kind="glass" icon="users" title={t('Train together')} style={{ flex: 1 }} onPress={() => router.push('/together')} />
+        <Button kind="glass" icon="users" title={t('Train together')} style={{ flex: 1 }} onPress={() => router.push({ pathname: '/together', params: { members: d.board.filter((b) => b.user_id !== me).map((b) => b.user_id).join(',') } })} />
       </Row>
       <Text variant="small" weight={700} color="sec" style={{ marginTop: 20, marginBottom: 8, marginHorizontal: 4 }}>
         {t('Progress together')}
@@ -183,12 +184,29 @@ export default function GroupScreen() {
         title={t('Leave group')}
         color={c.down}
         style={{ marginTop: 8 }}
-        onPress={async () => {
-          await leaveGroup(d.id, me);
-          toast(t('You left the group'), { icon: 'users' });
-          router.back();
-        }}
+        onPress={() => setLeaving(true)}
       />
+      <Sheet open={leaving} onClose={() => setLeaving(false)}>
+        <Text variant="h2" center>
+          {t('Leave {n}?', { n: d.name })}
+        </Text>
+        <Text color="sec" center style={{ marginTop: 4 }}>
+          {t('You can be added back by a member.')}
+        </Text>
+        <Button
+          kind="danger"
+          title={t('Leave group')}
+          style={{ marginTop: 16 }}
+          onPress={async () => {
+            const ok = await leaveGroup(d.id, me);
+            setLeaving(false);
+            if (!ok) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+            toast(t('You left the group'), { icon: 'users' });
+            router.back();
+          }}
+        />
+        <Button kind="ghost" title={t('Cancel')} style={{ marginTop: 8 }} onPress={() => setLeaving(false)} />
+      </Sheet>
       <Sheet open={adding} onClose={() => setAdding(false)}>
         <Text variant="h2">{t('Add to {n}', { n: d.name })}</Text>
         <View style={{ height: 12 }} />

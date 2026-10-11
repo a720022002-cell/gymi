@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Platform, View } from 'react-native';
+import { View } from 'react-native';
 
 import { LineChart } from '@/components/Charts';
 import { Thinking } from '@/components/food/Thinking';
@@ -15,13 +15,12 @@ import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { addDays, fmt } from '@/lib/nutrition';
 import { fx, shortDate } from '@/lib/progress';
-import { type ReportStats, useReportData, useReportStats } from '@/lib/report';
+import { escHtml, pdfIsPrint, pdfPage, type ReportStats, sharePdf, useReportData, useReportStats } from '@/lib/report';
 import { useSettings } from '@/theme/settings';
 
 type Inc = { weight: boolean; food: boolean; train: boolean; sleep: boolean; health: boolean };
-const esc = (s: string) => s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch] as string);
 
-/** A clean summary to print or save as PDF for a doctor or coach (design: export). */
+/** A clean summary as a PDF for a doctor or coach: share sheet on phones, print window on the web (design: export). */
 export default function ExportScreen() {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
@@ -60,9 +59,8 @@ export default function ExportScreen() {
     return out;
   };
 
-  const makePdf = () => {
+  const makePdf = async () => {
     if (!s) return;
-    if (Platform.OS !== 'web' || typeof document === 'undefined') return toast(t('PDF export comes with the phone app.'), { icon: 'info' });
     setMaking(true);
     const w = s.weight?.series ?? [];
     let svg = '';
@@ -70,33 +68,22 @@ export default function ExportScreen() {
       const lo = Math.min(...w) - 0.5;
       const hi = Math.max(...w) + 0.5;
       const pts = w.map((v, i) => `${(i / (w.length - 1)) * 500},${80 - ((v - lo) / (hi - lo)) * 76}`).join(' ');
-      svg = `<div class="lbl">${esc(t('Weight (kg)'))}</div><svg viewBox="0 0 500 84" width="100%" height="84"><polyline points="${pts}" fill="none" stroke="#3355FF" stroke-width="2.5" stroke-linejoin="round"/></svg>`;
+      svg = `<div class="lbl">${escHtml(t('Weight (kg)'))}</div><svg viewBox="0 0 500 84" width="100%" height="84"><polyline points="${pts}" fill="none" stroke="#3355FF" stroke-width="2.5" stroke-linejoin="round"/></svg>`;
     }
-    const dir = lang === 'ar' ? 'rtl' : 'ltr';
-    const html = `<!doctype html><html dir="${dir}"><head><meta charset="utf-8"><title>Gymi report</title><style>
-      body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#0A0A0B;margin:32px}
-      .top{display:flex;justify-content:space-between;align-items:center}.brand{font-weight:700;font-size:20px;color:#3355FF}
-      h1{font-size:22px;margin:16px 0 4px}.sub{color:#52525B;font-size:13px}.lbl{color:#52525B;font-size:12px;margin-top:18px}
-      table{width:100%;border-collapse:collapse;margin-top:16px;font-size:14px}td{padding:8px 0;border-bottom:1px solid #E4E4E7}td:last-child{text-align:end;font-weight:600}
-      .note{color:#52525B;font-size:11px;margin-top:24px}</style></head><body>
-      <div class="top"><span class="brand">gymi</span><span class="sub">${esc(label)}</span></div>
-      <h1>${esc(t('{n}, progress report', { n: name }))}</h1><div class="sub">${esc(t('{n} days', { n: s.days }))}</div>
-      ${svg}<table>${rows(s).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>
-      <div class="note">${esc(t('Made with Gymi. Values are logged by the user. Not medical advice.'))}</div></body></html>`;
-    const f = document.createElement('iframe');
-    f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
-    document.body.appendChild(f);
-    const d = f.contentWindow?.document;
-    d?.open();
-    d?.write(html);
-    d?.close();
-    setTimeout(() => {
-      f.contentWindow?.focus();
-      f.contentWindow?.print();
-      setMaking(false);
-      setTimeout(() => f.remove(), 2000);
-      toast(t('Choose “Save as PDF” to keep it or share it.'), { icon: 'doc' });
-    }, 400);
+    const html = pdfPage({
+      lang,
+      title: t('{n}, progress report', { n: name }),
+      sub: t('{n} days', { n: s.days }),
+      range: label,
+      body: `${svg}<table>${rows(s)
+        .map(([k, v]) => `<tr><td>${escHtml(k)}</td><td>${escHtml(v)}</td></tr>`)
+        .join('')}</table>`,
+      note: t('Made with Gymi. Values are logged by the user. Not medical advice.'),
+    });
+    const r = await sharePdf(html, `Gymi report ${a} to ${b}.pdf`);
+    setMaking(false);
+    if (r === 'failed') return toast(t('Couldn’t make the PDF. Please try again.'), { icon: 'warn' });
+    if (pdfIsPrint) toast(t('Choose “Save as PDF” to keep it or share it.'), { icon: 'doc' });
   };
 
   const items: [keyof Inc, string][] = [

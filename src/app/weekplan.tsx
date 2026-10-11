@@ -6,11 +6,12 @@ import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
+import { CoachBanner } from '@/components/train/CoachBanner';
 import { DaySheet } from '@/components/train/DaySheet';
-import { Button, Card, Row, Springy } from '@/components/ui';
+import { Button, Card, Row, Segmented, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useTrain } from '@/lib/train';
-import { DAYS, DAYS_LONG, type Day, onceNote } from '@/lib/training';
+import { DAYS, DAYS_LONG, type Day, onceNote, orderNext, weekOrder } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
 
 const ROW = 64;
@@ -27,7 +28,53 @@ export default function WeekPlan() {
   const [dragging, setDragging] = useState<number | null>(null);
   const week = train.week;
   if (!train.plan) return <Screen title={t('Weekly plan')} back />;
+  const plan = train.plan;
   const seq = week.filter((d) => d.w).map((d) => d.w as string);
+
+  // Your coach's program: a read-only list.
+  if (train.coach)
+    return (
+      <Screen title={t('Weekly plan')} back>
+        <CoachBanner />
+        <Text variant="small" color="sec" style={{ marginHorizontal: 4, marginBottom: 12 }}>
+          {t('Tap a day to see its exercises.')}
+        </Text>
+        <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden' }}>
+          {week.map((d, i) => (
+            <Springy key={i} onPress={() => setOpen(i)} scaleTo={0.99} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingHorizontal: 16, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
+              <Text weight={700} style={{ width: 46 }}>
+                {t(DAYS[i])}
+              </Text>
+              <Text weight={d.w ? 700 : 400} color={d.w ? 'text' : 'sec'} style={{ flex: 1 }} numberOfLines={1}>
+                {d.w ? t(d.w) : t('Rest')}
+                {i === train.todayIdx ? <Text variant="xs" weight={700} color="cobalt">{`  ${t('Today')}`}</Text> : null}
+              </Text>
+              {d.w ? (
+                <Text variant="xs" weight={700} color="sec">
+                  {t('{n} min', { n: plan.workouts[d.w]?.min ?? 0 })}
+                </Text>
+              ) : null}
+              <Icon name="chev" size={16} color={c.sec} />
+            </Springy>
+          ))}
+        </View>
+        <DaySheet d={open} onClose={() => setOpen(null)} />
+      </Screen>
+    );
+
+  const type = plan.type ?? 'fixed';
+  const setType = (v: 'fixed' | 'order') => {
+    if (v === type) return;
+    train.updatePlan(v === 'order' ? { type: v, queue: plan.queue?.length ? plan.queue : weekOrder(plan.week) } : { type: v });
+  };
+  const ord = orderNext(plan, train.logs, train.today);
+  const earliestIdx = Math.round((new Date(`${ord.earliest}T12:00:00`).getTime() - new Date(`${train.today}T12:00:00`).getTime()) / 864e5);
+  const earliest = earliestIdx <= 0 ? t('today') : earliestIdx === 1 ? t('tomorrow') : t(DAYS_LONG[(train.todayIdx + earliestIdx) % 7]);
+  const moveQ = (i: number) => {
+    const q = [...ord.queue];
+    [q[i - 1], q[i]] = [q[i], q[i - 1]];
+    train.updatePlan({ queue: q });
+  };
 
   const save = (next: Day[]) => train.setWeek(next, false);
   const drop = (from: number, to: number) => {
@@ -43,8 +90,18 @@ export default function WeekPlan() {
 
   return (
     <Screen title={t('Weekly plan')} back>
-      <Text variant="small" color="sec" style={{ marginTop: -4 }}>
-        {t('Same days every week. Tap a day to see its exercises. Drag a workout to another day. Locked days never move, and we won’t suggest moving them.')}
+      <Segmented
+        value={type}
+        onChange={setType}
+        options={[
+          { value: 'fixed', label: t('Fixed days') },
+          { value: 'order', label: t('In order') },
+        ]}
+      />
+      <Text variant="small" color="sec" style={{ marginTop: 10 }}>
+        {type === 'fixed'
+          ? t('Same days every week. Tap a day to see its exercises. Drag a workout to another day. Locked days never move, and we won’t suggest moving them.')
+          : t('The day doesn’t matter. You get the next workout in order, with at least one rest day between workouts.')}
       </Text>
       {onceNote(seq) ? (
         <Card style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', marginTop: 12 }}>
@@ -54,6 +111,50 @@ export default function WeekPlan() {
           </Text>
         </Card>
       ) : null}
+      {type === 'order' ? (
+        <View>
+          <Card style={{ marginTop: 12 }}>
+            <Text variant="small" weight={700} color="sec">
+              {t('Up next')}
+            </Text>
+            <Text variant="h2" style={{ marginTop: 4 }}>
+              {ord.next ? t(ord.next) : t('No workouts yet')}
+            </Text>
+            <Text variant="small" color="sec" style={{ marginTop: 4 }}>
+              {train.todayLog ? t('Done today. You need one rest day after each workout.') : t('Earliest: {d}. You need one rest day after each workout.', { d: earliest })}
+            </Text>
+          </Card>
+          <Text variant="small" weight={700} color="sec" style={{ marginTop: 18, marginBottom: 8, marginHorizontal: 4 }}>
+            {t('Order')}
+          </Text>
+          <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden' }}>
+            {ord.queue.map((w, i) => (
+              <Row key={w} gap={12} style={{ minHeight: 56, paddingHorizontal: 14, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
+                <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: w === ord.next ? c.cobalt : c.inset }}>
+                  <Text num size={13} color={w === ord.next ? '#FFFFFF' : c.text}>
+                    {i + 1}
+                  </Text>
+                </View>
+                <Springy onPress={() => router.push({ pathname: '/day-edit', params: { w } })} style={{ flex: 1 }}>
+                  <Text weight={700}>{t(w)}</Text>
+                  <Text variant="xs" color="sec" numberOfLines={1}>
+                    {plan.workouts[w]?.focus ? t(plan.workouts[w].focus) : plan.workouts[w]?.ex.length ? t('{n} min', { n: plan.workouts[w].min }) : t('Add exercises')}
+                  </Text>
+                </Springy>
+                <Springy disabled={!i} onPress={() => moveQ(i)} accessibilityLabel={t('Move up')} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', opacity: i ? 1 : 0.3 }}>
+                  <Icon name="up" size={14} strokeWidth={2.2} />
+                </Springy>
+              </Row>
+            ))}
+          </View>
+          {ord.next && ord.queue.length > 1 ? (
+            <Text variant="small" color="sec" style={{ marginTop: 8, marginHorizontal: 4 }}>
+              {t('When you finish {a}, {b} moves to the top.', { a: t(ord.next), b: t(ord.queue[(ord.idx + 1) % ord.queue.length]) })}
+            </Text>
+          ) : null}
+        </View>
+      ) : (
+      <View>
       <View style={{ marginTop: 12, gap: GAP }}>
         {week.map((d, i) => (
           <View
@@ -107,6 +208,8 @@ export default function WeekPlan() {
         <Button small kind="soft" icon="lock" title={t('Lock all')} onPress={() => save(week.map((x) => ({ ...x, lock: true })))} />
         <Button small kind="soft" icon="unlock" title={t('Unlock all')} onPress={() => save(week.map((x) => ({ ...x, lock: false })))} />
       </Row>
+      </View>
+      )}
       <Button title={t('Save plan')} style={{ marginTop: 20 }} onPress={() => (fresh ? router.replace('/train') : router.back())} />
       <DaySheet d={open} onClose={() => setOpen(null)} />
     </Screen>

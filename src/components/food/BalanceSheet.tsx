@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { TextInput, View } from 'react-native';
 
@@ -83,6 +84,15 @@ export function BalanceSheet() {
             onPress={() => {
               close();
               toast(t('Enjoy it. Anything up to {n} kcal fits today.', { n: fmt(amt) }), { ai: true });
+            }}
+          />
+          <Button
+            kind="glass"
+            title={t('Show high-protein ideas')}
+            style={{ marginTop: 8 }}
+            onPress={() => {
+              close();
+              setTimeout(() => router.push({ pathname: '/coach', params: { ask: t('Free meal ideas with protein, up to {n} kcal', { n: fmt(amt) }) } }), 250);
             }}
           />
           <Button title={t('Cancel')} kind="ghost" style={{ marginTop: 8 }} onPress={() => setFreeAsk(false)} />

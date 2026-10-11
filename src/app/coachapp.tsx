@@ -1,16 +1,18 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { View } from 'react-native';
+import { Linking, View } from 'react-native';
 
 import { Thinking } from '@/components/food/Thinking';
 import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
+import { Sheet } from '@/components/Sheet';
+import { List, ListRow } from '@/components/social/List';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Row } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
-import { type Application, myApplication, withdrawApplication } from '@/lib/coaching';
+import { type Application, certUrl, myApplication, withdrawApplication } from '@/lib/coaching';
 import { useCoachMode } from '@/lib/coachMode';
 import { shortDate } from '@/lib/progress';
 import { useSettings } from '@/theme/settings';
@@ -23,6 +25,7 @@ export default function CoachApplication() {
   const { profile, refreshProfile } = useAuth();
   const [, setCoachMode] = useCoachMode();
   const [a, setA] = useState<Application | null | undefined>(undefined);
+  const [confirm, setConfirm] = useState(false);
   useFocusEffect(
     useCallback(() => {
       let alive = true;
@@ -100,6 +103,66 @@ export default function CoachApplication() {
           </Row>
         ))}
       </Card>
+      {a ? (
+        <>
+          <Text variant="small" weight={700} color="sec" style={{ marginHorizontal: 4, marginBottom: 8 }}>
+            {t('What you sent')}
+          </Text>
+          <List>
+            <ListRow first>
+              <Icon name={a.coach_type === 'Online' ? 'globe' : 'train'} size={18} />
+              <View style={{ flex: 1 }}>
+                <Text weight={700}>{a.coach_type === 'Online' ? t('Online coach') : `${t(a.coach_type === 'Both' ? 'In person and online' : 'Personal coach')}${a.gym ? `, ${a.gym}` : ''}`}</Text>
+                <Text variant="xs" color="sec">
+                  {`${t('{n} years', { n: t(a.years) })}, ${a.specialties.map((x) => t(x)).join(', ') || t('No specialty picked')}`}
+                </Text>
+              </View>
+            </ListRow>
+            {(a.cert_files ?? []).map((f) => (
+              <ListRow
+                key={f.path}
+                onPress={async () => {
+                  const u = await certUrl(f.path);
+                  if (u) Linking.openURL(u).catch(() => {});
+                }}>
+                <Icon name="doc" size={18} />
+                <View style={{ flex: 1 }}>
+                  <Text weight={700} numberOfLines={1}>
+                    {f.name}
+                  </Text>
+                  <Text variant="xs" color="sec">
+                    {t('Certificate')}
+                  </Text>
+                </View>
+              </ListRow>
+            ))}
+            {!(a.cert_files ?? []).length ? (
+              <ListRow>
+                <Icon name="doc" size={18} color={c.sec} />
+                <View style={{ flex: 1 }}>
+                  <Text weight={700}>{a.certs || t('No certificate')}</Text>
+                  <Text variant="xs" color="sec">
+                    {a.certs ? t('Certificate') : t('Optional')}
+                  </Text>
+                </View>
+              </ListRow>
+            ) : null}
+            {Object.entries(a.socials ?? {})
+              .filter(([, v]) => v)
+              .map(([k, v]) => (
+                <ListRow key={k}>
+                  <Icon name={k === 'Website' ? 'globe' : 'share'} size={18} />
+                  <View style={{ flex: 1 }}>
+                    <Text weight={700}>{v}</Text>
+                    <Text variant="xs" color="sec">
+                      {k}
+                    </Text>
+                  </View>
+                </ListRow>
+              ))}
+          </List>
+        </>
+      ) : null}
       {status === 'approved' ? (
         <Button title={t('Open the coach view')} onPress={() => (setCoachMode(true), router.replace('/cclients'))} />
       ) : status === 'rejected' ? (
@@ -108,14 +171,30 @@ export default function CoachApplication() {
         <Button
           kind="soft"
           title={t('Withdraw application')}
+          onPress={() => setConfirm(true)}
+        />
+      )}
+      <Sheet open={confirm} onClose={() => setConfirm(false)}>
+        <Text variant="h2" center>
+          {t('Withdraw your application?')}
+        </Text>
+        <Text color="sec" center style={{ marginTop: 4 }}>
+          {t('You can apply again any time.')}
+        </Text>
+        <Button
+          kind="danger"
+          title={t('Withdraw')}
+          style={{ marginTop: 16 }}
           onPress={async () => {
+            setConfirm(false);
             await withdrawApplication();
             await refreshProfile().catch(() => null);
             toast(t('Application withdrawn'), { icon: 'info' });
             router.back();
           }}
         />
-      )}
+        <Button kind="glass" title={t('Keep it')} style={{ marginTop: 8 }} onPress={() => setConfirm(false)} />
+      </Sheet>
     </Screen>
   );
 }

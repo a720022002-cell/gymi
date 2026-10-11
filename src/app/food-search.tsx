@@ -7,10 +7,12 @@ import { Icon } from '@/components/Icon';
 import { PortionSheet } from '@/components/food/PortionSheet';
 import { Screen } from '@/components/Screen';
 import { fontFor, Text } from '@/components/Text';
-import { Card, Chip, Row, Springy } from '@/components/ui';
+import { Button, Card, Chip, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
+import { useFood } from '@/lib/food';
 import { type DbFood, foodName, searchFoods, servingLabel } from '@/lib/foodsDb';
 import { fmt } from '@/lib/nutrition';
+import { canListen, listen, stopListening } from '@/lib/speech';
 import { useSettings } from '@/theme/settings';
 
 const CATS: [string | null, string][] = [
@@ -30,6 +32,15 @@ export default function FoodSearch() {
   const [doneKey, setDoneKey] = useState<string | null>(null);
   const loading = doneKey !== `${cat}|${q}`;
   const [picked, setPicked] = useState<DbFood | null>(null);
+  const [listening, setListening] = useState(false);
+  const food = useFood();
+  const voice = async () => {
+    if (listening) return stopListening();
+    setListening(true);
+    const s = await listen(lang);
+    setListening(false);
+    if (s) setQ(s.trim());
+  };
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const latest = useRef(0);
 
@@ -83,9 +94,10 @@ export default function FoodSearch() {
               <Text variant="h3" center style={{ marginTop: 8 }}>
                 {t('No match for “{q}”', { q })}
               </Text>
-              <Text variant="small" color="sec" center style={{ marginTop: 4 }}>
-                {t('Try another spelling, or create your own meal from Saved meals.')}
+              <Text variant="small" color="sec" center style={{ marginTop: 4, marginBottom: 12 }}>
+                {t('Type it instead and your coach will estimate it.')}
               </Text>
+              <Button small title={t('Type it instead')} style={{ alignSelf: 'center' }} onPress={() => food.openTyping(q)} />
             </Card>
           )}
         </View>
@@ -100,7 +112,7 @@ export default function FoodSearch() {
             value={q}
             onChangeText={setQ}
             autoFocus
-            placeholder={t('kabsa, mandi, shawarma…')}
+            placeholder={t(listening ? 'Listening…' : 'kabsa, mandi, shawarma…')}
             placeholderTextColor={c.sec}
             autoCorrect={false}
             returnKeyType="search"
@@ -109,6 +121,10 @@ export default function FoodSearch() {
           {q ? (
             <Springy onPress={() => setQ('')} accessibilityLabel={t('Clear')} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: c.pill, alignItems: 'center', justifyContent: 'center' }}>
               <Icon name="close" size={18} />
+            </Springy>
+          ) : canListen() ? (
+            <Springy onPress={voice} accessibilityLabel={t('Voice search')} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: listening ? c.cobalt : c.pill, alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="mic" size={20} color={listening ? '#FFFFFF' : c.text} />
             </Springy>
           ) : null}
         </Glass>

@@ -59,7 +59,7 @@ export default function HealthScreen() {
               ? bad
                 ? t('{d} report, {n} values to check with your doctor', { d: shortDate(bt.day, lang), n: bad })
                 : t('{d} report, all values in the normal range', { d: shortDate(bt.day, lang) })
-              : t('Take a photo of a lab report and I’ll read the values')}
+              : t('Upload a lab report and I’ll read the values')}
           </Text>
         </View>
         <Icon name="chev" size={18} color={c.sec} />

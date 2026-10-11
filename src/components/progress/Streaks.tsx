@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 import { useT } from '@/i18n';
+import { useAuth } from '@/lib/auth';
 import { addDays } from '@/lib/nutrition';
 import { type Badge, badgeLevel, badgeProgress, COMMIT_LABEL, type CommitKey } from '@/lib/progress';
+import { getShowcase, saveShowcase, type Showcase } from '@/lib/social';
 import { useTrain } from '@/lib/train';
-import { DAYS, weekStart } from '@/lib/training';
+import { DAYS, DAYS_LONG, weekStart } from '@/lib/training';
 import { useStreaks } from '@/lib/useProgress';
 import { useSettings } from '@/theme/settings';
 
@@ -15,7 +17,8 @@ import { Icon, type IconName, Mark } from '../Icon';
 import { Bar, Ring } from '../Ring';
 import { Sheet } from '../Sheet';
 import { Text } from '../Text';
-import { Button, Card, Row, Segmented, Springy } from '../ui';
+import { useToast } from '../Toast';
+import { Button, Card, Row, Segmented, Springy, Toggle } from '../ui';
 import { SecHead } from './bits';
 
 const LVN = ['Locked', 'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5'];
@@ -23,8 +26,37 @@ const LVN = ['Locked', 'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5'];
 /** Streaks, workouts in a row, commitment rate and badges (design: achievements). */
 export function Streaks({ sub, setSub }: { sub: number; setSub: (n: number) => void }) {
   const { t } = useT();
+  const { colors: c } = useSettings();
   const s = useStreaks();
+  const toast = useToast();
+  const { session } = useAuth();
+  const uid = session?.user.id;
   const [badge, setBadge] = useState<Badge | null>(null);
+  const [show, setShow] = useState<Showcase | null>(null);
+  useEffect(() => {
+    if (!uid) return;
+    let alive = true;
+    getShowcase(uid)
+      .then((x) => alive && setShow(x))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [uid]);
+  const pinned = (show?.badges ?? []).map((b) => b.id);
+  // Up to 3 badges on your profile (friends see them).
+  const togglePin = async (b: Badge) => {
+    if (!uid || !show) return;
+    const on = pinned.includes(b.id);
+    if (!on && pinned.length >= 3) return toast(t('You can show 3 badges. Remove one first.'), { icon: 'info' });
+    const next: Showcase = { ...show, badges: on ? show.badges.filter((x) => x.id !== b.id) : [...show.badges, { id: b.id, name: b.name, icon: b.icon, level: badgeLevel(b), tiers: b.tiers, v: b.v, unit: b.unit }] };
+    setShow(next);
+    const ok = await saveShowcase(uid, next);
+    if (!ok) {
+      setShow(show);
+      toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+    }
+  };
   return (
     <View>
       <Segmented<string>
@@ -40,7 +72,7 @@ export function Streaks({ sub, setSub }: { sub: number; setSub: (n: number) => v
       {sub === 0 ? <OverallStreak /> : sub === 1 ? <WorkoutStreak /> : <Commitment />}
       <SecHead title={t('Badges')} />
       <Text variant="small" color="sec" style={{ marginHorizontal: 4, marginTop: -4, marginBottom: 12 }}>
-        {t('Each badge has levels. Tap one to see what’s next.')}
+        {t('Each badge has levels. Tap one to see what’s next or show it on your profile.')}
       </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {s.badges.map((b) => {
@@ -48,6 +80,11 @@ export function Streaks({ sub, setSub }: { sub: number; setSub: (n: number) => v
           return (
             <Springy key={b.id} onPress={() => setBadge(b)} style={{ width: '31.8%' }}>
               <View style={{ alignItems: 'center', gap: 6, paddingVertical: 14, paddingHorizontal: 4, borderRadius: 20, backgroundColor: undefined }}>
+                {pinned.includes(b.id) ? (
+                  <View style={{ position: 'absolute', top: 8, right: 8 }}>
+                    <Icon name="bookmark" size={13} color={c.cobalt} strokeWidth={2.4} />
+                  </View>
+                ) : null}
                 <BadgeIcon b={b} size={58} />
                 <Text variant="xs" weight={700} center numberOfLines={1}>
                   {t(b.name)}
@@ -61,7 +98,7 @@ export function Streaks({ sub, setSub }: { sub: number; setSub: (n: number) => v
         })}
       </View>
       <Sheet open={!!badge} onClose={() => setBadge(null)}>
-        {badge ? <BadgeDetail b={badge} onClose={() => setBadge(null)} /> : null}
+        {badge ? <BadgeDetail b={badge} pinned={pinned.includes(badge.id)} count={pinned.length} canPin={!!show} onPin={() => togglePin(badge)} onClose={() => setBadge(null)} /> : null}
       </Sheet>
     </View>
   );
@@ -124,7 +161,7 @@ export function BadgeIcon({ b, size }: { b: Badge; size: number }) {
   );
 }
 
-function BadgeDetail({ b, onClose }: { b: Badge; onClose: () => void }) {
+function BadgeDetail({ b, pinned, count, canPin, onPin, onClose }: { b: Badge; pinned: boolean; count: number; canPin: boolean; onPin: () => void; onClose: () => void }) {
   const { t } = useT();
   const { colors: c } = useSettings();
   const L = badgeLevel(b);
@@ -177,6 +214,21 @@ function BadgeDetail({ b, onClose }: { b: Badge; onClose: () => void }) {
           </Row>
         ))}
       </View>
+      {L ? (
+        <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={{ flex: 1 }}>
+            <Text weight={700}>{t('Show on my profile')}</Text>
+            <Text variant="xs" color="sec">
+              {t('Up to 3 badges. Friends see them. ({n}/3)', { n: count })}
+            </Text>
+          </View>
+          <Toggle value={pinned} onChange={() => canPin && onPin()} label={t('Show on my profile')} />
+        </Card>
+      ) : (
+        <Text variant="small" color="sec" center style={{ marginTop: 4 }}>
+          {t('Unlock it to show it on your profile.')}
+        </Text>
+      )}
       <Button kind="ghost" title={t('Done')} style={{ marginTop: 8 }} onPress={onClose} />
     </View>
   );
@@ -290,6 +342,17 @@ function WorkoutStreak() {
     return { st: d === train.today ? ('today' as const) : ('planned' as const), letter: t(w).slice(0, 1) };
   });
   const recent = train.logs.slice(0, 10).reverse();
+  // The next planned workout: today if it's still to do, else the next day with one.
+  const next = (() => {
+    if (!train.setupDone) return null;
+    if (train.todayName && !train.todayLog) return t('{w} today', { w: t(train.todayName) });
+    for (let i = 1; i <= 7; i++) {
+      const j = (train.todayIdx + i) % 7;
+      const w = train.week[j]?.w;
+      if (w) return i === 1 ? t('{w} tomorrow', { w: t(w) }) : t('{w} on {d}', { w: t(w), d: t(DAYS_LONG[j]) });
+    }
+    return null;
+  })();
   return (
     <Card style={{ alignItems: 'center', paddingVertical: 24 }}>
       <Ring value={s.workouts} max={Math.max(s.bestWorkouts, 1)} size={150} stroke={14}>
@@ -327,8 +390,16 @@ function WorkoutStreak() {
                 </Text>
               </View>
             ))}
+            <View style={{ width: 30, height: 30, borderRadius: 15, borderWidth: 2, borderStyle: 'dashed', borderColor: c.line, alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="plus" size={14} color={c.sec} strokeWidth={2.4} />
+            </View>
           </Row>
         </>
+      ) : null}
+      {next ? (
+        <Text variant="xs" color="sec" style={{ marginTop: 8 }}>
+          {t('Next: {w}', { w: next })}
+        </Text>
       ) : null}
     </Card>
   );

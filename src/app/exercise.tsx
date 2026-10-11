@@ -63,7 +63,16 @@ export default function ExerciseScreen() {
     );
 
   const steps = lang === 'ar' && e.steps_ar?.length ? e.steps_ar : e.steps_en;
-  const todayW = train.todayName && !train.todayLog ? train.todayName : null;
+  // Today's workout, or the next planned one when today is a rest day or already done.
+  const nextW = (() => {
+    for (let i = 1; i <= 7; i++) {
+      const w = train.week[(train.todayIdx + i) % 7]?.w;
+      if (w && train.plan?.workouts[w]) return w;
+    }
+    return Object.keys(train.plan?.workouts ?? {})[0] ?? null;
+  })();
+  const isToday = !!train.todayName && !train.todayLog && !!train.plan?.workouts[train.todayName];
+  const todayW = isToday ? train.todayName : nextW;
   const inToday = !!todayW && !!train.plan?.workouts[todayW]?.ex.some((x) => x.id === e.id);
 
   const addToToday = () => {
@@ -72,7 +81,7 @@ export default function ExerciseScreen() {
     const W = p.workouts[todayW] ?? { ex: [], focus: '', min: 0 };
     const ex = [...W.ex, toPlanEx(e)];
     train.updatePlan({ workouts: { ...p.workouts, [todayW]: { ...W, ex, min: workoutMinutes(ex) } } });
-    toast(t('{x} added to {w}', { x: dbExName(e, lang), w: t(todayW) }), { icon: 'check' });
+    toast(isToday ? t('{x} added to {w}', { x: dbExName(e, lang), w: t(todayW) }) : t('Added {x} to {w} day', { x: dbExName(e, lang), w: t(todayW) }), { icon: 'check' });
   };
 
   return (
@@ -129,8 +138,13 @@ export default function ExerciseScreen() {
         </View>
       ) : null}
 
-      {todayW ? (
-        <Button title={t(inToday ? 'Already in today’s workout' : 'Add to today’s workout')} disabled={inToday} style={{ marginTop: 24 }} onPress={addToToday} />
+      {todayW && !train.coach ? (
+        <Button
+          title={!inToday ? t('Add to today’s workout') : isToday ? t('Already in today’s workout') : t('Already in {w}', { w: t(todayW) })}
+          disabled={inToday}
+          style={{ marginTop: 24 }}
+          onPress={addToToday}
+        />
       ) : null}
       <Button kind="ghost" title={t('Back')} style={{ marginTop: 8 }} onPress={() => router.back()} />
       <Text variant="xs" color="sec" center style={{ marginTop: 8 }}>

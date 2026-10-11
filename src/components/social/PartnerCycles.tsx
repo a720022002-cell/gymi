@@ -4,6 +4,7 @@ import { View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { partnerCycles } from '@/lib/cycle';
+import { localDay } from '@/lib/nutrition';
 import { shortDate } from '@/lib/progress';
 
 import { Icon } from '../Icon';
@@ -34,6 +35,10 @@ export function PartnerCycles() {
         if (s.onPeriod) parts.push(t('On her period'));
         else if (s.next) parts.push(t('Next period about {d}', { d: shortDate(String(s.next), lang) }));
         if (s.fertileFrom) parts.push(t('Fertile {a} – {b}', { a: shortDate(String(s.fertileFrom), lang), b: shortDate(String(s.fertileTo), lang) }));
+        // Mood and symptoms are only for the day she logged them.
+        const fresh = s.logDay && String(s.logDay) === localDay();
+        if (fresh && s.mood) parts.push(t('Mood today: {x}', { x: String(s.mood).split(', ').map((x) => t(x)).join(', ') }));
+        if (fresh && s.symptoms) parts.push(t('Symptoms today: {x}', { x: String(s.symptoms).split(', ').map((x) => t(x)).join(', ') }));
         return (
           <Card key={r.user_id} style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
             <Icon name="drop" size={20} color="#E11D48" />

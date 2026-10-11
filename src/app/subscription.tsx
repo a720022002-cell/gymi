@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
@@ -7,6 +7,7 @@ import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Row, Segmented } from '@/components/ui';
 import { useT } from '@/i18n';
+import { myInvite } from '@/lib/invites';
 import { useSettings } from '@/theme/settings';
 
 const PRO = { m: 39, y: 299 };
@@ -19,6 +20,14 @@ export default function Subscription() {
   const { colors: c } = useSettings();
   const toast = useToast();
   const [per, setPer] = useState<'m' | 'y'>('y');
+  const [free, setFree] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    myInvite().then((v) => alive && setFree(v.months));
+    return () => {
+      alive = false;
+    };
+  }, []);
   const yr = per === 'y';
   const month = yr ? Math.round(PRO.y / 12) : PRO.m;
   const save = Math.round((1 - PRO.y / (PRO.m * 12)) * 100);
@@ -27,6 +36,17 @@ export default function Subscription() {
       <Text color="sec" style={{ marginTop: -8 }}>
         {t('Start free. Upgrade when you want the full AI coach.')}
       </Text>
+      {free ? (
+        <Card style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: c.inset }}>
+          <Icon name="star" size={20} color={c.cobalt} />
+          <Text variant="small" style={{ flex: 1 }}>
+            <Text variant="small" weight={700}>
+              {free > 1 ? t('You have {n} free months', { n: free }) : t('You have 1 free month')}
+            </Text>{' '}
+            {t('from inviting friends. It’s used first.')}
+          </Text>
+        </Card>
+      ) : null}
       <View style={{ marginTop: 12 }}>
         <Segmented<'m' | 'y'>
           value={per}

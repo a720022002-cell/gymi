@@ -68,10 +68,20 @@ export default function MyCoachScreen() {
         <Text weight={700} color={k.status === 'active' ? 'up' : 'sec'}>
           {t(k.status === 'active' ? 'Your coach' : 'Request sent, waiting for a reply')}
         </Text>
+        <Text variant="small" color="sec">
+          {k.package ? t('{p} package', { p: t(k.package) }) : t('Joined with a code')}
+        </Text>
       </View>
+      <Card onPress={() => router.push({ pathname: '/coachpage', params: { id: k.coach_id } })} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16 }}>
+        <Icon name="user" size={20} color={c.cobalt} />
+        <Text weight={700} style={{ flex: 1 }}>
+          {t('Coach profile')}
+        </Text>
+        <Icon name="chev" size={18} color={c.sec} />
+      </Card>
       {k.status === 'active' ? (
         <>
-          <Card style={{ marginTop: 16 }}>
+          <Card>
             <Text weight={700}>{t('Your targets')}</Text>
             {k.kcal && k.protein ? (
               <Row gap={10} style={{ marginTop: 10 }}>
@@ -172,7 +182,7 @@ function MeetSheet({ k, name, onDone }: { k: MyCoach; name: string; onDone: () =
   const send = async () => {
     if (!time) return;
     setBusy(true);
-    const m = await sendMessage(k.id, t('Can we meet at the gym on {d} at {t}?', { d: t(DAYS[day]), t: fmtTime(time, lang) }));
+    const m = await sendMessage(k.id, t('Can we meet at the gym on {d} at {t}?', { d: t(DAYS[day]), t: fmtTime(time, lang) }), 'meet', { day, time, status: 'pending' });
     setBusy(false);
     if (!m) return toast(t('Couldn’t send. Please try again.'), { icon: 'warn' });
     toast(t('Request sent to your coach'), { icon: 'cal' });

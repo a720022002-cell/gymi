@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { useT } from '@/i18n';
+import { CY_PLAN } from '@/lib/cycle';
+import { useCycleToday } from '@/lib/cyclePhase';
 import { fmt } from '@/lib/nutrition';
 import { useTrain } from '@/lib/train';
 import { applyShift, buildWorkout, DAYS_LONG, exInfo, shiftPlan, weekStart, workoutTitle } from '@/lib/training';
@@ -46,7 +48,8 @@ export function MissedCard() {
   const toast = useToast();
   const train = useTrain();
   const p = train.plan;
-  if (!p || !train.setupDone) return null;
+  // Coach plans and plans in order have no fixed days to miss.
+  if (!p || !train.setupDone || train.coach || p.type === 'order') return null;
   let m: { day: number; w: string; sh: NonNullable<ReturnType<typeof shiftPlan>> } | null = null;
   for (let i = train.todayIdx - 1; i >= 0; i--) {
     const w = train.week[i]?.w;
@@ -133,6 +136,8 @@ export function WorkoutCard() {
   const today = useToday();
   const next = useNextWorkout();
   const [skipOpen, setSkipOpen] = useState(false);
+  const cycle = useCycleToday();
+  const toast = useToast();
 
   if (!train.setupDone)
     return (
@@ -215,6 +220,31 @@ export function WorkoutCard() {
       <Text variant="h2" style={{ marginTop: 4 }}>
         {t('{n} exercises, {m} min', { n: wo.ex.length, m: wo.min })}
       </Text>
+      {cycle && (cycle.phase === 'Luteal' || cycle.phase === 'Period') ? (
+        <View style={{ marginTop: 12, backgroundColor: c.inset, borderRadius: 14, padding: 10 }}>
+          <Row gap={8} style={{ alignItems: 'flex-start' }}>
+            <Icon name="drop" size={16} color={c.cobalt} />
+            <Text variant="small" style={{ flex: 1 }}>
+              <Text variant="small" weight={700}>
+                {t(cycle.phase === 'Luteal' ? 'Luteal phase.' : 'Period.')}
+              </Text>{' '}
+              {t(CY_PLAN[cycle.phase].t)}
+            </Text>
+          </Row>
+          {!today.light && !today.deload && !today.short && !train.session ? (
+            <Springy
+              onPress={() => {
+                train.updatePlan({ light: train.today });
+                toast(t('Lighter today: one set less and about 10% less weight.'), { ai: true });
+              }}
+              style={{ marginTop: 6, marginStart: 24, alignSelf: 'flex-start' }}>
+              <Text variant="small" weight={700} color="link">
+                {t('Make today lighter')}
+              </Text>
+            </Springy>
+          ) : null}
+        </View>
+      ) : null}
       {first ? (
         <Row style={{ justifyContent: 'space-between', marginTop: 12 }}>
           <Text style={{ flex: 1 }} numberOfLines={1}>

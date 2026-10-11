@@ -5,30 +5,59 @@ import { TextInput, View } from 'react-native';
 
 import { Field } from '@/components/Field';
 import { WarnChip } from '@/components/food/Chips';
+import { per100, PickFood } from '@/components/food/PickFood';
 import { Thinking } from '@/components/food/Thinking';
 import { Icon, Mark } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { fontFor, Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
-import { Button, Card, Row, Springy } from '@/components/ui';
+import { Button, Card, Chip, Label, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { type AiError, aiErrorText, askAI } from '@/lib/ai';
-import { useLogFood } from '@/lib/food';
-import { fmt } from '@/lib/nutrition';
+import { useFood, useLogFood } from '@/lib/food';
+import { foodName } from '@/lib/foodsDb';
+import { fmt, planMeals } from '@/lib/nutrition';
 import { takePendingPhoto } from '@/lib/pending';
-import type { Photo } from '@/lib/photo';
+import { type Photo, takePhoto } from '@/lib/photo';
 import { useSettings } from '@/theme/settings';
 
 type Item = { name: string; grams: number; kcal: number; protein: number; carbs: number; fat: number };
 type Result = { title: string; items: Item[]; sugar_high?: boolean; fat_high?: boolean; note?: string };
-/** An item with its numbers per gram, so changing grams scales everything. */
-type Row_ = { name: string; g: number; per: { k: number; p: number; c: number; f: number } };
+/** An item with its numbers per gram; g is the amount in the chosen unit, so changing it scales everything. */
+type Row_ = { name: string; g: number; txt?: string; u: Unit; per: { k: number; p: number; c: number; f: number }; own?: boolean };
+
+const UNITS = ['g', 'tbsp', 'tsp', 'piece', 'cup'] as const;
+type Unit = (typeof UNITS)[number];
+/** Grams in one unit (design: itemCalc). Oils are lighter per spoon; eggs and dates are small pieces. */
+function unitG(u: Unit, name: string): number {
+  const n = name.toLowerCase();
+  if (u === 'g') return 1;
+  if (u === 'tbsp') return /oil|ghee|butter|زيت|سمن|زبدة/.test(n) ? 13.5 : /honey|عسل/.test(n) ? 21 : 15;
+  if (u === 'tsp') return unitG('tbsp', name) / 3;
+  if (u === 'cup') return /milk|laban|juice|water|soup|حليب|لبن|عصير|شوربة/.test(n) ? 240 : 160;
+  return /egg|بيض/.test(n) ? 50 : /date|تمر/.test(n) ? 8 : 100;
+}
+const grams = (x: Row_) => x.g * unitG(x.u, x.name);
+/** Switch to the next unit, keeping about the same amount of food. */
+function nextUnit(x: Row_): Partial<Row_> {
+  const u = UNITS[(UNITS.indexOf(x.u) + 1) % UNITS.length];
+  const v = grams(x) / unitG(u, x.name);
+  return { u, txt: undefined, g: u === 'g' ? Math.round(v) : Math.max(0.5, Math.round(v * 2) / 2) };
+}
 
 const toRows = (items: Item[]): Row_[] =>
   items.map((x) => {
     const g = Math.max(1, x.grams || 100);
-    return { name: x.name, g: Math.round(g), per: { k: (x.kcal || 0) / g, p: (x.protein || 0) / g, c: (x.carbs || 0) / g, f: (x.fat || 0) / g } };
+    return { name: x.name, g: Math.round(g), u: 'g', per: { k: (x.kcal || 0) / g, p: (x.protein || 0) / g, c: (x.carbs || 0) / g, f: (x.fat || 0) / g } };
   });
+
+/** The planned meal closest before now, else the first one. */
+function guessMeal(names: { n: string; t: string }[]) {
+  const d = new Date();
+  const now = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const past = names.filter((m) => m.t <= now);
+  return (past[past.length - 1] ?? names[names.length - 1])?.n ?? 'Snack';
+}
 
 /** What the AI found in your meal photo or your words (design: mealphoto). */
 export default function MealResult() {
@@ -36,8 +65,13 @@ export default function MealResult() {
   const { colors: c } = useSettings();
   const toast = useToast();
   const logFood = useLogFood();
+  const food = useFood();
   const { text } = useLocalSearchParams<{ text?: string }>();
-  const [photo] = useState<Photo | null>(() => takePendingPhoto());
+  const [photo, setPhoto] = useState<Photo | null>(() => takePendingPhoto());
+  const planned = planMeals(food.plan);
+  const mealNames = [...new Set([...planned.map((m) => m.n), 'Snack'])];
+  const [meal, setMeal] = useState(() => guessMeal(planned));
+  const [picking, setPicking] = useState(false);
   const [res, setRes] = useState<Result | null>(null);
   const [rows, setRows] = useState<Row_[]>([]);
   const [err, setErr] = useState<AiError | null>(null);
@@ -45,14 +79,14 @@ export default function MealResult() {
   const [note, setNote] = useState('');
   const [title, setTitle] = useState('');
 
-  const run = (withNote?: string) => {
+  const run = (withNote?: string, pic = photo) => {
     setBusy(true);
     setErr(null);
-    fetchResult(withNote);
+    fetchResult(withNote, pic);
   };
-  const fetchResult = async (withNote?: string) => {
-    const r = photo
-      ? await askAI<Result>('meal_photo', { lang, image: photo.base64, mime: photo.mime, note: withNote })
+  const fetchResult = async (withNote?: string, pic = photo) => {
+    const r = pic
+      ? await askAI<Result>('meal_photo', { lang, image: pic.base64, mime: pic.mime, note: withNote })
       : await askAI<Result>('food_text', { lang, text: `${text ?? ''}${withNote ? `. ${withNote}` : ''}` });
     setBusy(false);
     if (r.error || !r.result) return setErr(r.error ?? 'failed');
@@ -71,13 +105,27 @@ export default function MealResult() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const tot = rows.reduce((a, x) => ({ k: a.k + x.per.k * x.g, p: a.p + x.per.p * x.g, c: a.c + x.per.c * x.g, f: a.f + x.per.f * x.g }), { k: 0, p: 0, c: 0, f: 0 });
+  const tot = rows.reduce(
+    (a, x) => {
+      const g = grams(x);
+      return { k: a.k + x.per.k * g, p: a.p + x.per.p * g, c: a.c + x.per.c * g, f: a.f + x.per.f * g };
+    },
+    { k: 0, p: 0, c: 0, f: 0 },
+  );
+  const retake = async (camera: boolean) => {
+    const p = await takePhoto(camera);
+    if (!p) return;
+    setPhoto(p);
+    setRows([]);
+    setRes(null);
+    run(note.trim() || undefined, p);
+  };
   const set = (i: number, patch: Partial<Row_>) => setRows(rows.map((x, j) => (j === i ? { ...x, ...patch } : x)));
 
   const add = async () => {
     if (!rows.length || tot.k <= 0) return;
     const name = title.trim() || rows.map((x) => x.name).join(t(', '));
-    const row = await logFood({ name: name.slice(0, 200), kcal: tot.k, protein: tot.p, carbs: tot.c, fat: tot.f, sugar_high: !!res?.sugar_high, fat_high: !!res?.fat_high }, toast, t);
+    const row = await logFood({ name: name.slice(0, 200), kcal: tot.k, protein: tot.p, carbs: tot.c, fat: tot.f, meal, sugar_high: !!res?.sugar_high, fat_high: !!res?.fat_high }, toast, t);
     if (row) router.back();
   };
 
@@ -123,7 +171,9 @@ export default function MealResult() {
           {rows.length ? (
             <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden' }}>
               {rows.map((x, i) => (
-                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 60, paddingHorizontal: 12, paddingVertical: 6, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
+                <View
+                  key={i}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 60, paddingHorizontal: 12, paddingVertical: 6, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
                   <Springy onPress={() => setRows(rows.filter((_, j) => j !== i))} accessibilityLabel={t('Remove')} style={{ width: 30, height: 30, alignItems: 'center', justifyContent: 'center' }}>
                     <Icon name="close" size={16} color={c.sec} strokeWidth={2.2} />
                   </Springy>
@@ -132,27 +182,55 @@ export default function MealResult() {
                       value={x.name}
                       onChangeText={(v) => set(i, { name: v })}
                       accessibilityLabel={t('Ingredient')}
-                      style={{ fontFamily: fontFor(lang === 'ar' ? 'arabic' : 'manrope', 700), fontSize: 15, color: c.text, outlineStyle: 'none', textAlign: lang === 'ar' ? 'right' : 'left' } as object}
+                      style={
+                        { fontFamily: fontFor(lang === 'ar' ? 'arabic' : 'manrope', 700), fontSize: 15, color: c.text, outlineStyle: 'none', textAlign: lang === 'ar' ? 'right' : 'left' } as object
+                      }
                     />
                     <Text variant="xs" color="sec">
-                      {t('{k} kcal, {p} g protein', { k: fmt(x.per.k * x.g), p: Math.round(x.per.p * x.g) })}
+                      {t('{k} kcal, {p} g protein', { k: fmt(x.per.k * grams(x)), p: Math.round(x.per.p * grams(x)) })}
+                      {x.own ? `, ${t('your numbers')}` : ''}
                     </Text>
                   </View>
                   <TextInput
-                    value={String(x.g)}
-                    onChangeText={(v) => set(i, { g: Math.min(3000, +v.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/\D/g, '') || 0) })}
-                    inputMode="numeric"
-                    keyboardType="number-pad"
-                    accessibilityLabel={t('Grams')}
-                    style={{ width: 64, height: 40, borderRadius: 10, backgroundColor: c.inset, textAlign: 'center', fontFamily: fontFor('sora', 600), fontSize: 16, color: c.text, outlineStyle: 'none' } as object}
+                    value={x.txt ?? String(x.g)}
+                    onChangeText={(v) => {
+                      const txt = v
+                        .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+                        .replace(/[,٫]/g, '.')
+                        .replace(/[^\d.]/g, '')
+                        .slice(0, 6);
+                      set(i, { txt, g: Math.min(3000, +txt || 0) });
+                    }}
+                    inputMode="decimal"
+                    keyboardType="decimal-pad"
+                    accessibilityLabel={t('Amount')}
+                    style={
+                      {
+                        width: 64,
+                        height: 40,
+                        borderRadius: 10,
+                        backgroundColor: c.inset,
+                        textAlign: 'center',
+                        fontFamily: fontFor('sora', 600),
+                        fontSize: 16,
+                        color: c.text,
+                        outlineStyle: 'none',
+                      } as object
+                    }
                   />
-                  <Text variant="small" weight={700} color="sec">
-                    {t('g')}
-                  </Text>
+                  <Springy
+                    onPress={() => set(i, nextUnit(x))}
+                    accessibilityLabel={t('Unit')}
+                    style={{ minWidth: 52, height: 40, borderRadius: 10, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 }}>
+                    <Text variant="small" weight={700}>
+                      {t(x.u)}
+                    </Text>
+                  </Springy>
                 </View>
               ))}
             </View>
           ) : null}
+          <Button small kind="soft" icon="plus" title={t('Add an ingredient')} style={{ marginTop: 10, alignSelf: 'stretch' }} onPress={() => setPicking(true)} />
           <Field label={t('How was it cooked?')} optional={t('(optional)')} value={note} onChangeText={setNote} placeholder={t('For example: chicken grilled, rice cooked with a little ghee.')} />
           {note.trim() ? <Button small kind="soft" icon="sparkle" title={t('Ask again with this')} style={{ marginTop: 8 }} onPress={() => run(note.trim())} /> : null}
 
@@ -189,9 +267,38 @@ export default function MealResult() {
           <Text variant="xs" color="sec" center>
             {t('AI estimate. Check the numbers before you save.')}
           </Text>
-          <Button title={t('Add {n} kcal', { n: fmt(tot.k) })} disabled={!rows.length || tot.k <= 0} style={{ marginTop: 12 }} onPress={add} />
+          <Label>{t('Add to')}</Label>
+          <Row gap={8} style={{ flexWrap: 'wrap' }}>
+            {mealNames.map((m) => (
+              <Chip key={m} title={t(m)} on={meal === m} onPress={() => setMeal(m)} />
+            ))}
+          </Row>
+          <Button title={t('Add {n} kcal', { n: fmt(tot.k) })} disabled={!rows.length || tot.k <= 0} style={{ marginTop: 16 }} onPress={add} />
         </View>
       ) : null}
+      {photo && !busy ? (
+        <Row gap={10} style={{ marginTop: 8 }}>
+          <View style={{ flex: 1 }}>
+            <Button kind="glass" icon="camera" title={t('Retake photo')} style={{ alignSelf: 'stretch' }} onPress={() => retake(true)} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Button kind="glass" icon="image" title={t('Choose from photos')} style={{ alignSelf: 'stretch' }} onPress={() => retake(false)} />
+          </View>
+        </Row>
+      ) : null}
+      <PickFood
+        open={picking}
+        onClose={() => setPicking(false)}
+        onPick={(f) => {
+          setPicking(false);
+          const per = per100(f);
+          setRows([...rows, { name: foodName(f, lang), g: Math.round(f.serving_g), u: 'g', per: { k: per.k / 100, p: per.p / 100, c: per.c / 100, f: per.f / 100 } }]);
+        }}
+        onOwn={(f) => {
+          setPicking(false);
+          setRows([...rows, { name: f.n, g: Math.round(f.g), u: 'g', own: true, per: { k: f.per.k / 100, p: f.per.p / 100, c: f.per.c / 100, f: f.per.f / 100 } }]);
+        }}
+      />
     </Screen>
   );
 }

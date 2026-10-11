@@ -13,7 +13,7 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { aiErrorText, askAI } from '@/lib/ai';
-import { deleteMealPlan, listMealPlans, type MealPlan, type PlanIng, type PlanMeal, saveMealPlan } from '@/lib/coaching';
+import { assignOne, deleteMealPlan, listMealPlans, type MealPlan, type PlanIng, type PlanMeal, saveMealPlan } from '@/lib/coaching';
 import { foodName } from '@/lib/foodsDb';
 import { fmt } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
@@ -33,7 +33,7 @@ export default function MealEdit() {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, assign } = useLocalSearchParams<{ id?: string; assign?: string }>();
   const [p, setP] = useState<MealPlan | null>(id ? null : { ...NEW, meals: NEW.meals.map((m) => ({ ...m, n: m.n })) });
   const [busy, setBusy] = useState(false);
   const [ai, setAi] = useState<number | null>(null);
@@ -143,6 +143,8 @@ export default function MealEdit() {
           const r = await saveMealPlan({ ...p, id: p.id || undefined });
           setBusy(false);
           if (!r) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+          // Made from a client's page or an invite: give it to them right away.
+          if (assign && !p.id) await assignOne(assign, 'meal', r.id);
           toast(t('Meal plan saved. Clients on it see the changes.'), { icon: 'check' });
           router.back();
         }}

@@ -8,7 +8,32 @@ export type RecoveryInput = {
   logs: WorkoutLog[];
   protein: { eaten: number; target: number } | null;
   water: { ml: number; goal: number };
+  /** Recovery logged today (REC_TOOLS ids). */
+  tools?: string[];
 };
+
+/** Things you can do to recover and what each adds to today's score (design: REC_TOOLS). Up to +6 in all. */
+export const REC_TOOLS: [string, string, number][] = [
+  ['stretch', 'Stretching', 2],
+  ['foam', 'Foam rolling', 2],
+  ['walk', 'Easy walk', 2],
+  ['nap', 'Nap', 2],
+  ['sauna', 'Sauna', 1],
+  ['cold', 'Cold shower', 1],
+  ['massage', 'Massage', 3],
+];
+export const toolsBonus = (tools: string[] = []) => Math.min(6, tools.reduce((a, k) => a + (REC_TOOLS.find((x) => x[0] === k)?.[2] ?? 0), 0));
+
+/** Hours until a muscle is fully recovered, from its readiness (design: ~N h), or 0 when ready. */
+export const hoursToReady = (v: number) => (v >= 80 ? 0 : Math.round((80 - v) * (v >= 55 ? 1.5 : 1.3)));
+
+/** Total volume of each of the last n days, oldest first (training load chart). */
+export function dailyLoad(logs: WorkoutLog[], today: string, n = 14) {
+  return Array.from({ length: n }, (_, i) => {
+    const d = addDays(today, i - n + 1);
+    return { day: d, volume: logs.filter((l) => l.day === d).reduce((a, l) => a + l.volume, 0), minutes: logs.filter((l) => l.day === d).reduce((a, l) => a + l.minutes, 0) };
+  });
+}
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
@@ -32,7 +57,8 @@ export function recovery(x: RecoveryInput) {
   const acwr = loadRatio(x.logs, x.today);
   const load = clamp(100 - Math.abs(acwr - 1) * 120, 30, 100);
   const fuel = x.protein && x.protein.target ? clamp((x.protein.eaten / x.protein.target) * 100, 40, 100) : 75;
-  const score = Math.round(clamp(sleep * 0.3 + sore * 0.2 + energy * 0.15 + load * 0.2 + fuel * 0.15, 5, 99));
+  const bonus = toolsBonus(x.tools);
+  const score = Math.round(clamp(sleep * 0.3 + sore * 0.2 + energy * 0.15 + load * 0.2 + fuel * 0.15 + bonus, 5, 99));
   const parts = [
     { key: 'Sleep', icon: 'moon', value: Math.round(sleep), sub: sl != null ? { t: '{n} h last night', n: sl } : null },
     { key: 'Soreness', icon: 'body', value: sore, sub: so != null ? { t: ['None', 'A little', 'Very sore'][so] } : null },
@@ -40,7 +66,7 @@ export function recovery(x: RecoveryInput) {
     { key: 'Training load', icon: 'train', value: Math.round(load), sub: { t: '{n}× your usual', n: Math.round(acwr * 10) / 10 } },
     { key: 'Nutrition', icon: 'food', value: Math.round(fuel), sub: x.protein ? { t: '{a} of {b} g protein', a: Math.round(x.protein.eaten), b: Math.round(x.protein.target) } : null },
   ] as const;
-  return { score, parts, acwr, checked: sl != null || so != null || en != null, sleepH: sl ?? undefined, sore: so ?? 0 };
+  return { score, bonus, parts, acwr, checked: sl != null || so != null || en != null, sleepH: sl ?? undefined, sore: so ?? 0 };
 }
 
 export const recLabel = (v: number): [string, 'up' | 'cobalt' | 'sec' | 'down'] =>
@@ -65,8 +91,10 @@ export function muscleReady(logs: WorkoutLog[], today: string): Record<string, n
 type Tip = { icon: string; title: string; body: string; vars?: Record<string, string | number> };
 
 /** Tips to recover faster (design: recTips). */
-export function recTips(r: ReturnType<typeof recovery>, x: RecoveryInput): Tip[] {
+export function recTips(r: ReturnType<typeof recovery>, x: RecoveryInput, cycle?: { phase: string; day: number } | null): Tip[] {
   const t: Tip[] = [];
+  if (cycle?.phase === 'Luteal')
+    t.push({ icon: 'drop', title: 'Luteal phase', body: 'You’re on day {n} of your cycle. Lower HRV and higher resting heart rate are normal this week. Sleep a bit more and drop a set if you feel tired.', vars: { n: cycle.day } });
   if (!r.checked) t.push({ icon: 'info', title: 'Answer 3 quick questions', body: 'Tell me how you slept and feel today for a more accurate score.' });
   if (r.checked && (r.sleepH ?? 8) < 7) t.push({ icon: 'moon', title: 'Sleep more tonight', body: 'You slept {n} h. Aim for 7.5 to 8 h: lights out a bit earlier and no screens 30 minutes before.', vars: { n: r.sleepH ?? 0 } });
   if (r.sore > 0) t.push({ icon: 'body', title: 'Sore muscles', body: '10 minutes of light stretching and foam rolling on the sore areas helps more than full rest.' });

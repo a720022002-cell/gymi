@@ -1,7 +1,9 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Session } from '@supabase/supabase-js';
 import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-import { siteUrl } from './config';
+import { setAvatarUrl } from './avatars';
+import { EMAIL_CODES, siteUrl } from './config';
 import { friendlyAuthError, supabase, supabaseConfigured } from './supabase';
 
 export type Profile = {
@@ -17,11 +19,46 @@ export type Profile = {
   account_type: 'member' | 'coach';
   coach_status: 'pending' | 'approved' | 'rejected' | null;
   language: 'en' | 'ar';
+  avatar_url?: string | null;
+  bio?: string | null;
+  invite_code?: string | null;
 };
 
-/** Step 3 of sign up ("A bit about you") is done. */
+/**
+ * Step 3 of sign up is done: "A bit about you" for members. Coaches send their coach
+ * application there instead (Home links to it if they haven't), so they're always complete.
+ */
 export const profileComplete = (p: Profile | null) =>
-  !!p && !!p.gender && !!p.date_of_birth && p.height_cm != null && p.weight_kg != null;
+  !!p && (p.account_type === 'coach' || (!!p.gender && !!p.date_of_birth && p.height_cm != null && p.weight_kg != null));
+
+/**
+ * Ask for a 6-digit email code when someone logs in on a new phone.
+ * Needs the email to show a code: Supabase's "Magic link" template must contain {{ .Token }}
+ * (custom email sender). Today the built-in sender only sends links and allows 2 emails an hour,
+ * so this follows EMAIL_CODES and stays off until the sender is connected.
+ */
+export const LOGIN_CODES = EMAIL_CODES;
+
+const TRUST_KEY = 'gymi.trusted.v1';
+/** Phones where you said "Don't ask for a code on this phone again" (user ids, this device only). */
+async function trustedIds(): Promise<string[]> {
+  try {
+    const v = await AsyncStorage.getItem(TRUST_KEY);
+    return v ? (JSON.parse(v) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+async function trustDevice(id: string) {
+  const ids = await trustedIds();
+  if (!ids.includes(id)) await AsyncStorage.setItem(TRUST_KEY, JSON.stringify([...ids, id].slice(-10))).catch(() => {});
+}
+
+/** "o•••@gmail.com" */
+export const maskEmail = (e: string) => {
+  const [a, d] = e.split('@');
+  return d ? `${a[0]}${'•'.repeat(Math.max(2, Math.min(5, a.length - 1)))}@${d}` : e;
+};
 
 type Result = { error: string | null };
 
@@ -46,7 +83,16 @@ type Auth = {
   resendSignup: (email: string) => Promise<Result>;
   /** Has the email link been tapped? Tries to log in with the password from step 1. */
   checkConfirmed: (email: string, password: string) => Promise<Result>;
-  logIn: (identifier: string, password: string) => Promise<Result>;
+  /**
+   * Log in with the password. If this phone isn't trusted (and LOGIN_CODES is on) it sends a
+   * 6-digit code and answers { code: email } without logging in; finish with verifyLoginCode.
+   * If the code can't be sent you're logged in anyway (codeFailed), so nobody gets locked out.
+   */
+  logIn: (identifier: string, password: string) => Promise<Result & { code?: string; codeFailed?: boolean }>;
+  sendLoginCode: (email: string) => Promise<Result>;
+  verifyLoginCode: (email: string, code: string, trust: boolean) => Promise<Result>;
+  /** Check the current password (before changing it). */
+  checkPassword: (password: string) => Promise<boolean>;
   setNewPassword: (password: string) => Promise<Result>;
   sendReset: (email: string) => Promise<Result>;
   resetWithCode: (email: string, code: string, password: string) => Promise<Result>;
@@ -71,6 +117,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return null;
     }
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+    if (data) setAvatarUrl([userId, (data as Profile).username], (data as Profile).avatar_url ?? null);
     setProfile((data as Profile) ?? null);
     setLoadedFor(userId);
     return (data as Profile) ?? null;
@@ -166,8 +213,40 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) return err(error);
+        const uid = data.user?.id ?? '';
+        if (LOGIN_CODES && uid && !(await trustedIds()).includes(uid)) {
+          // Password is right. Now prove it's you with a code from your email.
+          await supabase.auth.signOut({ scope: 'local' });
+          const sent = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+          if (!sent.error) return { error: null, code: email };
+          // Couldn't send the code: don't lock you out.
+          const again = await supabase.auth.signInWithPassword({ email, password });
+          if (again.error) return err(again.error);
+          await loadProfile(again.data.user?.id);
+          return { error: null, codeFailed: true };
+        }
+        await loadProfile(uid);
+        return { error: null };
+      },
+
+      async sendLoginCode(email) {
+        const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+        return err(error);
+      },
+
+      async verifyLoginCode(email, code, trust) {
+        const { data, error } = await supabase.auth.verifyOtp({ email, token: code, type: 'email' });
+        if (error) return err(error);
+        if (trust && data.user) await trustDevice(data.user.id);
         await loadProfile(data.user?.id);
         return { error: null };
+      },
+
+      async checkPassword(password) {
+        const email = session?.user.email;
+        if (!email) return false;
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        return !error;
       },
 
       async sendReset(email) {
@@ -188,9 +267,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       async updateProfile(patch) {
         if (!session) return { error: 'Please log in again.' };
-        const { id: _id, email: _e, account_type: _a, coach_status: _c, ...allowed } = patch;
+        const { id: _id, email: _e, account_type: _a, coach_status: _c, invite_code: _i, ...allowed } = patch;
         const { data, error } = await supabase.from('profiles').update(allowed).eq('id', session.user.id).select('*').single();
         if (error) return { error: 'Couldn’t save. Please try again.' };
+        setAvatarUrl([session.user.id, (data as Profile).username], (data as Profile).avatar_url ?? null);
         setProfile(data as Profile);
         return { error: null };
       },

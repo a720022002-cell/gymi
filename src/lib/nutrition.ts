@@ -1,4 +1,5 @@
 // Calorie math, copied from the design file (docs/index.html: bmr, calcPlan, targets).
+import { addMin, fastTimes } from './prayer';
 import { MEAL_WEIGHT, type Recipe, RECIPES } from './recipes';
 
 export const GOALS = ['Fast bulk', 'Moderate bulk', 'Maintain', 'Fast cut', 'Moderate cut'] as const;
@@ -39,11 +40,20 @@ export type FoodPlan = {
   intensity: string;
   /** Which recipe is shown for each meal slot (changes with "Change meal"). */
   picks?: Record<string, number>;
-  /** Recipes changed by swapping an ingredient, per meal slot. */
-  custom?: Record<string, Recipe>;
+  /** Recipes changed by swapping an ingredient (or made from your ingredients), per meal slot. */
+  custom?: Record<string, CustomRecipe>;
   shop?: { checked: Record<string, boolean>; extra: { n: string; q: string; cat: string }[]; hidden: string[]; scope: number };
   ramadan?: boolean;
+  /** City for iftar and suhoor times (Ramadan mode). Riyadh when not set. */
+  city?: string;
+  /** Beginner: calories and protein are set for you. Advanced (default): edit every number. */
+  mode?: 'beginner' | 'advanced';
+  /** Day the weight plateau suggestion was dismissed or applied (hidden for 2 weeks after). */
+  plateauDay?: string;
 };
+
+/** A recipe in the plan. gen = made by the AI from the ingredients you have. */
+export type CustomRecipe = Recipe & { gen?: boolean };
 
 export type Person = { gender: 'male' | 'female' | null; age: number; height: number };
 
@@ -114,18 +124,23 @@ export function targets(f: FoodPlan): Macros {
 
 export const bodyFatList = (gender: Person['gender']) => (gender === 'female' ? [18, 22, 26, 30, 35, 40] : [10, 15, 20, 25, 30, 35]);
 
-export const RAMADAN_MEALS: Meal[] = [
-  { n: 'Iftar', t: '18:00' },
-  { n: 'Main meal', t: '21:00' },
-  { n: 'Suhoor', t: '03:45' },
-];
+/** Ramadan meals around today's real iftar (sunset) and suhoor (ends at Fajr) for your city. */
+export function ramadanMeals(city?: string | null, day = localDay()): Meal[] {
+  const { fajr, maghrib } = fastTimes(city, day);
+  const q = (t: string) => addMin(t, -(Number(t.slice(3)) % 15));
+  return [
+    { n: 'Iftar', t: maghrib },
+    { n: 'Main meal', t: q(addMin(maghrib, 180)) },
+    { n: 'Suhoor', t: q(addMin(fajr, -45)) },
+  ];
+}
 
-export type PlannedMeal = Meal & { key: string; r: Recipe; k: number; p: number; c: number; f: number };
+export type PlannedMeal = Meal & { key: string; r: CustomRecipe; k: number; p: number; c: number; f: number };
 
 /** Today's suggested meals, sized to the daily calories. */
-export function planMeals(f: FoodPlan): PlannedMeal[] {
+export function planMeals(f: FoodPlan, day?: string): PlannedMeal[] {
   const ram = !!f.ramadan;
-  const meals = ram ? RAMADAN_MEALS : f.meals;
+  const meals = ram ? ramadanMeals(f.city, day) : f.meals;
   const tag = f.goal <= 1 ? 'Bulk' : 'Cut';
   const kcal = targets(f).k;
   const ws = meals.map((m) => MEAL_WEIGHT[m.type ?? m.n] ?? 0.13);

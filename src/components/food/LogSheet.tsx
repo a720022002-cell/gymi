@@ -12,7 +12,7 @@ import { useSettings } from '@/theme/settings';
 import { Icon, type IconName } from '../Icon';
 import { Sheet } from '../Sheet';
 import { fontFor, Text } from '../Text';
-import { Button, Row, Springy } from '../ui';
+import { Button, Chip, Row, Springy } from '../ui';
 
 /** "Log food" menu (design: SH.log menu). */
 export function LogSheet() {
@@ -22,18 +22,32 @@ export function LogSheet() {
   const [typing, setTyping] = useState(false);
   const [text, setText] = useState('');
   const [listening, setListening] = useState(false);
+  /** Photo choice after the camera was closed, or when picking from the gallery. */
+  const [chooser, setChooser] = useState<'/meal-result' | '/label-result' | 'gallery' | null>(null);
+  // "Type it instead" from search opens straight into typing with the search words.
+  const [seeded, setSeeded] = useState<string | null>(null);
+  if (food.typeSeed !== null && food.typeSeed !== seeded) {
+    setSeeded(food.typeSeed);
+    setText(food.typeSeed);
+    setTyping(true);
+  }
   const close = () => {
     food.setLogOpen(false);
     setTyping(false);
+    setChooser(null);
+    setSeeded(null);
   };
   const go = (path: '/food-search' | '/barcode' | '/saved-meals') => {
     close();
     setTimeout(() => router.push(path), 200);
   };
-  /** Open the camera now (it must start from the tap), then read the photo on the next screen. */
-  const photo = async (path: '/meal-result' | '/label-result') => {
-    const p = await takePhoto(false);
-    if (!p) return;
+  /** Open the camera now (it must start from the tap), then read the photo on the next screen. Cancel offers the gallery. */
+  const photo = async (path: '/meal-result' | '/label-result', camera = true) => {
+    const p = await takePhoto(camera);
+    if (!p) {
+      setChooser(path);
+      return;
+    }
     setPendingPhoto(p);
     close();
     setTimeout(() => router.push(path), 200);
@@ -78,6 +92,11 @@ export function LogSheet() {
               style={{ minHeight: 80, fontSize: 16, color: c.text, fontFamily: fontFor(lang === 'ar' ? 'arabic' : 'manrope', 500), outlineStyle: 'none', textAlign: lang === 'ar' ? 'right' : 'left', textAlignVertical: 'top' } as object}
             />
           </View>
+          <Row gap={8} style={{ marginTop: 8, flexWrap: 'wrap' }}>
+            {[t('chicken and rice'), t('chicken shawarma wrap'), t('kabsa'), t('3 dates and laban')].map((x) => (
+              <Chip key={x} title={x} onPress={() => setText(x)} />
+            ))}
+          </Row>
           <Row gap={10} style={{ marginTop: 12 }}>
             {canListen() ? (
               <Button
@@ -95,6 +114,26 @@ export function LogSheet() {
             ) : null}
             <Button title={t('Work it out')} disabled={!text.trim()} onPress={() => sendText(text)} style={{ flex: 1 }} />
           </Row>
+        </View>
+      ) : chooser ? (
+        <View>
+          <Row gap={8}>
+            <Springy onPress={() => setChooser(null)} accessibilityLabel={t('Back')} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="back" size={20} />
+            </Springy>
+            <Text variant="h2">{t(chooser === '/label-result' ? 'Label photo' : chooser === '/meal-result' ? 'Meal photo' : 'Choose from photos')}</Text>
+          </Row>
+          {chooser === 'gallery' ? (
+            <View style={{ gap: 10, marginTop: 16 }}>
+              <Button kind="soft" icon="camera" title={t('A meal')} onPress={() => photo('/meal-result', false)} />
+              <Button kind="soft" icon="doc" title={t('A nutrition label')} onPress={() => photo('/label-result', false)} />
+            </View>
+          ) : (
+            <View style={{ gap: 10, marginTop: 16 }}>
+              <Button icon="camera" title={t('Take photo')} onPress={() => photo(chooser)} />
+              <Button kind="soft" icon="image" title={t('Choose from photos')} onPress={() => photo(chooser, false)} />
+            </View>
+          )}
         </View>
       ) : (
         <View>
@@ -124,6 +163,12 @@ export function LogSheet() {
               ))}
             </View>
           ))}
+          <Springy onPress={() => setChooser('gallery')} style={{ marginTop: 10, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, padding: 6 }}>
+            <Icon name="image" size={16} color={c.link} />
+            <Text variant="small" weight={700} color="link">
+              {t('Choose from photos')}
+            </Text>
+          </Springy>
           <Springy onPress={() => setTyping(true)} scaleTo={0.985} style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, padding: 14, backgroundColor: 'rgba(127,127,135,0.1)' }}>
             <Icon name="edit" size={20} color={c.cobalt} />
             <View style={{ flex: 1 }}>

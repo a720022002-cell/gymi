@@ -23,11 +23,19 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.CAMERA"
-      ],
-      "blockedPermissions": [
+        "android.permission.CAMERA",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.health.READ_HEART_RATE",
+        "android.permission.health.READ_RESTING_HEART_RATE",
+        "android.permission.health.READ_HEART_RATE_VARIABILITY",
+        "android.permission.health.READ_SLEEP",
+        "android.permission.health.READ_WEIGHT",
+        "android.permission.health.READ_VO2_MAX",
+        "android.permission.health.READ_EXERCISE",
         "android.permission.RECORD_AUDIO"
-      ]
+      ],
+      "blockedPermissions": []
     },
     "web": {
       "output": "single",
@@ -77,6 +85,41 @@
         "expo-local-authentication",
         {
           "faceIDPermission": "Gymi uses Face ID to lock your cycle tracking if you turn that on."
+        }
+      ],
+      "expo-sharing",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Gymi uses the microphone so you can log food, sets and questions by voice.",
+          "speechRecognitionPermission": "Gymi turns your voice into text to log food, sets and questions.",
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox"
+          ]
+        }
+      ],
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "Gymi reads your steps, heart rate, sleep, weight and workouts so your coach can adjust your plan.",
+          "NSHealthUpdateUsageDescription": "Gymi saves your workouts and weight to Apple Health if you allow it.",
+          "background": false
+        }
+      ],
+      "react-native-health-connect",
+      "expo-health-connect",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
         }
       ]
     ],

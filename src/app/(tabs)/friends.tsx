@@ -1,3 +1,4 @@
+import * as Clipboard from 'expo-clipboard';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { TextInput, View } from 'react-native';
@@ -9,6 +10,7 @@ import { Avatar } from '@/components/social/Avatar';
 import { List, ListRow } from '@/components/social/List';
 import { PartnerCycles } from '@/components/social/PartnerCycles';
 import { Text } from '@/components/Text';
+import { GroupWorkoutsCard } from '@/components/train/GroupWorkoutsCard';
 import { useToast } from '@/components/Toast';
 import { Button, Card, NavButton, Row, Segmented, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
@@ -17,10 +19,10 @@ import { useAuth } from '@/lib/auth';
 import { shortDate } from '@/lib/progress';
 import {
   acceptRequest,
-  CH_TITLE,
   daysLeft,
   cheer,
   type Challenge,
+  challengeTitle,
   displayName,
   feed,
   type FeedItem,
@@ -44,6 +46,7 @@ type Tab = 'friends' | 'groups' | 'activity';
 export default function Friends() {
   const { t } = useT();
   const { colors: c } = useSettings();
+  const { session } = useAuth();
   const [tab, setTab] = useState<Tab>('friends');
   const [friends, setFriends] = useState<FriendRow[] | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -83,6 +86,7 @@ export default function Friends() {
           </Text>
         </Card>
       ))}
+      <GroupWorkoutsCard />
       <Segmented<Tab>
         value={tab}
         options={[
@@ -96,7 +100,7 @@ export default function Friends() {
       {tab === 'friends' ? (
         <FriendsTab friends={friends} reload={load} onAdd={() => setAdding(true)} />
       ) : tab === 'groups' ? (
-        <GroupsTab groups={groups} challenges={challenges} hasFriends={!!friends?.some((f) => f.status === 'accepted')} />
+        <GroupsTab groups={groups} challenges={challenges} hasFriends={!!friends?.some((f) => f.status === 'accepted')} me={session?.user.id ?? ''} />
       ) : (
         <ActivityTab items={items} setItems={setItems} />
       )}
@@ -251,12 +255,14 @@ function FriendsTab({ friends, reload, onAdd }: { friends: FriendRow[] | null; r
   );
 }
 
-function GroupsTab({ groups, challenges, hasFriends }: { groups: Group[]; challenges: Challenge[]; hasFriends: boolean }) {
+function GroupsTab({ groups, challenges, hasFriends, me }: { groups: Group[]; challenges: Challenge[]; hasFriends: boolean; me: string }) {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
   const { today } = useFood();
   const need = () => toast(t('Add a friend first'), { icon: 'info' });
+  // With one group, "Train together" starts with its members picked.
+  const pre = groups.length === 1 ? groups[0].memberIds.filter((x) => x !== me) : [];
   return (
     <View>
       <SecHead title={t('Groups')} />
@@ -307,15 +313,24 @@ function GroupsTab({ groups, challenges, hasFriends }: { groups: Group[]; challe
               </Text>
             </Row>
             <Text variant="h3" style={{ marginTop: 8 }}>
-              {t(CH_TITLE[ch.kind])}
+              {challengeTitle(ch, t)}
             </Text>
             <Text variant="small" color="sec">
-              {t('{n} people', { n: ch.members })}
+              {ch.my_rank ? t('You’re #{n} of {m}', { n: ch.my_rank, m: ch.members }) : t('{n} people', { n: ch.members })}
             </Text>
           </Card>
         );
       })}
-      <Button icon="trophy" title={t('New challenge')} onPress={() => (hasFriends ? router.push('/newchallenge') : need())} />
+      <Row gap={10}>
+        <Button icon="trophy" title={t('New challenge')} style={{ flex: 1 }} onPress={() => (hasFriends ? router.push('/newchallenge') : need())} />
+        <Button
+          kind="glass"
+          icon="users"
+          title={t('Train together')}
+          style={{ flex: 1 }}
+          onPress={() => (hasFriends ? router.push(pre.length ? { pathname: '/together', params: { members: pre.join(',') } } : '/together') : need())}
+        />
+      </Row>
     </View>
   );
 }
@@ -477,7 +492,7 @@ function AddFriendSheet({ open, onClose, onChanged }: { open: boolean; onClose: 
           title={t('Copy')}
           onPress={async () => {
             try {
-              await navigator.clipboard.writeText(`@${profile?.username ?? ''}`);
+              await Clipboard.setStringAsync(`@${profile?.username ?? ''}`);
               toast(t('Username copied. Send it to your friends.'), { icon: 'copy' });
             } catch {
               toast(`@${profile?.username ?? ''}`, { icon: 'copy' });

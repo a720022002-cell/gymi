@@ -19,6 +19,9 @@ import { useEffect } from 'react';
 import { BalanceSheet } from '@/components/food/BalanceSheet';
 import { LogSheet } from '@/components/food/LogSheet';
 import { CheckinSheet } from '@/components/health/CheckinSheet';
+import { FriendAlerts } from '@/components/FriendAlerts';
+import { NotifyBanner } from '@/components/NotifyBanner';
+import { OfflineBanner } from '@/components/OfflineBanner';
 import { ReferralClaim } from '@/components/ReferralClaim';
 import { ReminderSync } from '@/components/ReminderSync';
 import { ToastProvider } from '@/components/Toast';
@@ -92,6 +95,9 @@ function AppStack({ ready }: { ready: boolean }) {
       <CheckinSheet />
       <ReminderSync />
       <ReferralClaim />
+      <FriendAlerts />
+      <OfflineBanner />
+      <NotifyBanner />
     </>
   );
 }

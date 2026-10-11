@@ -15,7 +15,10 @@ export type Checkin = {
   energy: number | null;
   sore: number | null;
   score: number | null;
+  /** Every sleep in the day (night and naps); sleep_h is their sum. */
+  sleep_parts?: SleepPart[] | null;
 };
+export type SleepPart = { bed: string; wake: string };
 
 export const MEAS = ['waist', 'chest', 'arm', 'neck', 'shoulders', 'hips', 'thigh', 'calf', 'forearm', 'bf'] as const;
 export type MeasKind = 'weight' | (typeof MEAS)[number];
@@ -37,7 +40,9 @@ export type Measure = { day: string; kind: MeasKind; value: number };
 export type ProgressPhoto = { id: string; day: string; path: string };
 export type Supplement = { id: string; name: string; dose: string; unit: string; freq: string; active: boolean; remind: boolean; time: string };
 export type BloodValue = { name: string; value: number | string; unit: string; low?: number | null; high?: number | null; flag: -1 | 0 | 1 };
-export type BloodTest = { id: string; day: string; title: string; values: BloodValue[] };
+export type BloodTest = { id: string; day: string; title: string; values: BloodValue[]; file_path?: string | null; file_name?: string | null; file_mime?: string | null };
+/** A lab report file (PDF or photo) to keep with the values. */
+export type HealthFile = { base64: string; mime: string; name: string };
 /** What you ate and drank each day (for streaks, commitment and reports). */
 export type DayTotals = { k: number; p: number; w: number };
 
@@ -49,6 +54,8 @@ type Health = {
   measures: Measure[];
   weights: Measure[];
   logWeight: (kg: number) => Promise<boolean>;
+  /** Remove one day's weight (used by Undo in the coach chat). */
+  deleteWeight: (day: string) => Promise<void>;
   saveMeasures: (vals: Partial<Record<MeasKind, number>>) => Promise<boolean>;
   photos: ProgressPhoto[];
   addPhoto: (p: Photo) => Promise<boolean>;
@@ -59,7 +66,9 @@ type Health = {
   deleteSupplement: (id: string) => Promise<Supplement | null>;
   restoreSupplement: (s: Supplement) => Promise<void>;
   blood: BloodTest[];
-  addBlood: (b: Omit<BloodTest, 'id'>) => Promise<BloodTest | null>;
+  addBlood: (b: Omit<BloodTest, 'id'>, file?: HealthFile | null) => Promise<BloodTest | null>;
+  /** A link to open a saved lab report file (valid for an hour). */
+  bloodFileUrl: (path: string) => Promise<string | null>;
   deleteBlood: (id: string) => Promise<void>;
   /** Food and water per day for the last 120 days, today included (live). */
   days: Record<string, DayTotals>;
@@ -99,11 +108,11 @@ export function HealthProvider({ children }: PropsWithChildren) {
     (async () => {
       const from = addDays(today, -HISTORY);
       const [c, m, ph, s, b, f, w] = await Promise.all([
-        supabase.from('checkins').select('day,sleep_h,sleep_q,bed,wake,energy,sore,score').gte('day', from).order('day'),
+        supabase.from('checkins').select('day,sleep_h,sleep_q,bed,wake,energy,sore,score,sleep_parts').gte('day', from).order('day'),
         supabase.from('measurements').select('day,kind,value').order('day').limit(2000),
         supabase.from('progress_photos').select('id,day,path').order('day'),
         supabase.from('supplements').select('id,name,dose,unit,freq,active,remind,time').order('created_at'),
-        supabase.from('blood_tests').select('id,day,title,values').order('day', { ascending: false }),
+        supabase.from('blood_tests').select('id,day,title,values,file_path,file_name,file_mime').order('day', { ascending: false }),
         supabase.from('food_logs').select('day,kcal,protein').gte('day', from).lt('day', today).limit(5000),
         supabase.from('water_logs').select('day,ml').gte('day', from).lt('day', today).limit(5000),
       ]);
@@ -177,6 +186,11 @@ export function HealthProvider({ children }: PropsWithChildren) {
     [putMeasures, updateProfile],
   );
 
+  const deleteWeight = useCallback(async (day: string) => {
+    setMeasures((xs) => xs.filter((x) => !(x.kind === 'weight' && x.day === day)));
+    await supabase.from('measurements').delete().eq('kind', 'weight').eq('day', day);
+  }, []);
+
   const addPhoto = useCallback(
     async (p: Photo) => {
       if (!userId) return false;
@@ -232,17 +246,38 @@ export function HealthProvider({ children }: PropsWithChildren) {
     if (data) setSupplements((xs) => [...xs, data as Supplement]);
   }, []);
 
-  const addBlood = useCallback(async (b: Omit<BloodTest, 'id'>) => {
-    const { data, error } = await supabase.from('blood_tests').insert(b).select('id,day,title,values').single();
-    if (error || !data) return null;
-    setBlood((xs) => [data as BloodTest, ...xs]);
-    return data as BloodTest;
+  const addBlood = useCallback(
+    async (b: Omit<BloodTest, 'id'>, file?: HealthFile | null) => {
+      let extra = {};
+      // The file itself goes to the private "health-files" bucket, in your own folder.
+      if (file && userId) {
+        const ext = file.mime === 'application/pdf' ? 'pdf' : file.mime === 'image/png' ? 'png' : 'jpg';
+        const path = `${userId}/${b.day}-${Date.now()}.${ext}`;
+        const up = await supabase.storage.from('health-files').upload(path, b64ToBytes(file.base64), { contentType: file.mime, upsert: false });
+        if (!up.error) extra = { file_path: path, file_name: file.name.slice(0, 160), file_mime: file.mime };
+      }
+      const { data, error } = await supabase.from('blood_tests').insert({ ...b, ...extra }).select('id,day,title,values,file_path,file_name,file_mime').single();
+      if (error || !data) return null;
+      setBlood((xs) => [data as BloodTest, ...xs].sort((x, y) => y.day.localeCompare(x.day)));
+      return data as BloodTest;
+    },
+    [userId],
+  );
+
+  const bloodFileUrl = useCallback(async (path: string) => {
+    const { data } = await supabase.storage.from('health-files').createSignedUrl(path, 3600);
+    return data?.signedUrl ?? null;
   }, []);
 
-  const deleteBlood = useCallback(async (id: string) => {
-    setBlood((xs) => xs.filter((x) => x.id !== id));
-    await supabase.from('blood_tests').delete().eq('id', id);
-  }, []);
+  const deleteBlood = useCallback(
+    async (id: string) => {
+      const b = blood.find((x) => x.id === id);
+      setBlood((xs) => xs.filter((x) => x.id !== id));
+      await supabase.from('blood_tests').delete().eq('id', id);
+      if (b?.file_path) await supabase.storage.from('health-files').remove([b.file_path]);
+    },
+    [blood],
+  );
 
   const weights = useMemo(() => measures.filter((m) => m.kind === 'weight'), [measures]);
 
@@ -255,6 +290,7 @@ export function HealthProvider({ children }: PropsWithChildren) {
       measures,
       weights,
       logWeight,
+      deleteWeight,
       saveMeasures: putMeasures,
       photos,
       addPhoto,
@@ -266,12 +302,13 @@ export function HealthProvider({ children }: PropsWithChildren) {
       restoreSupplement,
       blood,
       addBlood,
+      bloodFileUrl,
       deleteBlood,
       days,
       checkinOpen,
       setCheckinOpen,
     }),
-    [checkinOpen, ready, checkins, todayCheckin, saveCheckin, measures, weights, logWeight, putMeasures, photos, addPhoto, deletePhoto, photoUrls, supplements, saveSupplement, deleteSupplement, restoreSupplement, blood, addBlood, deleteBlood, days],
+    [checkinOpen, ready, checkins, todayCheckin, saveCheckin, measures, weights, logWeight, deleteWeight, putMeasures, photos, addPhoto, deletePhoto, photoUrls, supplements, saveSupplement, deleteSupplement, restoreSupplement, blood, addBlood, bloodFileUrl, deleteBlood, days],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

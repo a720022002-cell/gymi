@@ -92,9 +92,12 @@ export default function Summary() {
 
       <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <Icon name="flame" size={20} color={c.cobalt} />
-        <Text weight={700} style={{ flex: 1 }}>
-          {train.streak === 1 ? t('First workout in a row. Keep it going.') : t('{n} workouts in a row', { n: train.streak })}
-        </Text>
+        <View style={{ flex: 1 }}>
+          <Text weight={700}>{train.streak === 1 ? t('First workout in a row. Keep it going.') : t('{n} workouts in a row', { n: train.streak })}</Text>
+          <Text variant="small" color="sec">
+            {t('Best: {n}', { n: Math.max(train.bestStreak, train.streak) })}
+          </Text>
+        </View>
       </Card>
       {s.ups || s.downs ? (
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

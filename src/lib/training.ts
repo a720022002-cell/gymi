@@ -22,7 +22,7 @@ export type Equipment = 'Barbell' | 'Dumbbell' | 'Machine' | 'Cable' | 'Bodyweig
 export const EX: Record<string, Ex> = Object.fromEntries((EXERCISES as Ex[]).map((e) => [e.id, e]));
 
 /** One exercise in a workout. Exercises from the full list keep their name with them. */
-export type PlanEx = { id: string; sets: number; reps: string; n?: string; ar?: string | null; m?: string; t?: string; time?: boolean };
+export type PlanEx = { id: string; sets: number; reps: string; n?: string; ar?: string | null; m?: string; t?: string; time?: boolean; pri?: string; sec?: string[] };
 export type Workout = { ex: PlanEx[]; focus: string; min: number };
 export type Day = { w: string | null; lock: boolean };
 export type TrainPlan = {
@@ -50,12 +50,24 @@ export type TrainPlan = {
   light?: string;
   deload?: string;
   deloadDismissed?: string;
+  /** 'fixed': same days every week. 'order': the next workout in order, with a rest day between. */
+  type?: 'fixed' | 'order';
+  /** Workout order for the 'order' type. */
+  queue?: string[];
+  /** Set when the plan is your coach's program (and which version of it). */
+  coach?: { id: string; updated_at?: string };
+  /** Training level you picked (Train together uses it). */
+  level?: 'Beginner' | 'Intermediate' | 'Advanced';
 };
 
 /** A muscle group's name. In Arabic, "Back" alone would mean the back button, so it has its own key. */
 export const muscleLabel = (m: string, lang: 'en' | 'ar', t: (s: string) => string) => (lang === 'ar' ? t(m === 'Back' ? 'Back muscles' : m) : m);
 
 export const MUSCLES: Muscle[] = ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core'];
+/** Specific muscles for naming your own exercise (design: MUSCLES), and their muscle group (MGROUP). */
+export const MUSCLES_FINE = ['Chest', 'Upper chest', 'Back', 'Lats', 'Front shoulders', 'Side shoulders', 'Rear shoulders', 'Biceps', 'Triceps', 'Forearms', 'Abs', 'Lower back', 'Glutes', 'Quads', 'Hamstrings', 'Calves'];
+export const muscleGroup = (m: string): Muscle =>
+  /chest/i.test(m) ? 'Chest' : /back|lats/i.test(m) ? 'Back' : /shoulder/i.test(m) ? 'Shoulders' : /biceps|triceps|forearm/i.test(m) ? 'Arms' : /abs/i.test(m) ? 'Core' : 'Legs';
 export const EQUIPMENT: Equipment[] = ['Free weight', 'Dumbbell', 'Barbell', 'Machine', 'Cable', 'Bodyweight'];
 export const INJURIES = ['Shoulder', 'Lower back', 'Knee', 'Elbow', 'Wrist', 'Neck', 'Hip'];
 export const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -124,6 +136,67 @@ export function planOwn(days: number, injuries: string[]): TrainPlan {
     workouts[n] = { ex: [], focus: '', min: 0 };
   });
   return { days, injuries, split: 'My own plan', week, workouts, machines: {}, homeMode: false, skipped: {}, dismiss: {} };
+}
+
+/** A plan from your coach's program: its days spread over the week (same as My program). */
+export function planFromProgram(p: { name: string; days: { name: string; ex: PlanEx[] }[] }): TrainPlan {
+  const days = p.days.filter((d) => d.ex.length).slice(0, 6);
+  const n = Math.max(1, days.length);
+  const spots = n === 1 ? [1] : SPREAD[n];
+  const week: Day[] = DAYS.map(() => ({ w: null, lock: false }));
+  const workouts: Record<string, Workout> = {};
+  days.forEach((d, i) => {
+    let name = d.name.trim() || `Day ${i + 1}`;
+    while (workouts[name]) name = `${name} ${i + 1}`;
+    workouts[name] = { ex: d.ex, focus: '', min: workoutMinutes(d.ex) };
+    week[spots[i]].w = name;
+  });
+  return { days: n, injuries: [], split: p.name, week, workouts, machines: {}, homeMode: false, skipped: {}, dismiss: {} };
+}
+
+/** Workouts in the order they come in the week (each once). */
+export const weekOrder = (week: Day[]) => [...new Set(week.filter((d) => d.w).map((d) => d.w as string))];
+
+const addDay = (day: string, n: number) => {
+  const d = new Date(`${day}T12:00:00`);
+  d.setDate(d.getDate() + n);
+  return localDay(d);
+};
+
+/**
+ * 'order' plans: what's next and the earliest day for it. Any workout counts as a training day,
+ * and there's at least one rest day between workouts.
+ */
+export function orderNext(plan: TrainPlan, logs: { day: string; name: string }[], today: string) {
+  const q = (plan.queue?.length ? plan.queue : weekOrder(plan.week)).filter((w) => plan.workouts[w]);
+  if (!q.length) return { queue: q, next: null as string | null, idx: 0, earliest: today };
+  const last = logs.find((l) => q.includes(l.name) && l.day < today);
+  const idx = last ? (q.indexOf(last.name) + 1) % q.length : 0;
+  const lastDay = logs.find((l) => l.day < today)?.day;
+  const earliest = lastDay && lastDay >= addDay(today, -1) ? addDay(lastDay, 2) : today;
+  return { queue: q, next: q[idx], idx, earliest };
+}
+
+/** This week (Sunday to Saturday) for an 'order' plan: done days, then the coming workouts every other day. */
+export function orderWeek(plan: TrainPlan, logs: { day: string; name: string }[], today: string, start: string): Day[] {
+  const { queue, idx, earliest } = orderNext(plan, logs, today);
+  const byDay = new Map<string, string>();
+  for (const l of logs) if (!byDay.has(l.day)) byDay.set(l.day, l.name);
+  const week: Day[] = DAYS.map(() => ({ w: null, lock: false }));
+  let k = idx;
+  let slot = byDay.has(today) ? addDay(today, 2) : earliest;
+  const ti = queue.indexOf(byDay.get(today) ?? '');
+  if (ti >= 0) k = (ti + 1) % queue.length;
+  for (let i = 0; i < 7; i++) {
+    const d = addDay(start, i);
+    if (d <= today && byDay.has(d)) week[i].w = byDay.get(d) as string;
+    else if (d >= today && queue.length && d === slot) {
+      week[i].w = queue[k % queue.length];
+      k++;
+      slot = addDay(d, 2);
+    }
+  }
+  return week;
 }
 
 /** Name, muscle, equipment and machines for any exercise in a plan. */

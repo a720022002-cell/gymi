@@ -15,7 +15,7 @@ import { type AiError, aiErrorText, askAI } from '@/lib/ai';
 import { type DbExercise, dbExName, searchExercises, toPlanEx } from '@/lib/exercisesDb';
 import { type Photo, takePhoto } from '@/lib/photo';
 import { useTrain } from '@/lib/train';
-import { DAYS_LONG, type Equipment, type Muscle, muscleLabel, MUSCLES, type PlanEx, workoutMinutes } from '@/lib/training';
+import { DAYS_LONG, type Equipment, EX, type Muscle, muscleGroup, muscleLabel, MUSCLES_FINE, type PlanEx, workoutMinutes } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
 
 type Found = { known: boolean; name: string; name_ar?: string; group: Muscle; works?: string; works_ar?: string; equipment: Equipment; sets?: number; reps?: string; search?: string };
@@ -34,6 +34,9 @@ export default function MachineScreen() {
   const [own, setOwn] = useState(false);
   const [name, setName] = useState('');
   const [group, setGroup] = useState<Muscle | null>(null);
+  const [pri, setPri] = useState<string | null>(null);
+  const [sec, setSec] = useState<string[]>([]);
+  const [tried, setTried] = useState(false);
   const workouts = Object.keys(train.plan?.workouts ?? {});
   const [target, setTarget] = useState<string | null>(train.todayName ?? workouts[0] ?? null);
 
@@ -81,13 +84,23 @@ export default function MachineScreen() {
     addOwn(found.name, found.name_ar);
   };
 
-  const addOwn = (n: string, ar?: string) => {
+  const addOwn = (n: string, ar?: string, fine?: { pri: string; sec: string[] }) => {
     const nm = n.trim().slice(0, 40);
     const reps = found && /\d/.test(found.reps ?? '') ? String(found.reps).slice(0, 7) : '10–12';
-    if (!nm || !group) return;
+    const g = fine ? muscleGroup(fine.pri) : group;
+    if (!nm || !g) return;
     const id = `custom:${nm.toLowerCase().replace(/[^a-z0-9؀-ۿ]+/g, '-')}`;
-    add({ id, sets: Math.round(found?.sets || 3), reps, n: nm, ar: ar ?? (lang === 'ar' ? nm : null), m: group, t: found?.equipment ?? 'Machine' }, nm);
+    add({ id, sets: Math.round(found?.sets || 3), reps, n: nm, ar: ar ?? (lang === 'ar' ? nm : null), m: g, t: found?.equipment ?? 'Machine', ...(fine ? { pri: fine.pri, sec: fine.sec } : {}) }, nm);
   };
+
+  // A common exercise for the same muscles, so you know what this can replace (design: "Swaps for").
+  const swapFor = (() => {
+    if (!found) return null;
+    const g = match?.muscle ?? found.group;
+    const list = Object.values(EX).filter((e) => e.m === g && e.id !== match?.id && e.t !== 'Bodyweight');
+    const pick = list.find((e) => e.t !== (match?.equipment ?? found.equipment)) ?? list[0];
+    return pick ? (lang === 'ar' ? pick.ar : pick.en) : null;
+  })();
 
   const pickers = (
     <View>
@@ -173,6 +186,16 @@ export default function MachineScreen() {
                     {t('{s} × {r} at a weight you could do 2 more times', { s: Math.round(found.sets || 3), r: /\d/.test(found.reps ?? '') ? found.reps! : '10–12' })}
                   </Text>
                 </Row>
+                {swapFor ? (
+                  <Row style={{ justifyContent: 'space-between', marginTop: 8 }}>
+                    <Text variant="small" color="sec">
+                      {t('Swaps for')}
+                    </Text>
+                    <Text variant="small" weight={700}>
+                      {swapFor}
+                    </Text>
+                  </Row>
+                ) : null}
               </Card>
               {pickers}
               <Button title={target ? t('Add to {w}', { w: t(target) }) : t('Add to log')} disabled={!target} style={{ marginTop: 16 }} onPress={addFound} />
@@ -190,15 +213,45 @@ export default function MachineScreen() {
               </Text>
               <Field label={t('Exercise name')} value={name} onChangeText={setName} placeholder={t('For example: Seated chest press')} maxLength={40} />
               <Text variant="small" weight={700} color="sec" style={{ marginTop: 16, marginBottom: 8 }}>
-                {t('Main muscle')}
+                {t('Main muscle')} <Text variant="small" weight={700} color="down">*</Text>
               </Text>
               <Row gap={8} style={{ flexWrap: 'wrap' }}>
-                {MUSCLES.map((m) => (
-                  <Chip key={m} title={muscleLabel(m, lang, t)} on={group === m} onPress={() => setGroup(m)} />
+                {MUSCLES_FINE.map((m) => (
+                  <Chip
+                    key={m}
+                    title={t(m)}
+                    on={pri === m}
+                    onPress={() => {
+                      setPri(m);
+                      setSec(sec.filter((x) => x !== m));
+                    }}
+                  />
+                ))}
+              </Row>
+              {tried && !pri ? (
+                <Text variant="small" color="down" style={{ marginTop: 6 }}>
+                  {t('Pick the main muscle.')}
+                </Text>
+              ) : null}
+              <Text variant="small" weight={700} color="sec" style={{ marginTop: 16, marginBottom: 8 }}>
+                {t('Helping muscles')} <Text variant="small" color="sec">{t('(optional, pick any)')}</Text>
+              </Text>
+              <Row gap={8} style={{ flexWrap: 'wrap' }}>
+                {MUSCLES_FINE.filter((m) => m !== pri).map((m) => (
+                  <Chip key={m} title={`${sec.includes(m) ? '✓ ' : ''}${t(m)}`} on={sec.includes(m)} onPress={() => setSec(sec.includes(m) ? sec.filter((x) => x !== m) : [...sec, m])} />
                 ))}
               </Row>
               {pickers}
-              <Button title={t('Add exercise')} disabled={!name.trim() || !group || !target} style={{ marginTop: 16 }} onPress={() => addOwn(name)} />
+              <Button
+                title={target ? t('Add to {w}', { w: t(target) }) : t('Add exercise')}
+                disabled={!name.trim() || !target}
+                style={{ marginTop: 16 }}
+                onPress={() => {
+                  setTried(true);
+                  if (!pri) return;
+                  addOwn(name, undefined, { pri, sec });
+                }}
+              />
             </View>
           ) : null}
         </View>

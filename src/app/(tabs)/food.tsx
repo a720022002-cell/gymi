@@ -7,17 +7,33 @@ import { Icon, type IconName } from '@/components/Icon';
 import { OkChip, Tag, WarnChip } from '@/components/food/Chips';
 import { MacroBars } from '@/components/food/MacroBars';
 import { MealMenu } from '@/components/food/MealMenu';
+import { ModeCard } from '@/components/food/ModeCard';
+import { ReminderBell } from '@/components/food/ReminderBell';
 import { SetupWizard } from '@/components/food/SetupWizard';
 import { Thinking } from '@/components/food/Thinking';
 import { Ring } from '@/components/Ring';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
+import { Sheet } from '@/components/Sheet';
 import { Button, Card, Row, Segmented, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
-import { useFood } from '@/lib/food';
+import { useCycleToday } from '@/lib/cyclePhase';
+import { useFood, useLogFood } from '@/lib/food';
+import { type Measure, useHealth } from '@/lib/health';
 import { addDays, fmt, fmtTime, type PlannedMeal, planMeals } from '@/lib/nutrition';
+import { fastTimes } from '@/lib/prayer';
+import { weekAvg } from '@/lib/progress';
 import { useSettings } from '@/theme/settings';
+
+/** Weight hasn't moved (weekly averages within 0.3 kg) for 2 weeks. Needs weigh-ins in each of the 3 weeks. */
+function plateau(weights: Measure[], today: string) {
+  const a = weekAvg(weights, today);
+  const b = weekAvg(weights, addDays(today, -7));
+  const c = weekAvg(weights, addDays(today, -14));
+  if (a == null || b == null || c == null) return false;
+  return Math.max(a, b, c) - Math.min(a, b, c) <= 0.3;
+}
 
 export default function Food() {
   const { t } = useT();
@@ -38,8 +54,20 @@ function FoodHome() {
   const { colors: c } = useSettings();
   const toast = useToast();
   const food = useFood();
+  const health = useHealth();
+  const cycle = useCycleToday();
+  const logFood = useLogFood();
   const [tab, setTab] = useState<'logged' | 'plan'>('logged');
   const [menuFor, setMenuFor] = useState<PlannedMeal | null>(null);
+  const [modeOpen, setModeOpen] = useState(false);
+  const coach = food.coach;
+  const fast = food.plan.ramadan ? fastTimes(food.plan.city, food.today) : null;
+  // Cut or bulk, weight flat for 2 weeks, not dismissed in the last 2 weeks, and the coach isn't in charge.
+  const cutting = food.plan.goal >= 3;
+  const bulking = food.plan.goal <= 1;
+  const showPlateau = !coach && (cutting || bulking) && (!food.plan.plateauDay || food.plan.plateauDay <= addDays(food.today, -14)) && plateau(health.weights, food.today);
+  const adjust = cutting ? -150 : 150;
+  const coachLogged = (n: string) => food.logs.some((l) => l.name.startsWith(`${n} (`) && l.meal === n);
   const left = food.kcalLeft;
   const goal = food.dayGoal(food.today);
   const meals = planMeals(food.plan);
@@ -58,13 +86,29 @@ function FoodHome() {
       large
       tabs
       right={
-        <Springy onPress={() => food.setLogOpen(true)} scaleTo={1.08} accessibilityLabel={t('Log food')}>
-          <Glass style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name="plus" size={24} strokeWidth={2.2} />
-          </Glass>
-        </Springy>
+        <Row gap={6}>
+          <ReminderBell kind="meals" />
+          <Springy onPress={() => food.setLogOpen(true)} scaleTo={1.08} accessibilityLabel={t('Log food')}>
+            <Glass style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="plus" size={24} strokeWidth={2.2} />
+            </Glass>
+          </Springy>
+        </Row>
       }>
-      {food.plan.ramadan ? (
+      {coach ? (
+        <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 14 }}>
+          <Icon name="lock" size={18} color={c.cobalt} />
+          <Text variant="small" style={{ flex: 1 }}>
+            {t('{coach} manages your food plan', { coach: coach.name })}
+          </Text>
+          <Springy onPress={() => router.push({ pathname: '/thread', params: { link: coach.link, name: coach.name } })}>
+            <Text variant="small" weight={700} color="link">
+              {t('Ask')}
+            </Text>
+          </Springy>
+        </Card>
+      ) : null}
+      {fast && !coach ? (
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <Icon name="moon" color={c.cobalt} />
           <View style={{ flex: 1 }}>
@@ -72,9 +116,48 @@ function FoodHome() {
               {t('Ramadan mode')}
             </Text>
             <Text variant="small" color="sec">
-              {t('Meals are arranged around iftar and suhoor.')}
+              {t('Meals are arranged around iftar ({a}) and suhoor (ends {b}).', { a: fmtTime(fast.maghrib, lang), b: fmtTime(fast.fajr, lang) })}
             </Text>
           </View>
+        </Card>
+      ) : null}
+      {cycle?.phase === 'Luteal' ? (
+        <Card style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+          <Icon name="drop" color={c.cobalt} />
+          <View style={{ flex: 1 }}>
+            <Text variant="small" weight={700}>
+              {t('Luteal phase, day {n}', { n: cycle.day })}
+            </Text>
+            <Text variant="small" color="sec">
+              {t('Hunger can rise by 100 to 200 kcal. A bigger protein snack helps, and about 150 kcal extra is fine this week. Drink a bit more water. Water weight of 0.5 to 2 kg is normal.')}
+            </Text>
+          </View>
+        </Card>
+      ) : null}
+      {showPlateau ? (
+        <Card>
+          <Row gap={10} style={{ alignItems: 'flex-start' }}>
+            <Icon name="scale" color={c.cobalt} />
+            <View style={{ flex: 1 }}>
+              <Text weight={700}>{t('Your weight hasn’t changed in 2 weeks')}</Text>
+              <Text variant="small" color="sec" style={{ marginTop: 2 }}>
+                {cutting ? t('To keep losing, try eating {n} kcal less a day.', { n: Math.abs(adjust) }) : t('To keep gaining, try eating {n} kcal more a day.', { n: adjust })}
+              </Text>
+            </View>
+          </Row>
+          <Row gap={10} style={{ marginTop: 12 }}>
+            <Button
+              small
+              title={t('Apply {n} kcal', { n: `${adjust > 0 ? '+' : '−'}${Math.abs(adjust)}` })}
+              onPress={async () => {
+                const before = food.plan;
+                const k = Math.min(6000, Math.max(800, food.target.k + adjust));
+                await food.savePlan({ ...food.plan, kcal: k, carbG: null, plateauDay: food.today });
+                toast(t('Daily calories set to {k} kcal', { k: fmt(k) }), { ai: true, undo: () => food.savePlan(before) });
+              }}
+            />
+            <Button small kind="ghost" title={t('Not now')} onPress={() => food.updatePlan({ plateauDay: food.today })} />
+          </Row>
         </Card>
       ) : null}
 
@@ -154,7 +237,7 @@ function FoodHome() {
           value={tab}
           options={[
             { value: 'logged', label: t('Logged today') },
-            { value: 'plan', label: t('Meal plan') },
+            { value: 'plan', label: coach ? t('Coach’s plan') : t('Meal plan') },
           ]}
           onChange={setTab}
         />
@@ -168,7 +251,9 @@ function FoodHome() {
           {food.logs.length ? (
             <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden', marginBottom: 12 }}>
               {food.logs.map((x, i) => (
-                <View key={x.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 60, paddingVertical: 10, paddingHorizontal: 16, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
+                <View
+                  key={x.id}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 60, paddingVertical: 10, paddingHorizontal: 16, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text weight={700} numberOfLines={2}>
                       {x.name}
@@ -209,6 +294,62 @@ function FoodHome() {
             </Card>
           )}
         </View>
+      ) : coach ? (
+        food.coachMeals ? (
+          <View>
+            <Row gap={6} style={{ marginTop: 14, marginBottom: 10, marginHorizontal: 4 }}>
+              <Icon name="user" size={14} color={c.sec} />
+              <Text variant="small" color="sec">
+                {t('{plan}, from {coach}', { plan: food.coachMeals.name, coach: coach.name })}
+              </Text>
+            </Row>
+            {food.coachMeals.meals.map((m, i) => {
+              const done = coachLogged(m.n);
+              return (
+                <Card key={`${m.n}-${i}`}>
+                  <Row style={{ justifyContent: 'space-between' }}>
+                    <Text weight={700} style={{ flex: 1 }}>{`${m.n}, ${fmtTime(m.t, lang)}`}</Text>
+                    {done ? <OkChip label={t('Logged')} /> : <Text num weight={700}>{`${fmt(m.k)} ${t('kcal')}`}</Text>}
+                  </Row>
+                  <Text variant="small" color="sec" style={{ marginTop: 4 }}>
+                    {m.d || t('Details coming from your coach')}
+                  </Text>
+                  <Row style={{ justifyContent: 'space-between', marginTop: 8 }}>
+                    <Text variant="xs" weight={700} color="sec">
+                      {t('{n} g protein', { n: m.p })}
+                    </Text>
+                    {done ? null : (
+                      <Button
+                        small
+                        title={t('Log it')}
+                        onPress={() =>
+                          logFood(
+                            {
+                              name: `${m.n} (${t('coach plan')})`,
+                              kcal: +m.k || 0,
+                              protein: +m.p || 0,
+                              carbs: m.c ?? Math.round(((+m.k || 0) * 0.45) / 4),
+                              fat: m.f ?? Math.round(((+m.k || 0) * 0.25) / 9),
+                              meal: m.n,
+                            },
+                            toast,
+                            t,
+                          )
+                        }
+                      />
+                    )}
+                  </Row>
+                </Card>
+              );
+            })}
+          </View>
+        ) : (
+          <Card style={{ marginTop: 12, alignItems: 'center' }}>
+            <Text variant="small" color="sec" center>
+              {t('Your coach hasn’t sent a meal plan yet. You can still log what you eat.')}
+            </Text>
+          </Card>
+        )
       ) : (
         <View>
           <Row style={{ justifyContent: 'space-between', marginTop: 16, marginBottom: 10, marginHorizontal: 4 }}>
@@ -254,12 +395,21 @@ function FoodHome() {
       <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden' }}>
         {(
           [
-            ['bookmark', 'Saved meals', t('{n} saved', { n: food.saved.length }), () => router.push('/saved-meals')],
-            ['drop', 'Water', t('{a} of {b} ml', { a: fmt(food.water), b: fmt(food.plan.water) }), () => food.addWater(250).then(() => toast(t('Added {n} ml water', { n: 250 }), { icon: 'drop' }))],
-            ['sliders', 'My targets', t('Calories, protein, meal times'), () => router.push('/food-results')],
+            ['bookmark', 'Saved meals', coach ? t('Your meals and meal codes') : t('{n} saved', { n: food.saved.length }), () => router.push('/saved-meals')],
+            ['drop', 'Water', t('{a} of {b} ml', { a: fmt(food.water), b: fmt(food.plan.water) }), () => router.push('/water')],
+            ...(coach
+              ? []
+              : ([
+                  ['sliders', 'My targets', t('Calories, protein, meal times'), () => router.push('/food-results')],
+                  ['gear', 'Mode', food.plan.mode === 'beginner' ? t('Beginner') : t('Advanced'), () => setModeOpen(true)],
+                ] as [IconName, string, string, () => void][])),
           ] as [IconName, string, string, () => void][]
         ).map(([icon, title, sub, fn], i) => (
-          <Springy key={title} onPress={fn} scaleTo={0.99} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingHorizontal: 16, paddingVertical: 10, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
+          <Springy
+            key={title}
+            onPress={fn}
+            scaleTo={0.99}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingHorizontal: 16, paddingVertical: 10, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
             <View style={{ width: 36, height: 36, borderRadius: 11, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
               <Icon name={icon} size={20} />
             </View>
@@ -269,7 +419,7 @@ function FoodHome() {
                 {sub}
               </Text>
             </View>
-            {icon === 'drop' ? <Icon name="plus" size={18} color={c.cobalt} strokeWidth={2.4} /> : <Icon name="chev" size={16} color={c.sec} />}
+            <Icon name="chev" size={16} color={c.sec} />
           </Springy>
         ))}
       </View>
@@ -278,6 +428,16 @@ function FoodHome() {
       </Text>
 
       <MealMenu meal={menuFor} logged={!!menuFor && loggedKeys.has(menuFor.key)} onClose={() => setMenuFor(null)} />
+      <Sheet open={modeOpen} onClose={() => setModeOpen(false)}>
+        <ModeCard
+          mode={food.plan.mode}
+          onChange={(mode) => {
+            food.updatePlan({ mode });
+            toast(t(mode === 'beginner' ? 'Beginner mode: everything is set for you' : 'Advanced mode: you can edit every number'), { icon: 'sliders' });
+          }}
+        />
+        <Button title={t('Done')} onPress={() => setModeOpen(false)} />
+      </Sheet>
     </Screen>
   );
 }

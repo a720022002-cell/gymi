@@ -23,7 +23,7 @@ let lastDetail = '';
 let lastModel = '';
 const openrouterKey = () => env('OPENROUTER_API_KEY') || env('OpenRouter') || env('OPENROUTER');
 
-type Part = { text: string } | { image: string; mime: string };
+type Part = { text: string } | { image: string; mime: string } | { file: string; mime: string; name: string };
 type Msg = { role: 'user' | 'ai'; parts: Part[] };
 
 /** Which model each task uses (the model switch). Photos and plans get the stronger model. */
@@ -39,7 +39,7 @@ async function gemini(model: string, system: string, msgs: Msg[], schema?: objec
       systemInstruction: { parts: [{ text: system }] },
       contents: msgs.map((m) => ({
         role: m.role === 'ai' ? 'model' : 'user',
-        parts: m.parts.map((p) => ('text' in p ? { text: p.text } : { inline_data: { mime_type: p.mime, data: p.image } })),
+        parts: m.parts.map((p) => ('text' in p ? { text: p.text } : { inline_data: { mime_type: p.mime, data: 'image' in p ? p.image : p.file } })),
       })),
       generationConfig: { temperature: 0.4, responseMimeType: 'application/json', ...(schema ? { responseSchema: schema } : {}) },
     }),
@@ -64,12 +64,20 @@ async function openrouter(system: string, msgs: Msg[], schema?: object, retry = 
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
     body: JSON.stringify({
       model: env('OPENROUTER_MODEL', QWEN),
+      // PDFs (lab reports) are turned into text by OpenRouter's free PDF reader.
+      ...(msgs.some((m) => m.parts.some((p) => 'file' in p)) ? { plugins: [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }] } : {}),
       // Some free models don't take a separate system message, so the instructions go first in the chat.
       messages: msgs.map((m, i) => ({
         role: m.role === 'ai' ? 'assistant' : 'user',
         content: [
           ...(i === 0 ? [{ type: 'text', text: `${system}\nAnswer with one JSON object only, no other text.${schema ? `\nIt must follow this JSON schema: ${JSON.stringify(schema)}` : ''}\n\n` }] : []),
-          ...m.parts.map((p) => ('text' in p ? { type: 'text', text: p.text } : { type: 'image_url', image_url: { url: `data:${p.mime};base64,${p.image}` } })),
+          ...m.parts.map((p) =>
+            'text' in p
+              ? { type: 'text', text: p.text }
+              : 'file' in p
+                ? { type: 'file', file: { filename: p.name, file_data: `data:${p.mime};base64,${p.file}` } }
+                : { type: 'image_url', image_url: { url: `data:${p.mime};base64,${p.image}` } },
+          ),
         ],
       })),
     }),
@@ -123,17 +131,25 @@ async function run(task: string, b: Record<string, unknown>) {
   const img = (k = 'image'): Part => ({ image: String(b[k]), mime: String(b.mime ?? 'image/jpeg') });
   switch (task) {
     case 'chat': {
-      const ctx = JSON.stringify(b.context ?? {});
+      const ctx = JSON.stringify(b.context ?? {}).slice(0, 9000);
+      const memory = String(b.memory ?? '').slice(0, 1500);
       const system = `You are Gymi, a friendly AI fitness coach for people in Saudi Arabia and the Gulf. ${LANG(lang)}
 Keep answers short (2 to 5 sentences), practical and kind. Use local foods when helpful (kabsa, mandi, laban, dates, shawarma).
+Use the user's real numbers below (weight trend, sleep, recovery, calories, protein, workouts, commitment, coach targets, cycle phase, watch data) and say them plainly. Never invent numbers that are not in the data.
+If a human coach set calorie or protein targets ("coachTargets"), follow those targets. If "cycle" is present, take the phase into account (hunger, water weight, energy) without being dramatic.
 You are not a doctor: for pain, injury or medical questions, suggest seeing a doctor.
-The user's data today (JSON): ${ctx}
-If the user says they ate, drank, walked/ran/cycled/swam, add actions so the app can log it:
+What you remember about this user from earlier chats: ${memory || 'nothing yet'}
+The user's data (JSON): ${ctx}
+If the user says they ate, drank, walked/ran/cycled/swam, slept, or weighed themselves, add actions so the app can log it:
 - food: {"type":"food","name":"...","kcal":n,"protein":n,"carbs":n,"fat":n} (estimate a normal portion if no amount is given). ${PORTIONS}
 - cardio: {"type":"cardio","kind":"Walk|Run|Bike|Swim","minutes":n,"intensity":0|1|2}
 - water: {"type":"water","ml":n}
+- sleep: {"type":"sleep","hours":n} (last night's total sleep in hours, like 7 or 6.5)
+- weight: {"type":"weight","kg":n} (today's body weight in kg)
 Only add actions for things they already did, not plans. Otherwise "actions" is [].
-Return JSON: {"reply":"...","actions":[...]}`;
+You may add one small "card" under your reply when it helps: {"type":"weight"} for weight or progress questions, {"type":"calories"} for calorie or eating questions, {"type":"sleep"} for sleep or recovery questions, or {"type":"meal","name":"...","kcal":n,"protein":n} when you suggest one meal. Otherwise leave "card" out.
+If the user told you something new and lasting about themselves (goals, injuries, foods they like or avoid, schedule, preferences), add "memory": the full updated memory as short notes in English, max 600 characters, keeping what still matters from the old memory. Otherwise leave "memory" out.
+Return JSON: {"reply":"...","actions":[...],"card":{...},"memory":"..."}`;
       const msgs = ((b.messages as { role: 'user' | 'ai'; text: string }[]) ?? []).slice(-12).map((m) => ({ role: m.role, parts: [{ text: m.text.slice(0, 2000) }] }));
       return ask(task, system, msgs);
     }
@@ -198,7 +214,7 @@ Return JSON: {"reply":"...","actions":[...]}`;
       });
     case 'blood':
       return ask(task, `You read lab reports (blood tests). ${LANG(lang)} for "title" only; keep test names in English as printed. List every test value you can read with its unit and the normal range printed on the report ("low" and "high" numbers; null if not printed). "flag" is -1 if below the range, 1 if above, 0 if inside or unknown. "day" is the report date as YYYY-MM-DD if printed, else empty. Never add advice, causes or treatment. If it is not a lab report, return values: [].`, [
-        { role: 'user', parts: [img(), { text: 'Read the values in this lab report.' }] },
+        { role: 'user', parts: [b.file ? { file: String(b.file), mime: 'application/pdf', name: String(b.name ?? 'report.pdf').slice(0, 100) } : img(), { text: 'Read the values in this lab report.' }] },
       ], {
         type: 'object',
         properties: {
@@ -225,6 +241,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const task = String(body.task ?? '');
     if (typeof body.image === 'string' && body.image.length > 6_000_000) return json({ error: 'too_big' }, 413);
+    if (typeof body.file === 'string' && body.file.length > 8_000_000) return json({ error: 'too_big' }, 413);
     if (!env('GEMINI_API_KEY') && !openrouterKey()) return json({ error: 'ai_off' }, 503);
 
     const admin = createClient(url, env('SUPABASE_SERVICE_ROLE_KEY'));

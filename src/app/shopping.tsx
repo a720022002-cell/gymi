@@ -153,9 +153,13 @@ export default function Shopping() {
                   accessibilityState={{ checked: on }}
                   onPress={() => {
                     if (edit) {
+                      const before = { extra: shop.extra, hidden: shop.hidden };
                       if (extra) save({ extra: shop.extra.filter((e) => e.n !== n) });
                       else save({ hidden: [...shop.hidden, n] });
-                      toast(extra ? t('Removed {name}', { name: t(n) }) : t('{name} moved to “Already have”', { name: t(n) }), { icon: 'check' });
+                      toast(extra ? t('Removed {name}', { name: t(n) }) : t('{name} moved to “Already have”', { name: t(n) }), {
+                        icon: extra ? 'trash' : 'check',
+                        undo: () => food.updatePlan({ shop: { ...shop, ...(food.plan.shop ?? {}), ...before } }),
+                      });
                     } else save({ checked: { ...shop.checked, [n]: !on } });
                   }}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 52, paddingHorizontal: 16, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
@@ -213,6 +217,16 @@ export default function Shopping() {
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {CATS.map((k) => (
             <Chip key={k} title={t(k)} on={newItem.cat === k} onPress={() => setNewItem({ ...newItem, cat: k })} />
+          ))}
+        </View>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+          {['Water bottles', 'Spices', 'Olive oil', 'Coffee', 'Oats'].map((x) => (
+            <Springy
+              key={x}
+              onPress={() => setNewItem({ ...newItem, n: t(x), cat: category(x) === 'Pantry' && x === 'Water bottles' ? 'Other' : category(x) })}
+              style={{ minHeight: 38, paddingHorizontal: 15, borderRadius: 19, borderWidth: 1.5, borderStyle: 'dashed', borderColor: c.line, alignItems: 'center', justifyContent: 'center' }}>
+              <Text weight={600} size={14}>{`+ ${t(x)}`}</Text>
+            </Springy>
           ))}
         </View>
         <Button

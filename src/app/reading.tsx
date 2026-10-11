@@ -3,11 +3,14 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { BarChart, LineChart } from '@/components/Charts';
-import { Icon, type IconName } from '@/components/Icon';
+import { DEVICE_FIELD, INFO, type ReadingKey } from '@/components/health/readings';
+import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { Button, Card, Row, Segmented } from '@/components/ui';
 import { useT } from '@/i18n';
+import { useAuth } from '@/lib/auth';
+import { type DeviceDay, sourceName, useDevices } from '@/lib/devices';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { addDays, fmt } from '@/lib/nutrition';
@@ -16,35 +19,28 @@ import { supabase } from '@/lib/supabase';
 import { useTrain } from '@/lib/train';
 import { useSettings } from '@/theme/settings';
 
-type ReadingKey = 'steps' | 'burned' | 'weight' | 'sleep' | 'recovery' | 'workouts';
-
-type Info = { name: string; icon: IconName; unit: string; bar?: boolean; dec?: boolean; dir: -1 | 0 | 1; goal?: number; what: string; coach: string; range: string };
-
-/** What each reading means and how the coach uses it (design: RD). */
-const INFO: Record<ReadingKey, Info> = {
-  steps: { name: 'Steps', icon: 'walk', unit: '', bar: true, dir: 1, goal: 8000, what: 'How much you walked today, from your phone, your watch or what you log.', coach: 'Low on steps on a rest day? I’ll suggest a short evening walk.', range: 'Your goal: 8,000 steps a day' },
-  burned: { name: 'Calories burned in exercise', icon: 'flame', unit: 'kcal', bar: true, dir: 0, what: 'Calories you burned in workouts and cardio today.', coach: 'Extra activity is added to today’s food budget, so you can eat a bit more on active days.', range: 'Most training days: 200 to 600 kcal from exercise' },
-  weight: { name: 'Weight', icon: 'scale', unit: 'kg', dec: true, dir: 0, what: 'From your smart scale or the weight you log each morning.', coach: 'I use your weekly average, not single days, to decide if your calories need a change.', range: 'Normal daily swing: up to 1 kg from water and food' },
-  sleep: { name: 'Sleep', icon: 'moon', unit: 'h', bar: true, dec: true, dir: 1, goal: 7.5, what: 'How long you slept, from your morning check-in or your watch.', coach: 'Short on sleep? I keep your workout but make it a bit lighter.', range: 'Aim for 7 to 9 hours' },
-  recovery: { name: 'Recovery', icon: 'bolt', unit: '%', dir: 1, goal: 67, what: 'How ready your body is to train today, from your sleep, soreness and energy.', coach: 'Under 33%: I make the workout lighter. Over 66%: you’re ready to push.', range: '67% or more is ready to train hard' },
-  workouts: { name: 'Workouts', icon: 'train', unit: 'min', bar: true, dir: 0, what: 'Minutes you trained each day.', coach: 'I spread hard and easy days through your week so you don’t burn out.', range: 'Your plan: {n} workouts a week' },
-};
-
 type Rows = { day: string; v: number }[];
 
-/** One reading in detail: today vs usual, week or month chart, and what it means (design: reading). */
+/** One reading in detail: today vs usual, a day (by hour), week or month chart, and what it means (design: reading). */
 export default function Reading() {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
   const food = useFood();
   const health = useHealth();
   const train = useTrain();
+  const { session } = useAuth();
+  const dev = useDevices(session?.user.id);
   const { k: raw } = useLocalSearchParams<{ k: string }>();
   const k: ReadingKey = raw && raw in INFO ? (raw as ReadingKey) : 'steps';
   const info = INFO[k];
-  const [range, setRange] = useState<'week' | 'month'>('week');
+  const [pickRange, setRange] = useState<'day' | 'week' | 'month'>('week');
   const [fetched, setFetched] = useState<{ k: ReadingKey; rows: Rows } | null>(null);
   const today = food.today;
+  // Steps and heart rate by hour, when the watch or phone sent them for today.
+  const devToday = dev.days.find((d) => d.day === today);
+  const hourly = k === 'steps' ? devToday?.hours?.steps : k === 'hr' ? devToday?.hours?.hr : null;
+  const hasDay = !!hourly && hourly.some((x) => x != null && x > 0);
+  const range = pickRange === 'day' && !hasDay ? 'week' : pickRange;
   const days = Array.from({ length: range === 'week' ? 7 : 30 }, (_, i) => addDays(today, i - (range === 'week' ? 6 : 29)));
 
   // Steps, exercise calories and workouts are loaded here; the rest is already in the health store.
@@ -74,19 +70,25 @@ export default function Reading() {
     };
   }, [k, today]);
 
-  const rows: Rows | null =
-    k === 'weight'
+  const devRows = (f: keyof DeviceDay): Rows => dev.days.filter((d) => d[f] != null).map((d) => ({ day: d.day, v: Number(d[f]) }));
+  const field = DEVICE_FIELD[k];
+  const rows: Rows | null = field
+    ? devRows(field)
+    : k === 'weight'
       ? health.weights.map((x) => ({ day: x.day, v: x.value }))
       : k === 'sleep'
-        ? health.checkins.filter((x) => x.sleep_h != null).map((x) => ({ day: x.day, v: x.sleep_h as number }))
+        ? [...devRows('sleep_h').filter((x) => !health.checkins.some((c) => c.day === x.day && c.sleep_h != null)), ...health.checkins.filter((x) => x.sleep_h != null).map((x) => ({ day: x.day, v: x.sleep_h as number }))]
         : k === 'recovery'
           ? health.checkins.filter((x) => x.score != null).map((x) => ({ day: x.day, v: x.score as number }))
           : fetched?.k === k
             ? fetched.rows
             : null;
   const by = new Map((rows ?? []).map((x) => [x.day, x.v]));
-  // Today's own log always wins for steps (it may not be saved yet).
-  if (k === 'steps') by.set(today, food.steps);
+  // Steps: the higher of what you logged and what your phone counted. Today's own log may not be saved yet.
+  if (k === 'steps') {
+    devRows('steps').forEach((x) => by.set(x.day, Math.max(by.get(x.day) ?? 0, x.v)));
+    by.set(today, Math.max(food.steps, devToday?.steps ?? 0));
+  }
   // Counted days (steps, calories, minutes) are 0 when nothing was logged; measured ones are blank.
   const counted = k === 'steps' || k === 'burned' || k === 'workouts';
   const series = days.map((d) => by.get(d) ?? (counted ? 0 : null));
@@ -98,10 +100,12 @@ export default function Reading() {
   const goal = food.plan?.goal;
   const dir = k === 'weight' ? (goal == null || goal === 2 ? 0 : goal <= 1 ? 1 : -1) : info.dir;
   const good = dir === 0 ? null : Math.sign(diff) === dir;
-  const vals = series.filter((x): x is number => x != null);
+  const hours = hourly ?? [];
+  const dayVals = hours.map((x) => (x == null || (k === 'hr' && x === 0) ? null : x));
+  const vals = (range === 'day' ? dayVals : series).filter((x): x is number => x != null);
   const show = (v: number) => (info.dec ? fx(v) : fmt(v));
   const locale = lang === 'ar' ? 'ar' : 'en-US';
-  const labels = range === 'week' ? days.map((d) => new Intl.DateTimeFormat(locale, { weekday: 'narrow' }).format(new Date(`${d}T12:00:00`))) : days.map((d, i) => (i % 5 === 0 ? String(Number(d.slice(8))) : ''));
+  const labels = range === 'day' ? hours.map((_, h) => (h % 3 === 0 ? ['12a', '3a', '6a', '9a', '12p', '3p', '6p', '9p'][h / 3] : '')) : range === 'week' ? days.map((d) => new Intl.DateTimeFormat(locale, { weekday: 'narrow' }).format(new Date(`${d}T12:00:00`))) : days.map((d, i) => (i % 5 === 0 ? String(Number(d.slice(8))) : ''));
   const enough = vals.length > (info.bar ? 0 : 1);
   const open: Partial<Record<ReadingKey, [string, () => void]>> = {
     steps: ['Log cardio or steps', () => router.push('/cardio')],
@@ -110,6 +114,8 @@ export default function Reading() {
     sleep: ['Open sleep in Progress', () => router.push({ pathname: '/progress', params: { tab: 'recovery' } })],
     recovery: ['Open recovery', () => router.push('/recovery')],
     workouts: ['Open Train', () => router.push('/train')],
+    bed: ['Open sleep in Progress', () => router.push({ pathname: '/progress', params: { tab: 'recovery' } })],
+    sleepEff: ['Open sleep in Progress', () => router.push({ pathname: '/progress', params: { tab: 'recovery' } })],
   };
   const [btn, go] = open[k] ?? [];
 
@@ -121,7 +127,7 @@ export default function Reading() {
             <Icon name={info.icon} size={18} color={c.cobalt} />
           </View>
           <Text variant="small" weight={700} color="sec">
-            {by.has(today) || counted ? t('Today, from what you log') : latest ? t('Last logged') : t('Today')}
+            {field || (k === 'steps' && devToday?.steps) ? t('Today, from {s}', { s: sourceName(dev.prefs.source) }) : by.has(today) || counted ? t('Today, from what you log') : latest ? t('Last logged') : t('Today')}
           </Text>
         </Row>
         <Row style={{ marginTop: 12, alignItems: 'flex-end', justifyContent: 'space-between' }}>
@@ -148,11 +154,12 @@ export default function Reading() {
           )}
         </Row>
       </Card>
-      <Segmented<'week' | 'month'>
+      <Segmented<'day' | 'week' | 'month'>
         value={range}
         options={[
-          { value: 'week', label: t('Week') },
-          { value: 'month', label: t('Month') },
+          ...(hasDay ? [{ value: 'day' as const, label: t('Day') }] : []),
+          { value: 'week' as const, label: t('Week') },
+          { value: 'month' as const, label: t('Month') },
         ]}
         onChange={setRange}
       />
@@ -163,6 +170,8 @@ export default function Reading() {
           <Text color="sec" center style={{ paddingVertical: 30 }}>
             {t('Log this on a few days to see a chart.')}
           </Text>
+        ) : range === 'day' ? (
+          k === 'hr' ? <LineChart values={vals} dots={false} /> : <BarChart values={dayVals} labels={labels} />
         ) : info.bar ? (
           <BarChart values={series} labels={labels} highlight={series.length - 1} goal={info.goal} />
         ) : (

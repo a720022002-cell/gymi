@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 
-export type Share = { workouts: boolean; prs: boolean; streak: boolean; weight: boolean; body: boolean };
-export const DEFAULT_SHARE: Share = { workouts: true, prs: true, streak: true, weight: false, body: false };
+export type Share = { workouts: boolean; prs: boolean; streak: boolean; weight: boolean; body: boolean; photos: boolean };
+export const DEFAULT_SHARE: Share = { workouts: true, prs: true, streak: true, weight: false, body: false, photos: false };
 
 export type FriendRow = {
   friendship_id: string;
@@ -26,11 +26,15 @@ export type FriendProfile = {
   prs?: { n: string; w: number }[];
   weights?: { day: string; value: number }[];
   body?: Record<string, number>;
+  photos?: { day: string; path: string }[];
 };
 export type FeedItem = { id: string; user_id: string; name: string | null; username: string; kind: string; text: string; data: Record<string, unknown> | null; created_at: string; cheers: number; cheered: boolean };
-export type Group = { id: string; name: string; owner: string; members: number };
+export type Group = { id: string; name: string; owner: string; members: number; memberIds: string[] };
 export type BoardRow = { user_id: string; name: string | null; username: string; workouts: number | null; volume: number | null };
-export type Challenge = { id: string; kind: 'steps' | 'workouts' | 'volume'; start_day: string; end_day: string; members: number; creator_name: string | null };
+export type ChallengeKind = 'exercise' | 'weight' | 'steps' | 'progress' | 'workouts' | 'volume';
+export type Challenge = { id: string; kind: ChallengeKind; start_day: string; end_day: string; members: number; creator_name: string | null; exercise_name: string | null; my_rank: number | null };
+export type ChallengeInfo = Pick<Challenge, 'id' | 'kind' | 'start_day' | 'end_day' | 'exercise_name'>;
+export type ChallengeRow = { user_id: string; name: string | null; value: number; has_goal: boolean; goal: number | null };
 
 const rpc = async <T>(fn: string, args?: Record<string, unknown>) => {
   const { data, error } = await supabase.rpc(fn, args);
@@ -68,8 +72,8 @@ export async function friendProfile(id: string) {
 }
 
 export async function getShare(userId: string): Promise<Share> {
-  const { data } = await supabase.from('friend_share').select('workouts,prs,streak,weight,body').eq('user_id', userId).maybeSingle();
-  return (data as Share) ?? DEFAULT_SHARE;
+  const { data } = await supabase.from('friend_share').select('workouts,prs,streak,weight,body,photos').eq('user_id', userId).maybeSingle();
+  return data ? { ...DEFAULT_SHARE, ...(data as Share) } : DEFAULT_SHARE;
 }
 
 export async function saveShare(userId: string, s: Share) {
@@ -100,8 +104,11 @@ export async function shareWorkout(userId: string, w: { name: string; minutes: n
 }
 
 export async function myGroups(): Promise<Group[]> {
-  const { data } = await supabase.from('groups').select('id,name,owner,group_members(count)').order('created_at', { ascending: false });
-  return ((data as { id: string; name: string; owner: string; group_members: { count: number }[] }[]) ?? []).map((g) => ({ id: g.id, name: g.name, owner: g.owner, members: g.group_members?.[0]?.count ?? 1 }));
+  const { data } = await supabase.from('groups').select('id,name,owner,group_members(user_id)').order('created_at', { ascending: false });
+  return ((data as { id: string; name: string; owner: string; group_members: { user_id: string }[] }[]) ?? []).map((g) => {
+    const ids = (g.group_members ?? []).map((m) => m.user_id);
+    return { id: g.id, name: g.name, owner: g.owner, members: Math.max(1, ids.length), memberIds: ids };
+  });
 }
 
 export async function createGroup(name: string, members: string[]) {
@@ -134,17 +141,46 @@ export async function myChallenges() {
   return (await rpc<Challenge[]>('my_challenges')).data ?? [];
 }
 
-export async function createChallenge(kind: Challenge['kind'], days: number, members: string[]) {
-  return (await rpc<string>('create_challenge', { p_kind: kind, p_days: days, p_members: members })).data;
+export async function createChallenge(kind: ChallengeKind, days: number, members: string[], opts?: { exercise?: string; exerciseName?: string; goal?: number | null }) {
+  return (
+    await rpc<string>('create_challenge', {
+      p_kind: kind,
+      p_days: days,
+      p_members: members,
+      p_exercise: opts?.exercise ?? null,
+      p_exercise_name: opts?.exerciseName ?? null,
+      p_goal: opts?.goal ?? null,
+    })
+  ).data;
 }
 
-export async function challengeBoard(id: string) {
-  return ((await rpc<{ user_id: string; name: string | null; value: number }[]>('challenge_board', { p_id: id })).data ?? []).map((r) => ({ ...r, value: Number(r.value) }));
+export async function challengeBoard(id: string): Promise<ChallengeRow[]> {
+  return ((await rpc<ChallengeRow[]>('challenge_board', { p_id: id })).data ?? []).map((r) => ({ ...r, value: Number(r.value), goal: r.goal == null ? null : Number(r.goal) }));
 }
 
 export async function challengeInfo(id: string) {
-  const { data } = await supabase.from('challenges').select('id,kind,start_day,end_day').eq('id', id).maybeSingle();
-  return data as Pick<Challenge, 'id' | 'kind' | 'start_day' | 'end_day'> | null;
+  const { data } = await supabase.from('challenges').select('id,kind,start_day,end_day,exercise_name').eq('id', id).maybeSingle();
+  return data as ChallengeInfo | null;
+}
+
+/** Your own goal weight for a weight challenge (only you see it). */
+export async function setChallengeGoal(id: string, goal: number) {
+  return !!(await rpc<boolean>('set_challenge_goal', { p_id: id, p_goal: goal })).data;
+}
+
+/** Remind the others in a challenge. Once a day per challenge: 'sent' or 'already'. */
+export async function nudgeChallenge(id: string) {
+  return ((await rpc<string>('nudge_challenge', { p_id: id })).data ?? 'no') as 'sent' | 'already' | 'no';
+}
+
+/** Nudges friends sent you in your challenges since a time (for an in-app banner). */
+export async function recentNudges(since: string) {
+  return (await rpc<{ challenge_id: string; kind: ChallengeKind; exercise_name: string | null; from_id: string; from_name: string; created_at: string }[]>('my_nudges', { p_since: since })).data ?? [];
+}
+
+/** New records friends hit since a time (for an in-app banner). Only from friends who share records. */
+export async function recentFriendPRs(since: string, me: string) {
+  return (await feed()).filter((a) => a.kind === 'pr' && a.user_id !== me && a.created_at > since);
 }
 
 export async function leaveChallenge(id: string, userId: string) {
@@ -152,8 +188,28 @@ export async function leaveChallenge(id: string, userId: string) {
   return !error;
 }
 
-export const CH_TITLE: Record<Challenge['kind'], string> = { steps: 'Most steps', workouts: 'Most workouts', volume: 'Most weight lifted' };
-export const CH_UNIT: Record<Challenge['kind'], string> = { steps: 'steps', workouts: 'workouts', volume: 'kg' };
+export const CH_TITLE: Record<ChallengeKind, string> = {
+  exercise: 'Most weight added',
+  weight: 'Closest to goal',
+  steps: 'Most steps',
+  progress: 'Most improved',
+  workouts: 'Most workouts',
+  volume: 'Most weight lifted',
+};
+export const CH_UNIT: Record<ChallengeKind, string> = { exercise: 'kg added', weight: '% to goal', steps: 'steps', progress: '% better', workouts: 'workouts', volume: 'kg' };
+/** "Bench press gains", "Closest to goal"… */
+export function challengeTitle(ch: { kind: ChallengeKind; exercise_name?: string | null }, t: (s: string, v?: Record<string, string | number>) => string) {
+  return ch.kind === 'exercise' && ch.exercise_name ? t('{x} gains', { x: t(ch.exercise_name) }) : t(CH_TITLE[ch.kind]);
+}
+/** Challenges scored in percent (bars go to 100). */
+export const CH_PCT: ChallengeKind[] = ['weight', 'progress'];
+
+/** Progress photos a friend shares, as links that work for an hour. */
+export async function friendPhotoUrls(paths: string[]) {
+  if (!paths.length) return [];
+  const { data } = await supabase.storage.from('progress').createSignedUrls(paths, 3600);
+  return (data ?? []).map((x) => x.signedUrl ?? null);
+}
 
 /** Colour for someone's avatar, the same every time. */
 export function avatarColor(id: string) {

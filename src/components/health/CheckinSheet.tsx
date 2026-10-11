@@ -3,6 +3,8 @@ import { View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
+import { loadCycle, saveLog } from '@/lib/cycle';
+import { useCycleToday } from '@/lib/cyclePhase';
 import { sleepHours, useHealth } from '@/lib/health';
 import { recovery } from '@/lib/recovery';
 import { useTrain } from '@/lib/train';
@@ -15,7 +17,7 @@ import { Text } from '../Text';
 import { useToast } from '../Toast';
 import { useRecovery } from '../train/RecoveryCard';
 import { useToday } from '../train/WorkoutCard';
-import { Button, Card, Label, ProgDots, Row, Segmented } from '../ui';
+import { Button, Card, Chip, Label, ProgDots, Row, Segmented } from '../ui';
 import { Wheel } from '../Wheel';
 import { Choices, fmtDur, WeightWheel } from './bits';
 
@@ -29,11 +31,16 @@ export function CheckinSheet() {
   );
 }
 
+/** One optional tap for women who track their cycle (saved to the cycle log). */
+const CY_QUICK = ['Cramps', 'Headache', 'Bloating', 'Cravings', 'Fatigue'];
+
 function Steps() {
   const { t } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
+  const cycle = useCycleToday();
+  const [symptoms, setSymptoms] = useState<string[]>([]);
   const health = useHealth();
   const train = useTrain();
   const today = useToday();
@@ -62,6 +69,15 @@ function Steps() {
     const lighter = !skipFeel && tired && canLighten;
     if (lighter) train.updatePlan({ light: train.today });
     const ok = await health.saveCheckin({ ...sleepPart, ...feel, score });
+    if (symptoms.length && session) {
+      // Add to today's cycle log without losing what's already there.
+      loadCycle(session.user.id)
+        .then((cy) => {
+          const log = cy.logs?.[train.today] ?? {};
+          return saveLog(train.today, { ...log, Symptoms: [...new Set([...(log.Symptoms ?? []), ...symptoms])] });
+        })
+        .catch(() => {});
+    }
     health.setCheckinOpen(false);
     if (!ok) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
     const skipped = [skip.w && 'weight', skip.s && 'sleep', skipFeel && 'how you feel'].filter(Boolean) as string[];
@@ -168,6 +184,16 @@ function Steps() {
       <Choices options={['Tired', 'Normal', 'Great']} value={energy} onChange={setEnergy} />
       <Label>{t('Muscle soreness')}</Label>
       <Choices options={['None', 'A little', 'Very sore']} value={sore} onChange={setSore} />
+      {cycle ? (
+        <>
+          <Label optional={t('Optional')}>{t('Any cycle symptoms?')}</Label>
+          <Row gap={8} style={{ flexWrap: 'wrap' }}>
+            {CY_QUICK.map((x) => (
+              <Chip key={x} title={t(x)} on={symptoms.includes(x)} onPress={() => setSymptoms((xs) => (xs.includes(x) ? xs.filter((y) => y !== x) : [...xs, x]))} />
+            ))}
+          </Row>
+        </>
+      ) : null}
       {tired && canLighten ? (
         <Card style={{ marginTop: 16, flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
           <Mark size={24} color={c.cobalt} stroke={5} />

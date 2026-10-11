@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
+import { BarChart, LineChart } from '@/components/Charts';
 import { Stepper } from '@/components/food/Stepper';
-import { Icon, type IconName } from '@/components/Icon';
+import { Icon, type IconName, Mark } from '@/components/Icon';
 import { Bar, Ring } from '@/components/Ring';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
@@ -11,8 +13,11 @@ import { useRecovery } from '@/components/train/RecoveryCard';
 import { useToday } from '@/components/train/WorkoutCard';
 import { Button, Card, Chip, Row } from '@/components/ui';
 import { useT } from '@/i18n';
+import { useCycleToday } from '@/lib/cyclePhase';
+import { type DeviceDay, latestDeviceReadings } from '@/lib/devices';
 import { useHealth } from '@/lib/health';
-import { muscleReady, recLabel, recovery, recTips } from '@/lib/recovery';
+import { addDays } from '@/lib/nutrition';
+import { dailyLoad, hoursToReady, muscleReady, REC_TOOLS, recLabel, recovery, recTips } from '@/lib/recovery';
 import { useTrain } from '@/lib/train';
 import { muscleLabel, MUSCLES } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
@@ -32,7 +37,36 @@ export default function RecoveryScreen() {
   const [energy, setEnergy] = useState<number | null>(ci?.energy ?? null);
   const [label, tone] = recLabel(r.score);
   const ready = muscleReady(train.logs, train.today);
-  const tips = recTips(r, input);
+  const cycle = useCycleToday();
+  const tips = recTips(r, input, cycle);
+  const [dev, setDev] = useState<DeviceDay[]>([]);
+  useEffect(() => {
+    let alive = true;
+    latestDeviceReadings()
+      .then((x) => alive && setDev(x.days))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const days7 = Array.from({ length: 7 }, (_, i) => addDays(train.today, i - 6));
+  const dayLabel = (d: string) => t(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(`${d}T12:00:00`).getDay()]).slice(0, 2);
+  const ciOf = (d: string) => health.checkins.find((x) => x.day === d);
+  const sleep7 = days7.map((d) => ciOf(d)?.sleep_h ?? dev.find((x) => x.day === d)?.sleep_h ?? null);
+  const score7 = days7.map((d) => (d === train.today ? r.score : (ciOf(d)?.score ?? null)));
+  const hrv7 = days7.map((d) => dev.find((x) => x.day === d)?.hrv ?? null);
+  const rhr7 = days7.map((d) => dev.find((x) => x.day === d)?.hr_rest ?? null);
+  const fill = (xs: (number | null)[]) => xs.filter((x): x is number => x != null);
+  const load = dailyLoad(train.logs, train.today, 14);
+  const toggleTool = (k: string) => {
+    const on = train.recTools.includes(k);
+    const next = on ? train.recTools.filter((x) => x !== k) : [...train.recTools, k];
+    train.setRecTools(next);
+    if (!on) {
+      const sc = recovery({ ...input, tools: next }).score;
+      toast(t('{x} logged. Recovery {n}%', { x: t(REC_TOOLS.find((x) => x[0] === k)![1]), n: sc }), { icon: 'check' });
+    }
+  };
   const canLighten = !!today.name && !today.done && !today.light && !today.deload && r.score < 60;
 
   const save = () => {
@@ -136,13 +170,18 @@ export default function RecoveryScreen() {
               <Text variant="small" weight={700}>
                 {muscleLabel(m, lang, t)}
               </Text>
-              <Text variant="small" num color={ready[m] < 60 ? 'down' : 'sec'}>{`${ready[m]}%`}</Text>
+              <Text variant="small" weight={700} num color={ready[m] >= 80 ? 'up' : 'sec'}>
+                {hoursToReady(ready[m]) ? t('~{n} h', { n: hoursToReady(ready[m]) }) : t('Ready')}
+              </Text>
             </Row>
             <View style={{ marginTop: 4 }}>
-              <Bar value={ready[m]} max={100} color={ready[m] >= 85 ? c.up : ready[m] >= 60 ? c.cobalt : c.down} />
+              <Bar value={ready[m]} max={100} color={ready[m] >= 80 ? c.up : ready[m] >= 55 ? '#D97706' : c.down} />
             </View>
           </View>
         ))}
+        <Text variant="xs" color="sec" style={{ marginTop: 12 }}>
+          {t('Green is ready. Hours show roughly when it’s fully recovered.')}
+        </Text>
       </Card>
 
       {head(t('Recover faster'))}
@@ -157,9 +196,68 @@ export default function RecoveryScreen() {
           </View>
         </Card>
       ))}
-      <Text variant="xs" color="sec" center style={{ marginTop: 4 }}>
-        {t('Heart data from a watch will make this more accurate when devices are added.')}
+      <Button kind="glass" title={t('Ask the coach about recovery')} style={{ marginTop: 4 }} onPress={() => router.push({ pathname: '/coach', params: { ask: t('How can I recover faster?') } })} />
+
+      {head(t('Log recovery'))}
+      <Text variant="small" color="sec" style={{ marginTop: -4, marginBottom: 10, marginHorizontal: 4 }}>
+        {t('What did you do today? It’s added to your score.')}
       </Text>
+      <Row gap={8} style={{ flexWrap: 'wrap' }}>
+        {REC_TOOLS.map(([k, n]) => (
+          <Chip key={k} title={`${train.recTools.includes(k) ? '✓ ' : ''}${t(n)}`} on={train.recTools.includes(k)} onPress={() => toggleTool(k)} />
+        ))}
+      </Row>
+      {r.bonus ? (
+        <Text variant="xs" color="sec" style={{ marginTop: 8, marginHorizontal: 4 }}>
+          {t('+{n} to today’s score', { n: r.bonus })}
+        </Text>
+      ) : null}
+
+      {head(t('Last 7 days'))}
+      <Row gap={10} style={{ alignItems: 'stretch' }}>
+        {(fill(hrv7).length >= 2
+          ? [
+              [t('HRV (ms)'), hrv7],
+              [t('Resting HR (bpm)'), rhr7],
+            ]
+          : [
+              [t('Sleep (h)'), sleep7],
+              [t('Recovery'), score7],
+            ]
+        ).map(([label, xs]) => (
+          <Card key={label as string} style={{ flex: 1, marginBottom: 0 }}>
+            <Text variant="xs" weight={700} color="sec">
+              {label as string}
+            </Text>
+            {fill(xs as (number | null)[]).length >= 2 ? (
+              <LineChart values={fill(xs as (number | null)[])} height={80} />
+            ) : (
+              <Text variant="xs" color="sec" style={{ marginTop: 12 }}>
+                {t('Not enough data yet')}
+              </Text>
+            )}
+          </Card>
+        ))}
+      </Row>
+      <Card style={{ marginTop: 12 }}>
+        <Row style={{ justifyContent: 'space-between' }}>
+          <Text variant="small" weight={700}>
+            {t('Training load, 14 days')}
+          </Text>
+          <Text variant="xs" weight={700} color="sec">
+            {t('{n}× usual', { n: Math.round(r.acwr * 10) / 10 })}
+          </Text>
+        </Row>
+        <View style={{ marginTop: 8 }}>
+          <BarChart values={load.map((x) => x.volume || (x.minutes ? x.minutes * 10 : 0))} labels={load.map((x, i) => (i % 2 ? '' : dayLabel(x.day)))} highlight={load.length - 1} height={120} />
+        </View>
+      </Card>
+      <Row gap={8} style={{ justifyContent: 'center', marginTop: 8 }}>
+        <Mark size={14} color={c.sec} stroke={3} />
+        <Text variant="xs" color="sec" center>
+          {t(dev.length ? 'Heart and sleep data from your phone’s health app.' : 'Connect Apple Health or Health Connect for real heart data.')} {t('Not medical advice.')}
+        </Text>
+      </Row>
     </Screen>
   );
 }

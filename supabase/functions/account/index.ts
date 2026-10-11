@@ -21,9 +21,20 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     if (body.action !== 'delete' || body.confirm !== 'DELETE') return json({ error: 'confirm' }, 400);
     const id = u.user.id;
-    // Progress photos live in storage under the user's folder.
-    const { data: files } = await admin.storage.from('progress').list(id, { limit: 1000 });
-    if (files?.length) await admin.storage.from('progress').remove(files.map((f) => `${id}/${f.name}`));
+    // Files live in storage under the user's folder in each bucket (photos, health files, certificates, avatar).
+    for (const bucket of ['progress', 'health-files', 'coach-certs', 'avatars']) {
+      const paths: string[] = [];
+      const walk = async (dir: string, depth: number) => {
+        const { data } = await admin.storage.from(bucket).list(dir, { limit: 1000 });
+        for (const f of data ?? []) {
+          // Folders have no id; go one level deeper for them.
+          if (f.id) paths.push(`${dir}/${f.name}`);
+          else if (depth < 3) await walk(`${dir}/${f.name}`, depth + 1);
+        }
+      };
+      await walk(id, 0);
+      if (paths.length) await admin.storage.from(bucket).remove(paths);
+    }
     // Deleting the user removes every row linked to them (on delete cascade).
     const { error } = await admin.auth.admin.deleteUser(id);
     if (error) return json({ error: 'failed', detail: error.message }, 500);

@@ -10,7 +10,7 @@ import { useToast } from '@/components/Toast';
 import { ExercisePicker } from '@/components/train/ExercisePicker';
 import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
-import { deleteProgram, listPrograms, type Program, saveProgram } from '@/lib/coaching';
+import { assignOne, deleteProgram, listPrograms, type Program, saveProgram } from '@/lib/coaching';
 import { toPlanEx } from '@/lib/exercisesDb';
 import { exInfo } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
@@ -22,7 +22,7 @@ export default function ProgramEdit() {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, assign } = useLocalSearchParams<{ id?: string; assign?: string }>();
   const [p, setP] = useState<Program | null>(id ? null : NEW);
   const [pick, setPick] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
@@ -97,6 +97,8 @@ export default function ProgramEdit() {
           const r = await saveProgram({ ...p, id: p.id || undefined });
           setBusy(false);
           if (!r) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+          // Made from a client's page or an invite: give it to them right away.
+          if (assign && !p.id) await assignOne(assign, 'program', r.id);
           toast(t('Program saved. Clients on it see the changes.'), { icon: 'check' });
           router.back();
         }}

@@ -3,6 +3,7 @@ import { View } from 'react-native';
 
 import { TimeField } from '@/components/food/TimeField';
 import { Field } from '@/components/Field';
+import { ConfirmBody } from '@/components/health/Confirm';
 import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
@@ -12,6 +13,7 @@ import { Button, Card, Chip, Label, NavButton, Row, Springy, Toggle } from '@/co
 import { useT } from '@/i18n';
 import { type Supplement, useHealth } from '@/lib/health';
 import { fmtTime } from '@/lib/nutrition';
+import { previewNotification } from '@/lib/previewNotify';
 import { useSettings } from '@/theme/settings';
 
 type Draft = Omit<Supplement, 'id'> & { id?: string };
@@ -25,6 +27,16 @@ export default function VitaminsScreen() {
   const h = useHealth();
   const [draft, setDraft] = useState<Draft | null>(null);
   const act = h.supplements.filter((v) => v.active).length;
+
+  const preview = async () => {
+    const v = h.supplements.find((x) => x.active && x.remind) ?? h.supplements.find((x) => x.active);
+    const title = t('Time for your vitamins');
+    const body = v ? t('{n}, {d}', { n: v.name, d: v.dose ? `${v.dose} ${v.unit}` : t(v.freq).toLowerCase() }) : t('Vitamin D, 50,000 IU');
+    const r = await previewNotification(title, body).catch(() => 'unsupported' as const);
+    if (r === 'ok') toast(t('A sample reminder is on its way.'), { icon: 'bell' });
+    else if (r === 'denied') toast(t('Allow notifications for Gymi to get reminders.'), { icon: 'bell' });
+    else toast(`${title}: ${body}`, { icon: 'bell' });
+  };
 
   const quick = async (v: Supplement, patch: Partial<Supplement>) => {
     const ok = await h.saveSupplement({ ...v, ...patch });
@@ -102,9 +114,7 @@ export default function VitaminsScreen() {
           {t('Gymi logs what you take. It doesn’t recommend doses. Ask your doctor before starting anything new.')}
         </Text>
       </Row>
-      <Text variant="xs" color="sec" center style={{ marginTop: 12 }}>
-        {t('Reminder alerts come with the phone app. Your times are saved now.')}
-      </Text>
+      <Button kind="glass" icon="bell" title={t('Preview a reminder')} style={{ marginTop: 16 }} onPress={preview} />
       <Sheet open={!!draft} onClose={() => setDraft(null)}>
         {draft ? <VitSheet draft={draft} setDraft={setDraft} /> : null}
       </Sheet>
@@ -117,6 +127,7 @@ function VitSheet({ draft: p, setDraft }: { draft: Draft; setDraft: (d: Draft | 
   const toast = useToast();
   const h = useHealth();
   const [err, setErr] = useState(false);
+  const [asking, setAsking] = useState(false);
   const set = (patch: Partial<Draft>) => setDraft({ ...p, ...patch });
   const save = async () => {
     if (!p.name.trim()) return setErr(true);
@@ -125,6 +136,13 @@ function VitSheet({ draft: p, setDraft }: { draft: Draft; setDraft: (d: Draft | 
     setDraft(null);
     toast(p.id ? t('{n} saved', { n: p.name.trim() }) : p.remind ? t('{n} added, reminder at {t}', { n: p.name.trim(), t: fmtTime(p.time, lang) }) : t('{n} added', { n: p.name.trim() }), { icon: 'pill' });
   };
+  const remove = async () => {
+    const gone = await h.deleteSupplement(p.id as string);
+    setDraft(null);
+    if (gone) toast(t('{n} deleted', { n: gone.name }), { icon: 'trash', undo: () => h.restoreSupplement(gone) });
+  };
+  if (asking)
+    return <ConfirmBody title={t('Delete {n}?', { n: p.name })} body={t('It will be removed from your list and its reminders stop.')} action={t('Delete')} onConfirm={remove} onClose={() => setAsking(false)} />;
   return (
     <View>
       <Text variant="h2">{t(p.id ? 'Edit vitamin' : 'Add a vitamin or supplement')}</Text>
@@ -178,11 +196,7 @@ function VitSheet({ draft: p, setDraft }: { draft: Draft; setDraft: (d: Draft | 
           color="#DC2626"
           title={t('Delete vitamin')}
           style={{ marginTop: 8 }}
-          onPress={async () => {
-            const gone = await h.deleteSupplement(p.id as string);
-            setDraft(null);
-            if (gone) toast(t('{n} deleted', { n: gone.name }), { icon: 'trash', undo: () => h.restoreSupplement(gone) });
-          }}
+          onPress={() => setAsking(true)}
         />
       ) : null}
     </View>

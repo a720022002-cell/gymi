@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
@@ -16,7 +17,7 @@ import { useT } from '@/i18n';
 import { MEAS_INFO } from '@/lib/health';
 import { fmt } from '@/lib/nutrition';
 import { fx, shortDate } from '@/lib/progress';
-import { displayName, type FriendProfile, friendProfile, friendShowcase, myFriends, removeFriendship, type Showcase } from '@/lib/social';
+import { displayName, type FriendProfile, friendPhotoUrls, friendProfile, friendShowcase, myFriends, removeFriendship, type Showcase } from '@/lib/social';
 import { BadgeIcon } from '@/components/progress/Streaks';
 import { useSettings } from '@/theme/settings';
 
@@ -26,12 +27,17 @@ export default function FriendScreen() {
   const { colors: c } = useSettings();
   const toast = useToast();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [p, setP] = useState<{ id: string; v: FriendProfile | null; sc: Showcase | null } | null>(null);
+  const [p, setP] = useState<{ id: string; v: FriendProfile | null; sc: Showcase | null; urls: (string | null)[] } | null>(null);
   const [confirm, setConfirm] = useState(false);
 
   useEffect(() => {
     let alive = true;
-    Promise.all([friendProfile(id), friendShowcase(id)]).then(([v, sc]) => alive && setP({ id, v, sc }));
+    (async () => {
+      const [v, sc] = await Promise.all([friendProfile(id), friendShowcase(id)]);
+      // Progress photos only come back when your friend shares them.
+      const urls = v?.share.photos && v.photos?.length ? await friendPhotoUrls(v.photos.map((x) => x.path)) : [];
+      if (alive) setP({ id, v, sc, urls });
+    })();
     return () => {
       alive = false;
     };
@@ -168,7 +174,28 @@ export default function FriendScreen() {
           ))}
         </Card>
       ) : null}
-      {!s.workouts && !s.prs && !s.weight && !s.body ? (
+      {s.photos && f.photos?.length ? (
+        <>
+          <Text variant="small" weight={700} color="sec" style={{ marginTop: 12, marginBottom: 8, marginHorizontal: 4 }}>
+            {t('Progress photos')}
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+            {f.photos.map((ph, i) =>
+              p?.urls[i] ? (
+                <View key={ph.path} style={{ width: '31.5%', aspectRatio: 3 / 4, borderRadius: 14, overflow: 'hidden', backgroundColor: c.card }}>
+                  <Image source={{ uri: p.urls[i] as string }} style={{ width: '100%', height: '100%' }} contentFit="cover" accessibilityLabel={t('Progress photo, {d}', { d: shortDate(ph.day, lang) })} />
+                  <View style={{ position: 'absolute', bottom: 6, left: 6, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 }}>
+                    <Text variant="xs" weight={700} color="#FFFFFF">
+                      {shortDate(ph.day, lang)}
+                    </Text>
+                  </View>
+                </View>
+              ) : null,
+            )}
+          </View>
+        </>
+      ) : null}
+      {!s.workouts && !s.prs && !s.weight && !s.body && !s.photos ? (
         <Card style={{ alignItems: 'center', paddingVertical: 24 }}>
           <Icon name="lock" size={30} color={c.sec} />
           <Text variant="h3" style={{ marginTop: 8 }}>
@@ -181,7 +208,7 @@ export default function FriendScreen() {
       ) : null}
       <Row gap={10} style={{ marginTop: 8 }}>
         <Button icon="trophy" title={t('Challenge')} style={{ flex: 1 }} onPress={() => router.push({ pathname: '/newchallenge', params: { f: f.id } })} />
-        <Button kind="glass" icon="users" title={t('Train together')} style={{ flex: 1 }} onPress={() => router.push('/together')} />
+        <Button kind="glass" icon="users" title={t('Train together')} style={{ flex: 1 }} onPress={() => router.push({ pathname: '/together', params: { members: f.id } })} />
       </Row>
       <Button kind="ghost" title={t('Remove friend')} color={c.down} style={{ marginTop: 8 }} onPress={() => setConfirm(true)} />
       <Sheet open={confirm} onClose={() => setConfirm(false)}>

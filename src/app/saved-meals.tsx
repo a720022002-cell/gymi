@@ -1,13 +1,13 @@
+import * as Clipboard from 'expo-clipboard';
 import { useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { Platform, Share, TextInput, View } from 'react-native';
 
 import { Field } from '@/components/Field';
 import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
-import { Sheet } from '@/components/Sheet';
 import { fontFor, Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
-import { Button, Card, Label, Row, Springy } from '@/components/ui';
+import { Button, Card, ErrorText, Label, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { type SavedMeal, useFood, useLogFood } from '@/lib/food';
 import { PickFood, per100 } from '@/components/food/PickFood';
@@ -24,19 +24,84 @@ export default function SavedMeals() {
   const food = useFood();
   const logFood = useLogFood();
   const [create, setCreate] = useState(false);
-  const [confirm, setConfirm] = useState<SavedMeal | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [code, setCode] = useState('');
+  const [codeErr, setCodeErr] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
 
+  const opened = food.saved.find((m) => m.id === openId);
   if (create) return <CreateMeal onDone={() => setCreate(false)} />;
+  if (opened) return <MealDetail m={opened} onClose={() => setOpenId(null)} />;
+
+  const addCode = async () => {
+    const v = code.trim().toUpperCase();
+    if (!v) return;
+    if (!/^MEAL-[A-Z0-9]{4}$/.test(v)) return setCodeErr(t('No meal with that code.'));
+    setAdding(true);
+    const r = await food.addMealByCode(v);
+    setAdding(false);
+    if (r.status === 'not_found') return setCodeErr(t('No meal with that code.'));
+    if (r.status === 'exists') return setCodeErr(t('That meal is already in your saved meals.'));
+    if (r.status !== 'ok' || !r.meal) return setCodeErr(t('Couldn’t save. Please try again.'));
+    setCode('');
+    toast(t('Added “{name}”', { name: r.meal.name }), { icon: 'bookmark' });
+  };
 
   return (
     <Screen title={t('Saved meals')} back>
+      <Card>
+        <Text variant="small" weight={700}>
+          {t('Add a meal by code')}
+        </Text>
+        <Row gap={8} style={{ marginTop: 8 }}>
+          <TextInput
+            value={code}
+            onChangeText={(v) => (
+              setCode(
+                v
+                  .toUpperCase()
+                  .replace(/[^A-Z0-9-]/g, '')
+                  .slice(0, 9),
+              ),
+              setCodeErr(null)
+            )}
+            onSubmitEditing={addCode}
+            placeholder="MEAL-XXXX"
+            placeholderTextColor={c.sec}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            accessibilityLabel={t('Meal code')}
+            style={
+              {
+                flex: 1,
+                minWidth: 0,
+                height: 48,
+                borderRadius: 14,
+                backgroundColor: c.inset,
+                paddingHorizontal: 14,
+                fontFamily: fontFor('sora', 600),
+                fontSize: 16,
+                letterSpacing: 0.8,
+                color: c.text,
+                outlineStyle: 'none',
+              } as object
+            }
+          />
+          <Button small title={t('Add')} loading={adding} disabled={!code.trim()} onPress={addCode} />
+        </Row>
+        <ErrorText>{codeErr}</ErrorText>
+      </Card>
       {food.saved.length ? (
         <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden', marginBottom: 16 }}>
           {food.saved.map((m, i) => (
-            <View key={m.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 14, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
-              <Springy onPress={() => setConfirm(m)} accessibilityLabel={t('Delete')} style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' }}>
-                <Icon name="trash" size={18} color={c.sec} />
-              </Springy>
+            <Springy
+              key={m.id}
+              onPress={() => setOpenId(m.id)}
+              scaleTo={0.99}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 14, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
+              <View style={{ width: 36, height: 36, borderRadius: 11, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name="bookmark" size={18} />
+              </View>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text weight={700} numberOfLines={1}>
                   {m.name}
@@ -56,7 +121,7 @@ export default function SavedMeals() {
                 style={{ paddingHorizontal: 14 }}
                 onPress={() => logFood({ name: m.name, kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat }, toast, t)}
               />
-            </View>
+            </Springy>
           ))}
         </View>
       ) : (
@@ -71,28 +136,104 @@ export default function SavedMeals() {
         </Card>
       )}
       <Text variant="small" color="sec" center style={{ marginBottom: 12 }}>
-        {t('Tap the calories to log a meal.')}
+        {t('Tap a meal to see its code. Tap the calories to log it.')}
       </Text>
       <Button icon="plus" title={t('Create a meal')} onPress={() => setCreate(true)} />
+    </Screen>
+  );
+}
 
-      <Sheet open={!!confirm} onClose={() => setConfirm(null)}>
-        <Text variant="h2">{t('Delete {name}?', { name: confirm?.name ?? '' })}</Text>
+/** One saved meal: totals, its shareable code, log it, or remove it (design: savedmeal). */
+function MealDetail({ m, onClose }: { m: SavedMeal; onClose: () => void }) {
+  const { t } = useT();
+  const { colors: c } = useSettings();
+  const toast = useToast();
+  const food = useFood();
+  const logFood = useLogFood();
+  const share = async () => {
+    const txt = t('Try my meal on Gymi: {n} ({k} kcal, {p} g protein). Add it with code {c}', { n: m.name, k: fmt(m.kcal), p: Math.round(m.protein), c: m.code });
+    try {
+      if (Platform.OS === 'web' && typeof navigator !== 'undefined' && !navigator.share) {
+        await Clipboard.setStringAsync(txt);
+        return toast(t('Copied'), { icon: 'copy' });
+      }
+      await Share.share({ message: txt });
+    } catch {}
+  };
+  return (
+    <Screen title={t('Saved meal')} back onBack={onClose}>
+      <Text variant="h2">{m.name}</Text>
+      {m.items ? (
         <Text variant="small" color="sec" style={{ marginTop: 4 }}>
-          {t('Food you already logged stays in your log.')}
+          {m.items}
         </Text>
-        <Button
-          title={t('Delete')}
-          kind="danger"
-          style={{ marginTop: 16 }}
-          onPress={async () => {
-            const m = confirm!;
-            setConfirm(null);
-            await food.deleteMeal(m.id);
-            toast(t('Removed {name}', { name: m.name }), { icon: 'check' });
-          }}
-        />
-        <Button title={t('Cancel')} kind="ghost" style={{ marginTop: 8 }} onPress={() => setConfirm(null)} />
-      </Sheet>
+      ) : null}
+      <Card style={{ marginTop: 12 }}>
+        <Row style={{ justifyContent: 'space-between' }}>
+          <Text weight={700}>{t('Total')}</Text>
+          <Text num size={22}>{`${fmt(m.kcal)} ${t('kcal')}`}</Text>
+        </Row>
+        <Row style={{ justifyContent: 'space-between', marginTop: 8 }}>
+          <Text variant="small" color="sec">
+            {t('Protein {n} g', { n: Math.round(m.protein) })}
+          </Text>
+          <Text variant="small" color="sec">
+            {t('Carbs {n} g', { n: Math.round(m.carbs) })}
+          </Text>
+          <Text variant="small" color="sec">
+            {t('Fat {n} g', { n: Math.round(m.fat) })}
+          </Text>
+        </Row>
+      </Card>
+      <Card style={{ alignItems: 'center', paddingVertical: 20 }}>
+        <Text variant="xs" weight={700} color="sec">
+          {t('Meal code')}
+        </Text>
+        <Text num size={30} style={{ marginTop: 4, letterSpacing: 1.8 }}>
+          {m.code}
+        </Text>
+        <Text variant="small" color="sec" center style={{ marginTop: 8 }}>
+          {t('Anyone can type this code to add the meal to their saved meals.')}
+        </Text>
+        <Row gap={10} style={{ marginTop: 12, alignSelf: 'stretch' }}>
+          <View style={{ flex: 1 }}>
+            <Button
+              small
+              kind="glass"
+              icon="copy"
+              title={t('Copy')}
+              style={{ alignSelf: 'stretch' }}
+              onPress={async () => {
+                await Clipboard.setStringAsync(m.code);
+                toast(t('Code copied'), { icon: 'copy' });
+              }}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Button small icon="share" title={t('Share')} style={{ alignSelf: 'stretch' }} onPress={share} />
+          </View>
+        </Row>
+      </Card>
+      <Button
+        title={t('Log this meal')}
+        style={{ marginTop: 8 }}
+        onPress={async () => {
+          const row = await logFood({ name: m.name, kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat }, toast, t);
+          if (row) onClose();
+        }}
+      />
+      <Button
+        title={t('Remove from saved')}
+        kind="ghost"
+        color={c.down}
+        style={{ marginTop: 8 }}
+        onPress={async () => {
+          onClose();
+          await food.deleteMeal(m.id);
+          const { id: _id, ...rest } = m;
+          toast(t('Meal removed'), { icon: 'trash', undo: () => food.saveMeal(rest) });
+        }}
+      />
     </Screen>
   );
 }
@@ -155,7 +296,19 @@ function CreateMeal({ onDone }: { onDone: () => void }) {
                 inputMode="numeric"
                 keyboardType="number-pad"
                 accessibilityLabel={t('Grams')}
-                style={{ width: 70, height: 44, borderRadius: 12, backgroundColor: c.inset, textAlign: 'center', fontFamily: fontFor('sora', 600), fontSize: 17, color: c.text, outlineStyle: 'none' } as object}
+                style={
+                  {
+                    width: 70,
+                    height: 44,
+                    borderRadius: 12,
+                    backgroundColor: c.inset,
+                    textAlign: 'center',
+                    fontFamily: fontFor('sora', 600),
+                    fontSize: 17,
+                    color: c.text,
+                    outlineStyle: 'none',
+                  } as object
+                }
               />
               <Text variant="small" weight={700} color="sec">
                 {t('g')}
@@ -198,6 +351,10 @@ function CreateMeal({ onDone }: { onDone: () => void }) {
         onPick={(f) => {
           setPicking(false);
           setItems([...items, { id: f.id, n: foodName(f, lang), g: Math.round(f.serving_g), k: 0, p: 0, c: 0, f: 0, per: per100(f) }]);
+        }}
+        onOwn={(f) => {
+          setPicking(false);
+          setItems([...items, { n: f.n, g: Math.round(f.g), k: 0, p: 0, c: 0, f: 0, per: f.per }]);
         }}
       />
     </Screen>

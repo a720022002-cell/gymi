@@ -8,9 +8,12 @@ import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
+import { CoachBanner } from '@/components/train/CoachBanner';
+import { GroupWorkoutsCard } from '@/components/train/GroupWorkoutsCard';
 import { DeloadCard, RecoveryCard } from '@/components/train/RecoveryCard';
 import { TrainSetup } from '@/components/train/TrainSetup';
 import { MissedCard, WorkoutCard } from '@/components/train/WorkoutCard';
+import { WorkoutBell } from '@/components/train/WorkoutBell';
 import { Button, Card, Row, Springy, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
@@ -40,31 +43,36 @@ export default function Train() {
       large
       tabs
       right={
-        <Springy onPress={() => router.push('/weekplan')} scaleTo={1.08} accessibilityLabel={t('Weekly plan')}>
-          <Glass style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name="cal" size={22} />
-          </Glass>
-        </Springy>
+        <Row gap={8}>
+          <WorkoutBell />
+          <Springy onPress={() => router.push('/weekplan')} scaleTo={1.08} accessibilityLabel={t('Weekly plan')}>
+            <Glass style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="cal" size={22} />
+            </Glass>
+          </Springy>
+        </Row>
       }>
+      <CoachBanner />
       <Card>
         <WeekStrip />
       </Card>
       <RecoveryCard />
       <MissedCard />
       <WorkoutCard />
+      <GroupWorkoutsCard />
       <DeloadCard />
       <HomeModeCard />
 
       <Section title={t('Plan')} />
       <List
         rows={[
-          ['cal', t('Weekly plan'), t('{split}, {n} days a week', { split: t(train.plan!.split), n: train.plan!.week.filter((d) => d.w).length }), () => router.push('/weekplan')],
+          ['cal', t('Weekly plan'), train.plan!.type === 'order' ? t('{split}, next workout in order', { split: t(train.plan!.split) }) : t('{split}, {n} days a week', { split: t(train.plan!.split), n: train.plan!.week.filter((d) => d.w).length }), () => router.push('/weekplan')],
           ['friends', t('Train together'), t('One workout, the right sets for each person'), () => router.push('/together')],
         ]}
       />
       <Section title={t('Tools')} />
       <ToolsList />
-      <Button kind="ghost" title={t('Redo training setup')} style={{ marginTop: 8 }} onPress={() => setConfirm(true)} />
+      {train.coach ? null : <Button kind="ghost" title={t('Redo training setup')} style={{ marginTop: 8 }} onPress={() => setConfirm(true)} />}
 
       <Sheet open={confirm} onClose={() => setConfirm(false)}>
         <View style={{ alignItems: 'center' }}>

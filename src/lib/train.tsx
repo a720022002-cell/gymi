@@ -3,10 +3,11 @@ import { createContext, type PropsWithChildren, useCallback, useContext, useEffe
 import { AppState } from 'react-native';
 
 import { useAuth } from './auth';
+import { myCoach, myCoachPlans } from './coaching';
 import { addDays, localDay } from './nutrition';
 import { shareWorkout } from './social';
 import { supabase } from './supabase';
-import { buildWorkout, type Day, effectiveWeek, type LastSets, type PlanEx, topReps, type TrainPlan, weekdayOf, weekStart, workoutKcal } from './training';
+import { buildWorkout, type Day, effectiveWeek, type LastSets, orderWeek, type PlanEx, planFromProgram, topReps, type TrainPlan, weekdayOf, weekStart, workoutKcal } from './training';
 
 export type LoggedEx = { id: string; n: string; sets: { w: number; r: number }[] };
 export type WorkoutLog = {
@@ -53,6 +54,15 @@ type Train = {
   finishWorkout: (names: Record<string, string>) => Promise<WorkoutLog | null>;
   /** Workouts finished in a row without missing a planned one (last 8 weeks). */
   streak: number;
+  /** Longest run of workouts in a row in the history we have (about 4 months). */
+  bestStreak: number;
+  /** Your coach's program is your plan: their name and your message thread. */
+  coach: { name: string; link: string } | null;
+  /** Recovery you logged today (stretching, nap…). */
+  recTools: string[];
+  setRecTools: (tools: string[]) => void;
+  /** Save a finished workout made elsewhere (group workouts). */
+  addLog: (row: Omit<WorkoutLog, 'id'>) => Promise<WorkoutLog | null>;
 };
 
 const Ctx = createContext<Train | null>(null);
@@ -68,6 +78,8 @@ export function TrainProvider({ children }: PropsWithChildren) {
   const [plan, setPlan] = useState<TrainPlan | null>(null);
   const [logs, setLogs] = useState<WorkoutLog[]>([]);
   const [session, setSessionState] = useState<Session | null>(null);
+  const [coach, setCoach] = useState<{ name: string; link: string } | null>(null);
+  const [rec, setRec] = useState<{ day: string; tools: string[] }>({ day: '', tools: [] });
   const planRef = useRef(plan);
   useEffect(() => {
     planRef.current = plan;
@@ -89,15 +101,19 @@ export function TrainProvider({ children }: PropsWithChildren) {
     if (!userId) return;
     let alive = true;
     (async () => {
-      const [p, l, s] = await Promise.all([
+      const [p, l, s, r] = await Promise.all([
         supabase.from('train_plans').select('*').eq('user_id', userId).maybeSingle(),
         supabase.from('workout_logs').select('*').gte('day', addDays(localDay(), -120)).order('started_at', { ascending: false }).limit(150),
         AsyncStorage.getItem(`${SESSION_KEY}.${userId}`).catch(() => null),
+        supabase.from('recovery_logs').select('day,tools').eq('day', localDay()).maybeSingle(),
       ]);
       if (!alive) return;
       const raw = p.data?.plan as TrainPlan | undefined;
-      setPlan(raw?.week ? { ...raw, skipped: raw.skipped ?? {}, dismiss: raw.dismiss ?? {}, machines: raw.machines ?? {} } : null);
+      const loaded = raw?.week ? { ...raw, skipped: raw.skipped ?? {}, dismiss: raw.dismiss ?? {}, machines: raw.machines ?? {} } : null;
+      planRef.current = loaded;
+      setPlan(loaded);
       setSetupDone(!!p.data?.setup_done && !!raw?.week);
+      setRec({ day: localDay(), tools: (r.data?.tools as string[] | undefined) ?? [] });
       setLogs(((l.data as WorkoutLog[]) ?? []).map((x) => ({ ...x, volume: +x.volume })));
       try {
         setSessionState(s ? (JSON.parse(s) as Session) : null);
@@ -110,6 +126,70 @@ export function TrainProvider({ children }: PropsWithChildren) {
       alive = false;
     };
   }, [userId]);
+
+  // Your coach's program is your plan. It updates when the coach changes it.
+  const syncCoach = useCallback(async () => {
+    if (!userId) return;
+    const [plans, link] = await Promise.all([myCoachPlans(), myCoach()]);
+    if (!plans) return;
+    const prog = plans.program;
+    const cur = planRef.current;
+    if (!prog || !prog.days?.some((d) => d.ex.length)) {
+      setCoach(null);
+      // The coach took the program back: keep it as your own plan.
+      if (cur?.coach) {
+        const next = { ...cur, coach: undefined };
+        planRef.current = next;
+        setPlan(next);
+        supabase.from('train_plans').upsert({ user_id: userId, plan: next }).then(() => {});
+      }
+      return;
+    }
+    setCoach(link && link.status === 'active' ? { name: link.name || link.username, link: link.id } : { name: '', link: '' });
+    if (cur?.coach?.id === prog.id && cur.coach.updated_at === prog.updated_at) return;
+    const today = localDay();
+    const base = planFromProgram(prog);
+    const next: TrainPlan = {
+      ...base,
+      since: cur?.coach?.id === prog.id ? (cur.since ?? today) : today,
+      skipped: cur?.skipped ?? {},
+      dismiss: cur?.dismiss ?? {},
+      machines: cur?.machines ?? {},
+      checkin: cur?.checkin,
+      light: cur?.light,
+      deload: cur?.deload,
+      deloadDismissed: cur?.deloadDismissed,
+      level: cur?.level,
+      coach: { id: prog.id, updated_at: prog.updated_at },
+    };
+    planRef.current = next;
+    setPlan(next);
+    setSetupDone(true);
+    await supabase.from('train_plans').upsert({ user_id: userId, plan: next, setup_done: true });
+  }, [userId]);
+
+  useEffect(() => {
+    if (!ready) return;
+    const run = () => {
+      syncCoach().catch(() => {});
+    };
+    const first = setTimeout(run, 0);
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && run());
+    return () => {
+      clearTimeout(first);
+      sub.remove();
+    };
+  }, [ready, syncCoach]);
+
+  const setRecTools = useCallback(
+    (tools: string[]) => {
+      if (!userId) return;
+      setRec({ day: today, tools });
+      supabase.from('recovery_logs').upsert({ user_id: userId, day: today, tools, updated_at: new Date().toISOString() }).then(() => {});
+    },
+    [userId, today],
+  );
+  const recTools = useMemo(() => (rec.day === today ? rec.tools : []), [rec, today]);
 
   const savePlan = useCallback(
     async (p: TrainPlan, done?: boolean) => {
@@ -139,7 +219,7 @@ export function TrainProvider({ children }: PropsWithChildren) {
 
   const start = weekStart(today);
   const todayIdx = weekdayOf(today);
-  const week = useMemo(() => (plan ? effectiveWeek(plan, start) : []), [plan, start]);
+  const week = useMemo(() => (plan ? (plan.type === 'order' ? orderWeek(plan, logs, today, start) : effectiveWeek(plan, start)) : []), [plan, start, logs, today]);
 
   const setWeek = useCallback(
     (w: Day[], thisWeekOnly: boolean) => {
@@ -166,18 +246,27 @@ export function TrainProvider({ children }: PropsWithChildren) {
     return { last, best };
   }, [logs]);
 
-  // Workouts in a row: count back from today until a planned workout was missed (not done, not skipped).
-  const streak = useMemo(() => {
-    if (!plan) return 0;
+  // Workouts in a row: a planned workout missed (not done, not skipped) ends the run.
+  // Plans in order (no fixed days) end it after 3 days in a row without training.
+  const { streak, bestStreak } = useMemo(() => {
+    if (!plan) return { streak: 0, bestStreak: 0 };
     const days = new Set(logs.map((l) => l.day));
-    let n = days.has(today) ? 1 : 0;
-    for (let i = 1; i <= 56; i++) {
+    let run = 0;
+    let best = 0;
+    let gap = 0;
+    for (let i = 120; i >= 0; i--) {
       const d = addDays(today, -i);
-      if (plan.since && d < plan.since) break;
-      if (days.has(d)) n++;
-      else if (plan.week[weekdayOf(d)]?.w && !plan.skipped[d]) break;
+      if (days.has(d)) {
+        run++;
+        gap = 0;
+        best = Math.max(best, run);
+      } else if (i > 0) {
+        gap++;
+        const missed = plan.type === 'order' ? gap >= 3 : !!plan.week[weekdayOf(d)]?.w && !plan.skipped[d] && !(plan.since && d < plan.since);
+        if (missed) run = 0;
+      }
     }
-    return n;
+    return { streak: run, bestStreak: best };
   }, [logs, plan, today]);
 
   const setSession = useCallback(
@@ -214,6 +303,14 @@ export function TrainProvider({ children }: PropsWithChildren) {
     },
     [last, setSession],
   );
+
+  const addLog = useCallback(async (row: Omit<WorkoutLog, 'id'>) => {
+    const { data, error } = await supabase.from('workout_logs').insert(row).select('*').single();
+    if (error || !data) return null;
+    const log = { ...(data as WorkoutLog), volume: +data.volume };
+    setLogs((xs) => [log, ...xs]);
+    return log;
+  }, []);
 
   const finishWorkout = useCallback(
     async (names: Record<string, string>) => {
@@ -269,8 +366,8 @@ export function TrainProvider({ children }: PropsWithChildren) {
   );
 
   const value = useMemo<Train>(
-    () => ({ ready, setupDone, plan, savePlan, updatePlan, today, todayIdx, week, setWeek, doneIdx, todayName, todayLog, logs, last, best, session, startWorkout, setSession, finishWorkout, streak }),
-    [ready, setupDone, plan, savePlan, updatePlan, today, todayIdx, week, setWeek, doneIdx, todayName, todayLog, logs, last, best, session, startWorkout, setSession, finishWorkout, streak],
+    () => ({ ready, setupDone, plan, savePlan, updatePlan, today, todayIdx, week, setWeek, doneIdx, todayName, todayLog, logs, last, best, session, startWorkout, setSession, finishWorkout, streak, bestStreak, coach, recTools, setRecTools, addLog }),
+    [ready, setupDone, plan, savePlan, updatePlan, today, todayIdx, week, setWeek, doneIdx, todayName, todayLog, logs, last, best, session, startWorkout, setSession, finishWorkout, streak, bestStreak, coach, recTools, setRecTools, addLog],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

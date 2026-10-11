@@ -1,18 +1,22 @@
 import Constants from 'expo-constants';
-import { router } from 'expo-router';
-import { type ReactNode, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { type ReactNode, useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
+import { Avatar } from '@/components/social/Avatar';
 import { Text } from '@/components/Text';
 import { Button, Label, Segmented, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useIsAdmin } from '@/lib/admin';
 import { useCoachMode } from '@/lib/coachMode';
 import { useAuth } from '@/lib/auth';
+import { type Application, myApplication } from '@/lib/coaching';
 import { useFood } from '@/lib/food';
+import { type MyInvite, myInvite, REF_GOAL } from '@/lib/invites';
+import { DEFAULT_PREFS, loadPrefs, notifSummary, type Prefs } from '@/lib/reminders';
 import { type ThemePref, useSettings } from '@/theme/settings';
 
 /** "You": profile summary and the settings we need for Phase 1 testing. */
@@ -26,15 +30,28 @@ export default function You() {
   const food = useFood();
   const [, setCoachMode] = useCoachMode();
   const name = profile?.name || profile?.username || '';
+  const uid = profile?.id;
+  const [inv, setInv] = useState<MyInvite | null>(null);
+  const [np, setNp] = useState<Prefs>(DEFAULT_PREFS);
+  const [app, setApp] = useState<Application | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      if (!uid) return;
+      let alive = true;
+      myInvite().then((v) => alive && setInv(v));
+      loadPrefs(uid).then((v) => alive && setNp(v));
+      myApplication().then((v) => alive && setApp(v));
+      return () => {
+        alive = false;
+      };
+    }, [uid]),
+  );
+  const inRound = inv ? (inv.count % REF_GOAL === 0 && inv.count ? REF_GOAL : inv.count % REF_GOAL) : 0;
 
   return (
     <Screen title={t('You')} back>
       <View style={{ alignItems: 'center', marginBottom: 8 }}>
-        <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: c.cobalt, alignItems: 'center', justifyContent: 'center' }}>
-          <Text variant="h1" color="#FFFFFF">
-            {(name[0] ?? '?').toUpperCase()}
-          </Text>
-        </View>
+        <Avatar id={uid ?? ''} name={name} size={80} url={profile?.avatar_url ?? null} />
         <Text variant="h2" style={{ marginTop: 12 }}>
           {name}
         </Text>
@@ -45,7 +62,13 @@ export default function You() {
       <List>
         <Item icon="trophy" title={t('Your profile')} sub={t('Badges and records friends see')} onPress={() => router.push('/profile')} chevron />
         <Item icon="lock" title={t('Account details')} sub={t('Name, username, email, phone, password')} onPress={() => router.push('/account')} chevron />
-        <Item icon="userplus" title={t('Invite friends')} sub={t('Share your link')} onPress={() => router.push('/invite')} chevron />
+        <Item
+          icon="key"
+          title={t('Your invite code')}
+          sub={inv?.code ? t('{c}, {a} of {b} friends joined', { c: inv.code, a: inRound, b: REF_GOAL }) : t('Get a free month for every {n} friends', { n: REF_GOAL })}
+          onPress={() => router.push('/invite')}
+          chevron
+        />
         <Item icon="mail" title={t('Email')} value={profile?.email ?? ''} />
         <Item icon="phone" title={t('Phone number')} value={profile?.phone ?? ''} />
         <Item icon="user" title={t('Account type')} value={t(profile?.account_type === 'coach' ? 'Coach (under review)' : 'Member')} />
@@ -67,7 +90,13 @@ export default function You() {
             {profile.coach_status === 'approved' ? (
               <Item icon="users" title={t('Open the coach view')} sub={t('Clients, programs and messages')} onPress={() => (setCoachMode(true), router.replace('/cclients'))} chevron />
             ) : (
-              <Item icon="clock" title={t('Coach application')} sub={t(profile.coach_status === 'rejected' ? 'Not approved. See why.' : 'Under review')} onPress={() => router.push('/coachapp')} chevron />
+              <Item
+                icon="clock"
+                title={t('Coach application')}
+                sub={!app && profile.coach_status === 'pending' ? t('Not sent yet. Finish it now.') : t(profile.coach_status === 'rejected' ? 'Not approved. See why.' : 'Under review')}
+                onPress={() => router.push(!app && profile.coach_status === 'pending' ? '/coachapply' : '/coachapp')}
+                chevron
+              />
             )}
             <Item icon="coach" title={t('Coach profile')} onPress={() => router.push('/cprofile')} chevron />
           </List>
@@ -98,7 +127,7 @@ export default function You() {
       <Label>{t('App')}</Label>
       <List>
         <Item icon="heart" title={t('Your readings')} sub={t('Steps, sleep, weight and devices')} onPress={() => router.push('/devices')} chevron />
-        <Item icon="bell" title={t('Notifications')} onPress={() => router.push('/notifications')} chevron />
+        <Item icon="bell" title={t('Notifications')} value={notifSummary(np, t)} onPress={() => router.push('/notifications')} chevron />
         <Item icon="star" title={t('Subscription')} value={t('Free plan')} onPress={() => router.push('/subscription')} chevron />
       </List>
 

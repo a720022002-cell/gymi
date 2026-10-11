@@ -74,9 +74,10 @@ export default function RecipeScreen() {
           <Ellipse cx={150} cy={116} rx={14} ry={10} fill="#D9534F" opacity={0.85} />
         </Svg>
       </View>
-      <Row gap={8} style={{ marginTop: 18 }}>
+      <Row gap={8} style={{ marginTop: 18, flexWrap: 'wrap' }}>
         <Tag label={t(r.tag === 'Cut' ? 'Cutting' : 'Bulking')} />
         <Tag label={t('{n} min', { n: r.min })} />
+        {r.gen ? <OkChip label={t('Made from your ingredients')} /> : null}
         {logged ? <OkChip label={t('Logged')} /> : null}
       </Row>
       <Text variant="h1" style={{ marginTop: 12 }}>

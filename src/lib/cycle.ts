@@ -4,7 +4,23 @@ import { addDays } from './nutrition';
 import { supabase } from './supabase';
 
 export type CycleMode = 'track' | 'ttc' | 'preg' | 'post' | 'peri';
-export type CycleSettings = { mode: CycleMode; cycle_len: number; period_len: number; preg_week: number | null; post_week: number | null; lock?: boolean };
+export type CycleReminders = { period?: boolean; fertile?: boolean; log?: boolean };
+/** Pregnancy checklist: ticked items plus the next doctor visit. */
+export type PregChecklist = { folic?: boolean; water?: boolean; protein?: boolean; visit?: string | null; visitRemind?: boolean; day?: string };
+export type CycleSettings = {
+  mode: CycleMode;
+  cycle_len: number;
+  period_len: number;
+  preg_week: number | null;
+  post_week: number | null;
+  lock?: boolean;
+  reminders?: CycleReminders;
+  /** Use skin temperature from a watch or ring for ovulation (needs the phone app and a device). */
+  temp_watch?: boolean;
+  /** Pregnant: make workouts pregnancy-safe (Train reads this through pregnancySafe()). */
+  preg_adjust?: boolean;
+  checklist?: PregChecklist;
+};
 export type Period = { id: string; start_day: string; end_day: string | null };
 export type CycleLog = Record<string, string[]>;
 export type Phase = 'Period' | 'Follicular' | 'Ovulation' | 'Luteal';
@@ -136,7 +152,7 @@ export async function isAnon(uid: string) {
 
 async function loadServer(uid: string): Promise<Local> {
   const [s, p, l] = await Promise.all([
-    supabase.from('cycle_settings').select('mode,cycle_len,period_len,preg_week,post_week,lock').eq('user_id', uid).maybeSingle(),
+    supabase.from('cycle_settings').select('mode,cycle_len,period_len,preg_week,post_week,lock,reminders,temp_watch,preg_adjust,checklist').eq('user_id', uid).maybeSingle(),
     supabase.from('cycle_periods').select('id,start_day,end_day').order('start_day'),
     supabase.from('cycle_logs').select('day,data').order('day', { ascending: false }).limit(400),
   ]);
@@ -153,8 +169,22 @@ export async function loadCycle(uid: string) {
   return { ...(anon ? await readLocal(uid) : await loadServer(uid)), anon };
 }
 
+/** Read cycle data without making it the data that saves go to (for other screens). */
+export async function peekCycle(uid: string) {
+  const anon = await isAnon(uid);
+  return { ...(anon ? await readLocal(uid) : await loadServer(uid)), anon };
+}
+
+// Other screens cache today's phase; saving cycle data clears that cache.
+let version = 0;
+export const cycleVersion = () => version;
+function changed() {
+  version++;
+}
+
 /** Anonymous mode: move cycle data to this device only (and delete it from our server), or back. */
 export async function setAnon(uid: string, on: boolean) {
+  changed();
   if (on) {
     const data = await loadServer(uid);
     await writeLocal(uid, data);
@@ -177,11 +207,13 @@ async function deleteServer(uid: string) {
 }
 
 export async function saveSettings(uid: string, s: CycleSettings) {
+  changed();
   if (onDevice()) return editLocal((l) => (l.settings = s));
   const { error } = await supabase.from('cycle_settings').upsert({ user_id: uid, ...s, updated_at: new Date().toISOString() });
   return !error;
 }
 export async function startPeriod(day: string): Promise<Period | null> {
+  changed();
   if (onDevice()) {
     const p: Period = { id: `l${Date.now()}`, start_day: day, end_day: null };
     await editLocal((l) => (l.periods = [...l.periods.filter((x) => x.start_day !== day), p]));
@@ -191,17 +223,20 @@ export async function startPeriod(day: string): Promise<Period | null> {
   return error ? null : (data as Period);
 }
 export async function endPeriod(id: string, day: string) {
+  changed();
   if (onDevice()) return editLocal((l) => (l.periods = l.periods.map((x) => (x.id === id ? { ...x, end_day: day } : x))));
   const { error } = await supabase.from('cycle_periods').update({ end_day: day }).eq('id', id);
   return !error;
 }
 export async function addPastPeriod(start: string, days: number) {
+  changed();
   const end = addDays(start, Math.max(1, days) - 1);
   if (onDevice()) return editLocal((l) => (l.periods = [...l.periods.filter((x) => x.start_day !== start), { id: `l${Date.now()}`, start_day: start, end_day: end }]));
   const { error } = await supabase.from('cycle_periods').upsert({ start_day: start, end_day: end }, { onConflict: 'user_id,start_day' });
   return !error;
 }
 export async function deletePeriod(id: string) {
+  changed();
   if (onDevice()) return editLocal((l) => (l.periods = l.periods.filter((x) => x.id !== id)));
   const { error } = await supabase.from('cycle_periods').delete().eq('id', id);
   return !error;
@@ -217,6 +252,7 @@ export async function saveLog(day: string, data: CycleLog) {
   return !error;
 }
 export async function deleteAllCycle(uid: string) {
+  changed();
   await AsyncStorage.removeItem(LOCAL_KEY(uid)).catch(() => {});
   await deleteServer(uid);
   await supabase.from('cycle_partner').delete().eq('user_id', uid);
@@ -225,7 +261,8 @@ export async function deleteAllCycle(uid: string) {
 // ---------------------------------------------------------------------------
 // Partner sharing and insights
 // ---------------------------------------------------------------------------
-export type PartnerShare = { phase: boolean; period: boolean; fertile: boolean };
+export type PartnerShare = { phase: boolean; period: boolean; fertile: boolean; mood?: boolean; sym?: boolean };
+export const DEFAULT_PARTNER_SHARE: PartnerShare = { phase: true, period: true, fertile: false, mood: false, sym: false };
 export type Partner = { partner_id: string; share: PartnerShare };
 export async function getPartner(): Promise<Partner | null> {
   const { data } = await supabase.from('cycle_partner').select('partner_id,share').maybeSingle();
@@ -240,10 +277,16 @@ export async function savePartner(uid: string, p: Partner | null, summary: Recor
   return !error;
 }
 /** Only what you chose to share, worked out on your phone. */
-export function partnerSummary(now: ReturnType<typeof cycleNow>, share: PartnerShare, mode: CycleMode) {
-  if (!now || mode === 'preg' || mode === 'post') return { mode };
+export function partnerSummary(now: ReturnType<typeof cycleNow>, share: PartnerShare, mode: CycleMode, todayLog?: CycleLog, today?: string) {
+  // Today's mood and symptoms, only when shared (never notes or other logs).
+  const extra = {
+    ...(share.mood && todayLog?.Mood?.length ? { mood: todayLog.Mood.join(', '), logDay: today } : {}),
+    ...(share.sym && todayLog?.Symptoms?.length ? { symptoms: todayLog.Symptoms.join(', '), logDay: today } : {}),
+  };
+  if (!now || mode === 'preg' || mode === 'post') return { mode, ...extra };
   return {
     mode,
+    ...extra,
     ...(share.phase ? { phase: now.phase, day: now.day } : {}),
     ...(share.period ? { next: now.next, onPeriod: now.phase === 'Period' } : {}),
     ...(share.fertile ? { fertileFrom: now.fertileFrom, fertileTo: now.fertileTo } : {}),
@@ -264,4 +307,23 @@ export function phaseOn(date: string, periods: Period[], s: CycleSettings): Phas
   const ov = cycle - 14;
   const onP = last.end_day ? date <= last.end_day : d <= bleed;
   return onP ? 'Period' : d < ov - 1 ? 'Follicular' : d <= ov + 1 ? 'Ovulation' : 'Luteal';
+}
+
+/** Next fertile window once this one has passed (TTC). */
+export function nextFertile(now: NonNullable<ReturnType<typeof cycleNow>>, today: string) {
+  if (today <= now.fertileTo) return { from: now.fertileFrom, to: now.fertileTo, ov: now.ovDay, next: false };
+  let ov = now.ovDay;
+  while (addDays(ov, 1) < today) ov = addDays(ov, now.cycle);
+  return { from: addDays(ov, -5), to: addDays(ov, 1), ov, next: true };
+}
+
+/** Due date from the pregnancy week (week 40 is the due date). */
+export const dueDate = (week: number, today: string) => addDays(today, (40 - week) * 7);
+
+/**
+ * True when workouts should be pregnancy-safe: she is in pregnancy mode and turned on
+ * "Adjust my workouts for pregnancy". Train can use it to pick lighter, safer exercises.
+ */
+export function pregnancySafe(s: Pick<CycleSettings, 'mode' | 'preg_adjust'> | null | undefined) {
+  return !!s && s.mode === 'preg' && !!s.preg_adjust;
 }
