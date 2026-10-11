@@ -9,10 +9,10 @@ const GOAL_ADJ = [500, 250, 0, -600, -300];
 export const GOAL_ORDER = [0, 1, 2, 4, 3];
 
 export const ACTIVITY: [string, string][] = [
-  ['Mostly sitting', 'Desk work, little walking'],
-  ['Lightly active', 'Some walking during the day'],
-  ['Active', 'On your feet a lot'],
-  ['Very active', 'Physical work, lifting, long walks'],
+  ['Mostly sitting', 'Under 5,000 steps a day · 0–1 workouts a week'],
+  ['Lightly active', '5,000–7,500 steps a day · 1–3 workouts a week'],
+  ['Active', '7,500–10,000 steps a day · 3–5 workouts a week'],
+  ['Very active', 'Over 10,000 steps a day · 6–7 workouts a week'],
 ];
 const ACT_FACTOR = [1.25, 1.4, 1.55, 1.75];
 
