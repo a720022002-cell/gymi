@@ -2366,6 +2366,7 @@ export const AR: Record<string, string> = {
   "Tea": "شاهي",
   "Team tools": "أدوات الفريق",
   "Tell me how you slept and feel today for a more accurate score.": "قول لي كيف نمت وكيف تحس اليوم عشان تطلع النتيجة أدق.",
+  "Tell me what it is and which muscles it works. I’ll add it to this workout.": "قول لي وش هو وأي عضلات يشتغل عليها. بضيفه لهذا التمرين.",
   "Tell me what it is and which muscles it works. I’ll add it to your plan.": "قول لي وش هو وأي عضلات يشتغل عليها. بضيفه لخطتك.",
   "Tell me when": "نبّهني متى",
   "Tell us about your coaching. Our team checks every coach before they can take clients.": "عرّفنا على تدريبك. فريقنا يراجع كل مدرب قبل ما ياخذ عملاء.",

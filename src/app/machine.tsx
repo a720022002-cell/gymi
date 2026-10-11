@@ -219,7 +219,7 @@ export default function MachineScreen() {
                 {t('Name this exercise')}
               </Text>
               <Text variant="small" color="sec" style={{ marginTop: 4 }}>
-                {t('Tell me what it is and which muscles it works. I’ll add it to your plan.')}
+                {t(live ? 'Tell me what it is and which muscles it works. I’ll add it to this workout.' : 'Tell me what it is and which muscles it works. I’ll add it to your plan.')}
               </Text>
               <Field label={t('Exercise name')} value={name} onChangeText={setName} placeholder={t('For example: Seated chest press')} maxLength={40} />
               <Text variant="small" weight={700} color="sec" style={{ marginTop: 16, marginBottom: 8 }}>
