@@ -17,6 +17,9 @@ export const ACTIVITY: [string, string][] = [
 ];
 const ACT_FACTOR = [1.25, 1.4, 1.55, 1.75];
 
+// Ramadan mode is hidden outside Ramadan. Set to true when Ramadan comes to show it again.
+export const RAMADAN_SWITCH = false;
+
 export type Meal = { n: string; t: string; type?: string };
 export type Work = { s: string; e: string };
 
@@ -140,7 +143,7 @@ export type PlannedMeal = Meal & { key: string; r: CustomRecipe; k: number; p: n
 
 /** Today's suggested meals, sized to the daily calories. */
 export function planMeals(f: FoodPlan, day?: string): PlannedMeal[] {
-  const ram = !!f.ramadan;
+  const ram = RAMADAN_SWITCH && !!f.ramadan;
   const meals = ram ? ramadanMeals(f.city, day) : f.meals;
   const tag = f.goal <= 1 ? 'Bulk' : 'Cut';
   const kcal = targets(f).k;

@@ -16,6 +16,7 @@ import { useAuth } from '@/lib/auth';
 import { type Application, myApplication } from '@/lib/coaching';
 import { useFood } from '@/lib/food';
 import { type MyInvite, myInvite, REF_GOAL } from '@/lib/invites';
+import { RAMADAN_SWITCH } from '@/lib/nutrition';
 import { DEFAULT_PREFS, loadPrefs, notifSummary, type Prefs } from '@/lib/reminders';
 import { type ThemePref, useSettings } from '@/theme/settings';
 
@@ -144,12 +145,14 @@ export default function You() {
       <Label>{t('Settings')}</Label>
       <List>
         <Item icon="globe" title={t('Language')} value={s.lang === 'ar' ? 'العربية' : 'English'} onPress={() => router.push('/language')} chevron />
-        <Item
-          icon="moon"
-          title={t('Ramadan mode')}
-          sub={t('Meals and water around iftar and suhoor')}
-          right={<Toggle value={!!food.plan.ramadan} onChange={(v) => food.updatePlan({ ramadan: v })} label={t('Ramadan mode')} />}
-        />
+        {RAMADAN_SWITCH ? (
+          <Item
+            icon="moon"
+            title={t('Ramadan mode')}
+            sub={t('Meals and water around iftar and suhoor')}
+            right={<Toggle value={!!food.plan.ramadan} onChange={(v) => food.updatePlan({ ramadan: v })} label={t('Ramadan mode')} />}
+          />
+        ) : null}
         <Item
           icon="sliders"
           title={t('Reduce transparency')}

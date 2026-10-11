@@ -3,7 +3,7 @@ import { AppState } from 'react-native';
 
 import { useAuth } from './auth';
 import type { MealPlan } from './coaching';
-import { addDays, ageFromIso, defaultPlan, type FoodPlan, localDay, type Macros, type Person, targets } from './nutrition';
+import { addDays, ageFromIso, defaultPlan, type FoodPlan, localDay, type Macros, type Person, RAMADAN_SWITCH, targets } from './nutrition';
 import { supabase } from './supabase';
 
 export type FoodLog = {
@@ -190,7 +190,8 @@ export function FoodProvider({ children }: PropsWithChildren) {
       ]);
       if (!alive) return;
       const base = defaultPlan(Number(profile?.weight_kg ?? 80));
-      setPlan(p.data?.plan ? { ...base, ...(p.data.plan as FoodPlan) } : base);
+      const loaded = p.data?.plan ? { ...base, ...(p.data.plan as FoodPlan) } : base;
+      setPlan(RAMADAN_SWITCH ? loaded : { ...loaded, ramadan: false });
       setSetupDone(!!p.data?.setup_done);
       setLogs((l.data as FoodLog[]) ?? []);
       setSaved((s.data as SavedMeal[]) ?? []);

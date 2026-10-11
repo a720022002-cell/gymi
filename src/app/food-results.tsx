@@ -15,7 +15,7 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Row, Segmented, Springy, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
-import { bmr, calcPlan, type FoodPlan, fmt, fmtTime, GOALS, targets } from '@/lib/nutrition';
+import { bmr, calcPlan, type FoodPlan, fmt, fmtTime, GOALS, RAMADAN_SWITCH, targets } from '@/lib/nutrition';
 import { CITIES, DEFAULT_CITY, fastTimes } from '@/lib/prayer';
 import { fx } from '@/lib/progress';
 import { useSettings } from '@/theme/settings';
@@ -441,23 +441,27 @@ function Schedule({ f, set }: { f: FoodPlan; set: (p: Partial<FoodPlan>) => void
         </Row>
       ) : null}
 
-      <Card
-        style={{
-          marginTop: 12,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 12,
-        }}>
-        <Icon name="moon" color={c.cobalt} />
-        <View style={{ flex: 1 }}>
-          <Text weight={700}>{t('Ramadan mode')}</Text>
-          <Text variant="small" color="sec">
-            {t('Meals around iftar and suhoor')}
-          </Text>
-        </View>
-        <Toggle value={!!f.ramadan} onChange={(v) => set({ ramadan: v })} label={t('Ramadan mode')} />
-      </Card>
-      {f.ramadan ? <CityCard f={f} set={set} /> : null}
+      {RAMADAN_SWITCH ? (
+        <>
+          <Card
+            style={{
+              marginTop: 12,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+            }}>
+            <Icon name="moon" color={c.cobalt} />
+            <View style={{ flex: 1 }}>
+              <Text weight={700}>{t('Ramadan mode')}</Text>
+              <Text variant="small" color="sec">
+                {t('Meals around iftar and suhoor')}
+              </Text>
+            </View>
+            <Toggle value={!!f.ramadan} onChange={(v) => set({ ramadan: v })} label={t('Ramadan mode')} />
+          </Card>
+          {f.ramadan ? <CityCard f={f} set={set} /> : null}
+        </>
+      ) : null}
 
       <Text variant="h3" style={{ marginTop: 22, marginBottom: 10, marginHorizontal: 2 }}>
         {t('Training')}
