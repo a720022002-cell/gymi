@@ -37,6 +37,54 @@ function arrow(x: SessionEx): 'up' | 'down' | 'same' | null {
   return v > l ? 'up' : 'down';
 }
 
+type Tone = 'up' | 'ok' | 'down';
+type Tr = (k: string, v?: Record<string, string | number>) => string;
+const kg = (n: number) => String(Math.round(n * 10) / 10);
+
+/** Coach advice for an exercise, from its last finished working set: reps against the target range,
+ * the weight jump from the set before, and last time's numbers. Updates after every set. */
+function setAdvice(x: SessionEx, timed: boolean, bodyweight: boolean, t: Tr): { text: string; tone: Tone } | null {
+  const work = x.sets.filter((y) => !y.warm);
+  const done = work.filter((y) => y.done);
+  if (!done.length) return null;
+  const nums = String(x.reps).match(/\d+/g)?.map(Number) ?? [10];
+  const lo = Math.min(...nums);
+  const hi = Math.max(...nums);
+  const last = done[done.length - 1];
+  const prev = done.length > 1 ? done[done.length - 2] : null;
+  const w = +last.w || 0;
+  const r = +last.r || 0;
+  const step = 2.5;
+  const finished = done.length === work.length;
+
+  if (timed) {
+    if (r >= hi + 10) return { text: t('{r} s, strong hold. Add 10 seconds next set.', { r }), tone: 'up' };
+    if (r >= hi) return { text: t('{r} s, you hit the target. Keep it steady.', { r }), tone: 'ok' };
+    return { text: t('{r} s. Rest a little longer and aim for {hi} s.', { r, hi }), tone: 'down' };
+  }
+  if (bodyweight || w <= 0) {
+    if (r > hi + 2) return { text: t('{r} reps, too easy. Slow it down or add weight.', { r }), tone: 'up' };
+    if (r >= lo) return { text: finished ? t('All sets done. Nice work.') : t('{r} reps, right in the range. Same again.', { r }), tone: 'ok' };
+    return { text: t('{r} reps. Rest a bit longer before the next set.', { r }), tone: 'down' };
+  }
+  // Better than last time's matching set?
+  const beat = last.lw > 0 && (w > last.lw || (w === last.lw && r > last.lr)) ? (w > last.lw ? t('+{n} kg on last time. ', { n: kg(w - last.lw) }) : t('+{n} reps on last time. ', { n: r - last.lr })) : '';
+  if (finished) {
+    const allTop = done.every((y) => (+y.r || 0) >= hi);
+    if (allTop) return { text: `${beat}${t('Every set hit {hi} reps. Next time start at {w} kg.', { hi, w: kg(w + step) })}`, tone: 'up' };
+    if (r >= lo) return { text: `${beat}${t('Done. Top set {w} kg × {r}. Stay at {w} kg until you get {hi} reps.', { w: kg(w), r, hi })}`, tone: 'ok' };
+    return { text: t('Done. The last set was heavy ({r} reps). Next time use {w} kg.', { r, w: kg(Math.max(0, w - step)) }), tone: 'down' };
+  }
+  if (r > hi + 2) return { text: `${beat}${t('{r} reps is too light for {lo}–{hi}. Go up to {w} kg next set.', { r, lo, hi, w: kg(w + step * 2) })}`, tone: 'up' };
+  if (r > hi) return { text: `${beat}${t('{r} reps, above {hi}. Add {s} kg next set ({w} kg).', { r, hi, s: kg(step), w: kg(w + step) })}`, tone: 'up' };
+  if (r === hi) return { text: `${beat}${t('Top of the range. Try {w} kg next set.', { w: kg(w + step) })}`, tone: 'up' };
+  if (r >= lo) {
+    if (prev && w > (+prev.w || 0)) return { text: `${beat}${t('Good jump to {w} kg, {r} reps is right in the range. Stay here.', { w: kg(w), r })}`, tone: 'ok' };
+    return { text: `${beat}${t('{r} reps, in the range. Stay at {w} kg and aim for {n}.', { r, w: kg(w), n: Math.min(hi, r + 1) })}`, tone: 'ok' };
+  }
+  return { text: t('{r} reps is below {lo}. Drop to {w} kg so you can do {lo} or more.', { r, lo, w: kg(Math.max(0, w - step)) }), tone: 'down' };
+}
+
 /** The workout in progress (design: active). */
 export default function Active() {
   const { t, lang } = useT();
@@ -296,14 +344,19 @@ export default function Active() {
                   </Text>
                 </Springy>
               </Row>
-              {x.tip ? (
-                <Row gap={10} style={{ marginTop: 12, backgroundColor: c.inset, borderRadius: 14, padding: 10 }}>
-                  <Mark size={20} color={c.cobalt} stroke={4} />
-                  <Text variant="small" weight={700} style={{ flex: 1 }}>
-                    {t('That was easy. Add 2.5 kg next time.')}
-                  </Text>
-                </Row>
-              ) : null}
+              {(() => {
+                const adv = setAdvice(x, info.timed, info.type === 'Bodyweight', t);
+                if (!adv) return null;
+                const tc = adv.tone === 'up' ? c.up : adv.tone === 'down' ? '#F59E0B' : c.cobalt;
+                return (
+                  <Row gap={10} style={{ marginTop: 12, backgroundColor: c.inset, borderRadius: 14, padding: 10, borderStartWidth: 3, borderStartColor: tc }}>
+                    {adv.tone === 'up' ? <Icon name="up" size={18} color={tc} strokeWidth={2.6} /> : adv.tone === 'down' ? <Icon name="down" size={18} color={tc} strokeWidth={2.6} /> : <Mark size={18} color={tc} stroke={4} />}
+                    <Text variant="small" weight={700} style={{ flex: 1 }}>
+                      {adv.text}
+                    </Text>
+                  </Row>
+                );
+              })()}
             </Card>
           );
         })}
