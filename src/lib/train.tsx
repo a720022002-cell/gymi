@@ -25,7 +25,8 @@ export type WorkoutLog = {
   downs: number;
 };
 
-export type SessionSet = { w: string; r: string; done: boolean; lw: number; lr: number };
+/** One set in the workout. Warm-up sets (warm) don't count toward volume, records or next time's numbers. */
+export type SessionSet = { w: string; r: string; done: boolean; lw: number; lr: number; warm?: boolean };
 export type SessionEx = Omit<PlanEx, 'sets'> & { tip: boolean; sets: SessionSet[] };
 /** The workout in progress. Saved on the device so a reload doesn't lose it. */
 export type Session = { name: string; start: number; home: boolean; ex: SessionEx[] };
@@ -324,7 +325,7 @@ export function TrainProvider({ children }: PropsWithChildren) {
       const prs: WorkoutLog['prs'] = [];
       const exercises: LoggedEx[] = [];
       for (const x of s.ex) {
-        const d = x.sets.filter((y) => y.done).map((y) => ({ w: +y.w || 0, r: +y.r || 0 }));
+        const d = x.sets.filter((y) => y.done && !y.warm).map((y) => ({ w: +y.w || 0, r: +y.r || 0 }));
         if (!d.length) continue;
         setsDone += d.length;
         d.forEach((y) => (volume += y.w * y.r));
@@ -332,7 +333,7 @@ export function TrainProvider({ children }: PropsWithChildren) {
         const prev = best[x.id] ?? 0;
         if (top > prev && prev > 0) prs.push({ id: x.id, n: names[x.id] ?? x.id, w: top });
         const v = d.reduce((a, y) => a + y.w * y.r + y.r * 0.01, 0);
-        const done = x.sets.filter((y) => y.done);
+        const done = x.sets.filter((y) => y.done && !y.warm);
         const lv = done.reduce((a, y) => a + y.lw * y.lr + y.lr * 0.01, 0);
         if (last[x.id]) {
           if (v > lv + 0.001) ups++;

@@ -29,7 +29,7 @@ const digits = (v: string, dec: boolean) =>
 
 /** Did this exercise go up or down against last time? (design: exArrow) */
 function arrow(x: SessionEx): 'up' | 'down' | 'same' | null {
-  const done = x.sets.filter((s) => s.done);
+  const done = x.sets.filter((s) => s.done && !s.warm);
   if (!done.length) return null;
   const v = done.reduce((a, s) => a + (+s.w || 0) * (+s.r || 0) + (+s.r || 0) * 0.01, 0);
   const l = done.reduce((a, s) => a + s.lw * s.lr + s.lr * 0.01, 0);
@@ -50,6 +50,8 @@ export default function Active() {
   const [confirm, setConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [heard, setHeard] = useState<string | null>(null);
+  // The set whose number was tapped: make it a warm-up or a working set, or delete it.
+  const [setMenu, setSetMenu] = useState<{ ei: number; si: number } | null>(null);
 
   // Tick every quarter second; end the rest when its time is up.
   const restRef = useRef(rest);
@@ -89,6 +91,18 @@ export default function Active() {
   const setField = (ei: number, si: number, k: 'w' | 'r', v: string) =>
     update((x) => ({ ...x, ex: x.ex.map((e, i) => (i !== ei ? e : { ...e, sets: e.sets.map((st, j) => (j === si ? { ...st, [k]: v } : st)) })) }));
 
+  const editSets = (ei: number, fn: (sets: SessionEx['sets']) => SessionEx['sets']) => update((x) => ({ ...x, ex: x.ex.map((e, i) => (i !== ei ? e : { ...e, sets: fn(e.sets) })) }));
+  // A new working set copies the last one's targets; a warm-up goes before the working sets, lighter and with more reps.
+  const addSet = (ei: number, warm: boolean) =>
+    editSets(ei, (sets) => {
+      const work = sets.filter((y) => !y.warm);
+      const ref = work[work.length - 1] ?? sets[sets.length - 1] ?? { lw: 0, lr: topReps(s.ex[ei].reps) };
+      if (!warm) return [...sets, { w: '', r: '', done: false, lw: ref.lw, lr: ref.lr }];
+      const firstWork = sets.findIndex((y) => !y.warm);
+      const at = firstWork < 0 ? sets.length : firstWork;
+      const warmSet = { w: '', r: '', done: false, lw: ref.lw ? Math.round(ref.lw * 0.5 * 2) / 2 : 0, lr: Math.max(ref.lr, 12), warm: true };
+      return [...sets.slice(0, at), warmSet, ...sets.slice(at)];
+    });
   const markSet = (ei: number, si: number, said?: { w: string; r: string }) => {
     const x = s.ex[ei];
     const st = x.sets[si];
@@ -96,14 +110,16 @@ export default function Active() {
     if (st.done && !said) return update((ss) => ({ ...ss, ex: ss.ex.map((e, i) => (i !== ei ? e : { ...e, sets: e.sets.map((y, j) => (j === si ? { ...y, done: false } : y)) })) }));
     const w = said?.w ?? (st.w === '' ? String(st.lw || 0) : st.w);
     const r = said?.r ?? (st.r === '' ? String(st.lr) : st.r);
-    const easy = +r >= topReps(x.reps) && +w >= st.lw && info.type !== 'Bodyweight' && !info.timed && +w > 0;
+    const easy = !st.warm && +r >= topReps(x.reps) && +w >= st.lw && info.type !== 'Bodyweight' && !info.timed && +w > 0;
     const next: Session = {
       ...s,
       ex: s.ex.map((e, i) => (i !== ei ? e : { ...e, tip: e.tip || easy, sets: e.sets.map((y, j) => (j === si ? { ...y, w, r, done: true } : y)) })),
     };
     train.setSession(next);
     const more = next.ex.some((e) => e.sets.some((z) => !z.done));
-    if (more) setRest({ end: Date.now() + REST * 1000, total: REST });
+    // Shorter rest after a warm-up set.
+    const restFor = st.warm ? 45 : REST;
+    if (more) setRest({ end: Date.now() + restFor * 1000, total: restFor });
     else toast(t('All sets done. Tap Finish.'), { ai: true });
   };
 
@@ -125,7 +141,7 @@ export default function Active() {
     const ei = named >= 0 ? named : s.ex.findIndex((x) => x.sets.some((y) => !y.done));
     if (ei < 0) return toast(t('All sets are already logged'), { icon: 'info' });
     const x = s.ex[ei];
-    const si = x.sets.findIndex((y) => !y.done);
+    const si = x.sets.findIndex((y) => !y.done && !y.warm) >= 0 ? x.sets.findIndex((y) => !y.done && !y.warm) : x.sets.findIndex((y) => !y.done);
     const name = exInfo(x, lang).name;
     if (si < 0) return toast(t('All {x} sets are already logged', { x: name }), { icon: 'info' });
     const timed = exInfo(x, lang).timed;
@@ -218,9 +234,21 @@ export default function Active() {
               </View>
               {x.sets.map((st, si) => (
                 <View key={si} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, opacity: st.done ? 0.65 : 1 }}>
-                  <Text num center style={{ width: 28 }}>
-                    {si + 1}
-                  </Text>
+                  <Springy
+                    onPress={() => setSetMenu({ ei, si })}
+                    scaleTo={0.9}
+                    accessibilityLabel={t(st.warm ? 'Warm-up set options' : 'Set {n} options', { n: x.sets.slice(0, si + 1).filter((y) => !y.warm).length })}
+                    style={{ width: 28, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: st.warm ? 'rgba(245,158,11,0.18)' : 'transparent' }}>
+                    {st.warm ? (
+                      <Text weight={800} style={{ color: '#F59E0B' }}>
+                        {t('W')}
+                      </Text>
+                    ) : (
+                      <Text num center>
+                        {x.sets.slice(0, si + 1).filter((y) => !y.warm).length}
+                      </Text>
+                    )}
+                  </Springy>
                   <TextInput
                     value={st.w}
                     editable={!info.timed && !st.done}
@@ -254,6 +282,20 @@ export default function Active() {
                   </Springy>
                 </View>
               ))}
+              <Row gap={8} style={{ marginTop: 10 }}>
+                <Springy onPress={() => addSet(ei, false)} scaleTo={0.97} style={{ flex: 1, height: 40, borderRadius: 12, backgroundColor: c.inset, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <Icon name="plus" size={16} color={c.text} />
+                  <Text variant="small" weight={700}>
+                    {t('Add set')}
+                  </Text>
+                </Springy>
+                <Springy onPress={() => addSet(ei, true)} scaleTo={0.97} style={{ flex: 1, height: 40, borderRadius: 12, backgroundColor: c.inset, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <Icon name="flame" size={16} color="#F59E0B" />
+                  <Text variant="small" weight={700}>
+                    {t('Add warm-up')}
+                  </Text>
+                </Springy>
+              </Row>
               {x.tip ? (
                 <Row gap={10} style={{ marginTop: 12, backgroundColor: c.inset, borderRadius: 14, padding: 10 }}>
                   <Mark size={20} color={c.cobalt} stroke={4} />
@@ -326,6 +368,45 @@ export default function Active() {
           </Glass>
         ) : null}
       </View>
+
+      <Sheet open={!!setMenu} onClose={() => setSetMenu(null)}>
+        {setMenu && s.ex[setMenu.ei]?.sets[setMenu.si] ? (
+          (() => {
+            const { ei, si } = setMenu;
+            const st = s.ex[ei].sets[si];
+            return (
+              <View>
+                <Text variant="h2">{exInfo(s.ex[ei], lang).name}</Text>
+                <Text color="sec" style={{ marginTop: 4 }}>
+                  {t(st.warm ? 'Warm-up sets don’t count toward volume, records or next time’s numbers.' : 'Working sets count toward your volume and progress.')}
+                </Text>
+                <Button
+                  kind="soft"
+                  icon={st.warm ? 'check' : 'flame'}
+                  title={t(st.warm ? 'Make it a working set' : 'Make it a warm-up set')}
+                  color={c.text}
+                  style={{ marginTop: 16 }}
+                  onPress={() => {
+                    editSets(ei, (sets) => sets.map((y, j) => (j === si ? { ...y, warm: !y.warm } : y)));
+                    setSetMenu(null);
+                  }}
+                />
+                <Button
+                  kind="ghost"
+                  icon="trash"
+                  title={t('Delete set')}
+                  color={c.down}
+                  style={{ marginTop: 8 }}
+                  onPress={() => {
+                    editSets(ei, (sets) => sets.filter((_, j) => j !== si));
+                    setSetMenu(null);
+                  }}
+                />
+              </View>
+            );
+          })()
+        ) : null}
+      </Sheet>
 
       <Sheet open={confirm} onClose={() => setConfirm(false)}>
         <Text variant="h2">{t('Finish without logging?')}</Text>
