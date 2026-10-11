@@ -248,8 +248,10 @@ function FoodHome() {
           {food.logs.length ? (
             <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden', marginBottom: 12 }}>
               {food.logs.map((x, i) => (
-                <View
+                <Springy
                   key={x.id}
+                  onPress={() => router.push({ pathname: '/logged', params: { id: x.id } })}
+                  scaleTo={0.99}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 60, paddingVertical: 10, paddingHorizontal: 16, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text weight={700} numberOfLines={2}>
@@ -275,7 +277,7 @@ function FoodHome() {
                     style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
                     <Icon name="trash" size={18} color={c.sec} />
                   </Springy>
-                </View>
+                </Springy>
               ))}
             </View>
           ) : (

@@ -49,6 +49,14 @@ export async function listRestaurants(): Promise<Restaurant[]> {
   return ((data as Restaurant[]) ?? []).map((r) => ({ ...r, items: +r.items }));
 }
 
+/** One food by id (for a logged item). */
+export async function getFood(id: string): Promise<DbFood | null> {
+  const { data } = await supabase.from('foods').select('*').eq('id', id).maybeSingle();
+  if (!data) return null;
+  const f = data as DbFood;
+  return { ...f, serving_g: +f.serving_g, kcal_100: +f.kcal_100, protein_100: +f.protein_100, carbs_100: +f.carbs_100, fat_100: +f.fat_100, sugar_100: f.sugar_100 == null ? null : +f.sugar_100 };
+}
+
 /** A packaged product saved in our database, by barcode. */
 export async function foodByBarcode(code: string): Promise<DbFood | null> {
   const { data } = await supabase.from('foods').select('*').eq('barcode', code).limit(1).maybeSingle();
