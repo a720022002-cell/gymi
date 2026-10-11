@@ -19,8 +19,8 @@ import { fastTimes } from '@/lib/prayer';
 import { fx } from '@/lib/progress';
 import { useSettings } from '@/theme/settings';
 
-const KINDS = ['Water', 'Coffee', 'Tea', 'Juice'];
-const KIND_ICON: Record<string, IconName> = { Water: 'glass', Coffee: 'coffee', Tea: 'coffee', Juice: 'juice' };
+const KINDS = ['Water', 'Coffee', 'Tea'];
+const KIND_ICON: Record<string, IconName> = { Water: 'glass', Coffee: 'coffee', Tea: 'coffee' };
 
 /** Water today: big ring, quick adds, other drinks, goal and today's list (design: water). */
 export default function WaterScreen() {
@@ -209,7 +209,7 @@ function DrinkSheet({ open, onClose, onAdd }: { open: boolean; onClose: () => vo
         ))}
       </Row>
       <Label>{t('Drink')}</Label>
-      <Choices options={KINDS} value={kind} onChange={setKind} icons={KINDS.map((k) => KIND_ICON[k])} />
+      <Choices options={KINDS} value={kind} onChange={setKind} icons={KINDS.map((k) => KIND_ICON[k] ?? 'glass')} />
       <Button title={t('Add {n} ml', { n: ml })} disabled={!(ml > 0)} style={{ marginTop: 16 }} onPress={() => onAdd(ml, KINDS[kind])} />
     </Sheet>
   );
