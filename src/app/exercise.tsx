@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Animated, Easing, View } from 'react-native';
 
 import { Tag } from '@/components/food/Chips';
 import { Glass } from '@/components/Glass';
@@ -27,7 +27,8 @@ export default function ExerciseScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [e, setE] = useState<DbExercise | null>(null);
   const [loadedId, setLoadedId] = useState<string | null>(null);
-  const [frame, setFrame] = useState(0);
+  // 0 = start position, 1 = end position; the end picture fades in and out like a short clip.
+  const [fade] = useState(() => new Animated.Value(0));
   const [play, setPlay] = useState(true);
 
   useEffect(() => {
@@ -42,12 +43,26 @@ export default function ExerciseScreen() {
     };
   }, [id]);
 
-  // Flip between the start and end pictures so it looks like the movement.
+  // Load both pictures first so the movement never shows a blank frame.
+  useEffect(() => {
+    if (e?.images.length) Image.prefetch(e.images);
+  }, [e]);
+
+  // Plays as soon as the exercise opens: ease into the end position, hold, ease back, hold, again and again.
   useEffect(() => {
     if (!play || !e || e.images.length < 2) return;
-    const tm = setInterval(() => setFrame((f) => (f + 1) % e.images.length), 900);
-    return () => clearInterval(tm);
-  }, [play, e]);
+    const ease = Easing.inOut(Easing.quad);
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.delay(350),
+        Animated.timing(fade, { toValue: 1, duration: 650, easing: ease, useNativeDriver: false }),
+        Animated.delay(350),
+        Animated.timing(fade, { toValue: 0, duration: 650, easing: ease, useNativeDriver: false }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [play, e, fade]);
 
   if (loadedId !== id)
     return (
@@ -88,14 +103,21 @@ export default function ExerciseScreen() {
     <Screen title={dbExName(e, lang)} back>
       <Springy onPress={() => setPlay(!play)} scaleTo={0.99} accessibilityLabel={t(play ? 'Pause' : 'Play')} style={{ aspectRatio: 16 / 11, borderRadius: 22, overflow: 'hidden', backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
         {e.images.length ? (
-          e.images.map((u, i) => <Image key={u} source={{ uri: u }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: i === frame ? 1 : 0 }} contentFit="contain" />)
+          <>
+            <Image source={{ uri: e.images[0] }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} contentFit="contain" />
+            {e.images[1] ? (
+              <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: fade }}>
+                <Image source={{ uri: e.images[1] }} style={{ flex: 1, backgroundColor: '#FFFFFF' }} contentFit="contain" />
+              </Animated.View>
+            ) : null}
+          </>
         ) : (
           <Icon name="train" size={48} color={c.sec} />
         )}
         {e.images.length > 1 ? (
           <View style={{ position: 'absolute', bottom: 10, end: 10 }}>
             <Glass style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name={play ? 'minus' : 'play'} size={18} strokeWidth={2.2} />
+              <Icon name={play ? 'pause' : 'play'} size={18} strokeWidth={2.6} />
             </Glass>
           </View>
         ) : null}
