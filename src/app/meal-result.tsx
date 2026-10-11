@@ -22,7 +22,7 @@ import { type Photo, takePhoto } from '@/lib/photo';
 import { useSettings } from '@/theme/settings';
 
 type Item = { name: string; grams: number; kcal: number; protein: number; carbs: number; fat: number };
-type Result = { title: string; items: Item[]; sugar_high?: boolean; fat_high?: boolean; note?: string };
+type Result = { title: string; items: Item[]; sugar_high?: boolean; fat_high?: boolean; note?: string; alternatives?: string[]; confidence?: 'high' | 'medium' | 'low' };
 /** An item with its numbers per gram; g is the amount in the chosen unit, so changing it scales everything. */
 type Row_ = { name: string; g: number; txt?: string; u: Unit; per: { k: number; p: number; c: number; f: number }; own?: boolean };
 
@@ -164,6 +164,18 @@ export default function MealResult() {
               {rows.length ? t('I found these. Fix anything that’s wrong, delete what isn’t there, or add what I missed.') : res.note || t('I couldn’t find food in this photo.')}
             </Text>
           </Card>
+          {photo && rows.length && res.alternatives?.length ? (
+            <View style={{ marginTop: 4 }}>
+              <Text variant="small" weight={700} color="sec" style={{ marginHorizontal: 4, marginBottom: 6 }}>
+                {t(res.confidence === 'low' ? 'I’m not sure. Is it one of these?' : 'Not {x}? Pick the right dish:', { x: res.title })}
+              </Text>
+              <Row gap={8} style={{ flexWrap: 'wrap' }}>
+                {res.alternatives.slice(0, 3).map((a) => (
+                  <Chip key={a} title={a} onPress={() => run(`It is ${a}.${note.trim() ? ` ${note.trim()}` : ''}`)} />
+                ))}
+              </Row>
+            </View>
+          ) : null}
           <Field label={t('Name')} value={title} onChangeText={setTitle} maxLength={80} />
           <Text variant="small" weight={700} color="sec" style={{ marginTop: 16, marginBottom: 8, marginHorizontal: 4 }}>
             {t('Ingredients')}

@@ -21,6 +21,10 @@ const env = (k: string, d = '') => Deno.env.get(k) ?? d;
 const QWEN = 'qwen/qwen3-vl-235b-a22b-instruct';
 let lastDetail = '';
 let lastModel = '';
+/** Admins can test another model on any task (for comparing accuracy). */
+let modelOverride = '';
+/** Meal photos use a model that recognises dishes and portions better (tested on kabsa, falafel, shakshuka): about $0.001 a photo. */
+let taskModel = '';
 /** Tokens and cost of the last AI call, saved to ai_calls for the admin cost page. */
 let lastUsage = { prompt: 0, completion: 0, cost: 0 };
 const openrouterKey = () => env('OPENROUTER_API_KEY') || env('OpenRouter') || env('OPENROUTER');
@@ -67,7 +71,7 @@ async function openrouter(system: string, msgs: Msg[], schema?: object, retry = 
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
     body: JSON.stringify({
-      model: env('OPENROUTER_MODEL', QWEN),
+      model: modelOverride || taskModel || env('OPENROUTER_MODEL', QWEN),
       // Ask OpenRouter to return tokens and the real cost of this call.
       usage: { include: true },
       // PDFs (lab reports) are turned into text by OpenRouter's free PDF reader.
@@ -127,6 +131,30 @@ const FOOD_ITEM = {
   properties: { name: { type: 'string' }, grams: { type: 'number' }, kcal: { type: 'number' }, protein: { type: 'number' }, carbs: { type: 'number' }, fat: { type: 'number' } },
   required: ['name', 'grams', 'kcal', 'protein', 'carbs', 'fat'],
 };
+/** Meal photo: look first (what, how many, how big), then weigh, then count calories. */
+const MEAL_PHOTO = (lang: string) => `You are a careful dietitian estimating a meal from one photo for a calorie tracker. ${LANG(lang)} Names short.${lang === 'ar' ? ' Write "title", every item "name", "alternatives" and "note" in Arabic (Saudi dish names like كبسة دجاج، مندي، فلافل).' : ''} If the person tells you what the dish is, use that name but still weigh the portions from the photo.
+Work in this order and write it in "seen" (one or two short sentences, English is fine):
+1. Name the dish exactly. Gulf, Arab, Indian and fast food are common in Saudi Arabia. Check look-alikes before you decide: kabsa vs mandi vs biryani vs machboos vs mathbi; shawarma wrap vs falafel wrap; shakshuka vs eggs in tomato; harees vs jareesh vs oats; saleeg vs rice pudding; mutabbaq vs pizza; luqaimat vs donut holes. Put the 2 next most likely dish names in "alternatives".
+2. Count what can be counted: chicken pieces, eggs, falafel, dates, bread, sambousek, nuggets. Say the counts.
+3. Size the container: a dinner plate is about 26 cm, a side plate 20 cm, a bowl about 350 ml, a frying pan 26 to 30 cm, a shared Saudi tray (sahan) 45 to 60 cm, a spoon 15 cm. Estimate how full it is and how high the food is piled.
+4. Weigh each part in grams from the size and count. Do not underestimate: a full dinner plate of rice is 350 to 500 g cooked; one chicken leg quarter is about 250 g with bone (180 g edible); a whole half chicken is about 450 g; one large egg is 50 g; one falafel ball 17 to 20 g; one Arabic bread 60 to 80 g; one medium date 8 g. If the photo shows a shared tray, estimate the whole tray and say so in "note".
+5. Count calories for each part as cooked and served, including the oil or ghee it is cooked in (rice in kabsa or mandi is about 170 to 190 kcal per 100 g; fried foods soak up oil).
+${PORTIONS}
+"title" is the dish name. Each item is one part of the meal with its grams and the calories and macros for those grams. "confidence" is high, medium or low. If it is not food, return items: [] and a note.`;
+const MEAL_SCHEMA = {
+  type: 'object',
+  properties: {
+    seen: { type: 'string' },
+    title: { type: 'string' },
+    alternatives: { type: 'array', items: { type: 'string' } },
+    confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
+    items: { type: 'array', items: FOOD_ITEM },
+    sugar_high: { type: 'boolean' },
+    fat_high: { type: 'boolean' },
+    note: { type: 'string' },
+  },
+  required: ['seen', 'title', 'items'],
+};
 const FOOD = {
   type: 'object',
   properties: { title: { type: 'string' }, items: { type: 'array', items: FOOD_ITEM }, sugar_high: { type: 'boolean' }, fat_high: { type: 'boolean' }, note: { type: 'string' } },
@@ -161,9 +189,9 @@ Return JSON: {"reply":"...","actions":[...],"card":{...},"memory":"..."}`;
       return ask(task, system, msgs);
     }
     case 'meal_photo':
-      return ask(task, `You estimate food from a photo for a calorie tracker. ${LANG(lang)} Names short. List each food you see with grams and its calories and macros for that amount. Gulf dishes are common. ${PORTIONS} If it is not food, return items: [] and a note.`, [
-        { role: 'user', parts: [img(), { text: `What is on this plate? Estimate each part.${b.note ? ` How it was cooked: ${String(b.note).slice(0, 300)}` : ''}` }] },
-      ], FOOD);
+      return ask(task, MEAL_PHOTO(lang), [
+        { role: 'user', parts: [img(), { text: `What is on this plate? Estimate each part.${b.note ? ` The person says: ${String(b.note).slice(0, 300)}. Trust this over what you see.` : ''}` }] },
+      ], MEAL_SCHEMA);
     case 'food_text':
       return ask(task, `You turn a description of food into calories for a tracker. ${LANG(lang)} Names short. Estimate normal portions when no amount is given. ${PORTIONS}`, [
         { role: 'user', parts: [{ text: String(b.text ?? '').slice(0, 500) }] },
@@ -290,6 +318,12 @@ Deno.serve(async (req) => {
 
     lastModel = '';
     lastDetail = '';
+    modelOverride = '';
+    taskModel = task === 'meal_photo' ? env('OPENROUTER_PHOTO_MODEL', 'anthropic/claude-haiku-5.5') : '';
+    if (typeof body.model === 'string' && body.model) {
+      const { data: isAdmin } = await admin.from('admins').select('user_id').eq('user_id', u.user.id).maybeSingle();
+      if (isAdmin) modelOverride = body.model.slice(0, 100);
+    }
     lastUsage = { prompt: 0, completion: 0, cost: 0 };
     let result;
     try {
