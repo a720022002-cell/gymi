@@ -345,7 +345,7 @@ export function NavButton({ icon, onPress, label }: { icon: IconName; onPress: (
   );
 }
 
-export function Chip({ title, on, onPress }: { title: string; on?: boolean; onPress?: () => void }) {
+export function Chip({ title, on, onPress, offColor }: { title: string; on?: boolean; onPress?: () => void; offColor?: string }) {
   const { colors: c } = useSettings();
   return (
     <Springy
@@ -355,7 +355,7 @@ export function Chip({ title, on, onPress }: { title: string; on?: boolean; onPr
         minHeight: 38,
         paddingHorizontal: 15,
         borderRadius: 19,
-        backgroundColor: on ? c.text : c.card,
+        backgroundColor: on ? c.text : (offColor ?? c.card),
         alignItems: 'center',
         justifyContent: 'center',
       }}>

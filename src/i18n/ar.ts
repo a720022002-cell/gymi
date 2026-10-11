@@ -2216,6 +2216,7 @@ export const AR: Record<string, string> = {
   "Shake the whey with water.": "اخلط الواي بموية.",
   "Share": "مشاركة",
   "Share invite": "شارك الدعوة",
+  "Share to these groups": "انشر في هالقروبات",
   "Share with my partner": "شاركي مع شريكي",
   "Share your link": "شارك رابطك",
   "Share your workout": "شارك تمرينك",

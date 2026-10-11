@@ -51,13 +51,29 @@ export function ShareWorkoutSheet({ log, open, onClose }: { log: WorkoutLog; ope
         <Text variant="small">{text}</Text>
       </Card>
       <Option icon="user" title={t('My profile')} subtitle={t('Your friends see it in Activity')} selected={where === 'profile'} onPress={() => setWhere('profile')} />
-      <Option icon="users" title={t('My groups')} subtitle={groups.length ? groups.map((g) => g.name).join(', ') : t('No groups yet')} selected={where === 'groups'} disabled={!groups.length} onPress={() => setWhere('groups')} />
+      <Option
+        icon="users"
+        title={t('My groups')}
+        subtitle={groups.length ? groups.map((g) => g.name).join(', ') : t('No groups yet')}
+        selected={where === 'groups'}
+        disabled={!groups.length}
+        onPress={() => {
+          setWhere('groups');
+          // Start with every group picked; tap one to leave it out.
+          if (!sel.length) setSel(groups.map((g) => g.id));
+        }}
+      />
       {where === 'groups' && groups.length ? (
-        <Row gap={8} style={{ flexWrap: 'wrap' }}>
-          {groups.map((g) => (
-            <Chip key={g.id} title={g.name} on={sel.includes(g.id)} onPress={() => setSel(sel.includes(g.id) ? sel.filter((x) => x !== g.id) : [...sel, g.id])} />
-          ))}
-        </Row>
+        <>
+          <Text variant="xs" weight={700} color="sec" style={{ marginTop: 4, marginBottom: 6, marginHorizontal: 4 }}>
+            {t('Share to these groups')}
+          </Text>
+          <Row gap={8} style={{ flexWrap: 'wrap' }}>
+            {groups.map((g) => (
+              <Chip key={g.id} title={g.name} offColor={c.inset} on={sel.includes(g.id)} onPress={() => setSel(sel.includes(g.id) ? sel.filter((x) => x !== g.id) : [...sel, g.id])} />
+            ))}
+          </Row>
+        </>
       ) : null}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
         <Icon name="lock" size={14} color={c.sec} />
