@@ -1,0 +1,113 @@
+# Gymi: chat log
+
+A record of this Claude Code session: what you asked for and what was built.
+Passwords and keys are left out on purpose.
+
+---
+
+## About the project
+
+- **App:** Gymi, an AI fitness coach. It is built with Expo (SDK 57) and runs on the web.
+- **Live site:** https://gymi-inky.vercel.app. It updates automatically from the `main` branch.
+- **Backend:** Supabase (database, sign-in, file storage, server functions).
+- **AI:** Qwen through OpenRouter (`qwen/qwen3-vl-235b-a22b-instruct`).
+- **Design sources:** `docs/index.html` (prototype), `docs/Gymi-features.md`, `GYMI-development.md`, `Gymi-design.md`.
+- **Languages:** English and Arabic. The Arabic screens show right to left.
+
+### Working rules you set
+- Explain everything in simple words.
+- Push to **main**.
+- Never ask you to paste keys in the chat. When a key is needed, say the exact variable name and where to add it (Vercel, Supabase or Claude Code).
+- The Supabase secret (service_role) key and the Gemini key never go in the app or in Vercel.
+- Never commit `.env` files.
+- Always delete test users after testing.
+
+---
+
+## What was built, in order
+
+### 1. The main app (phases 1 to 8)
+- **Setup:** Expo app, Vercel deploy, design tokens, fonts, glass look, Arabic and right-to-left.
+- **Accounts:** Supabase sign-in, profiles, and security rules (RLS).
+- **Screens:** onboarding, login, Home, tab bar, AI button, You page.
+- **Food:**
+  - Calorie setup and food database (USDA plus Saudi dishes).
+  - Meal plan, recipes, swaps, shopping list.
+  - Food search, barcode scanning, custom meals.
+- **Train:**
+  - Exercise database and training plan builder.
+  - Weekly plan, workout screen, live workout, rest timer, summary.
+  - Cardio, exercise library, exercise pictures and how-to.
+- **AI:**
+  - Coach chat with voice.
+  - Meal photo, nutrition label photo, and "type what you ate".
+  - AI plan builder, unknown machine photo, voice set logging.
+- **Progress:** morning check-in, water, Progress tab, charts, weekly AI reports, PDF, vitamins, blood tests.
+- **Social:** Gym Bros, coaches, women's health and cycle tracking, train together.
+- **Store prep:** devices, subscriptions, store preparation.
+- **Admin and coach tools:** programs, meal plans, client inbox, packages, gym hours, Meet booking.
+
+### 2. Admin account
+- An admin account (`gymi.admin`) and an Admin page.
+
+### 3. Design check and missing parts
+- Checked the full design several times and built every missing screen and detail.
+
+### 4. Accounting, server and AI costs (Admin page)
+- **Accounting:** for the 3 partners, Ali, Hamdan and Ahmed.
+  - Record each purchase: category, amount, currency (SAR or USD), and date.
+  - Record who paid, and whether it was bought or not yet.
+  - Split it equally, by set amounts, or to one person.
+  - Mark parts as paid back.
+  - A "Who owes whom" page with suggested settle-ups and spending by category.
+- **Server monitoring:**
+  - Whether the site and AI are up, and the last deploy.
+  - Database and storage size against the free-plan limits.
+  - User counts and AI failures.
+- **AI costs:**
+  - OpenRouter balance.
+  - Spending per day and per feature.
+  - Failed requests.
+
+### 5. Apple-style ad video
+- `docs/marketing/gymi-ad-vertical.mp4` (35 seconds, vertical 1080×1920).
+
+### 6. Your edit requests
+
+| Your request | What was done |
+|---|---|
+| «لازم نفصل الباي والتراي» | Biceps, Triceps and Forearms are now separate filters. |
+| Push 1 and Push 2 should be different and editable | "Make each day different": each Push, Pull or Legs day can have its own exercises. Order is editable, and you can add or remove workouts. |
+| «الدائرة فوق thinking تدور ثانيتين بعدين توقف» | The loading circle now keeps spinning, even when the app is busy. |
+| Add real pictures (body fat) | Real AI-made body photos, paid with OpenRouter credit. |
+| Remove "Apply as a coach" from You | Removed. It only shows during sign-up. |
+| Long-press + to enter ml by hand, remove juice | Long-press + opens "Add water" (10 to 3000 ml). Juice is removed. |
+| Remove the mode, keep only Advanced | The Beginner/Advanced switch is removed. The app is always Advanced. |
+
+### 7. During a workout: exercise how-to and machine photo
+**Request:** "When we start the workout we can click the name of the exercise and see the picture and explanation for the exercise. Also when I didn't know the machine name I can take pictures for it (inside when we start the workout)"
+
+- Each exercise name in the live workout has an ⓘ icon. Tap the name to see the moving picture and step-by-step how-to. Your workout, timer and sets stay as they were when you come back.
+- A new **"Don't know a machine?"** card sits at the bottom of the workout.
+  - Take or choose a photo, and the AI names the machine.
+  - If it can't tell, you name it and pick the muscles yourself.
+  - **"Add to this workout"** adds it to the current workout with 3 sets. Your weekly plan is not changed.
+- Tested with a temporary user, who was deleted afterwards.
+
+### 8. Small text fix
+**Request:** the line under "Name this exercise" said "I'll add it to your plan" even inside a workout.
+
+- Inside a workout it now says **"I'll add it to this workout"** («بضيفه لهذا التمرين»).
+- Elsewhere it still says "your plan".
+
+---
+
+## Still waiting on you
+
+- **Login and email-change codes:** built, but off until you add SMTP in Supabase under **Authentication → Emails → SMTP settings**.
+- **Phone-only features** (Apple Health, Health Connect, voice, PDF, sounds): need a phone build with EAS. That needs an `EXPO_TOKEN` secret added to this Claude Code environment.
+- **OpenRouter balance:** about $3.9 left. Top up before it runs out.
+
+## Optional ideas offered
+- Update `docs/STORE-RELEASE.md`.
+- More ad versions: wide 16:9, 15 seconds, or Arabic.
