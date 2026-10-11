@@ -126,6 +126,10 @@ export default function Coach() {
         return { day: d, sleepH: c?.sleep_h ?? null, energy: c?.energy == null ? null : ['tired', 'normal', 'great'][c.energy], soreness: c?.sore == null ? null : ['none', 'a little', 'very sore'][c.sore], recovery: c?.score ?? null, kcal: f ? Math.round(f.k) : null, protein: f ? Math.round(f.p) : null };
       }),
       recoveryToday: rec.score,
+      // Last night's sleep (what you logged, or your watch) and what pulls recovery down.
+      sleepLastNightH: rec.sleepH ?? null,
+      recoveryParts: Object.fromEntries(rec.parts.map((p) => [p.key, p.value])),
+      todayWorkoutLighter: !!train.plan && train.plan.light === today,
       last7DaysAdherence: { caloriesOnTarget: part('cal'), proteinGoal: part('prot'), waterGoal: part('water'), workoutsAsPlanned: part('work'), sleep7hPlus: part('sleep') },
       commitment30DaysPercent: streaks.commitment,
       streakDays: streaks.overall,

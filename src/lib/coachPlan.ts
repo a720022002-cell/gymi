@@ -34,6 +34,7 @@ export async function prepareSuggestions(raw: unknown, plan: TrainPlan | null): 
     for (const c of x.changes.slice(0, 8) as Record<string, unknown>[]) {
       const workout = str(c?.workout, 40) || 'all';
       if (c?.op === 'deload') changes.push({ op: 'deload' });
+      else if (c?.op === 'light') changes.push({ op: 'light' });
       else if (c?.op === 'sets' && okWorkout(workout) && [-2, -1, 1, 2].includes(Math.round(num(c.delta)))) changes.push({ op: 'sets', workout, delta: Math.round(num(c.delta)) });
       else if (c?.op === 'reps' && okWorkout(workout) && REPS.test(str(c.reps, 9))) changes.push({ op: 'reps', workout, reps: str(c.reps, 9).replace('-', '–').replace(/\s/g, '') });
       else if (c?.op === 'remove' && workout !== 'all' && inWorkout(workout, str(c.ex))) changes.push({ op: 'remove', workout, ex: str(c.ex) });
@@ -58,18 +59,24 @@ export async function prepareSuggestions(raw: unknown, plan: TrainPlan | null): 
 export function applyPlanChanges(plan: TrainPlan, changes: PlanChange[], today: string): TrainPlan {
   const workouts = Object.fromEntries(Object.entries(plan.workouts).map(([k, w]) => [k, { ...w, ex: [...w.ex] }]));
   let deload = plan.deload;
+  let light = plan.light;
+  let lightAsked = plan.lightAsked;
   const each = (w: string, fn: (ex: TrainPlan['workouts'][string]['ex']) => TrainPlan['workouts'][string]['ex']) => {
     for (const k of w === 'all' ? Object.keys(workouts) : [w]) if (workouts[k]) workouts[k].ex = fn(workouts[k].ex);
   };
   for (const c of changes) {
     if (c.op === 'deload') deload = weekStart(today);
+    else if (c.op === 'light') {
+      light = today;
+      lightAsked = today;
+    }
     else if (c.op === 'sets') each(c.workout, (ex) => ex.map((y) => ({ ...y, sets: Math.min(6, Math.max(1, y.sets + c.delta)) })));
     else if (c.op === 'reps') each(c.workout, (ex) => ex.map((y) => ({ ...y, reps: c.reps })));
     else if (c.op === 'remove') each(c.workout, (ex) => (ex.length > 1 ? ex.filter((y) => y.id !== c.ex) : ex));
     else if (c.op === 'swap' && c.toEx) each(c.workout, (ex) => ex.map((y) => (y.id === c.from ? { ...c.toEx!, sets: y.sets, reps: y.reps } : y)));
     else if (c.op === 'add' && c.toEx) each(c.workout, (ex) => [...ex, { ...c.toEx!, sets: c.sets, reps: c.reps }]);
   }
-  return { ...plan, workouts, deload };
+  return { ...plan, workouts, deload, light, lightAsked };
 }
 
 /** The food plan with new calorie, protein or water goals. */
@@ -93,6 +100,7 @@ export function changeLine(c: PlanChange, plan: TrainPlan | null, lang: 'en' | '
     return exInfo({ id }, lang).name;
   };
   if (c.op === 'deload') return t('This week: lighter weights and fewer sets (deload)');
+  if (c.op === 'light') return t('Today: one set less and about 10% less weight');
   if (c.op === 'sets')
     return Math.abs(c.delta) === 1
       ? t(c.delta > 0 ? '{w}: one more set per exercise' : '{w}: one set less per exercise', { w: w(c.workout) })

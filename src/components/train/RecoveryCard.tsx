@@ -2,6 +2,8 @@ import { router } from 'expo-router';
 import { View } from 'react-native';
 
 import { useT } from '@/i18n';
+import { useAuth } from '@/lib/auth';
+import { useDevices } from '@/lib/devices';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { recLabel, recovery } from '@/lib/recovery';
@@ -19,10 +21,15 @@ import { Button, Card, Row, Springy } from '../ui';
 export function useRecovery() {
   const train = useTrain();
   const food = useFood();
+  const { session } = useAuth();
+  const devices = useDevices(session?.user.id);
   const { todayCheckin: ci } = useHealth();
+  // Sleep you logged wins; otherwise last night's sleep from your watch.
+  const watchSleep = devices.days.find((d) => d.day === train.today)?.sleep_h ?? null;
+  const sleep = ci?.sleep_h ?? watchSleep;
   const input = {
     today: train.today,
-    checkin: ci ? { day: ci.day, sleep: ci.sleep_h, sore: ci.sore, energy: ci.energy } : null,
+    checkin: ci || sleep != null ? { day: train.today, sleep, sore: ci?.sore ?? null, energy: ci?.energy ?? null } : null,
     logs: train.logs,
     protein: food.setupDone ? { eaten: food.eaten.p, target: food.target.p } : null,
     water: { ml: food.water, goal: food.plan.water || 2800 },

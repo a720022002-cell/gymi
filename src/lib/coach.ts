@@ -18,7 +18,8 @@ export type PlanChange =
   | { op: 'swap'; workout: string; from: string; to: string; toEx?: PlanEx }
   | { op: 'remove'; workout: string; ex: string }
   | { op: 'add'; workout: string; search: string; sets: number; reps: string; toEx?: PlanEx }
-  | { op: 'deload' };
+  | { op: 'deload' }
+  | { op: 'light' };
 
 /** A small chart or card under a coach reply. Charts are drawn from your real data. */
 export type ChatCard = { type: 'weight' } | { type: 'calories' } | { type: 'sleep' } | { type: 'meal'; name: string; kcal: number; protein: number };

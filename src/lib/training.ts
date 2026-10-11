@@ -50,6 +50,8 @@ export type TrainPlan = {
   light?: string;
   deload?: string;
   deloadDismissed?: string;
+  /** Day you answered "make today lighter?" after poor sleep or low recovery. */
+  lightAsked?: string;
   /** 'fixed': same days every week. 'order': the next workout in order, with a rest day between. */
   type?: 'fixed' | 'order';
   /** Workout order for the 'order' type. */
