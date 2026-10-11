@@ -105,6 +105,8 @@ export default function Active() {
   // Swapping an exercise mid-workout: which one, then whether to keep the change in your plan.
   const [swapFor, setSwapFor] = useState<number | null>(null);
   const [swapped, setSwapped] = useState<{ oldId: string; ex: PlanEx; name: string } | null>(null);
+  // The exercise whose trash button was tapped: remove it today, or from your plan too.
+  const [removeFor, setRemoveFor] = useState<number | null>(null);
 
   // Tick every quarter second; end the rest when its time is up.
   const restRef = useRef(rest);
@@ -189,6 +191,16 @@ export default function Active() {
     });
     const nx: SessionEx = { ...pe, reps: old.reps, tip: false, sets };
     update((x) => ({ ...x, ex: done.length ? [...x.ex.slice(0, ei), { ...old, sets: done }, nx, ...x.ex.slice(ei + 1)] : x.ex.map((e, i) => (i === ei ? nx : e)) }));
+  };
+  const removeEx = (ei: number, fromPlan: boolean) => {
+    const old = s.ex[ei];
+    setRemoveFor(null);
+    if (!old) return;
+    update((x) => ({ ...x, ex: x.ex.filter((_, i) => i !== ei) }));
+    const p = train.plan;
+    const w = p?.workouts[s.name];
+    if (fromPlan && p && w) train.updatePlan({ workouts: { ...p.workouts, [s.name]: { ...w, ex: w.ex.filter((y) => y.id !== old.id) } } });
+    toast(t(fromPlan ? 'Removed {x} from your plan' : 'Removed {x}', { x: exInfo(old, lang).name }), { icon: 'trash' });
   };
   const canAlways = (oldId: string) => !s.home && !!train.plan?.workouts[s.name]?.ex.some((y) => y.id === oldId);
   const keepAlways = () => {
@@ -301,6 +313,16 @@ export default function Active() {
                     style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' }}>
                     <Icon name="swap" size={18} color={c.cobalt} />
                   </Springy>
+{s.ex.length > 1 ? (
+                  <Springy
+                    onPress={() => setRemoveFor(ei)}
+                    scaleTo={0.9}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('Remove {x}', { x: info.name })}
+                    style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon name="trash" size={18} color={c.down} />
+                  </Springy>
+                  ) : null}
                 </Row>
               </Row>
               {mach ? (
@@ -518,6 +540,22 @@ export default function Active() {
           else toast(t('{x} swapped in', { x: name }), { icon: 'check' });
         }}
       />
+
+      <Sheet open={removeFor !== null} onClose={() => setRemoveFor(null)}>
+        {removeFor !== null && s.ex[removeFor] ? (
+          <View>
+            <Text variant="h2">{t('Remove {x}?', { x: exInfo(s.ex[removeFor], lang).name })}</Text>
+            <Text color="sec" style={{ marginTop: 4 }}>
+              {s.ex[removeFor].sets.some((y) => y.done) ? t('The sets you finished for it won’t be saved.') : t('It comes off today’s workout.')}
+            </Text>
+            <Button kind="soft" icon="trash" title={t('Remove for today')} color={c.down} style={{ marginTop: 16 }} onPress={() => removeEx(removeFor, false)} />
+            {canAlways(s.ex[removeFor].id) ? (
+              <Button kind="soft" icon="trash" title={t('Remove from my plan too')} color={c.down} style={{ marginTop: 8 }} onPress={() => removeEx(removeFor, true)} />
+            ) : null}
+            <Button kind="ghost" title={t('Keep it')} color={c.text} style={{ marginTop: 8 }} onPress={() => setRemoveFor(null)} />
+          </View>
+        ) : null}
+      </Sheet>
 
       <Sheet open={!!swapped} onClose={() => setSwapped(null)}>
         <Text variant="h2">{t('{x} swapped in', { x: swapped?.name ?? '' })}</Text>

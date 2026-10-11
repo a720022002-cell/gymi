@@ -25,6 +25,7 @@ import { OfflineBanner } from '@/components/OfflineBanner';
 import { ReferralClaim } from '@/components/ReferralClaim';
 import { ReminderSync } from '@/components/ReminderSync';
 import { ToastProvider } from '@/components/Toast';
+import { UpdateBanner } from '@/components/UpdateBanner';
 import { AuthProvider } from '@/lib/auth';
 import { FoodProvider } from '@/lib/food';
 import { HealthProvider } from '@/lib/health';
@@ -97,6 +98,7 @@ function AppStack({ ready }: { ready: boolean }) {
       <ReferralClaim />
       <FriendAlerts />
       <OfflineBanner />
+      <UpdateBanner />
       <NotifyBanner />
     </>
   );
