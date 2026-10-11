@@ -13,6 +13,7 @@ import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useFood, useLogFood } from '@/lib/food';
 import { fmt, planMeals, scaleIngredients } from '@/lib/nutrition';
+import { inGrams } from '@/lib/recipes';
 import { subOptions } from '@/lib/subs';
 import { useSettings } from '@/theme/settings';
 
@@ -119,7 +120,7 @@ export default function RecipeScreen() {
               {t(n)}
               {subbed.includes(i) ? <Text variant="xs" weight={700} color="cobalt">{`  ${t('Swapped')}`}</Text> : null}
             </Text>
-            <Text num size={15}>{`${a} ${t(u)}`}</Text>
+            <Text num size={15}>{(([v, w]) => `${v} ${t(w)}`)(inGrams(n, a, u))}</Text>
             <Icon name="swap" size={16} color={c.sec} />
           </Springy>
         ))}
@@ -168,7 +169,7 @@ export default function RecipeScreen() {
           <View>
             <Text variant="h2">{t('No {x}?', { x: t(ing[subFor][0]).toLowerCase() })}</Text>
             <Text variant="small" color="sec" style={{ marginTop: 4 }}>
-              {t('Instead of {a} {u}, use one of these. Calories stay about the same.', { a: ing[subFor][1], u: t(ing[subFor][2]) })}
+              {(([v, w]) => t('Instead of {a} {u}, use one of these. Calories stay about the same.', { a: v, u: t(w) }))(inGrams(ing[subFor][0], ing[subFor][1], ing[subFor][2]))}
             </Text>
             <View style={{ marginTop: 12, backgroundColor: 'rgba(127,127,135,0.1)', borderRadius: 22, overflow: 'hidden' }}>
               {subOptions(r.ing[subFor][0], r.ing[subFor][1], r.ing[subFor][2]).map((o, j) => {
@@ -181,7 +182,7 @@ export default function RecipeScreen() {
                     <Text weight={700} style={{ flex: 1 }}>
                       {t(o[0])}
                     </Text>
-                    <Text num size={15}>{`${shown[1]} ${t(shown[2])}`}</Text>
+                    <Text num size={15}>{(([v, w]) => `${v} ${t(w)}`)(inGrams(shown[0], shown[1], shown[2]))}</Text>
                   </Springy>
                 );
               })}

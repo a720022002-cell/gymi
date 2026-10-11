@@ -419,3 +419,15 @@ export const MEAL_WEIGHT: Record<string, number> = {
   'Main meal': 0.4,
   Suhoor: 0.3,
 };
+
+/** Grams for one of each counted unit, so recipes show weights instead of "1 medium". */
+const UNIT_G: Record<string, number> = { medium: 150, large: 50, small: 60, slice: 30, slices: 30, piece: 10, pieces: 10, scoop: 30, bun: 60, half: 40, tbsp: 15 };
+const NAME_G: Record<string, number> = { Banana: 120, Apple: 180, Dates: 8, 'Baked sambousek': 30, 'Rice cakes': 9, 'Light cheese slice': 20, 'Kabsa spice mix': 7 };
+const LIQUID = new Set(['Soy sauce']);
+
+/** An ingredient amount in grams (or ml for liquids). Units with no weight, like a pinch, stay as they are. */
+export function inGrams(n: string, a: number, u: string): [number, string] {
+  if (u === 'g' || u === 'ml' || !UNIT_G[u]) return [a, u];
+  const v = a * (NAME_G[n] ?? UNIT_G[u]);
+  return [v < 20 ? Math.max(1, Math.round(v)) : Math.round(v / 5) * 5, LIQUID.has(n) ? 'ml' : 'g'];
+}
