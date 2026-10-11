@@ -110,7 +110,8 @@ export function TrainProvider({ children }: PropsWithChildren) {
       ]);
       if (!alive) return;
       const raw = p.data?.plan as TrainPlan | undefined;
-      const loaded = raw?.week ? { ...raw, skipped: raw.skipped ?? {}, dismiss: raw.dismiss ?? {}, machines: raw.machines ?? {} } : null;
+      // "In order" plans were removed: every plan now uses fixed days.
+      const loaded = raw?.week ? { ...raw, type: 'fixed' as const, skipped: raw.skipped ?? {}, dismiss: raw.dismiss ?? {}, machines: raw.machines ?? {} } : null;
       planRef.current = loaded;
       setPlan(loaded);
       setSetupDone(!!p.data?.setup_done && !!raw?.week);
