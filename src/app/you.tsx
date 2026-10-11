@@ -106,7 +106,6 @@ export default function You() {
           <Label>{t('Coaching')}</Label>
           <List>
             <Item icon="coach" title={t('My coach')} sub={t('Find a coach or enter a code')} onPress={() => router.push('/mycoach')} chevron />
-            <Item icon="star" title={t('Apply as a coach')} sub={t('Coach clients on Gymi')} onPress={() => router.push('/coachapp')} chevron />
           </List>
         </>
       )}
