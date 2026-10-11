@@ -1,11 +1,24 @@
 import { supabase } from './supabase';
+import type { PlanEx } from './training';
 
 export type ChatAction =
   | { type: 'food'; name: string; kcal: number; protein: number; carbs: number; fat: number; logId?: string; undone?: boolean }
   | { type: 'cardio'; kind: 'Walk' | 'Run' | 'Bike' | 'Swim'; minutes: number; intensity: number; kcal?: number; logId?: string; undone?: boolean }
   | { type: 'water'; ml: number; logId?: string; undone?: boolean }
   | { type: 'sleep'; hours: number; prev?: number | null; undone?: boolean }
-  | { type: 'weight'; kg: number; prev?: number | null; undone?: boolean };
+  | { type: 'weight'; kg: number; prev?: number | null; undone?: boolean }
+  // Suggestions: nothing changes until you tap Apply (Undo puts the old plan back).
+  | { type: 'plan'; title: string; changes: PlanChange[]; state?: 'applied' | 'dismissed'; prev?: unknown }
+  | { type: 'targets'; title: string; kcal?: number; protein?: number; water?: number; state?: 'applied' | 'dismissed'; prev?: { kcal: number; perKg: number; carbG: number | null; water: number } };
+
+/** One change to the training plan. Workout is a workout name from the plan, or "all". Exercises are plan ids; new ones come from a search. */
+export type PlanChange =
+  | { op: 'sets'; workout: string; delta: number }
+  | { op: 'reps'; workout: string; reps: string }
+  | { op: 'swap'; workout: string; from: string; to: string; toEx?: PlanEx }
+  | { op: 'remove'; workout: string; ex: string }
+  | { op: 'add'; workout: string; search: string; sets: number; reps: string; toEx?: PlanEx }
+  | { op: 'deload' };
 
 /** A small chart or card under a coach reply. Charts are drawn from your real data. */
 export type ChatCard = { type: 'weight' } | { type: 'calories' } | { type: 'sleep' } | { type: 'meal'; name: string; kcal: number; protein: number };

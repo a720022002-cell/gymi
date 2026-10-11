@@ -179,7 +179,7 @@ async function run(task: string, b: Record<string, unknown>) {
   const img = (k = 'image'): Part => ({ image: String(b[k]), mime: String(b.mime ?? 'image/jpeg') });
   switch (task) {
     case 'chat': {
-      const ctx = JSON.stringify(b.context ?? {}).slice(0, 9000);
+      const ctx = JSON.stringify(b.context ?? {}).slice(0, 20000);
       const memory = String(b.memory ?? '').slice(0, 1500);
       const system = `You are Gymi, a friendly AI fitness coach for people in Saudi Arabia and the Gulf. ${LANG(lang)}
 Keep answers short (2 to 5 sentences), practical and kind. Use local foods when helpful (kabsa, mandi, laban, dates, shawarma).
@@ -195,9 +195,18 @@ If the user says they ate, drank, walked/ran/cycled/swam, slept, or weighed them
 - sleep: {"type":"sleep","hours":n} (last night's total sleep in hours, like 7 or 6.5)
 - weight: {"type":"weight","kg":n} (today's body weight in kg)
 Only add actions for things they already did, not plans. Otherwise "actions" is [].
+You can see all the person's data above: food, water, sleep, check-ins, recovery, weight and body measurements, blood tests, supplements, workouts, the full training plan and watch data when connected. Base every answer on those real numbers and say which ones you used (for example "you haven't trained for 12 days and slept 6 h"). If something you need is missing, say what to log.
+When a change would help (they are coming back after a break, feel tired or sore, stopped progressing, have an injury, a new goal, or ask you to change something), add up to 2 "suggest" items. Nothing changes until the person taps Apply, so explain the change in your reply and ask if they want it.
+- training plan: {"type":"plan","title":"short reason, in the reply language","changes":[...]} with changes from:
+  {"op":"deload"} (this week lighter), {"op":"sets","workout":"<workout name or all>","delta":-1|-2|1|2}, {"op":"reps","workout":"<name or all>","reps":"12–15"},
+  {"op":"swap","workout":"<name>","from":"<exercise id from trainingPlan>","to":"<English exercise name to search>"},
+  {"op":"remove","workout":"<name>","ex":"<exercise id>"}, {"op":"add","workout":"<name>","search":"<English exercise name>","sets":3,"reps":"10–12"}.
+  Use the exact workout names and exercise ids from "trainingPlan". Example: back after 2+ weeks off: deload plus one set less on all workouts for the first week or two.
+- food targets: {"type":"targets","title":"short reason","kcal":n,"protein":n,"water":ml} (only the ones that change; never when "coachManagesFood" is true).
+Otherwise "suggest" is [].
 You may add one small "card" under your reply when it helps: {"type":"weight"} for weight or progress questions, {"type":"calories"} for calorie or eating questions, {"type":"sleep"} for sleep or recovery questions, or {"type":"meal","name":"...","kcal":n,"protein":n} when you suggest one meal. Otherwise leave "card" out.
 If the user told you something new and lasting about themselves (goals, injuries, foods they like or avoid, schedule, preferences), add "memory": the full updated memory as short notes in English, max 600 characters, keeping what still matters from the old memory. Otherwise leave "memory" out.
-Return JSON: {"reply":"...","actions":[...],"card":{...},"memory":"..."}`;
+Return JSON: {"reply":"...","actions":[...],"suggest":[...],"card":{...},"memory":"..."}`;
       const msgs = ((b.messages as { role: 'user' | 'ai'; text: string }[]) ?? []).slice(-12).map((m) => ({ role: m.role, parts: [{ text: m.text.slice(0, 2000) }] }));
       return ask(task, system, msgs);
     }
@@ -261,7 +270,7 @@ Return JSON: {"reply":"...","actions":[...],"card":{...},"memory":"..."}`;
         required: ['well', 'improve', 'focus'],
       });
     case 'blood':
-      return ask(task, `You read lab reports (blood tests). ${LANG(lang)} for "title" only; keep test names in English as printed. List every test value you can read with its unit and the normal range printed on the report ("low" and "high" numbers; null if not printed). "flag" is -1 if below the range, 1 if above, 0 if inside or unknown. "day" is the report date as YYYY-MM-DD if printed, else empty. Never add advice, causes or treatment. If it is not a lab report, return values: [].`, [
+      return ask(task, `You read lab reports (blood tests). ${LANG(lang)} for "title" only; keep test names in English as printed. Take only the result of each test and its unit from the report. IGNORE every reference or normal range printed on the report: labs often print wrong or mismatched ranges. Instead, "low" and "high" are the standard adult reference range from medical guidelines for this person (${b.sex ? `sex: ${String(b.sex).slice(0, 10)}` : 'sex unknown'}${b.age ? `, age ${Number(b.age)}` : ''}), in the same unit as the result (null if there is no standard range). "flag" is -1 if the result is below that range, 1 if above, 0 if inside or unknown. "day" is the report date as YYYY-MM-DD if printed, else empty. Never add advice, causes or treatment. If it is not a lab report, return values: [].`, [
         { role: 'user', parts: [b.file ? { file: String(b.file), mime: 'application/pdf', name: String(b.name ?? 'report.pdf').slice(0, 100) } : img(), { text: 'Read the values in this lab report.' }] },
       ], {
         type: 'object',

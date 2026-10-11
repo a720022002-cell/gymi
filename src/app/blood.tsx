@@ -10,7 +10,9 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, ErrorText, Row } from '@/components/ui';
 import { useT } from '@/i18n';
 import { type AiError, aiErrorText, askAI } from '@/lib/ai';
+import { useAuth } from '@/lib/auth';
 import { useFood } from '@/lib/food';
+import { ageFromIso } from '@/lib/nutrition';
 import { pickReportFile } from '@/lib/docpick';
 import { type BloodTest, type BloodValue, type HealthFile, useHealth } from '@/lib/health';
 import { type Photo, takePhoto } from '@/lib/photo';
@@ -25,6 +27,7 @@ export default function BloodScreen() {
   const { colors: c } = useSettings();
   const toast = useToast();
   const food = useFood();
+  const { profile } = useAuth();
   const h = useHealth();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<AiError | 'none' | null>(null);
@@ -42,7 +45,9 @@ export default function BloodScreen() {
     const keep: HealthFile = 'photo' in src ? { base64: src.photo.base64, mime: src.photo.mime, name: t('Lab report photo') } : src.file;
     setFileName(keep.name);
     setBusy(true);
-    const { result, error } = await askAI<Read>('blood', isPdf ? { lang, file: b64, name: keep.name } : { lang, image: b64, mime: 'photo' in src ? src.photo.mime : src.file.mime });
+    // Only the results are read from the report; the normal ranges come from guidelines for your sex and age, not the report.
+    const who = { sex: profile?.gender ?? null, age: ageFromIso(profile?.date_of_birth) };
+    const { result, error } = await askAI<Read>('blood', isPdf ? { lang, file: b64, name: keep.name, ...who } : { lang, image: b64, mime: 'photo' in src ? src.photo.mime : src.file.mime, ...who });
     if (error || !result) {
       setBusy(false);
       return setErr(error ?? 'failed');
@@ -54,7 +59,7 @@ export default function BloodScreen() {
         const low = typeof v.low === 'number' ? v.low : null;
         const high = typeof v.high === 'number' ? v.high : null;
         const n = Number(v.value);
-        // Check the range ourselves; fall back to the report's own flag.
+        // Check against the standard range ourselves; fall back to the AI's flag.
         const flag = (low != null && n < low ? -1 : high != null && n > high ? 1 : low != null || high != null ? 0 : Math.sign(Number(v.flag) || 0)) as -1 | 0 | 1;
         return { name: String(v.name).slice(0, 60), value: n, unit: String(v.unit ?? '').slice(0, 20), low, high, flag };
       });
@@ -185,6 +190,9 @@ function Report({ b }: { b: BloodTest }) {
           </Text>
         </Card>
       ) : null}
+      <Text variant="xs" color="sec" style={{ marginHorizontal: 4, marginBottom: 8 }}>
+        {t('Normal ranges are the standard ones for your sex and age, not the ones printed on the report.')}
+      </Text>
       <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden', marginBottom: 12 }}>
         {b.values.map((v, i) => (
           <View key={`${v.name}${i}`} style={{ paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
