@@ -31,7 +31,9 @@ export default function Together() {
   const { profile, session } = useAuth();
   const train = useTrain();
   const params = useLocalSearchParams<{ friend?: string; members?: string }>();
-  const [myLevel, setMyLevelState] = useState<Level>(train.plan?.level ?? 'Intermediate');
+  // Your level is the one in your training plan; without one, it comes from how much you trained in the last 6 months.
+  const recent = train.logs.length;
+  const myLevel: Level = train.plan?.level ?? (recent >= 60 ? 'Advanced' : recent >= 12 ? 'Intermediate' : 'Beginner');
   const [people, setPeople] = useState<P[]>([]);
   const [name, setName] = useState('');
   const [level, setLevel] = useState<Level>('Intermediate');
@@ -54,7 +56,7 @@ export default function Together() {
       const want = [params.friend, ...(params.members ?? '').split(',')].filter((x): x is string => !!x && x !== session?.user.id);
       const pre = f.filter((x) => want.includes(x.id)).slice(0, 4);
       if (pre.length) {
-        setPeople(pre.map((x) => ({ name: displayName(x), username: x.username, id: x.id, level: lv[x.id] ?? 'Intermediate', known: !!lv[x.id] })));
+        setPeople(pre.map((x) => ({ name: displayName(x), username: x.username, id: x.id, level: lv[x.id] ?? 'Beginner', known: true })));
         setReady(true);
       }
     })();
@@ -63,10 +65,6 @@ export default function Together() {
     };
   }, [params.friend, params.members, session?.user.id]);
 
-  const setMyLevel = (l: Level) => {
-    setMyLevelState(l);
-    if (train.plan) train.updatePlan({ level: l });
-  };
   const all: P[] = [{ name: t('You'), level: myLevel, me: true }, ...people];
   const appFriends = people.filter((p) => p.id);
 
@@ -80,7 +78,7 @@ export default function Together() {
   const togglePick = (f: FriendRow) => {
     if (people.some((p) => p.id === f.id)) return setPeople(people.filter((p) => p.id !== f.id));
     if (people.length >= 4) return toast(t('Up to 4 friends at a time'), { icon: 'info' });
-    setPeople([...people, { name: displayName(f), username: f.username, id: f.id, level: levels[f.id] ?? 'Intermediate', known: !!levels[f.id] }]);
+    setPeople([...people, { name: displayName(f), username: f.username, id: f.id, level: levels[f.id] ?? 'Beginner', known: true }]);
   };
 
   const workout = TOG.map(([id, type]) => ({ id, type }));
@@ -142,19 +140,13 @@ export default function Together() {
     return (
       <Screen title={t('Train together')} back>
         <Text color="sec">{t('Pick up to 4 friends. I’ll build one workout for the whole group, with the right sets and reps for each person’s level.')}</Text>
-        <Text variant="small" weight={700} color="sec" style={{ marginTop: 18, marginBottom: 8 }}>
-          {t('Your level')}
+        <Text variant="small" color="sec" style={{ marginTop: 12 }}>
+          {t('Your level: {l}. Everyone’s level comes from their training plan.', { l: t(myLevel) })}
         </Text>
-        <Row gap={8} style={{ flexWrap: 'wrap' }}>
-          {LEVELS.map((l) => (
-            <Chip key={l} title={t(l)} on={myLevel === l} onPress={() => setMyLevel(l)} />
-          ))}
-        </Row>
         {friends.length ? (
           <View style={{ marginTop: 16, backgroundColor: c.card, borderRadius: 22, overflow: 'hidden' }}>
             {friends.map((f, i) => {
               const on = people.some((p) => p.id === f.id);
-              const pick = people.find((p) => p.id === f.id);
               return (
                 <View key={f.id} style={{ borderTopWidth: i ? 1 : 0, borderTopColor: c.line, paddingHorizontal: 14, paddingVertical: 10 }}>
                   <Springy onPress={() => togglePick(f)} scaleTo={0.99} accessibilityRole="checkbox" accessibilityState={{ checked: on }} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -164,20 +156,13 @@ export default function Together() {
                         {displayName(f)} <Text variant="small" color="sec">{`@${f.username}`}</Text>
                       </Text>
                       <Text variant="small" color="sec">
-                        {levels[f.id] ? t(levels[f.id]) : t('Level unknown')}
+                        {t(levels[f.id] ?? 'Beginner')}
                       </Text>
                     </View>
                     <View style={{ width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? c.cobalt : 'transparent', borderWidth: on ? 0 : 2, borderColor: c.line }}>
                       {on ? <Icon name="check" size={14} color="#FFFFFF" strokeWidth={3} /> : null}
                     </View>
                   </Springy>
-                  {pick && !pick.known ? (
-                    <Row gap={6} style={{ flexWrap: 'wrap', marginTop: 8, marginStart: 52 }}>
-                      {LEVELS.map((l) => (
-                        <Chip key={l} title={t(l)} on={pick.level === l} onPress={() => setPeople(people.map((p) => (p.id === f.id ? { ...p, level: l } : p)))} />
-                      ))}
-                    </Row>
-                  ) : null}
                 </View>
               );
             })}

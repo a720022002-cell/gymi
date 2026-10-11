@@ -3074,6 +3074,7 @@ export const AR: Record<string, string> = {
   "Your invite code": "كود دعوتك",
   "Your invite link": "رابط دعوتك",
   "Your level": "مستواك",
+  "Your level: {l}. Everyone’s level comes from their training plan.": "مستواك: {l}. مستوى كل واحد ينأخذ من جدول تمارينه.",
   "Your meal": "وجبتك",
   "Your meals and meal codes": "وجباتك ورموز الوجبات",
   "Your month at a glance": "شهرك بنظرة",
