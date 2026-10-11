@@ -13,6 +13,7 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Row, Segmented } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useLogFood } from '@/lib/food';
+import { foodByBarcode, foodName } from '@/lib/foodsDb';
 import { fmt } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
 
@@ -33,6 +34,21 @@ type Product = {
 type Nutriments = Record<string, number | string | undefined>;
 
 async function lookup(code: string, lang: 'en' | 'ar'): Promise<Product | null> {
+  // Our own database first: fast, and works when Open Food Facts is down.
+  const own = await foodByBarcode(code).catch(() => null);
+  if (own)
+    return {
+      name: foodName(own, lang),
+      brand: own.brand ?? '',
+      image: null,
+      unit: own.unit,
+      size: Math.round(+own.serving_g || 100),
+      k: +own.kcal_100,
+      p: +own.protein_100,
+      c: +own.carbs_100,
+      f: +own.fat_100,
+      sugar: +(own.sugar_100 ?? 0),
+    };
   const fields = 'product_name,product_name_ar,product_name_en,brands,quantity,serving_quantity,nutriments,image_front_small_url';
   const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=${fields}`);
   if (!res.ok) return null;

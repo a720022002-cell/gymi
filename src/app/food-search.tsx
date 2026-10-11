@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, TextInput, View } from 'react-native';
+import { ActivityIndicator, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Glass } from '@/components/Glass';
@@ -10,7 +10,7 @@ import { fontFor, Text } from '@/components/Text';
 import { Button, Card, Chip, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
-import { type DbFood, foodName, searchFoods, servingLabel } from '@/lib/foodsDb';
+import { type DbFood, foodName, foodSource, listRestaurants, type Restaurant, searchFoods, servingLabel } from '@/lib/foodsDb';
 import { fmt } from '@/lib/nutrition';
 import { canListen, listen, stopListening } from '@/lib/speech';
 import { useSettings } from '@/theme/settings';
@@ -18,6 +18,7 @@ import { useSettings } from '@/theme/settings';
 const CATS: [string | null, string][] = [
   [null, 'All'],
   ['gulf', 'Saudi and Gulf'],
+  ['product', 'Products'],
   ['rest', 'Restaurants'],
   ['basic', 'Basics'],
 ];
@@ -34,6 +35,14 @@ export default function FoodSearch() {
   const [picked, setPicked] = useState<DbFood | null>(null);
   const [listening, setListening] = useState(false);
   const food = useFood();
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  useEffect(() => {
+    let alive = true;
+    listRestaurants().then((r) => alive && setRestaurants(r));
+    return () => {
+      alive = false;
+    };
+  }, []);
   const voice = async () => {
     if (listening) return stopListening();
     setListening(true);
@@ -65,6 +74,14 @@ export default function FoodSearch() {
             <Chip key={l} title={t(l)} on={cat === k} onPress={() => setCat(k)} />
           ))}
         </Row>
+        {cat === 'rest' && restaurants.length ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10, marginHorizontal: -16 }} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
+            {restaurants.map((r) => {
+              const on = q.toLowerCase() === r.restaurant.toLowerCase();
+              return <Chip key={r.restaurant} title={(lang === 'ar' && r.name_ar) || r.restaurant} on={on} onPress={() => setQ(on ? '' : r.restaurant)} />;
+            })}
+          </ScrollView>
+        ) : null}
         <View style={{ marginTop: 12, paddingBottom: 90 }}>
           {loading && !results.length ? (
             <ActivityIndicator color={c.cobalt} style={{ marginTop: 30 }} />
@@ -77,7 +94,7 @@ export default function FoodSearch() {
                       {foodName(f, lang)}
                     </Text>
                     <Text variant="small" color="sec" numberOfLines={1}>
-                      {[f.restaurant, servingLabel(f, lang)].filter(Boolean).join(', ')}
+                      {[foodSource(f, lang), servingLabel(f, lang)].filter(Boolean).join(t(', '))}
                     </Text>
                   </View>
                   {f.sugar_high || f.fat_high ? <Icon name="warn" size={16} color={c.down} strokeWidth={2} /> : null}

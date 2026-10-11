@@ -1891,6 +1891,7 @@ export const AR: Record<string, string> = {
   "Private. Never shared.": "خاص. ما ينشارك أبد.",
   "Pro": "Pro",
   "Product": "المنتج",
+  "Products": "المنتجات",
   "Profile": "البروفايل",
   "Profile and settings": "البروفايل والإعدادات",
   "Profile photo": "صورة الملف الشخصي",

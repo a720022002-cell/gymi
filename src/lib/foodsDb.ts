@@ -4,11 +4,14 @@ export type Part = { key: string; en: string; ar: string; g: number; k: number; 
 
 export type DbFood = {
   id: string;
-  source: 'usda' | 'gymi';
-  category: 'basic' | 'gulf' | 'rest' | 'usda';
+  source: 'usda' | 'gymi' | 'off';
+  category: 'basic' | 'gulf' | 'rest' | 'usda' | 'product';
   name_en: string;
   name_ar: string | null;
   restaurant: string | null;
+  restaurant_ar?: string | null;
+  brand?: string | null;
+  barcode?: string | null;
   serving_en: string | null;
   serving_ar: string | null;
   serving_g: number;
@@ -37,6 +40,23 @@ export async function searchFoods(q: string, category: string | null, limit = 40
     sugar_100: f.sugar_100 == null ? null : +f.sugar_100,
   }));
 }
+
+export type Restaurant = { restaurant: string; name_ar: string | null; items: number };
+
+/** Restaurants in the database, most items first. */
+export async function listRestaurants(): Promise<Restaurant[]> {
+  const { data } = await supabase.rpc('food_restaurants');
+  return ((data as Restaurant[]) ?? []).map((r) => ({ ...r, items: +r.items }));
+}
+
+/** A packaged product saved in our database, by barcode. */
+export async function foodByBarcode(code: string): Promise<DbFood | null> {
+  const { data } = await supabase.from('foods').select('*').eq('barcode', code).limit(1).maybeSingle();
+  return (data as DbFood) ?? null;
+}
+
+/** Where a food comes from: the restaurant or the brand, in your language. */
+export const foodSource = (f: DbFood, lang: 'en' | 'ar') => (f.restaurant ? (lang === 'ar' && f.restaurant_ar) || f.restaurant : f.brand) || null;
 
 export const foodName = (f: DbFood, lang: 'en' | 'ar') => (lang === 'ar' && f.name_ar) || f.name_en;
 export const servingLabel = (f: DbFood, lang: 'en' | 'ar') => (lang === 'ar' && f.serving_ar) || f.serving_en || `${f.serving_g} ${f.unit}`;
