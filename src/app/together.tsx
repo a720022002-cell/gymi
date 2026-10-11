@@ -17,7 +17,7 @@ import { addDays, fmtTime } from '@/lib/nutrition';
 import { displayName, type FriendRow, myFriends } from '@/lib/social';
 import { COLORS, LEVELS, type Level, type Person, scheme, TOG } from '@/lib/together';
 import { useTrain } from '@/lib/train';
-import { DAYS, DAYS_LONG, exInfo, muscleLabel, type PlanEx } from '@/lib/training';
+import { DAYS, DAYS_LONG, exInfo, exMuscle, muscleLabel, type PlanEx } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
 
 /** A person in the group. known: their level comes from their own plan or history. */
@@ -255,7 +255,7 @@ export default function Together() {
         const info = exInfo({ id }, lang);
         return (
           <Card key={id}>
-            <Text variant="xs" weight={700} color="sec">{`${i + 1}. ${muscleLabel(info.muscle, lang, t)}`}</Text>
+            <Text variant="xs" weight={700} color="sec">{`${i + 1}. ${muscleLabel(exMuscle(id, info.muscle), lang, t)}`}</Text>
             <Text variant="h3">{info.name}</Text>
             <View style={{ marginTop: 8 }}>
               {all.map((p, j) => {

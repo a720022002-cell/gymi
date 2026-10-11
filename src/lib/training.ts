@@ -64,6 +64,17 @@ export type TrainPlan = {
 export const muscleLabel = (m: string, lang: 'en' | 'ar', t: (s: string) => string) => (lang === 'ar' ? t(m === 'Back' ? 'Back muscles' : m) : m);
 
 export const MUSCLES: Muscle[] = ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core'];
+/** Filters for picking exercises: arms split into biceps, triceps and forearms. */
+export const FILTER_MUSCLES = ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Forearms', 'Legs', 'Core'];
+/** Which part of the arm the common exercises work (database exercises carry it in muscles[0]). */
+const ARM_PART: Record<string, string> = { curl: 'Biceps', hammer: 'Biceps', dbcurl: 'Biceps', cablecurl: 'Biceps', preacher: 'Biceps', pushdown: 'Triceps', skull: 'Triceps', overhead: 'Triceps', dips: 'Triceps', closegrip: 'Triceps' };
+/** The muscle to show for an exercise: Biceps / Triceps / Forearms instead of just Arms. */
+export function exMuscle(id: string, muscle: string, muscles?: string[] | null) {
+  if (muscle !== 'Arms') return muscle;
+  const m = muscles?.[0]?.toLowerCase();
+  if (m === 'biceps' || m === 'triceps' || m === 'forearms') return m[0].toUpperCase() + m.slice(1);
+  return ARM_PART[id] ?? muscle;
+}
 /** Specific muscles for naming your own exercise (design: MUSCLES), and their muscle group (MGROUP). */
 export const MUSCLES_FINE = ['Chest', 'Upper chest', 'Back', 'Lats', 'Front shoulders', 'Side shoulders', 'Rear shoulders', 'Biceps', 'Triceps', 'Forearms', 'Abs', 'Lower back', 'Glutes', 'Quads', 'Hamstrings', 'Calves'];
 export const muscleGroup = (m: string): Muscle =>

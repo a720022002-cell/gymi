@@ -13,7 +13,7 @@ import { Button, Chip, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { type DbExercise, dbExName, getExercise, toPlanEx } from '@/lib/exercisesDb';
 import { useTrain } from '@/lib/train';
-import { muscleLabel, workoutMinutes } from '@/lib/training';
+import { exMuscle, muscleLabel, workoutMinutes } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
 
 const LEVEL: Record<string, string> = { beginner: 'Beginner', intermediate: 'Intermediate', expert: 'Expert' };
@@ -101,7 +101,7 @@ export default function ExerciseScreen() {
         ) : null}
       </Springy>
       <Row gap={8} style={{ marginTop: 14, flexWrap: 'wrap' }}>
-        <Tag label={muscleLabel(e.muscle, lang, t)} />
+        <Tag label={muscleLabel(exMuscle(e.id, e.muscle, e.muscles), lang, t)} />
         <Tag label={t(e.equipment)} />
         {e.level && LEVEL[e.level] ? <Tag label={t(LEVEL[e.level])} /> : null}
       </Row>

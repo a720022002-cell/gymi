@@ -3,7 +3,7 @@ import { ActivityIndicator, View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { type DbExercise, dbExName, searchExercises } from '@/lib/exercisesDb';
-import { muscleLabel, MUSCLES } from '@/lib/training';
+import { exMuscle, FILTER_MUSCLES, muscleLabel } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
 
 import { Field } from '../Field';
@@ -42,7 +42,7 @@ export function ExercisePicker({ open, title, replacing, exclude, onClose, onPic
       <Text variant="h2">{title}</Text>
       <Field value={q} onChangeText={setQ} placeholder={t('Search exercises')} autoCorrect={false} />
       <Row gap={8} style={{ flexWrap: 'wrap', marginTop: 10 }}>
-        {[null, ...MUSCLES].map((x) => (
+        {[null, ...FILTER_MUSCLES].map((x) => (
           <Chip key={x ?? 'all'} title={x ? muscleLabel(x, lang, t) : t('All')} on={m === x} onPress={() => setM(x)} />
         ))}
       </Row>
@@ -58,7 +58,7 @@ export function ExercisePicker({ open, title, replacing, exclude, onClose, onPic
                     {dbExName(e, lang)}
                   </Text>
                   <Text variant="xs" color="sec" numberOfLines={1}>
-                    {[muscleLabel(e.muscle, lang, t), t(e.equipment), e.machines?.[0] ? (lang === 'ar' ? e.machines[0][1] : e.machines[0][0]) : null].filter(Boolean).join(t(', '))}
+                    {[muscleLabel(exMuscle(e.id, e.muscle, e.muscles), lang, t), t(e.equipment), e.machines?.[0] ? (lang === 'ar' ? e.machines[0][1] : e.machines[0][0]) : null].filter(Boolean).join(t(', '))}
                   </Text>
                 </View>
                 <Icon name={replacing ? 'swap' : 'plus'} size={18} color={c.cobalt} strokeWidth={2.2} />

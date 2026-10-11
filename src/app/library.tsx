@@ -10,7 +10,7 @@ import { Text } from '@/components/Text';
 import { Card, Chip, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { type DbExercise, dbExName, searchExercises } from '@/lib/exercisesDb';
-import { EQUIPMENT, muscleLabel, MUSCLES } from '@/lib/training';
+import { EQUIPMENT, exMuscle, FILTER_MUSCLES, muscleLabel } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
 
 /** All exercises, filtered by equipment and muscle (design: library). */
@@ -51,7 +51,7 @@ export default function Library() {
       <Field value={q} onChangeText={setQ} placeholder={t('Search exercises')} autoCorrect={false} />
       <View style={{ marginTop: 10, gap: 8 }}>
         {chips([null, ...EQUIPMENT], eq, setEq)}
-        {chips([null, ...MUSCLES], m, setM)}
+        {chips([null, ...FILTER_MUSCLES], m, setM)}
       </View>
       <Text variant="small" weight={700} color="sec" style={{ marginTop: 16, marginBottom: 8, marginHorizontal: 4 }}>
         {loading ? ' ' : t(list.length >= 200 ? '200+ exercises' : '{n} exercises', { n: list.length })}
@@ -70,7 +70,7 @@ export default function Library() {
                   {dbExName(e, lang)}
                 </Text>
                 <Text variant="small" color="sec" numberOfLines={1}>
-                  {`${muscleLabel(e.muscle, lang, t)}${t(', ')}${t(e.equipment).toLowerCase()}`}
+                  {`${muscleLabel(exMuscle(e.id, e.muscle, e.muscles), lang, t)}${t(', ')}${t(e.equipment).toLowerCase()}`}
                 </Text>
               </View>
               <Icon name="chev" size={18} color={c.sec} />

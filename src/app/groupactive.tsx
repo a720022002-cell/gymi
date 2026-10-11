@@ -30,7 +30,7 @@ import {
 } from '@/lib/groupWorkout';
 import { postActivity, setSessionStatus } from '@/lib/social';
 import { useTrain, type WorkoutLog } from '@/lib/train';
-import { exInfo, muscleLabel, workoutKcal } from '@/lib/training';
+import { exInfo, exMuscle, muscleLabel, workoutKcal } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
 
 const digits = (v: string, dec: boolean) =>
@@ -314,7 +314,7 @@ export default function GroupActive() {
           <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <View style={{ flex: 1 }}>
               <Text variant="xs" weight={700} color="sec">
-                {muscleLabel(exInfo({ id: ex.id, n: ex.n }, lang).muscle, lang, t)}
+                {muscleLabel(exMuscle(ex.id, exInfo({ id: ex.id, n: ex.n }, lang).muscle), lang, t)}
               </Text>
               <Text variant="h2">{exName(ex)}</Text>
             </View>
