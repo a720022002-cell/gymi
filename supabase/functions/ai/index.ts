@@ -193,7 +193,7 @@ Return JSON: {"reply":"...","actions":[...],"card":{...},"memory":"..."}`;
         required: ['known', 'name', 'group', 'equipment'],
       });
     case 'plan': {
-      const system = `You are a strength coach. Build a weekly gym plan as JSON. Use ONLY exercise ids from the list given. 4 to 7 exercises per workout, big lifts first. Respect injuries: avoid exercises that stress them. Short English workout names like "Push", "Pull", "Legs", "Upper", "Lower", "Full body". Spread workouts with rest days where possible (weekday 0 = Sunday).`;
+      const system = `You are a strength coach. Build a weekly gym plan as JSON. Use ONLY exercise ids from the list given. 4 to 7 exercises per workout, big lifts first. Respect injuries: avoid exercises that stress them. Short English workout names like "Push", "Pull", "Legs", "Upper", "Lower", "Full body". Spread workouts with rest days where possible (weekday 0 = Sunday). Match the level: Beginner = machines and dumbbells, 4 to 5 exercises, 3 sets of 10–12; Intermediate = 5 to 6 exercises, 3 to 4 sets; Advanced = 6 to 7 exercises, free-weight compound lifts first with 4 to 5 sets.`;
       return ask(task, `${system} Use exactly ${Number(b.days) || 3} training days a week, no more and no less.`, [{ role: 'user', parts: [{ text: JSON.stringify({ days: b.days, injuries: b.injuries, level: b.level, exercises: b.exercises }) }] }], {
         type: 'object',
         properties: {

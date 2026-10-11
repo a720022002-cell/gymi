@@ -57,7 +57,7 @@ export type TrainPlan = {
   /** Set when the plan is your coach's program (and which version of it). */
   coach?: { id: string; updated_at?: string };
   /** Training level you picked (Train together uses it). */
-  level?: 'Beginner' | 'Intermediate' | 'Advanced';
+  level?: Level;
 };
 
 /** A muscle group's name. In Arabic, "Back" alone would mean the back button, so it has its own key. */
@@ -129,13 +129,53 @@ export function workoutMinutes(ex: PlanEx[]) {
   return ex.length ? Math.max(15, Math.round((ex.reduce((a, x) => a + x.sets, 0) * 2.6 + 8) / 5) * 5) : 0;
 }
 
+export type Level = 'Beginner' | 'Intermediate' | 'Advanced';
+export const LEVEL_DESC: [Level, string][] = [
+  ['Beginner', 'New to the gym, or back after a long break'],
+  ['Intermediate', 'Training regularly for 6 months or more'],
+  ['Advanced', 'Training seriously for 2 years or more'],
+];
+/** Easier versions of the big barbell lifts for beginners: machines and dumbbells. */
+const BEGINNER_SWAP: Record<string, string[]> = {
+  bench: ['chestpress', 'dbpress'],
+  squat: ['goblet', 'hacksquat'],
+  frontsquat: ['goblet', 'hacksquat'],
+  rdl: ['dbrdl', 'legcurl'],
+  row: ['dbrow', 'cablerow'],
+  ohp: ['shoulder', 'dbshoulder'],
+  curl: ['dbcurl', 'hammer'],
+  deadlift: ['cablerow', 'dbrow'],
+};
+
+/** Shape a workout for your level. Beginners: easier exercises, fewer of them, 3 sets of 10–12.
+ * Advanced: one more set on the first two (big) lifts. Intermediate: as it is. */
+export function exForLevel(ex: PlanEx[], level: Level | undefined): PlanEx[] {
+  if (level === 'Beginner') {
+    const out: PlanEx[] = [];
+    for (const x of ex) {
+      const id = [x.id, ...(BEGINNER_SWAP[x.id] ?? [])].find((c, i) => (i > 0 || !BEGINNER_SWAP[x.id]) && !out.some((o) => o.id === c));
+      if (!id) continue;
+      // At most 2 exercises per muscle (4 on leg days), so the workout stays short but covers everything.
+      const m = EX[id]?.m;
+      if (out.filter((o) => EX[o.id]?.m === m).length >= (m === 'Legs' ? 4 : 2)) continue;
+      out.push({ id, sets: Math.min(x.sets, 3), reps: EX[id]?.time ? x.reps : '10–12' });
+    }
+    return out.slice(0, 5);
+  }
+  if (level === 'Advanced') return ex.map((x, i) => (i < 2 ? { ...x, sets: Math.min(5, x.sets + 1) } : x));
+  return ex;
+}
+
 /** A new plan from a split (fixed days, starting workouts). */
-export function planFromSplit(days: number, injuries: string[], label: string, seq: string[]): TrainPlan {
+export function planFromSplit(days: number, injuries: string[], label: string, seq: string[], level?: Level): TrainPlan {
   const week: Day[] = DAYS.map(() => ({ w: null, lock: false }));
   SPREAD[days].forEach((d, i) => (week[d].w = seq[i]));
   const workouts: Record<string, Workout> = {};
-  seq.forEach((w) => (workouts[w] = { ex: tplEx(WK[w].ex), focus: WK[w].focus, min: WK[w].min }));
-  return { days, injuries, split: label, week, workouts, machines: {}, homeMode: false, skipped: {}, dismiss: {} };
+  seq.forEach((w) => {
+    const ex = exForLevel(tplEx(WK[w].ex), level);
+    workouts[w] = { ex, focus: WK[w].focus, min: level === 'Beginner' ? Math.min(WK[w].min, workoutMinutes(ex)) : level === 'Advanced' ? Math.max(WK[w].min, workoutMinutes(ex)) : WK[w].min };
+  });
+  return { days, injuries, split: label, week, workouts, machines: {}, homeMode: false, skipped: {}, dismiss: {}, level };
 }
 
 /** An empty plan the user fills in: Workout A, B, C… */

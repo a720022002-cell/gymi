@@ -5,7 +5,7 @@ import { View } from 'react-native';
 import { useT } from '@/i18n';
 import { useTrain } from '@/lib/train';
 import { aiErrorText, askAI } from '@/lib/ai';
-import { DAYS, type Day, EX, INJURIES, onceNote, planFromSplit, planOwn, SPLITS, SPREAD, type TrainPlan, workoutMinutes } from '@/lib/training';
+import { DAYS, type Day, EX, INJURIES, LEVEL_DESC, type Level, onceNote, planFromSplit, planOwn, SPLITS, SPREAD, type TrainPlan, workoutMinutes } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
 
 import { Thinking } from '../food/Thinking';
@@ -24,6 +24,7 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
   const toast = useToast();
   const train = useTrain();
   const [step, setStep] = useState(0);
+  const [level, setLevel] = useState<Level | null>(train.plan?.level ?? null);
   const [days, setDays] = useState(train.plan?.days ?? 3);
   const [injuries, setInjuries] = useState<string[]>(train.plan?.injuries ?? []);
   const [pick, setPick] = useState<number | 'own' | 'ai' | null>(null);
@@ -34,7 +35,7 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
   /** Ask the AI for a plan; check every exercise exists. Falls back to a ready-made split. */
   const aiPlan = async (): Promise<TrainPlan | null> => {
     const exercises = Object.values(EX).map((e) => ({ id: e.id, name: e.en, muscle: e.m, equipment: e.t, avoidFor: e.stress ?? [] }));
-    const { result, error } = await askAI<{ split: string; week: { day: number; workout: string }[]; workouts: { name: string; focus?: string; ex: { id: string; sets: number; reps: string }[] }[] }>('plan', { days, injuries, exercises, lang });
+    const { result, error } = await askAI<{ split: string; week: { day: number; workout: string }[]; workouts: { name: string; focus?: string; ex: { id: string; sets: number; reps: string }[] }[] }>('plan', { days, injuries, level, exercises, lang });
     if (error || !result) {
       toast(t(aiErrorText(error ?? 'failed')), { icon: 'warn' });
       return null;
@@ -52,7 +53,7 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
       toast(t('The AI plan didn’t work out, so I used a ready-made one.'), { icon: 'info' });
       return null;
     }
-    return { days, injuries, split: String(result.split || 'AI plan').slice(0, 40), week, workouts, machines: {}, homeMode: false, skipped: {}, dismiss: {} };
+    return { days, injuries, split: String(result.split || 'AI plan').slice(0, 40), week, workouts, machines: {}, homeMode: false, skipped: {}, dismiss: {}, level: level ?? undefined };
   };
 
   const build = async () => {
@@ -69,7 +70,7 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
     const best = { 2: 1, 3: 0, 4: 0, 5: 0, 6: 0 }[days] ?? 0;
     if (!plan) {
       const k = pick === 'ai' ? best : pick;
-      plan = k === 'own' ? planOwn(days, injuries) : planFromSplit(days, injuries, SPLITS[days][k as number][0], SPLITS[days][k as number][1]);
+      plan = k === 'own' ? { ...planOwn(days, injuries), level: level ?? undefined } : planFromSplit(days, injuries, SPLITS[days][k as number][0], SPLITS[days][k as number][1], level ?? undefined);
     }
     const ok = await train.savePlan({ ...plan, since: train.today }, true);
     setThinking(null);
@@ -97,12 +98,27 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
 
   return (
     <Screen title={title} back={!!back} onBack={back} tabs={inTab}>
-      <ProgDots step={step} total={3} />
+      <ProgDots step={step} total={4} />
       <Text variant="small" weight={700} color="sec">
-        {t('Step {n} of {total}', { n: step + 1, total: 3 })}
+        {t('Step {n} of {total}', { n: step + 1, total: 4 })}
       </Text>
 
       {step === 0 ? (
+        <View>
+          <Text variant="h1" style={{ marginTop: 4 }}>
+            {t('What’s your level?')}
+          </Text>
+          <Text color="sec" style={{ marginTop: 4, marginBottom: 16 }}>
+            {t('We pick your exercises, sets and reps to match it.')}
+          </Text>
+          {LEVEL_DESC.map(([l, d]) => (
+            <Option key={l} title={t(l)} subtitle={t(d)} selected={level === l} onPress={() => setLevel(l)} />
+          ))}
+          <Button title={t('Next')} disabled={!level} style={{ marginTop: 24 }} onPress={() => setStep(1)} />
+        </View>
+      ) : null}
+
+      {step === 1 ? (
         <View>
           <Text variant="h1" style={{ marginTop: 4 }}>
             {t('How many days a week?')}
@@ -130,11 +146,11 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
               </Springy>
             ))}
           </View>
-          <Button title={t('Next')} style={{ marginTop: 24 }} onPress={() => setStep(1)} />
+          <Button title={t('Next')} style={{ marginTop: 24 }} onPress={() => setStep(2)} />
         </View>
       ) : null}
 
-      {step === 1 ? (
+      {step === 2 ? (
         <View>
           <Text variant="h1" style={{ marginTop: 4 }}>
             {t('Any injuries or pain?')}
@@ -155,11 +171,11 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
               </Text>
             </Card>
           ) : null}
-          <Button title={t('Next')} style={{ marginTop: 24 }} onPress={() => setStep(2)} />
+          <Button title={t('Next')} style={{ marginTop: 24 }} onPress={() => setStep(3)} />
         </View>
       ) : null}
 
-      {step === 2 ? (
+      {step === 3 ? (
         <View>
           <Text variant="h1" style={{ marginTop: 4 }}>
             {t('Choose your split')}
