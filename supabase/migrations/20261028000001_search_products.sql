@@ -6,15 +6,24 @@ stable
 security invoker
 set search_path = ''
 as $$
-  with q as (select lower(trim(coalesce(p_query, ''))) as s)
+  with q as (select lower(trim(regexp_replace(coalesce(p_query, ''), '\s+', ' ', 'g'))) as s),
+  w as (select array_agg('%' || x || '%') as pats, count(*) as n from q, unnest(string_to_array(q.s, ' ')) x where x <> ''),
+  -- Candidates use the trigram index: the whole phrase, every word in any order, or a close spelling.
+  hits as (
+    select f.id, 3 as score from public.foods f, q where q.s <> '' and f.search like '%' || q.s || '%'
+    union all
+    select f.id, 2 from public.foods f, w where w.n > 1 and f.search like all (w.pats)
+    union all
+    select f.id, 1 from public.foods f, q where length(q.s) > 3 and q.s operator(extensions.<%) f.search
+    union all
+    select f.id, 0 from public.foods f, q where q.s = '' and (f.rank = 0 or p_category in ('rest', 'product'))
+  ),
+  best as (select id, max(score) as score from hits group by id)
   select f.*
-  from public.foods f, q
-  where (p_category is null or f.category = p_category
-         or (p_category = 'basic' and f.category = 'usda'))
-    and (q.s = '' or f.search like '%' || q.s || '%'
-         or (length(q.s) > 3 and extensions.word_similarity(q.s, f.search) > 0.45))
-    and (q.s <> '' or f.rank = 0 or p_category in ('rest', 'product'))
-  order by f.rank,
+  from best b join public.foods f on f.id = b.id, q
+  where p_category is null or f.category = p_category or (p_category = 'basic' and f.category = 'usda')
+  order by b.score desc,
+           f.rank,
            (lower(f.name_en) like q.s || '%' or coalesce(f.name_ar, '') like q.s || '%'
             or lower(coalesce(f.brand, f.restaurant, '')) like q.s || '%') desc,
            f.restaurant nulls last,
