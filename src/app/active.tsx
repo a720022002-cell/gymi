@@ -503,6 +503,7 @@ export default function Active() {
       <ExercisePicker
         open={swapFor !== null}
         replacing
+        like={swapFor !== null && s.ex[swapFor] ? (({ name, muscle }) => ({ id: s.ex[swapFor].id, name, muscle }))(exInfo(s.ex[swapFor], lang)) : null}
         title={swapFor !== null && s.ex[swapFor] ? t('Replace {x}', { x: exInfo(s.ex[swapFor], lang).name }) : ''}
         exclude={s.ex.map((x) => x.id)}
         onClose={() => setSwapFor(null)}

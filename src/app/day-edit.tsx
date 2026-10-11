@@ -180,6 +180,7 @@ export default function DayEdit() {
       <ExercisePicker
         open={pick !== null}
         replacing={pick !== null && pick >= 0}
+        like={pick !== null && pick >= 0 && W.ex[pick] ? (({ name, muscle }) => ({ id: W.ex[pick].id, name, muscle }))(exInfo(W.ex[pick], lang)) : null}
         title={pick !== null && pick >= 0 && W.ex[pick] ? t('Replace {x}', { x: exInfo(W.ex[pick], lang).name }) : t('Add an exercise')}
         exclude={pick === -1 ? W.ex.map((x) => x.id) : undefined}
         onClose={() => setPick(null)}
