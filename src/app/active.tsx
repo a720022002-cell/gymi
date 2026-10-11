@@ -10,12 +10,14 @@ import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
 import { fontFor, Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
+import { ExercisePicker } from '@/components/train/ExercisePicker';
 import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { restDone } from '@/lib/beep';
+import { toPlanEx } from '@/lib/exercisesDb';
 import { canListen, listen, stopListening } from '@/lib/speech';
 import { type Session, type SessionEx, useTrain } from '@/lib/train';
-import { exInfo, topReps } from '@/lib/training';
+import { exInfo, type PlanEx, topReps } from '@/lib/training';
 import { matchExercise, parseSet } from '@/lib/voiceSet';
 import { useSettings } from '@/theme/settings';
 
@@ -100,6 +102,9 @@ export default function Active() {
   const [heard, setHeard] = useState<string | null>(null);
   // The set whose number was tapped: make it a warm-up or a working set, or delete it.
   const [setMenu, setSetMenu] = useState<{ ei: number; si: number } | null>(null);
+  // Swapping an exercise mid-workout: which one, then whether to keep the change in your plan.
+  const [swapFor, setSwapFor] = useState<number | null>(null);
+  const [swapped, setSwapped] = useState<{ oldId: string; ex: PlanEx; name: string } | null>(null);
 
   // Tick every quarter second; end the rest when its time is up.
   const restRef = useRef(rest);
@@ -169,6 +174,31 @@ export default function Active() {
     const restFor = st.warm ? 45 : REST;
     if (more) setRest({ end: Date.now() + restFor * 1000, total: restFor });
     else toast(t('All sets done. Tap Finish.'), { ai: true });
+  };
+
+  // Put another exercise in place of this one. Finished sets stay with the old exercise; the rest move to the new one.
+  const swapEx = (ei: number, pe: PlanEx) => {
+    const old = s.ex[ei];
+    const done = old.sets.filter((y) => y.done);
+    const left = old.sets.filter((y) => !y.done);
+    const prev = train.last[pe.id] ?? [];
+    let k = 0;
+    const sets = (left.length ? left : [{ warm: false }]).map((y) => {
+      const l = y.warm ? undefined : prev[k++];
+      return { w: '', r: '', done: false, lw: l?.w ?? 0, lr: l?.r ?? (y.warm ? 12 : topReps(old.reps)), warm: y.warm || undefined };
+    });
+    const nx: SessionEx = { ...pe, reps: old.reps, tip: false, sets };
+    update((x) => ({ ...x, ex: done.length ? [...x.ex.slice(0, ei), { ...old, sets: done }, nx, ...x.ex.slice(ei + 1)] : x.ex.map((e, i) => (i === ei ? nx : e)) }));
+  };
+  const canAlways = (oldId: string) => !s.home && !!train.plan?.workouts[s.name]?.ex.some((y) => y.id === oldId);
+  const keepAlways = () => {
+    const p = train.plan;
+    const w = p?.workouts[s.name];
+    if (!swapped || !p || !w) return setSwapped(null);
+    const ex = w.ex.map((y) => (y.id === swapped.oldId ? { ...swapped.ex, sets: y.sets, reps: y.reps } : y));
+    train.updatePlan({ workouts: { ...p.workouts, [s.name]: { ...w, ex } } });
+    toast(t('Saved to your plan'), { icon: 'check' });
+    setSwapped(null);
   };
 
   // Say a set: "Bench 80 kilos, 10 reps" fills and finishes the next set of that exercise (design: voiceSet).
@@ -259,9 +289,19 @@ export default function Active() {
                   )}
                   {a === 'up' ? <Icon name="up" size={18} color={c.up} strokeWidth={2.6} /> : a === 'down' ? <Icon name="down" size={18} color={c.down} strokeWidth={2.6} /> : a === 'same' ? <Text variant="small" weight={700} color="sec">{t('same')}</Text> : null}
                 </Row>
-                <Text variant="small" weight={700} color="sec">
-                  {info.timed ? `${x.reps} ${t('s')}` : x.reps}
-                </Text>
+                <Row gap={4}>
+                  <Text variant="small" weight={700} color="sec">
+                    {info.timed ? `${x.reps} ${t('s')}` : x.reps}
+                  </Text>
+                  <Springy
+                    onPress={() => setSwapFor(ei)}
+                    scaleTo={0.9}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('Replace {x}', { x: info.name })}
+                    style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon name="swap" size={18} color={c.cobalt} />
+                  </Springy>
+                </Row>
               </Row>
               {mach ? (
                 <Text variant="xs" color="sec">
@@ -299,7 +339,7 @@ export default function Active() {
                   </Springy>
                   <TextInput
                     value={st.w}
-                    editable={!info.timed && !st.done}
+                    editable={!info.timed}
                     onChangeText={(v) => setField(ei, si, 'w', digits(v, true))}
                     placeholder={info.timed ? '—' : st.lw ? String(st.lw) : '—'}
                     placeholderTextColor={c.sec}
@@ -310,7 +350,6 @@ export default function Active() {
                   />
                   <TextInput
                     value={st.r}
-                    editable={!st.done}
                     onChangeText={(v) => setField(ei, si, 'r', digits(v, false))}
                     placeholder={String(st.lr)}
                     placeholderTextColor={c.sec}
@@ -459,6 +498,33 @@ export default function Active() {
             );
           })()
         ) : null}
+      </Sheet>
+
+      <ExercisePicker
+        open={swapFor !== null}
+        replacing
+        title={swapFor !== null && s.ex[swapFor] ? t('Replace {x}', { x: exInfo(s.ex[swapFor], lang).name }) : ''}
+        exclude={s.ex.map((x) => x.id)}
+        onClose={() => setSwapFor(null)}
+        onPick={(e) => {
+          if (swapFor === null || !s.ex[swapFor]) return setSwapFor(null);
+          const oldId = s.ex[swapFor].id;
+          const pe = toPlanEx(e);
+          swapEx(swapFor, pe);
+          setSwapFor(null);
+          const name = e.name_ar && lang === 'ar' ? e.name_ar : e.name_en;
+          if (canAlways(oldId)) setSwapped({ oldId, ex: pe, name });
+          else toast(t('{x} swapped in', { x: name }), { icon: 'check' });
+        }}
+      />
+
+      <Sheet open={!!swapped} onClose={() => setSwapped(null)}>
+        <Text variant="h2">{t('{x} swapped in', { x: swapped?.name ?? '' })}</Text>
+        <Text color="sec" style={{ marginTop: 4 }}>
+          {t('Keep this change for every {w} workout, or just today?', { w: t(s.name) })}
+        </Text>
+        <Button title={t('Only this time')} style={{ marginTop: 16 }} onPress={() => setSwapped(null)} />
+        <Button kind="soft" icon="check" title={t('Always (update my plan)')} color={c.text} style={{ marginTop: 8 }} onPress={keepAlways} />
       </Sheet>
 
       <Sheet open={confirm} onClose={() => setConfirm(false)}>
