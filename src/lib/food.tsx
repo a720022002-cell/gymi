@@ -43,7 +43,7 @@ export type Move = { id: string; day: string; kcal: number };
 
 export type WaterLog = { id: string; ml: number; kind: string; created_at: string };
 
-export type Cardio = { id: string; kind: 'Walk' | 'Run' | 'Bike' | 'Swim'; minutes: number; intensity: number; kcal: number; created_at: string };
+export type Cardio = { id: string; kind: 'Walk' | 'Run' | 'Bike' | 'Swim' | 'Other'; name?: string | null; minutes: number; intensity: number; kcal: number; created_at: string };
 
 export type NewLog = {
   name: string;
@@ -183,7 +183,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
         supabase.from('saved_meals').select('*').order('created_at', { ascending: false }),
         supabase.from('calorie_moves').select('id,day,kcal').gte('day', today).lte('day', weekEnd),
         supabase.from('water_logs').select('id,ml,kind,created_at').eq('day', today).order('created_at'),
-        supabase.from('cardio_logs').select('id,kind,minutes,intensity,kcal,created_at').eq('day', today).order('created_at'),
+        supabase.from('cardio_logs').select('id,kind,name,minutes,intensity,kcal,created_at').eq('day', today).order('created_at'),
         supabase.from('step_logs').select('steps').eq('day', today).maybeSingle(),
         supabase.rpc('my_coach'),
         supabase.rpc('my_coach_plans'),
@@ -356,7 +356,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
 
   const addCardio = useCallback(
     async (c: Omit<Cardio, 'id' | 'created_at'>) => {
-      const { data, error } = await supabase.from('cardio_logs').insert({ ...c, day: today }).select('id,kind,minutes,intensity,kcal,created_at').single();
+      const { data, error } = await supabase.from('cardio_logs').insert({ ...c, day: today }).select('id,kind,name,minutes,intensity,kcal,created_at').single();
       if (error || !data) return null;
       setCardio((xs) => [...xs, data as Cardio]);
       return data as Cardio;

@@ -15,7 +15,12 @@ import { fmt } from '@/lib/nutrition';
 import { CARDIO, cardioKcal } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
 
-const ICON: Record<string, IconName> = { Walk: 'walk', Run: 'run', Bike: 'bike', Swim: 'drop' };
+const ICON: Record<string, IconName> = { Walk: 'walk', Run: 'run', Bike: 'bike', Swim: 'drop', Other: 'flame' };
+const digitsOnly = (v: string, max: number) =>
+  v
+    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+    .replace(/\D/g, '')
+    .slice(0, max);
 
 /** Log cardio; calories burned are added to today's budget (design: cardio). */
 const STEP_GOAL = 8000;
@@ -104,8 +109,12 @@ export default function CardioScreen() {
   const [mins, setMins] = useState(30);
   const [text, setText] = useState('30');
   const [inten, setInten] = useState(1);
+  // "Other" (after the 4 types): you name it and type the calories yourself.
+  const other = kind === CARDIO.length;
+  const [otherName, setOtherName] = useState('');
+  const [otherKcal, setOtherKcal] = useState('');
   const weight = Number(food.plan.weight || profile?.weight_kg || 80);
-  const kcal = cardioKcal(kind, inten, weight, mins);
+  const kcal = other ? Math.min(5000, +otherKcal || 0) : cardioKcal(kind, inten, weight, mins);
 
   const setM = (m: number) => {
     const v = Math.max(1, Math.min(600, m));
@@ -120,7 +129,7 @@ export default function CardioScreen() {
         {t('Log cardio')}
       </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-        {CARDIO.map(([k], i) => (
+        {[...CARDIO.map(([k]) => k), 'Other'].map((k, i) => (
           <Springy
             key={k}
             onPress={() => setKind(i)}
@@ -161,31 +170,71 @@ export default function CardioScreen() {
           ))}
         </Row>
       </Card>
-      <Segmented
-        value={String(inten)}
-        options={[
-          { value: '0', label: t('Easy') },
-          { value: '1', label: t('Moderate') },
-          { value: '2', label: t('Hard') },
-        ]}
-        onChange={(v) => setInten(+v)}
-      />
-      <Card style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Text weight={700}>{t('Calories burned')}</Text>
-        <Text num size={24} color="cobalt">{`${fmt(kcal)} ${t('kcal')}`}</Text>
-      </Card>
+      {other ? (
+        <Card style={{ marginTop: 12 }}>
+          <Text variant="small" weight={700} color="sec">
+            {t('What did you do?')}
+          </Text>
+          <TextInput
+            value={otherName}
+            onChangeText={(v) => setOtherName(v.slice(0, 40))}
+            placeholder={t('For example: football, padel, boxing')}
+            placeholderTextColor={c.sec}
+            accessibilityLabel={t('What did you do?')}
+            style={{ marginTop: 8, height: 48, borderRadius: 14, paddingHorizontal: 14, backgroundColor: c.inset, fontSize: 16, color: c.text, outlineStyle: 'none' } as object}
+          />
+          <Text variant="small" weight={700} color="sec" style={{ marginTop: 14 }}>
+            {t('Calories burned')}
+          </Text>
+          <Row gap={10} style={{ marginTop: 8 }}>
+            <TextInput
+              value={otherKcal}
+              onChangeText={(v) => setOtherKcal(digitsOnly(v, 4))}
+              inputMode="numeric"
+              keyboardType="number-pad"
+              placeholder="0"
+              placeholderTextColor={c.sec}
+              accessibilityLabel={t('Calories burned')}
+              style={{ flex: 1, minWidth: 0, height: 56, borderRadius: 14, paddingHorizontal: 14, backgroundColor: c.inset, fontFamily: fontFor('sora', 600), fontSize: 28, color: c.text, textAlign: 'center', outlineStyle: 'none' } as object}
+            />
+            <Text weight={700} color="sec">
+              {t('kcal')}
+            </Text>
+          </Row>
+          <Text variant="xs" color="sec" style={{ marginTop: 8 }}>
+            {t('Use the number from your watch or the machine.')}
+          </Text>
+        </Card>
+      ) : (
+        <>
+          <Segmented
+            value={String(inten)}
+            options={[
+              { value: '0', label: t('Easy') },
+              { value: '1', label: t('Moderate') },
+              { value: '2', label: t('Hard') },
+            ]}
+            onChange={(v) => setInten(+v)}
+          />
+          <Card style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text weight={700}>{t('Calories burned')}</Text>
+            <Text num size={24} color="cobalt">{`${fmt(kcal)} ${t('kcal')}`}</Text>
+          </Card>
+        </>
+      )}
       <Text variant="small" color="sec" style={{ marginHorizontal: 4 }}>
         {t('This is added to today’s budget, so you can eat a little more.')}
       </Text>
       <Button
-        title={t('Add {x}', { x: t(CARDIO[kind][0]).toLowerCase() })}
+        title={other ? t('Add activity') : t('Add {x}', { x: t(CARDIO[kind][0]).toLowerCase() })}
+        disabled={other && !(kcal > 0)}
         style={{ marginTop: 16 }}
         onPress={async () => {
-          const row = await food.addCardio({ kind: CARDIO[kind][0], minutes: mins, intensity: inten, kcal });
+          const row = await food.addCardio(other ? { kind: 'Other', name: otherName.trim() || null, minutes: mins, intensity: 1, kcal } : { kind: CARDIO[kind][0], minutes: mins, intensity: inten, kcal });
           if (!row) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
           const walked = row.kind === 'Walk' ? row.minutes * 110 : 0;
           if (walked) food.setSteps(food.steps + walked);
-          toast(t('Added {x}: +{n} kcal to today', { x: t(row.kind).toLowerCase(), n: row.kcal }), {
+          toast(t('Added {x}: +{n} kcal to today', { x: row.name || t(row.kind).toLowerCase(), n: row.kcal }), {
             icon: 'flame',
             undo: () => {
               food.deleteCardio(row.id);
@@ -205,7 +254,7 @@ export default function CardioScreen() {
               <Row key={x.id} gap={12} style={{ minHeight: 56, paddingHorizontal: 16, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
                 <Icon name={ICON[x.kind]} size={18} />
                 <View style={{ flex: 1 }}>
-                  <Text weight={700}>{t(x.kind)}</Text>
+                  <Text weight={700}>{x.name || t(x.kind)}</Text>
                   <Text variant="small" color="sec">
                     {t('{n} min', { n: x.minutes })}
                   </Text>
