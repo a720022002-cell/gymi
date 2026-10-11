@@ -1,10 +1,11 @@
 // Gymi AI: the only place that talks to an AI model. The app sends a task; keys never leave the server.
 //
 // Secrets (Supabase > Edge Functions > Secrets):
-//   OPENROUTER_API_KEY  (also read as "OpenRouter") the key for OpenRouter, which runs Qwen
-// Model switch (optional secrets; Gymi uses one model and never falls back to another):
-//   AI_PROVIDER         'openrouter' (default, Qwen) or 'gemini'
-//   OPENROUTER_MODEL    default 'qwen/qwen3-vl-235b-a22b-instruct'
+//   OPENROUTER_API_KEY  (also read as "OpenRouter") the key for OpenRouter, which runs Claude Haiku
+// Model switch (optional secrets):
+//   AI_PROVIDER         'openrouter' (default) or 'gemini'
+//   OPENROUTER_MODEL    default 'anthropic/claude-haiku-5.5'
+//   OPENROUTER_FALLBACK used once when the main model fails or is busy, default 'qwen/qwen3-vl-235b-a22b-instruct'
 //   GEMINI_API_KEY, AI_MODEL, AI_MODEL_LITE  only used when AI_PROVIDER is 'gemini'
 //   AI_DAILY_LIMIT      requests per person per day, default 80
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -17,14 +18,14 @@ const cors = {
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 const env = (k: string, d = '') => Deno.env.get(k) ?? d;
 /** The OpenRouter key; also accepted under the name "OpenRouter". */
-/** The one model Gymi uses: Qwen3-VL (reads photos, good Arabic). */
+/** The model Gymi uses: Claude Haiku (reads photos and PDFs, good Arabic, follows the JSON shape). */
+const HAIKU = 'anthropic/claude-haiku-5.5';
+/** Backup when Haiku fails or is busy: Qwen3-VL. */
 const QWEN = 'qwen/qwen3-vl-235b-a22b-instruct';
 let lastDetail = '';
 let lastModel = '';
 /** Admins can test another model on any task (for comparing accuracy). */
 let modelOverride = '';
-/** Meal photos use a model that recognises dishes and portions better (tested on kabsa, falafel, shakshuka): about $0.001 a photo. */
-let taskModel = '';
 /** Tokens and cost of the last AI call, saved to ai_calls for the admin cost page. */
 let lastUsage = { prompt: 0, completion: 0, cost: 0 };
 const openrouterKey = () => env('OPENROUTER_API_KEY') || env('OpenRouter') || env('OPENROUTER');
@@ -64,14 +65,26 @@ async function gemini(model: string, system: string, msgs: Msg[], schema?: objec
   return text;
 }
 
-async function openrouter(system: string, msgs: Msg[], schema?: object, retry = true): Promise<string> {
+async function openrouter(system: string, msgs: Msg[], schema?: object): Promise<string> {
+  const main = modelOverride || env('OPENROUTER_MODEL', HAIKU);
+  try {
+    return await openrouterCall(main, system, msgs, schema);
+  } catch (e) {
+    const backup = env('OPENROUTER_FALLBACK', QWEN);
+    // A bad key won't work on any model; an admin testing a model wants that model's error.
+    if ((e as Error).message === 'ai_off' || modelOverride || backup === main) throw e;
+    return openrouterCall(backup, system, msgs, schema);
+  }
+}
+
+async function openrouterCall(model: string, system: string, msgs: Msg[], schema?: object, retry = true): Promise<string> {
   const key = openrouterKey();
   if (!key) throw new Error('ai_off');
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
     body: JSON.stringify({
-      model: modelOverride || taskModel || env('OPENROUTER_MODEL', QWEN),
+      model,
       // Ask OpenRouter to return tokens and the real cost of this call.
       usage: { include: true },
       // PDFs (lab reports) are turned into text by OpenRouter's free PDF reader.
@@ -96,7 +109,7 @@ async function openrouter(system: string, msgs: Msg[], schema?: object, retry = 
   if (res.status === 401 || res.status === 403) throw new Error('ai_off');
   if (res.status === 429 && retry) {
     await new Promise((r) => setTimeout(r, 1500));
-    return openrouter(system, msgs, schema, false);
+    return openrouterCall(model, system, msgs, schema, false);
   }
   if (!res.ok) throw new Error(res.status === 429 ? 'busy' : lastDetail);
   const data = await res.json();
@@ -104,7 +117,7 @@ async function openrouter(system: string, msgs: Msg[], schema?: object, retry = 
   lastUsage = { prompt: data?.usage?.prompt_tokens ?? 0, completion: data?.usage?.completion_tokens ?? 0, cost: Number(data?.usage?.cost ?? 0) || 0 };
   const content = data?.choices?.[0]?.message?.content ?? '';
   // An empty answer happens on busy free models: try once more.
-  if (!String(content).trim() && retry) return openrouter(system, msgs, schema, false);
+  if (!String(content).trim() && retry) return openrouterCall(model, system, msgs, schema, false);
   if (!String(content).trim()) throw new Error('busy');
   return content;
 }
@@ -125,7 +138,7 @@ async function ask(task: string, system: string, msgs: Msg[], schema?: object) {
 // ---------------------------------------------------------------------------
 /** Realistic Saudi portions so estimates aren't too low. */
 const PORTIONS = `Use realistic Saudi/Gulf portions. Typical: 1 plate chicken kabsa about 750 kcal (45 g protein), lamb mandi plate about 900 kcal, chicken shawarma wrap about 520 kcal, falafel sandwich about 450 kcal, 1 cup cooked rice about 200 kcal, 1 Arabic bread about 170 kcal, 3 dates about 70 kcal, 1 cup laban about 120 kcal, 1 egg about 75 kcal, Big Mac about 550 kcal.`;
-const LANG = (l: string) => (l === 'ar' ? 'Reply in simple Saudi/Gulf Arabic.' : 'Reply in simple, friendly English.');
+const LANG = (l: string) => (l === 'ar' ? 'Reply in simple Saudi/Gulf Arabic. Write every word in Arabic letters, food and dish names too (لبن, not laban); only brand names may stay in English.' : 'Reply in simple, friendly English.');
 const FOOD_ITEM = {
   type: 'object',
   properties: { name: { type: 'string' }, grams: { type: 'number' }, kcal: { type: 'number' }, protein: { type: 'number' }, carbs: { type: 'number' }, fat: { type: 'number' } },
@@ -290,7 +303,7 @@ Deno.serve(async (req) => {
         fetch('https://openrouter.ai/api/v1/credits', { headers: { Authorization: `Bearer ${key}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
         fetch('https://openrouter.ai/api/v1/key', { headers: { Authorization: `Bearer ${key}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
       ]);
-      return json({ result: { connected: true, credits: c?.data?.total_credits ?? null, used: c?.data?.total_usage ?? null, key_usage: k?.data?.usage ?? null, key_limit: k?.data?.limit ?? null, model: env('OPENROUTER_MODEL', QWEN) } });
+      return json({ result: { connected: true, credits: c?.data?.total_credits ?? null, used: c?.data?.total_usage ?? null, key_usage: k?.data?.usage ?? null, key_limit: k?.data?.limit ?? null, model: env('OPENROUTER_MODEL', HAIKU) } });
     }
     // Admin only: make an image (used to create app artwork). Logged with its cost like other AI calls.
     if (task === 'admin_image') {
@@ -319,7 +332,6 @@ Deno.serve(async (req) => {
     lastModel = '';
     lastDetail = '';
     modelOverride = '';
-    taskModel = task === 'meal_photo' ? env('OPENROUTER_PHOTO_MODEL', 'anthropic/claude-haiku-5.5') : '';
     if (typeof body.model === 'string' && body.model) {
       const { data: isAdmin } = await admin.from('admins').select('user_id').eq('user_id', u.user.id).maybeSingle();
       if (isAdmin) modelOverride = body.model.slice(0, 100);
