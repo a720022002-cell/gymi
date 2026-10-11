@@ -7,6 +7,7 @@ import { WaterGoalSheet } from '@/components/food/WaterGoalSheet';
 import { Choices } from '@/components/health/bits';
 import { Icon, type IconName } from '@/components/Icon';
 import { Ring } from '@/components/Ring';
+import { DayNav } from '@/components/DayNav';
 import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
 import { Text } from '@/components/Text';
@@ -51,6 +52,7 @@ export default function WaterScreen() {
           <NavButton icon="plus" label={t('Add a drink')} onPress={() => setDrink(true)} />
         </Row>
       }>
+      <DayNav />
       <Card style={{ alignItems: 'center', paddingVertical: 26 }}>
         <Ring value={food.water} max={goal} size={210} stroke={20}>
           <Icon name="drop" size={26} color={c.cobalt} strokeWidth={2} />

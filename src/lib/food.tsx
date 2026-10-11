@@ -61,7 +61,12 @@ export type NewLog = {
 
 type Food = {
   ready: boolean;
+  /** The real date today. */
   today: string;
+  /** The day you're looking at (today unless you went back with the arrows or the calendar). Logs, water, cardio and steps are for this day, and new logs go to it. */
+  day: string;
+  setDay: (d: string) => void;
+  isToday: boolean;
   setupDone: boolean;
   plan: FoodPlan;
   person: Person;
@@ -82,7 +87,7 @@ type Food = {
   /** The meal plan your coach sent, if any. */
   coachMeals: MealPlan | null;
   kcalLeft: number;
-  addLog: (l: NewLog) => Promise<FoodLog | null>;
+  addLog: (l: NewLog, on?: string) => Promise<FoodLog | null>;
   deleteLog: (id: string) => Promise<FoodLog | null>;
   restoreLog: (l: FoodLog) => Promise<void>;
   saved: SavedMeal[];
@@ -99,12 +104,12 @@ type Food = {
   /** Cardio logged today. Its calories are added to today's budget. */
   cardio: Cardio[];
   burned: number;
-  addCardio: (c: Omit<Cardio, 'id' | 'created_at'>) => Promise<Cardio | null>;
+  addCardio: (c: Omit<Cardio, 'id' | 'created_at'>, on?: string) => Promise<Cardio | null>;
   deleteCardio: (id: string) => Promise<void>;
   /** Steps today (typed in, plus about 110 per minute of walking). */
   steps: number;
   setSteps: (n: number) => Promise<void>;
-  addWater: (ml: number, kind?: string) => Promise<void>;
+  addWater: (ml: number, kind?: string, on?: string) => Promise<void>;
   /** Over/under balance sheet (shown above everything). */
   balance: 'over' | 'under' | null;
   openBalance: (k: 'over' | 'under' | null) => void;
@@ -122,6 +127,11 @@ export function FoodProvider({ children }: PropsWithChildren) {
   const { session, profile } = useAuth();
   const userId = session?.user.id;
   const [today, setToday] = useState(localDay());
+  const [picked, setPicked] = useState<string | null>(null);
+  // Never a day in the future; once the picked day is today again, follow the real date.
+  const day = picked && picked < today ? picked : today;
+  const isToday = day === today;
+  const setDay = useCallback((d: string) => setPicked(d >= localDay() ? null : d), []);
   const [readyFor, setReadyFor] = useState<string | null>(null);
   const ready = !!userId && readyFor === userId;
   const [setupDone, setSetupDone] = useState(false);
@@ -177,14 +187,15 @@ export function FoodProvider({ children }: PropsWithChildren) {
     let alive = true;
     (async () => {
       const weekEnd = addDays(today, 7);
+      const from = day < today ? day : today;
       const [p, l, s, m, w, cd, st, mc, mp] = await Promise.all([
         supabase.from('food_plans').select('*').eq('user_id', userId).maybeSingle(),
-        supabase.from('food_logs').select('*').eq('day', today).order('created_at'),
+        supabase.from('food_logs').select('*').eq('day', day).order('created_at'),
         supabase.from('saved_meals').select('*').order('created_at', { ascending: false }),
-        supabase.from('calorie_moves').select('id,day,kcal').gte('day', today).lte('day', weekEnd),
-        supabase.from('water_logs').select('id,ml,kind,created_at').eq('day', today).order('created_at'),
-        supabase.from('cardio_logs').select('id,kind,name,minutes,intensity,kcal,created_at').eq('day', today).order('created_at'),
-        supabase.from('step_logs').select('steps').eq('day', today).maybeSingle(),
+        supabase.from('calorie_moves').select('id,day,kcal').gte('day', from).lte('day', weekEnd),
+        supabase.from('water_logs').select('id,ml,kind,created_at').eq('day', day).order('created_at'),
+        supabase.from('cardio_logs').select('id,kind,name,minutes,intensity,kcal,created_at').eq('day', day).order('created_at'),
+        supabase.from('step_logs').select('steps').eq('day', day).maybeSingle(),
         supabase.rpc('my_coach'),
         supabase.rpc('my_coach_plans'),
       ]);
@@ -219,7 +230,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
     return () => {
       alive = false;
     };
-  }, [userId, today, profile?.weight_kg]);
+  }, [userId, today, day, profile?.weight_kg]);
 
   const savePlan = useCallback(
     async (p: FoodPlan, done?: boolean) => {
@@ -261,12 +272,12 @@ export function FoodProvider({ children }: PropsWithChildren) {
   const dayGoal = useCallback((day: string) => target.k + moves.filter((m) => m.day === day).reduce((a, m) => a + m.kcal, 0), [target.k, moves]);
   const water = useMemo(() => waterLogs.reduce((a, x) => a + x.ml, 0), [waterLogs]);
   const burned = cardio.reduce((a, x) => a + x.kcal, 0);
-  const kcalLeft = dayGoal(today) + burned - eaten.k;
+  const kcalLeft = dayGoal(day) + burned - eaten.k;
 
   const addLog = useCallback(
-    async (l: NewLog) => {
+    async (l: NewLog, on?: string) => {
       const row = {
-        day: today,
+        day: on ?? day,
         meal: l.meal ?? null,
         name: l.name.slice(0, 200),
         kcal: Math.round(l.kcal),
@@ -281,10 +292,10 @@ export function FoodProvider({ children }: PropsWithChildren) {
       };
       const { data, error } = await supabase.from('food_logs').insert(row).select('*').single();
       if (error || !data) return null;
-      setLogs((xs) => [...xs, data as FoodLog]);
+      if (row.day === day) setLogs((xs) => [...xs, data as FoodLog]);
       return data as FoodLog;
     },
-    [today],
+    [day],
   );
 
   const deleteLog = useCallback(async (id: string) => {
@@ -335,13 +346,18 @@ export function FoodProvider({ children }: PropsWithChildren) {
   }, []);
 
   const addWater = useCallback(
-    async (ml: number, kind = 'Water') => {
+    async (ml: number, kind = 'Water', on?: string) => {
+      const d = on ?? day;
+      if (d !== day) {
+        await supabase.from('water_logs').insert({ day: d, ml, kind });
+        return;
+      }
       const tmp: WaterLog = { id: `tmp-${Date.now()}`, ml, kind, created_at: new Date().toISOString() };
       setWaterLogs((xs) => [...xs, tmp]);
-      const { data, error } = await supabase.from('water_logs').insert({ day: today, ml, kind }).select('id,ml,kind,created_at').single();
+      const { data, error } = await supabase.from('water_logs').insert({ day: d, ml, kind }).select('id,ml,kind,created_at').single();
       setWaterLogs((xs) => (error || !data ? xs.filter((x) => x.id !== tmp.id) : xs.map((x) => (x.id === tmp.id ? (data as WaterLog) : x))));
     },
-    [today],
+    [day],
   );
 
   const deleteWater = useCallback(async (id: string) => {
@@ -355,22 +371,23 @@ export function FoodProvider({ children }: PropsWithChildren) {
   }, []);
 
   const addCardio = useCallback(
-    async (c: Omit<Cardio, 'id' | 'created_at'>) => {
-      const { data, error } = await supabase.from('cardio_logs').insert({ ...c, day: today }).select('id,kind,name,minutes,intensity,kcal,created_at').single();
+    async (c: Omit<Cardio, 'id' | 'created_at'>, on?: string) => {
+      const d = on ?? day;
+      const { data, error } = await supabase.from('cardio_logs').insert({ ...c, day: d }).select('id,kind,name,minutes,intensity,kcal,created_at').single();
       if (error || !data) return null;
-      setCardio((xs) => [...xs, data as Cardio]);
+      if (d === day) setCardio((xs) => [...xs, data as Cardio]);
       return data as Cardio;
     },
-    [today],
+    [day],
   );
 
   const setSteps = useCallback(
     async (n: number) => {
       const v = Math.max(0, Math.min(200000, Math.round(n)));
       setStepsState(v);
-      if (userId) await supabase.from('step_logs').upsert({ user_id: userId, day: today, steps: v });
+      if (userId) await supabase.from('step_logs').upsert({ user_id: userId, day, steps: v });
     },
-    [userId, today],
+    [userId, day],
   );
 
   const deleteCardio = useCallback(async (id: string) => {
@@ -382,6 +399,9 @@ export function FoodProvider({ children }: PropsWithChildren) {
     () => ({
       ready,
       today,
+      day,
+      setDay,
+      isToday,
       setupDone,
       plan,
       person,
@@ -424,7 +444,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       typeSeed,
       openTyping,
     }),
-    [balance, logOpen, setLogOpen, typeSeed, openTyping, coach, coachMeals, addMealByCode, ready, today, setupDone, plan, person, draft, savePlan, updatePlan, logs, eaten, target, dayGoal, coachTargets, kcalLeft, addLog, deleteLog, restoreLog, saved, saveMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, addCardio, deleteCardio, steps, setSteps, addWater],
+    [day, setDay, isToday, balance, logOpen, setLogOpen, typeSeed, openTyping, coach, coachMeals, addMealByCode, ready, today, setupDone, plan, person, draft, savePlan, updatePlan, logs, eaten, target, dayGoal, coachTargets, kcalLeft, addLog, deleteLog, restoreLog, saved, saveMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, addCardio, deleteCardio, steps, setSteps, addWater],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -448,7 +468,7 @@ export function useLogFood() {
         return null;
       }
       toast(t('Logged to Food: {n} kcal', { n: Math.round(item.kcal) }), { ai: true, undo: () => food.deleteLog(row.id) });
-      if (!wasOver && food.kcalLeft - item.kcal < 0) setTimeout(() => food.openBalance('over'), 900);
+      if (food.isToday && !wasOver && food.kcalLeft - item.kcal < 0) setTimeout(() => food.openBalance('over'), 900);
       return row;
     },
     [food],

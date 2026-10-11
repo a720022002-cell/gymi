@@ -21,6 +21,8 @@ type Props = PropsWithChildren<{
   /** Shown above the large title (e.g. the greeting on Home). */
   pre?: ReactNode;
   back?: boolean;
+  /** Shown at the start of the top bar when there's no back button. */
+  left?: ReactNode;
   onBack?: () => void;
   right?: ReactNode;
   /** Extra space at the bottom for the floating tab bar. */
@@ -31,7 +33,7 @@ type Props = PropsWithChildren<{
   scrollRef?: React.Ref<ScrollView>;
 }>;
 
-export function Screen({ title, large, pre, back, onBack, right, tabs, bare, scrollRef, children }: Props) {
+export function Screen({ title, large, pre, back, left, onBack, right, tabs, bare, scrollRef, children }: Props) {
   const { colors: c } = useSettings();
   const { t } = useT();
   const insets = useSafeAreaInsets();
@@ -101,7 +103,7 @@ export function Screen({ title, large, pre, back, onBack, right, tabs, bare, scr
           />
           <Bar scrolled={scrolled}>
             <View style={{ minWidth: 44, flexDirection: 'row' }}>
-              {back ? <NavButton icon="back" onPress={goBack} label={t('Back')} /> : null}
+              {back ? <NavButton icon="back" onPress={goBack} label={t('Back')} /> : left}
             </View>
             <Animated.View style={{ flex: 1, opacity: titleOpacity }}>
               <Text variant="h3" size={16} center numberOfLines={1}>

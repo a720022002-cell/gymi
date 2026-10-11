@@ -104,6 +104,8 @@ export default function Coach() {
       weightWeeklyAverages: weekly,
       goal: food.setupDone ? GOALS[food.plan.goal] : 'not set up',
       caloriesGoal: food.setupDone ? food.dayGoal(today) : null,
+      // The food numbers below are for this day (the person may be looking back at an earlier day).
+      foodDay: food.isToday ? 'today' : food.day,
       caloriesLeft: food.setupDone ? food.kcalLeft : null,
       eatenToday: { kcal: Math.round(food.eaten.k), protein: Math.round(food.eaten.p), carbs: Math.round(food.eaten.c), fat: Math.round(food.eaten.f) },
       targets: food.setupDone ? food.target : null,
@@ -135,16 +137,16 @@ export default function Coach() {
     const done: ChatAction[] = [];
     for (const a of acts) {
       if (a.type === 'food' && a.kcal > 0) {
-        const row = await food.addLog({ name: a.name, kcal: a.kcal, protein: a.protein || 0, carbs: a.carbs || 0, fat: a.fat || 0 });
+        const row = await food.addLog({ name: a.name, kcal: a.kcal, protein: a.protein || 0, carbs: a.carbs || 0, fat: a.fat || 0 }, food.today);
         if (row) done.push({ ...a, logId: row.id });
       } else if (a.type === 'cardio' && a.minutes > 0) {
         const k = Math.max(0, CARDIO.findIndex(([n]) => n === a.kind));
         const kcal = cardioKcal(k, Math.min(2, Math.max(0, a.intensity ?? 1)), food.plan.weight || 80, a.minutes);
-        const row = await food.addCardio({ kind: CARDIO[k][0], minutes: Math.round(a.minutes), intensity: a.intensity ?? 1, kcal });
+        const row = await food.addCardio({ kind: CARDIO[k][0], minutes: Math.round(a.minutes), intensity: a.intensity ?? 1, kcal }, food.today);
         if (row) done.push({ ...a, kind: CARDIO[k][0], kcal, logId: row.id });
       } else if (a.type === 'water' && a.ml > 0) {
         const ml = Math.min(5000, Math.round(a.ml));
-        await food.addWater(ml);
+        await food.addWater(ml, 'Water', food.today);
         // Keep the new row's id so Undo can remove exactly this drink.
         const { data } = await supabase.from('water_logs').select('id').eq('day', food.today).eq('ml', ml).order('created_at', { ascending: false }).limit(1).maybeSingle();
         done.push({ type: 'water', ml, logId: (data as { id: string } | null)?.id });

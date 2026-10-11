@@ -10,6 +10,7 @@ import { Ring } from '@/components/Ring';
 import { FreeMonthAlert } from '@/components/FreeMonthAlert';
 import { InviteCodeSheet } from '@/components/InviteCodeSheet';
 import { hoursText } from '@/components/coach/GymHours';
+import { CalendarButton, DayNav } from '@/components/DayNav';
 import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
 import { Avatar } from '@/components/social/Avatar';
@@ -66,7 +67,9 @@ export default function Home() {
 
   if (coachMode && profile?.account_type === 'coach' && profile.coach_status === 'approved') return <Redirect href="/cclients" />;
   const name = profile?.name || profile?.username || '';
-  const date = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date());
+  const date = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date(`${food.day}T12:00:00`));
+  // Looking back at an earlier day: its food, water, cardio and workouts; today's prompts are hidden.
+  const past = !food.isToday;
   const ramadan = food.plan.ramadan ? fastTimes(food.plan.city, food.today) : null;
   const rings = layout.rings;
 
@@ -75,6 +78,7 @@ export default function Home() {
       title={date}
       large
       tabs
+      left={<CalendarButton />}
       pre={
         <Row style={{ justifyContent: 'space-between', marginTop: 2 }}>
           <Text weight={700} color="sec">
@@ -96,10 +100,15 @@ export default function Home() {
           )}
         </Springy>
       }>
-      {health.ready && !health.todayCheckin && !askCode ? <CheckinCard onStart={() => health.setCheckinOpen(true)} /> : null}
-      <CoachAppCard app={app} />
-      {coach ? <CoachCard k={coach} /> : food.coachTargets ? <CoachSetCard name={food.coachTargets.name} /> : null}
-      {ramadan ? (
+      <DayNav />
+      {past ? null : (
+        <>
+          {health.ready && !health.todayCheckin && !askCode ? <CheckinCard onStart={() => health.setCheckinOpen(true)} /> : null}
+          <CoachAppCard app={app} />
+          {coach ? <CoachCard k={coach} /> : food.coachTargets ? <CoachSetCard name={food.coachTargets.name} /> : null}
+        </>
+      )}
+      {!past && ramadan ? (
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <Icon name="moon" size={22} />
           <Text variant="small" style={{ flex: 1 }}>
@@ -112,16 +121,21 @@ export default function Home() {
       ) : null}
       {layout.order
         .filter((k) => !layout.hidden.includes(k) && !(k === 'water' && rings.length > 1 && rings.includes('water')))
+        .filter((k) => !past || k === 'calories' || k === 'water' || k === 'workout')
         .map((k) =>
           k === 'calories' ? (
             <MainCard key={k} />
           ) : k === 'water' ? (
             <WaterCard key={k} />
           ) : k === 'workout' ? (
-            <View key={k}>
-              <MissedCard />
-              <WorkoutCard />
-            </View>
+            past ? (
+              <DayRecap key={k} />
+            ) : (
+              <View key={k}>
+                <MissedCard />
+                <WorkoutCard />
+              </View>
+            )
           ) : k === 'readings' ? (
             <ReadingsCard key={k} />
           ) : k === 'streak' ? (
@@ -130,7 +144,8 @@ export default function Home() {
             <TipCard key={k} />
           ) : null,
         )}
-      <Button title={t('Edit home')} icon="sliders" kind="glass" style={{ marginTop: 8 }} onPress={() => router.push('/customize')} />
+      {past && layout.hidden.includes('workout') ? <DayRecap /> : null}
+      {past ? null : <Button title={t('Edit home')} icon="sliders" kind="glass" style={{ marginTop: 8 }} onPress={() => router.push('/customize')} />}
       <InviteCodeSheet
         open={askCode}
         onDone={() => {
@@ -333,7 +348,7 @@ function useMetrics(): Record<RingKey, Metric> {
   const s = useStreaks();
   const { r } = useRecovery();
   const e = food.eaten;
-  const goal = food.dayGoal(food.today);
+  const goal = food.dayGoal(food.day);
   const wGoal = food.plan.water || 2800;
   const planned = train.plan?.days ?? 0;
   const done = train.doneIdx.size;
@@ -625,7 +640,7 @@ function CaloriesCard({ sw }: { sw: React.ReactNode }) {
   const { colors: c } = useSettings();
   const food = useFood();
   const e = food.eaten;
-  const goal = food.dayGoal(food.today);
+  const goal = food.dayGoal(food.day);
   const left = food.kcalLeft;
   const over = left < 0;
   return (
@@ -826,5 +841,49 @@ function TipCard() {
         </Text>
       </View>
     </Card>
+  );
+}
+
+/** An earlier day: the meals, cardio and workouts you logged. Tap a meal to see or delete it; add food to this day from the Food tab or the + button. */
+function DayRecap() {
+  const { t } = useT();
+  const { colors: c } = useSettings();
+  const food = useFood();
+  const train = useTrain();
+  const workouts = train.logs.filter((l) => l.day === food.day);
+  const nothing = !food.logs.length && !food.cardio.length && !workouts.length;
+  const row = (key: string, icon: IconName, title: string, sub: string, go?: () => void, i = 0) => (
+    <Springy key={key} disabled={!go} onPress={go} scaleTo={0.99} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingHorizontal: 16, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
+      <Icon name={icon} size={20} color={c.sec} />
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text weight={700} numberOfLines={1}>
+          {title}
+        </Text>
+        <Text variant="xs" color="sec" numberOfLines={1}>
+          {sub}
+        </Text>
+      </View>
+      {go ? <Icon name="chev" size={16} color={c.sec} /> : null}
+    </Springy>
+  );
+  const items = [
+    ...food.logs.map((l) => ({ k: l.id, icon: 'food' as IconName, title: l.name, sub: [l.meal ? t(l.meal) : null, `${fmt(+l.kcal)} ${t('kcal')}`].filter(Boolean).join(t(', ')), go: () => router.push({ pathname: '/logged', params: { id: l.id } }) })),
+    ...food.cardio.map((x) => ({ k: x.id, icon: 'run' as IconName, title: x.kind === 'Other' && x.name ? x.name : t(x.kind), sub: t('{m} min, {k} kcal burned', { m: x.minutes, k: fmt(x.kcal) }), go: undefined })),
+    ...workouts.map((w, i) => ({ k: `w${i}`, icon: 'train' as IconName, title: t('{w} workout', { w: t(w.name) }), sub: t('{m} min, {v} kg lifted', { m: w.minutes, v: fmt(w.volume) }), go: undefined })),
+  ];
+  return (
+    <View style={{ marginBottom: 14 }}>
+      <Text variant="h3" style={{ marginBottom: 10, marginHorizontal: 2 }}>
+        {t('What you logged')}
+      </Text>
+      {nothing ? (
+        <Card>
+          <Text color="sec">{t('Nothing logged this day.')}</Text>
+        </Card>
+      ) : (
+        <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden' }}>{items.map((x, i) => row(x.k, x.icon, x.title, x.sub, x.go, i))}</View>
+      )}
+      <Button title={t('Add food to this day')} icon="plus" style={{ marginTop: 12 }} onPress={() => food.setLogOpen(true)} />
+    </View>
   );
 }

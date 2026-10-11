@@ -4,6 +4,7 @@ import { TextInput, View } from 'react-native';
 import { Stepper } from '@/components/food/Stepper';
 import { Icon, type IconName } from '@/components/Icon';
 import { Bar, Ring } from '@/components/Ring';
+import { DayNav } from '@/components/DayNav';
 import { Screen } from '@/components/Screen';
 import { fontFor, Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
@@ -124,6 +125,7 @@ export default function CardioScreen() {
 
   return (
     <Screen title={t('Cardio and steps')} back>
+      <DayNav />
       <StepsCard />
       <Text variant="small" weight={700} color="sec" style={{ marginTop: 8, marginBottom: 8, marginHorizontal: 4 }}>
         {t('Log cardio')}

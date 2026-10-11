@@ -11,6 +11,7 @@ import { ReminderBell } from '@/components/food/ReminderBell';
 import { SetupWizard } from '@/components/food/SetupWizard';
 import { Thinking } from '@/components/food/Thinking';
 import { Ring } from '@/components/Ring';
+import { DayNav } from '@/components/DayNav';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
@@ -66,7 +67,7 @@ function FoodHome() {
   const adjust = cutting ? -150 : 150;
   const coachLogged = (n: string) => food.logs.some((l) => l.name.startsWith(`${n} (`) && l.meal === n);
   const left = food.kcalLeft;
-  const goal = food.dayGoal(food.today);
+  const goal = food.dayGoal(food.day);
   const meals = planMeals(food.plan);
   const loggedKeys = new Set(food.logs.map((l) => l.plan_key).filter(Boolean));
 
@@ -92,6 +93,7 @@ function FoodHome() {
           </Springy>
         </Row>
       }>
+      <DayNav />
       {coach ? (
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 14 }}>
           <Icon name="lock" size={18} color={c.cobalt} />
@@ -183,11 +185,13 @@ function FoodHome() {
                 <Text variant="small" num>{`${fmt(v)} ${t('kcal')}`}</Text>
               </Row>
             ))}
-            <Springy onPress={() => (food.eaten.k === 0 && left >= 0 ? toast(t('Log some food first'), { icon: 'info' }) : food.openBalance(left < 0 ? 'over' : 'under'))} style={{ marginTop: 6 }}>
-              <Text variant="small" weight={700} color="link">
-                {t('Over or under? Balance it')}
-              </Text>
-            </Springy>
+            {food.isToday ? (
+              <Springy onPress={() => (food.eaten.k === 0 && left >= 0 ? toast(t('Log some food first'), { icon: 'info' }) : food.openBalance(left < 0 ? 'over' : 'under'))} style={{ marginTop: 6 }}>
+                <Text variant="small" weight={700} color="link">
+                  {t('Over or under? Balance it')}
+                </Text>
+              </Springy>
+            ) : null}
           </View>
         </Row>
         <View style={{ marginTop: 16 }}>
@@ -233,7 +237,7 @@ function FoodHome() {
         <Segmented
           value={tab}
           options={[
-            { value: 'logged', label: t('Logged today') },
+            { value: 'logged', label: t(food.isToday ? 'Logged today' : 'Logged') },
             { value: 'plan', label: coach ? t('Coach’s plan') : t('Meal plan') },
           ]}
           onChange={setTab}
@@ -243,7 +247,7 @@ function FoodHome() {
       {tab === 'logged' ? (
         <View>
           <Text variant="small" weight={700} color="sec" style={{ marginTop: 16, marginBottom: 10, marginHorizontal: 4 }}>
-            {food.logs.length ? t('{n} items, {k} kcal', { n: food.logs.length, k: fmt(food.eaten.k) }) : t('What you ate today')}
+            {food.logs.length ? t('{n} items, {k} kcal', { n: food.logs.length, k: fmt(food.eaten.k) }) : t(food.isToday ? 'What you ate today' : 'Nothing logged this day.')}
           </Text>
           {food.logs.length ? (
             <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden', marginBottom: 12 }}>
