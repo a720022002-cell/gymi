@@ -468,7 +468,10 @@ export function useLogFood() {
         return null;
       }
       toast(t('Logged to Food: {n} kcal', { n: Math.round(item.kcal) }), { ai: true, undo: () => food.deleteLog(row.id) });
-      if (food.isToday && !wasOver && food.kcalLeft - item.kcal < 0) setTimeout(() => food.openBalance('over'), 900);
+      // Landing up to 10% over still counts as closing the ring (celebrated instead), so the balance sheet waits until it's more.
+      const max = food.dayGoal(food.day) + food.burned;
+      const wayOver = food.eaten.k + item.kcal > max * 1.1;
+      if (food.isToday && !wasOver && wayOver && food.kcalLeft - item.kcal < 0) setTimeout(() => food.openBalance('over'), 900);
       return row;
     },
     [food],

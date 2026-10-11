@@ -18,6 +18,7 @@ import { useEffect } from 'react';
 
 import { BalanceSheet } from '@/components/food/BalanceSheet';
 import { LogSheet } from '@/components/food/LogSheet';
+import { RingClosed } from '@/components/food/RingClosed';
 import { CheckinSheet } from '@/components/health/CheckinSheet';
 import { FriendAlerts } from '@/components/FriendAlerts';
 import { NotifyBanner } from '@/components/NotifyBanner';
@@ -93,6 +94,7 @@ function AppStack({ ready }: { ready: boolean }) {
       </Stack>
       <LogSheet />
       <BalanceSheet />
+      <RingClosed />
       <CheckinSheet />
       <ReminderSync />
       <ReferralClaim />
