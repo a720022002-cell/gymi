@@ -3,8 +3,9 @@ import { addMin, fastTimes } from './prayer';
 import { MEAL_WEIGHT, type Recipe, RECIPES } from './recipes';
 
 export const GOALS = ['Fast bulk', 'Moderate bulk', 'Maintain', 'Fast cut', 'Moderate cut'] as const;
-export const GOAL_DESC = ['+0.5 kg a week', '+0.25 kg a week', 'Keep your weight', '−0.75 kg a week', '−0.4 kg a week'];
-const GOAL_ADJ = [500, 250, 0, -600, -300];
+// Gain and loss mirror each other: the same range and the same daily calorie change, up or down.
+export const GOAL_DESC = ['+0.5 to 0.75 kg a week', '+0.25 to 0.5 kg a week', 'Keep your weight', '−0.5 to 0.75 kg a week', '−0.25 to 0.5 kg a week'];
+const GOAL_ADJ = [650, 350, 0, -650, -350];
 // Order the goals are shown in: bulk, bulk, maintain, moderate cut, fast cut.
 export const GOAL_ORDER = [0, 1, 2, 4, 3];
 

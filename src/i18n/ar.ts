@@ -8,7 +8,9 @@ export const AR: Record<string, string> = {
   "+ New workout": "+ تمرين جديد",
   "+ {n} ml": "+ {n} مل",
   "+0.25 kg a week": "+0.25 كجم بالأسبوع",
+  "+0.25 to 0.5 kg a week": "+0.25 إلى 0.5 كجم بالأسبوع",
   "+0.5 kg a week": "+0.5 كجم بالأسبوع",
+  "+0.5 to 0.75 kg a week": "+0.5 إلى 0.75 كجم بالأسبوع",
   "+30 s": "+30 ث",
   "+{n} to today’s score": "+{n} لنتيجة اليوم",
   ", ": "، ",
@@ -3349,6 +3351,8 @@ export const AR: Record<string, string> = {
   "“Light weight!” voice": "صوت \"Light weight!\"",
   "“Yeah buddy!” voice": "صوت \"Yeah buddy!\"",
   "…": "…",
+  "−0.25 to 0.5 kg a week": "−0.25 إلى 0.5 كجم بالأسبوع",
   "−0.4 kg a week": "−0.4 كجم بالأسبوع",
+  "−0.5 to 0.75 kg a week": "−0.5 إلى 0.75 كجم بالأسبوع",
   "−0.75 kg a week": "−0.75 كجم بالأسبوع",
 };
