@@ -1,24 +1,28 @@
-import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
+import { Image } from 'expo-image';
+import { View } from 'react-native';
 
-/** Simple body outline that gets wider with body fat (design: bodyFig). */
-export function BodyFigure({ bf, female, selected, color }: { bf: number; female: boolean; selected: boolean; color: string }) {
-  const sh = female ? 17 : 21;
-  const wa = (female ? 9 : 8) + bf * 0.42;
-  const hip = female ? 14 + bf * 0.3 : 13 + bf * 0.26;
-  const o = selected ? 1 : 0.45;
+/** Photo for each body fat level (AI-made, same person per set). Men: 10–35 %, women: 18–40 %. */
+const PHOTOS: Record<string, number> = {
+  m10: require('../../../assets/bodyfat/m10.jpg'),
+  m15: require('../../../assets/bodyfat/m15.jpg'),
+  m20: require('../../../assets/bodyfat/m20.jpg'),
+  m25: require('../../../assets/bodyfat/m25.jpg'),
+  m30: require('../../../assets/bodyfat/m30.jpg'),
+  m35: require('../../../assets/bodyfat/m35.jpg'),
+  f18: require('../../../assets/bodyfat/f18.jpg'),
+  f22: require('../../../assets/bodyfat/f22.jpg'),
+  f26: require('../../../assets/bodyfat/f26.jpg'),
+  f30: require('../../../assets/bodyfat/f30.jpg'),
+  f35: require('../../../assets/bodyfat/f35.jpg'),
+  f40: require('../../../assets/bodyfat/f40.jpg'),
+};
+
+/** A real-looking body at about this body fat (design: bodyFig). */
+export function BodyFigure({ bf, female, selected }: { bf: number; female: boolean; selected: boolean; color?: string }) {
+  const src = PHOTOS[`${female ? 'f' : 'm'}${bf}`];
   return (
-    <Svg width={64} height={112} viewBox="0 0 70 122">
-      <G fill={color} opacity={o}>
-        <Circle cx={35} cy={13} r={9} />
-        <Rect x={31} y={20} width={8} height={8} rx={3} />
-        <Path d={`M${35 - sh} 30 H${35 + sh} Q${35 + sh + 3} 33 ${35 + wa} 60 Q${35 + hip + 2} 74 ${35 + hip} 84 H${35 - hip} Q${35 - hip - 2} 74 ${35 - wa} 60 Q${35 - sh - 3} 33 ${35 - sh} 30Z`} />
-      </G>
-      <G stroke={color} opacity={o} strokeLinecap="round" fill="none">
-        <Path d={`M${35 - sh} 33 L${35 - sh - 5 - bf * 0.1} 78`} strokeWidth={7} />
-        <Path d={`M${35 + sh} 33 L${35 + sh + 5 + bf * 0.1} 78`} strokeWidth={7} />
-        <Path d={`M${35 - hip * 0.5} 84 L${35 - hip * 0.55} 118`} strokeWidth={9 + bf * 0.12} />
-        <Path d={`M${35 + hip * 0.5} 84 L${35 + hip * 0.55} 118`} strokeWidth={9 + bf * 0.12} />
-      </G>
-    </Svg>
+    <View style={{ width: '100%', aspectRatio: 360 / 445, borderRadius: 16, overflow: 'hidden', backgroundColor: '#E6E6E8', opacity: selected ? 1 : 0.9 }}>
+      {src ? <Image source={src} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={150} accessibilityIgnoresInvertColors /> : null}
+    </View>
   );
 }

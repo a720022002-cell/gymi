@@ -154,9 +154,9 @@ export function SetupWizard({ inTab }: { inTab?: boolean }) {
                   scaleTo={0.97}
                   accessibilityLabel={t('About {n}% body fat', { n: b })}
                   accessibilityState={{ selected: on }}
-                  style={{ width: '31%', flexGrow: 1, alignItems: 'center', backgroundColor: c.card, borderRadius: 22, paddingVertical: 12, borderWidth: 2, borderColor: on ? c.cobalt : 'transparent' }}>
-                  <BodyFigure bf={b} female={food.person.gender === 'female'} selected={on} color={on ? c.cobalt : c.sec} />
-                  <Text num color={on ? c.cobalt : c.text} style={{ marginTop: 4 }}>{`${b}%`}</Text>
+                  style={{ width: '31%', flexGrow: 1, alignItems: 'center', backgroundColor: c.card, borderRadius: 22, padding: 6, paddingBottom: 10, borderWidth: 2, borderColor: on ? c.cobalt : 'transparent' }}>
+                  <BodyFigure bf={b} female={food.person.gender === 'female'} selected={on} />
+                  <Text num color={on ? c.cobalt : c.text} style={{ marginTop: 6 }}>{`${b}%`}</Text>
                 </Springy>
               );
             })}

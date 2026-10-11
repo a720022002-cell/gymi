@@ -264,6 +264,25 @@ Deno.serve(async (req) => {
       ]);
       return json({ result: { connected: true, credits: c?.data?.total_credits ?? null, used: c?.data?.total_usage ?? null, key_usage: k?.data?.usage ?? null, key_limit: k?.data?.limit ?? null, model: env('OPENROUTER_MODEL', QWEN) } });
     }
+    // Admin only: make an image (used to create app artwork). Logged with its cost like other AI calls.
+    if (task === 'admin_image') {
+      const { data: isAdmin } = await admin.from('admins').select('user_id').eq('user_id', u.user.id).maybeSingle();
+      if (!isAdmin) return json({ error: 'auth' }, 403);
+      const key = openrouterKey();
+      if (!key) return json({ error: 'ai_off' }, 503);
+      const content: unknown[] = [{ type: 'text', text: String(body.prompt ?? '').slice(0, 2000) }];
+      if (typeof body.ref === 'string' && body.ref.length < 6_000_000) content.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${body.ref}` } });
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ model: String(body.model ?? 'google/gemini-3.1-flash-image'), modalities: ['image', 'text'], usage: { include: true }, messages: [{ role: 'user', content }] }),
+      });
+      const data = await res.json().catch(() => null);
+      const url = data?.choices?.[0]?.message?.images?.[0]?.image_url?.url ?? null;
+      await admin.from('ai_calls').insert({ user_id: u.user.id, task, model: data?.model ?? '', prompt_tokens: data?.usage?.prompt_tokens ?? 0, completion_tokens: data?.usage?.completion_tokens ?? 0, cost_usd: Number(data?.usage?.cost ?? 0) || 0, ok: !!url, error: url ? null : JSON.stringify(data?.error ?? data)?.slice(0, 300) });
+      if (!url) return json({ error: 'failed', detail: JSON.stringify(data?.error ?? data?.choices?.[0]?.message?.content ?? '').slice(0, 300) }, 500);
+      return json({ result: { image: url, cost: data?.usage?.cost ?? null } });
+    }
     const log = (ok: boolean, error?: string) =>
       admin.from('ai_calls').insert({ user_id: u.user.id, task, model: lastModel, prompt_tokens: lastUsage.prompt, completion_tokens: lastUsage.completion, cost_usd: lastUsage.cost, ok, error: error?.slice(0, 300) ?? null }).then(() => {}, () => {});
     const { data: ok } = await admin.rpc('ai_take', { p_user: u.user.id, p_limit: Number(env('AI_DAILY_LIMIT', '80')) });
