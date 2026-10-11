@@ -83,16 +83,17 @@ export default function RecipeScreen() {
       <Text variant="h1" style={{ marginTop: 12 }}>
         {t(r.n)}
       </Text>
-      <Row gap={10} style={{ marginTop: 16 }}>
+      <Row gap={8} style={{ marginTop: 16 }}>
         {(
           [
             ['kcal', fmt(meal.k)],
             ['Protein', `${meal.p}${t('g')}`],
             ['Carbs', `${meal.c}${t('g')}`],
+            ['Fat', `${meal.f}${t('g')}`],
           ] as const
         ).map(([a, b]) => (
-          <Card key={a} style={{ flex: 1, alignItems: 'center', marginBottom: 0 }}>
-            <Text num size={20}>
+          <Card key={a} style={{ flex: 1, alignItems: 'center', marginBottom: 0, paddingHorizontal: 4 }}>
+            <Text num size={18}>
               {b}
             </Text>
             <Text variant="xs" weight={700} color="sec">
@@ -101,9 +102,6 @@ export default function RecipeScreen() {
           </Card>
         ))}
       </Row>
-      <Text variant="small" color="sec" center style={{ marginTop: 8 }}>
-        {t('Fat {n} g', { n: meal.f })}
-      </Text>
 
       <Text variant="h3" style={{ marginTop: 22, marginBottom: 10, marginHorizontal: 2 }}>
         {t('Ingredients')}
