@@ -5,7 +5,7 @@ export type Part = { key: string; en: string; ar: string; g: number; k: number; 
 export type DbFood = {
   id: string;
   source: 'usda' | 'gymi' | 'off' | 'user';
-  category: 'basic' | 'gulf' | 'rest' | 'usda' | 'product';
+  category: 'basic' | 'gulf' | 'rest' | 'usda' | 'product' | 'fix';
   name_en: string;
   name_ar: string | null;
   restaurant: string | null;
@@ -60,6 +60,14 @@ export async function getFood(id: string): Promise<DbFood | null> {
 }
 
 /** A packaged product saved in our database, by barcode. */
+/** Your own fix of a scanned product's numbers, if you made one. */
+export async function myFix(code: string): Promise<DbFood | null> {
+  const uid = (await supabase.auth.getSession()).data.session?.user.id;
+  if (!uid) return null;
+  const { data } = await supabase.from('foods').select('*').eq('fix_barcode', code).eq('created_by', uid).limit(1).maybeSingle();
+  return (data as DbFood) ?? null;
+}
+
 export async function foodByBarcode(code: string): Promise<DbFood | null> {
   const { data } = await supabase.from('foods').select('*').eq('barcode', code).limit(1).maybeSingle();
   return (data as DbFood) ?? null;

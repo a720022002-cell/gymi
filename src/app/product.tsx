@@ -14,7 +14,7 @@ import { Button, Card, Chip, Row, Segmented } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useLogFood } from '@/lib/food';
 import { aiErrorText, askAI } from '@/lib/ai';
-import { foodByBarcode, foodName } from '@/lib/foodsDb';
+import { foodByBarcode, foodName, myFix } from '@/lib/foodsDb';
 import { takePhoto } from '@/lib/photo';
 import { supabase } from '@/lib/supabase';
 import { fmt } from '@/lib/nutrition';
@@ -32,8 +32,8 @@ type Product = {
   c: number;
   f: number;
   sugar: number;
-  /** Where the numbers come from: Open Food Facts, or a Gymi user who typed the label. */
-  src: 'off' | 'user';
+  /** Where the numbers come from: Open Food Facts, a Gymi user who typed the label, or your own fix. */
+  src: 'off' | 'user' | 'fix';
   /** The product's id in our food database, when it came from there. */
   id?: string;
 };
@@ -41,8 +41,8 @@ type Product = {
 type Nutriments = Record<string, number | string | undefined>;
 
 async function lookup(code: string, lang: 'en' | 'ar'): Promise<Product | null> {
-  // Our own database first: fast, and works when Open Food Facts is down.
-  const own = await foodByBarcode(code).catch(() => null);
+  // Your own fix first, then our database (fast, and works when Open Food Facts is down).
+  const own = (await myFix(code).catch(() => null)) ?? (await foodByBarcode(code).catch(() => null));
   if (own)
     return {
       name: foodName(own, lang),
@@ -55,7 +55,7 @@ async function lookup(code: string, lang: 'en' | 'ar'): Promise<Product | null> 
       c: +own.carbs_100,
       f: +own.fat_100,
       sugar: +(own.sugar_100 ?? 0),
-      src: own.source === 'user' ? 'user' : 'off',
+      src: own.category === 'fix' ? 'fix' : own.source === 'user' ? 'user' : 'off',
       id: own.id,
     };
   const fields = 'product_name,product_name_ar,product_name_en,brands,quantity,serving_quantity,nutriments,image_front_small_url';
@@ -91,7 +91,7 @@ async function lookup(code: string, lang: 'en' | 'ar'): Promise<Product | null> 
 export default function ProductScreen() {
   const { t, lang } = useT();
   const { code } = useLocalSearchParams<{ code?: string }>();
-  const [state, setState] = useState<'loading' | 'found' | 'missing' | 'error'>(code ? 'loading' : 'missing');
+  const [state, setState] = useState<'loading' | 'found' | 'missing' | 'error' | 'fix'>(code ? 'loading' : 'missing');
   const [prod, setProd] = useState<Product | null>(null);
 
   useEffect(() => {
@@ -117,7 +117,9 @@ export default function ProductScreen() {
           <Text color="sec">{t('Looking it up…')}</Text>
         </View>
       ) : state === 'found' && prod ? (
-        <Found x={prod} code={code!} />
+        <Found x={prod} code={code!} onFix={() => setState('fix')} />
+      ) : state === 'fix' && prod ? (
+        <Manual code={code} offline={false} init={prod} />
       ) : (
         <Manual code={code} offline={state === 'error'} />
       )}
@@ -125,7 +127,7 @@ export default function ProductScreen() {
   );
 }
 
-function Found({ x, code }: { x: Product; code: string }) {
+function Found({ x, code, onFix }: { x: Product; code: string; onFix: () => void }) {
   const { t } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
@@ -237,9 +239,10 @@ function Found({ x, code }: { x: Product; code: string }) {
       <Row gap={6} style={{ alignItems: 'flex-start', paddingHorizontal: 4 }}>
         <Icon name="info" size={16} color={c.sec} />
         <Text variant="small" color="sec" style={{ flex: 1 }}>
-          {t(x.src === 'user' ? 'Typed from the label by a Gymi user. Check the label if a number looks wrong.' : 'Data from Open Food Facts. Check the label if a number looks wrong.')}
+          {t(x.src === 'fix' ? 'These are the numbers you fixed.' : x.src === 'user' ? 'Typed from the label by a Gymi user. Check the label if a number looks wrong.' : 'Data from Open Food Facts. Check the label if a number looks wrong.')}
         </Text>
       </Row>
+      <Button kind="soft" icon="edit" title={t('Numbers wrong? Fix them')} color={c.text} style={{ marginTop: 12 }} onPress={onFix} />
       <Button title={t('Add to log')} disabled={!(grams > 0)} style={{ marginTop: 16 }} onPress={add} />
     </View>
   );
@@ -247,14 +250,20 @@ function Found({ x, code }: { x: Product; code: string }) {
 
 /** Product not found: type the label exactly as printed (per serving or per 100 g), then how much you ate.
  * The product is saved, so the next scan finds it and the log can show its details. */
-function Manual({ code, offline }: { code?: string; offline: boolean }) {
+function Manual({ code, offline, init }: { code?: string; offline: boolean; init?: Product }) {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
   const logFood = useLogFood();
-  const [v, setV] = useState({ name: '', brand: '', size: '', k: '', p: '', c: '', f: '', sugar: '', fiber: '', sodium: '', g: '' });
-  const [unit, setUnit] = useState<'g' | 'ml'>('g');
-  const [basis, setBasis] = useState<'serving' | '100'>('serving');
+  // Fixing a product: start from its numbers (per 100) so you only change what's wrong.
+  const r1 = (n: number) => String(Math.round(n * 10) / 10);
+  const [v, setV] = useState(() =>
+    init
+      ? { name: init.name, brand: init.brand, size: String(init.size), k: r1(init.k), p: r1(init.p), c: r1(init.c), f: r1(init.f), sugar: init.sugar ? r1(init.sugar) : '', fiber: '', sodium: '', g: '' }
+      : { name: '', brand: '', size: '', k: '', p: '', c: '', f: '', sugar: '', fiber: '', sodium: '', g: '' },
+  );
+  const [unit, setUnit] = useState<'g' | 'ml'>(init?.unit ?? 'g');
+  const [basis, setBasis] = useState<'serving' | '100'>(init ? '100' : 'serving');
   const [um, setUm] = useState<'serving' | 'g'>('serving');
   const [sv, setSv] = useState(1);
   const [reading, setReading] = useState(false);
@@ -291,7 +300,7 @@ function Manual({ code, offline }: { code?: string; offline: boolean }) {
   const add = async () => {
     if (!ok || busy) return;
     setBusy(true);
-    const { data: foodId } = await supabase.rpc('save_user_product', {
+    const { data: foodId } = await supabase.rpc(init && code ? 'fix_product' : 'save_user_product', {
       p_barcode: code ?? null, p_name: v.name.trim(), p_brand: v.brand.trim() || null, p_unit: unit, p_serving: size || 100,
       p_kcal: per.k, p_protein: per.p, p_carbs: per.c, p_fat: per.f,
       p_sugar: v.sugar ? per.sugar : null, p_fiber: v.fiber ? per.fiber : null, p_sodium: v.sodium ? per.sodium : null,
@@ -315,12 +324,12 @@ function Manual({ code, offline }: { code?: string; offline: boolean }) {
   return (
     <View>
       <Card style={{ alignItems: 'center', paddingVertical: 22 }}>
-        <Icon name={offline ? 'warn' : 'search'} size={30} color={c.sec} />
+        <Icon name={init ? 'edit' : offline ? 'warn' : 'search'} size={30} color={c.sec} />
         <Text variant="h3" center style={{ marginTop: 8 }}>
-          {t(offline ? 'Couldn’t look it up' : 'We couldn’t find this product')}
+          {t(init ? 'Fix the numbers' : offline ? 'Couldn’t look it up' : 'We couldn’t find this product')}
         </Text>
         <Text variant="small" color="sec" center style={{ marginTop: 4 }}>
-          {t('Type the label as it is printed. We save it, so next time the scan finds it.')}
+          {t(init ? 'Change what’s wrong, as printed on the label. Your fix is saved for you, so the next scan shows your numbers.' : 'Type the label as it is printed. We save it, so next time the scan finds it.')}
         </Text>
         {code ? (
           <Text variant="xs" color="sec" num style={{ marginTop: 6 }}>
