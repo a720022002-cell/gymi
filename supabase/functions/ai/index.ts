@@ -21,6 +21,8 @@ const env = (k: string, d = '') => Deno.env.get(k) ?? d;
 const QWEN = 'qwen/qwen3-vl-235b-a22b-instruct';
 let lastDetail = '';
 let lastModel = '';
+/** Tokens and cost of the last AI call, saved to ai_calls for the admin cost page. */
+let lastUsage = { prompt: 0, completion: 0, cost: 0 };
 const openrouterKey = () => env('OPENROUTER_API_KEY') || env('OpenRouter') || env('OPENROUTER');
 
 type Part = { text: string } | { image: string; mime: string } | { file: string; mime: string; name: string };
@@ -52,6 +54,8 @@ async function gemini(model: string, system: string, msgs: Msg[], schema?: objec
   }
   if (!res.ok) throw new Error(`gemini ${res.status}: ${(await res.text()).slice(0, 300)}`);
   const data = await res.json();
+  lastModel = model;
+  lastUsage = { prompt: data?.usageMetadata?.promptTokenCount ?? 0, completion: data?.usageMetadata?.candidatesTokenCount ?? 0, cost: 0 };
   const text = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('') ?? '';
   return text;
 }
@@ -64,6 +68,8 @@ async function openrouter(system: string, msgs: Msg[], schema?: object, retry = 
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
     body: JSON.stringify({
       model: env('OPENROUTER_MODEL', QWEN),
+      // Ask OpenRouter to return tokens and the real cost of this call.
+      usage: { include: true },
       // PDFs (lab reports) are turned into text by OpenRouter's free PDF reader.
       ...(msgs.some((m) => m.parts.some((p) => 'file' in p)) ? { plugins: [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }] } : {}),
       // Some free models don't take a separate system message, so the instructions go first in the chat.
@@ -91,6 +97,7 @@ async function openrouter(system: string, msgs: Msg[], schema?: object, retry = 
   if (!res.ok) throw new Error(res.status === 429 ? 'busy' : lastDetail);
   const data = await res.json();
   lastModel = data?.model ?? '';
+  lastUsage = { prompt: data?.usage?.prompt_tokens ?? 0, completion: data?.usage?.completion_tokens ?? 0, cost: Number(data?.usage?.cost ?? 0) || 0 };
   const content = data?.choices?.[0]?.message?.content ?? '';
   // An empty answer happens on busy free models: try once more.
   if (!String(content).trim() && retry) return openrouter(system, msgs, schema, false);
@@ -245,12 +252,34 @@ Deno.serve(async (req) => {
     if (!env('GEMINI_API_KEY') && !openrouterKey()) return json({ error: 'ai_off' }, 503);
 
     const admin = createClient(url, env('SUPABASE_SERVICE_ROLE_KEY'));
+    // Admin cost page: OpenRouter balance and total spend (doesn't count toward the daily limit).
+    if (task === 'admin_credits') {
+      const { data: isAdmin } = await admin.from('admins').select('user_id').eq('user_id', u.user.id).maybeSingle();
+      if (!isAdmin) return json({ error: 'auth' }, 403);
+      const key = openrouterKey();
+      if (!key) return json({ result: { connected: false } });
+      const [c, k] = await Promise.all([
+        fetch('https://openrouter.ai/api/v1/credits', { headers: { Authorization: `Bearer ${key}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+        fetch('https://openrouter.ai/api/v1/key', { headers: { Authorization: `Bearer ${key}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      ]);
+      return json({ result: { connected: true, credits: c?.data?.total_credits ?? null, used: c?.data?.total_usage ?? null, key_usage: k?.data?.usage ?? null, key_limit: k?.data?.limit ?? null, model: env('OPENROUTER_MODEL', QWEN) } });
+    }
+    const log = (ok: boolean, error?: string) =>
+      admin.from('ai_calls').insert({ user_id: u.user.id, task, model: lastModel, prompt_tokens: lastUsage.prompt, completion_tokens: lastUsage.completion, cost_usd: lastUsage.cost, ok, error: error?.slice(0, 300) ?? null }).then(() => {}, () => {});
     const { data: ok } = await admin.rpc('ai_take', { p_user: u.user.id, p_limit: Number(env('AI_DAILY_LIMIT', '80')) });
     if (ok === false) return json({ error: 'limit' }, 429);
 
     lastModel = '';
     lastDetail = '';
-    const result = await run(task, body);
+    lastUsage = { prompt: 0, completion: 0, cost: 0 };
+    let result;
+    try {
+      result = await run(task, body);
+    } catch (e) {
+      await log(false, (e as Error).message === 'busy' || (e as Error).message === 'ai_off' ? `${(e as Error).message}: ${lastDetail}` : (e as Error).message);
+      throw e;
+    }
+    await log(true);
     return json({ result, model: lastModel || undefined });
   } catch (e) {
     const msg = (e as Error).message;

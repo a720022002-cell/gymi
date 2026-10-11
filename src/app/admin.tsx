@@ -80,6 +80,25 @@ function Overview({ go }: { go: (t: Tab) => void }) {
   ];
   return (
     <View>
+      <Text variant="small" weight={700} color="sec" style={{ marginHorizontal: 4, marginBottom: 8 }}>
+        {t('Team tools')}
+      </Text>
+      <Row gap={8} style={{ marginBottom: 14 }}>
+        {(
+          [
+            ['doc', 'Accounting', '/admin-money'],
+            ['pulse', 'Server', '/admin-server'],
+            ['sparkle', 'AI costs', '/admin-ai'],
+          ] as const
+        ).map(([i, l, r]) => (
+          <Card key={l} onPress={() => router.push(r)} style={{ flex: 1, alignItems: 'center', paddingVertical: 16, marginBottom: 0 }}>
+            <Icon name={i} size={24} color={c.cobalt} />
+            <Text variant="small" weight={700} center style={{ marginTop: 6 }}>
+              {t(l)}
+            </Text>
+          </Card>
+        ))}
+      </Row>
       {s.pending ? (
         <Card onPress={() => go('coaches')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 2, borderColor: c.cobalt }}>
           <Icon name="clock" size={22} color={c.cobalt} />
