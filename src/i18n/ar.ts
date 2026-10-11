@@ -1082,6 +1082,7 @@ export const AR: Record<string, string> = {
   "Have a free meal": "خذ وجبة حرة",
   "Have it anyway": "آكله على كل حال",
   "Have it with a glass of milk.": "كُله مع كاس حليب.",
+  "Have your post-workout meal within 2 hours.": "خذ وجبة ما بعد التمرين خلال ساعتين.",
   "Headache": "صداع",
   "Headline": "العنوان",
   "Health": "الصحة",

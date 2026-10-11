@@ -44,7 +44,20 @@ export default function Summary() {
           {t('Great work. It’s saved and will show in grey next time.')}
         </Text>
       </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 16 }}>
+      <Card style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 16, marginBottom: 10 }}>
+        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(245,158,11,0.16)', alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name="flame" size={24} color="#F59E0B" strokeWidth={2} />
+        </View>
+        <View>
+          <Text num size={26}>
+            {`${fmt(s.kcal)} ${t('kcal')}`}
+          </Text>
+          <Text variant="xs" weight={700} color="sec">
+            {t('Calories burned')}
+          </Text>
+        </View>
+      </Card>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
         {(
           [
             ['Time', t('{n} min', { n: s.minutes })],
@@ -110,7 +123,7 @@ export default function Summary() {
       <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <Mark size={24} color={c.cobalt} stroke={5} />
         <Text variant="small" weight={700} style={{ flex: 1 }}>
-          {t('About {n} kcal burned. Have your post-workout meal within 2 hours.', { n: s.kcal })}
+          {t('Have your post-workout meal within 2 hours.')}
         </Text>
       </Card>
       <Button kind="glass" icon="share" title={t('Share your workout')} style={{ marginTop: 8 }} onPress={() => setShare(true)} />
