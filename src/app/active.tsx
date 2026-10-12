@@ -156,6 +156,15 @@ export default function Active() {
     update((x) => ({ ...x, ex: x.ex.map((e, i) => (i !== ei ? e : { ...e, sets: e.sets.map((st, j) => (j === si ? { ...st, [k]: v } : st)) })) }));
 
   const editSets = (ei: number, fn: (sets: SessionEx['sets']) => SessionEx['sets']) => update((x) => ({ ...x, ex: x.ex.map((e, i) => (i !== ei ? e : { ...e, sets: fn(e.sets) })) }));
+  // "Remove set": the last working set you haven't done yet (or the last set if they're all done). One set always stays.
+  const removeSet = (ei: number) =>
+    editSets(ei, (sets) => {
+      if (sets.length <= 1) return sets;
+      let k = -1;
+      for (let j = sets.length - 1; j >= 0; j--) if (!sets[j].done && !sets[j].warm) { k = j; break; }
+      if (k < 0) k = sets.length - 1;
+      return sets.filter((_, j) => j !== k);
+    });
   // A new working set copies the last one's targets; a warm-up goes before the working sets, lighter and with more reps.
   const addSet = (ei: number, warm: boolean) =>
     editSets(ei, (sets) => {
@@ -410,10 +419,20 @@ export default function Active() {
                     {t('Add set')}
                   </Text>
                 </Springy>
+                <Springy
+                  disabled={x.sets.length <= 1}
+                  onPress={() => removeSet(ei)}
+                  scaleTo={0.97}
+                  style={{ flex: 1, height: 40, borderRadius: 12, backgroundColor: c.inset, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: x.sets.length <= 1 ? 0.4 : 1 }}>
+                  <Icon name="minus" size={16} color={c.down} />
+                  <Text variant="small" weight={700}>
+                    {t('Remove set')}
+                  </Text>
+                </Springy>
                 <Springy onPress={() => addSet(ei, true)} scaleTo={0.97} style={{ flex: 1, height: 40, borderRadius: 12, backgroundColor: c.inset, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                   <Icon name="flame" size={16} color="#F59E0B" />
                   <Text variant="small" weight={700}>
-                    {t('Add warm-up')}
+                    {t('Warm-up')}
                   </Text>
                 </Springy>
               </Row>
