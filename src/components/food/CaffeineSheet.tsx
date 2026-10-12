@@ -46,7 +46,7 @@ export function CaffeineSheet() {
             ))}
           </View>
           <Text variant="xs" color="sec" style={{ marginTop: 12 }}>
-            {t('A guess from the name of what you logged. Pregnant, or sensitive to caffeine? Ask your doctor what’s right for you.')}
+            {t('A guess from what you logged. Pregnant, or sensitive to caffeine? Ask your doctor what’s right for you.')}
           </Text>
           <Button title={t('Got it')} style={{ marginTop: 16 }} onPress={close} />
         </View>

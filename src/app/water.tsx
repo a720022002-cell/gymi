@@ -14,6 +14,7 @@ import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Label, NavButton, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
+import { caffeineCheck, caffeineOfDrink, caffeineToday, showCaffeineAlert } from '@/lib/caffeine';
 import { useFood } from '@/lib/food';
 import { calcPlan, fmt, fmtTime } from '@/lib/nutrition';
 import { fastTimes } from '@/lib/prayer';
@@ -36,8 +37,11 @@ export default function WaterScreen() {
   const fast = food.plan.ramadan ? fastTimes(food.plan.city, food.today) : null;
 
   const add = async (ml: number, kind = 'Water') => {
+    // Coffee or tea: warn about a big caffeine dose, counting what you already had today.
+    const caf = food.isToday ? caffeineCheck(caffeineOfDrink(kind, ml), caffeineToday(food.logs.map((l) => l.name), food.waterLogs), new Date().getHours() >= 15) : null;
     await food.addWater(ml, kind);
     toast(t('Added {n} ml {k}', { n: ml, k: t(kind).toLowerCase() }), { icon: 'drop' });
+    if (caf) setTimeout(() => showCaffeineAlert(caf), 900);
   };
 
   const time = (iso: string) => new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date(iso));

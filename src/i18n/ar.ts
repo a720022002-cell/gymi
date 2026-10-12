@@ -63,6 +63,7 @@ export const AR: Record<string, string> = {
   "A dot means you logged food that day.": "النقطة تعني إنك سجلت أكل في ذاك اليوم.",
   "A friend hits a PR": "صديق يحقق رقم قياسي",
   "A guess from the name of what you logged. Pregnant, or sensitive to caffeine? Ask your doctor what’s right for you.": "هذا تقدير من اسم اللي سجّلته. إذا كنتِ حامل أو جسمك حساس للكافيين، اسأل دكتورك وش المناسب لك.",
+  "A guess from what you logged. Pregnant, or sensitive to caffeine? Ask your doctor what’s right for you.": "هذا تقدير من اللي سجّلته. إذا كنتِ حامل أو جسمك حساس للكافيين، اسأل دكتورك وش المناسب لك.",
   "A heads-up with what’s on your plan": "تنبيه بالمطلوب في خطتك",
   "A line about you. Friends see it on your profile.": "سطر عنك. أصدقاؤك يشوفونه في ملفك.",
   "A little": "شوية",

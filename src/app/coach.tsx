@@ -12,7 +12,7 @@ import { fontFor, Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
-import { type CaffeineAlert, caffeineCheck, showCaffeineAlert } from '@/lib/caffeine';
+import { type CaffeineAlert, caffeineCheck, caffeineOf, caffeineToday, showCaffeineAlert } from '@/lib/caffeine';
 import { aiErrorText, askAI } from '@/lib/ai';
 import { useAuth } from '@/lib/auth';
 import { useRecovery } from '@/components/train/RecoveryCard';
@@ -184,15 +184,15 @@ export default function Coach() {
   const applyActions = async (acts: ChatAction[]) => {
     const done: Logged[] = [];
     // Today's drinks so far, to warn about a big caffeine dose.
-    const eatenToday = food.isToday ? food.logs.map((l) => l.name) : [];
+    let cafSoFar = food.isToday ? caffeineToday(food.logs.map((l) => l.name), food.waterLogs) : 0;
     let caf: CaffeineAlert | null = null;
     for (const a of acts) {
       if (a.type === 'food' && a.kcal > 0) {
         const row = await food.addLog({ name: a.name, kcal: a.kcal, protein: a.protein || 0, carbs: a.carbs || 0, fat: a.fat || 0 }, food.today);
         if (row) {
           done.push({ ...a, logId: row.id });
-          caf = caf ?? caffeineCheck(a.name, eatenToday, new Date().getHours() >= 15);
-          eatenToday.push(a.name);
+          caf = caf ?? caffeineCheck(caffeineOf(a.name), cafSoFar, new Date().getHours() >= 15);
+          cafSoFar += caffeineOf(a.name);
         }
       } else if (a.type === 'cardio' && a.minutes > 0) {
         const k = Math.max(0, CARDIO.findIndex(([n]) => n === a.kind));

@@ -1,7 +1,7 @@
 import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
-import { caffeineCheck, showCaffeineAlert } from './caffeine';
+import { caffeineCheck, caffeineOf, caffeineToday, showCaffeineAlert } from './caffeine';
 import { useAuth } from './auth';
 import type { MealPlan } from './coaching';
 import { addDays, ageFromIso, defaultPlan, type FoodPlan, hhmmOf, localDay, type Macros, mealAt, type Person, planMeals, RAMADAN_SWITCH, targets } from './nutrition';
@@ -491,7 +491,7 @@ export function useLogFood() {
       }
       toast(t('Logged to Food: {n} kcal', { n: Math.round(item.kcal) }), { ai: true, undo: () => food.deleteLog(row.id) });
       // A big coffee, energy drink or pre-workout: warn about the caffeine first.
-      const caf = food.isToday ? caffeineCheck(item.parts?.length ? item.parts.join(', ') : item.name, food.logs.map((l) => l.name), new Date().getHours() >= 15) : null;
+      const caf = food.isToday ? caffeineCheck(caffeineOf(item.parts?.length ? item.parts.join(', ') : item.name), caffeineToday(food.logs.map((l) => l.name), food.waterLogs), new Date().getHours() >= 15) : null;
       if (caf) {
         setTimeout(() => showCaffeineAlert(caf), 900);
         return row;

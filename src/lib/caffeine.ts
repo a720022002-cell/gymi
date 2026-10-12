@@ -52,13 +52,21 @@ function oneDrink(part: string): number {
   return Math.round(mg);
 }
 
+/** Coffee or tea logged on the Water screen, by amount: brewed coffee about 40 mg per 100 ml, tea about 20. */
+export function caffeineOfDrink(kind: string, ml: number) {
+  return Math.round(ml * (kind === 'Coffee' ? 0.4 : kind === 'Tea' ? 0.2 : 0));
+}
+
+/** Caffeine so far today: food you logged (by name) plus coffee and tea on the Water screen. */
+export function caffeineToday(foodNames: string[], drinks: { kind: string; ml: number }[]) {
+  return foodNames.reduce((a, x) => a + caffeineOf(x), 0) + drinks.reduce((a, d) => a + caffeineOfDrink(d.kind, d.ml), 0);
+}
+
 export type CaffeineAlert = { once: number; day: number; late: boolean };
 
-/** Should logging this item warn you? Once: a big single dose. Day: today's total just went past the daily amount. */
-export function caffeineCheck(name: string, dayLogNames: string[], late: boolean): CaffeineAlert | null {
-  const once = caffeineOf(name);
+/** Should this drink warn you? Once: a big single dose (mg). Day: today's total just went past the daily amount. */
+export function caffeineCheck(once: number, before: number, late: boolean): CaffeineAlert | null {
   if (!once) return null;
-  const before = dayLogNames.reduce((a, x) => a + caffeineOf(x), 0);
   const day = before + once;
   if (once > CAFFEINE_ONCE || (day > CAFFEINE_DAY && before <= CAFFEINE_DAY)) return { once, day, late };
   return null;
