@@ -36,6 +36,10 @@ export type SavedMeal = {
   code: string;
   /** The code this meal was copied from (added by code). */
   from_code: string | null;
+  /** Recipes: cooking steps, how many servings the whole recipe makes (kcal and macros are for one), and the video it came from. */
+  steps?: string[] | null;
+  servings?: number | null;
+  source?: string | null;
 };
 
 export type NewSavedMeal = Omit<SavedMeal, 'id' | 'code' | 'from_code'> & { code?: string; from_code?: string | null };

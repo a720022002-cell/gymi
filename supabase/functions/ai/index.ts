@@ -180,6 +180,70 @@ const FOOD = {
   required: ['title', 'items'],
 };
 
+
+// Recipe from a video link: the caption and cover picture that TikTok, YouTube and Instagram share publicly.
+// Only these sites are fetched (never any other address).
+const LINK_HOSTS = /(^|\.)(tiktok\.com|instagram\.com|youtube\.com|youtu\.be)$/i;
+const toB64 = (buf: ArrayBuffer) => {
+  const u = new Uint8Array(buf);
+  let s = '';
+  for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000));
+  return btoa(s);
+};
+const unHtml = (x: string) => x.replace(/&quot;/g, '"').replace(/&#39;|&#x27;/g, "'").replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)));
+async function getUrl(u: string, init?: RequestInit) {
+  const r = await fetch(u, { ...init, signal: AbortSignal.timeout(8000), redirect: 'follow' });
+  return r.ok ? r : null;
+}
+async function picture(u?: string) {
+  if (!u || !/^https:\/\//.test(u)) return null;
+  const r = await getUrl(u).catch(() => null);
+  const buf = r ? await r.arrayBuffer() : null;
+  return buf && buf.byteLength < 3_000_000 ? toB64(buf) : null;
+}
+async function linkInfo(raw: string): Promise<{ site: string; text: string; image: string | null } | null> {
+  let url: URL;
+  try {
+    url = new URL(raw.trim());
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'https:' || !LINK_HOSTS.test(url.hostname)) return null;
+  const host = url.hostname.toLowerCase();
+  if (host.endsWith('tiktok.com')) {
+    const r = await getUrl(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url.toString())}`).catch(() => null);
+    const j = r ? await r.json().catch(() => null) : null;
+    if (!j) return { site: 'tiktok', text: '', image: null };
+    return { site: 'tiktok', text: [j.title, j.author_name ? `by ${j.author_name}` : ''].filter(Boolean).join('\n'), image: await picture(j.thumbnail_url) };
+  }
+  if (host.endsWith('youtube.com') || host.endsWith('youtu.be')) {
+    const r = await getUrl(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(url.toString())}`).catch(() => null);
+    const j = r ? await r.json().catch(() => null) : null;
+    return { site: 'youtube', text: j?.title ?? '', image: await picture(j?.thumbnail_url) };
+  }
+  // Instagram shows the caption to link previews when the post is public.
+  const r = await getUrl(url.toString(), { headers: { 'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)' } }).catch(() => null);
+  const html = r ? (await r.text()).slice(0, 400_000) : '';
+  const meta = (k: string) => unHtml(html.match(new RegExp(`<meta[^>]+(?:property|name)="${k}"[^>]+content="([^"]*)"`, 'i'))?.[1] ?? '');
+  return { site: 'instagram', text: [meta('og:title'), meta('og:description')].filter(Boolean).join('\n'), image: await picture(meta('og:image') || undefined) };
+}
+
+const RECIPE = (lang: string) => `You turn a short cooking video (TikTok, Instagram Reels, YouTube Shorts or a clip) into a recipe for a calorie tracker. You get the caption and frames from the video in order; read any text written on screen. ${LANG(lang)}${lang === 'ar' ? ' Write "title", ingredient names and steps in Arabic.' : ''}
+List every ingredient with its amount in grams (convert cups and spoons: 1 cup uncooked rice 185 g, 1 cup flour 125 g, 1 tbsp oil 14 g, 1 tbsp butter 14 g, 1 tbsp sugar 12 g, 1 egg 50 g, 1 cup milk 245 g) and the calories, protein, carbs and fat for that amount, using raw values. If no amount is shown, use a normal amount for that dish.
+"servings" is how many portions the whole recipe makes (from the caption, or a sensible guess). "steps" are short cooking steps in order. "note" says briefly what you had to guess. If this is not a recipe, set found=false and say why in "note".`;
+const RECIPE_SCHEMA = {
+  type: 'object',
+  properties: {
+    found: { type: 'boolean' },
+    title: { type: 'string' },
+    servings: { type: 'number' },
+    ingredients: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, grams: { type: 'number' }, kcal: { type: 'number' }, protein: { type: 'number' }, carbs: { type: 'number' }, fat: { type: 'number' } }, required: ['name', 'grams', 'kcal', 'protein', 'carbs', 'fat'] } },
+    steps: { type: 'array', items: { type: 'string' } },
+    note: { type: 'string' },
+  },
+  required: ['found', 'title', 'servings', 'ingredients', 'steps'],
+};
+
 async function run(task: string, b: Record<string, unknown>) {
   const lang = String(b.lang ?? 'en');
   const img = (k = 'image'): Part => ({ image: String(b[k]), mime: String(b.mime ?? 'image/jpeg') });
@@ -226,6 +290,25 @@ Return JSON: {"reply":"...","actions":[...],"suggest":[...],"card":{...},"memory
       return ask(task, `You turn a description of food into calories for a tracker. ${LANG(lang)} Names short. Estimate normal portions when no amount is given. ${PORTIONS} ${FLAGS}`, [
         { role: 'user', parts: [{ text: String(b.text ?? '').slice(0, 500) }] },
       ], FOOD);
+    case 'recipe': {
+      const parts: Part[] = [];
+      let caption = String(b.caption ?? '').slice(0, 3000);
+      let site = '';
+      if (b.url) {
+        const info = await linkInfo(String(b.url)).catch(() => null);
+        if (info) {
+          site = info.site;
+          caption = [info.text, caption].filter(Boolean).join('\n').slice(0, 4000);
+          if (info.image) parts.push({ image: info.image, mime: 'image/jpeg' });
+        }
+      }
+      for (const f of ((Array.isArray(b.frames) ? b.frames : []) as string[]).slice(0, 8)) parts.push({ image: String(f), mime: 'image/jpeg' });
+      // Nothing to read (a private post, or the site hid the caption).
+      if (!caption.trim() && !parts.length) return { found: false, title: '', servings: 1, ingredients: [], steps: [], note: 'no_content', site };
+      parts.push({ text: `Caption or description of the video:\n${caption || '(none)'}\nThe pictures are frames from the video, in order.` });
+      const out = (await ask(task, RECIPE(lang), [{ role: 'user', parts }], RECIPE_SCHEMA)) as Record<string, unknown>;
+      return { ...out, site };
+    }
     case 'label_photo':
       return ask(task, `You read nutrition labels. ${LANG(lang)} Read the per 100 g (or 100 ml) column. If only per serving is shown, convert to per 100 g using the serving size.`, [
         { role: 'user', parts: [img(), { text: 'Read this nutrition label.' }] },
@@ -328,6 +411,7 @@ Deno.serve(async (req) => {
     const task = String(body.task ?? '');
     if (typeof body.image === 'string' && body.image.length > 6_000_000) return json({ error: 'too_big' }, 413);
     if (typeof body.file === 'string' && body.file.length > 8_000_000) return json({ error: 'too_big' }, 413);
+    if (Array.isArray(body.frames) && JSON.stringify(body.frames).length > 8_000_000) return json({ error: 'too_big' }, 413);
     if (!env('GEMINI_API_KEY') && !openrouterKey()) return json({ error: 'ai_off' }, 503);
 
     const admin = createClient(url, env('SUPABASE_SERVICE_ROLE_KEY'));

@@ -37,7 +37,7 @@ export function LogSheet() {
     setChooser(null);
     setSeeded(null);
   };
-  const go = (path: '/food-search' | '/barcode' | '/saved-meals') => {
+  const go = (path: '/food-search' | '/barcode' | '/saved-meals' | '/recipe-import') => {
     close();
     setTimeout(() => router.push(path), 200);
   };
@@ -163,6 +163,16 @@ export function LogSheet() {
               ))}
             </View>
           ))}
+          <Springy onPress={() => go('/recipe-import')} scaleTo={0.98} style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 22, padding: 16, backgroundColor: 'rgba(127,127,135,0.1)' }}>
+            <Icon name="play" size={24} color={c.cobalt} />
+            <View style={{ flex: 1 }}>
+              <Text weight={700}>{t('Recipe from a video')}</Text>
+              <Text variant="xs" color="sec">
+                {t('TikTok, Instagram or your own video. The AI writes the recipe and calories.')}
+              </Text>
+            </View>
+            <Icon name="chev" size={16} color={c.sec} />
+          </Springy>
           <Springy onPress={() => setChooser('gallery')} style={{ marginTop: 10, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, padding: 6 }}>
             <Icon name="image" size={16} color={c.link} />
             <Text variant="small" weight={700} color="link">

@@ -1,4 +1,5 @@
 import * as Clipboard from 'expo-clipboard';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Platform, Share, TextInput, View } from 'react-native';
 
@@ -139,6 +140,7 @@ export default function SavedMeals() {
         {t('Tap a meal to see its code. Tap the calories to log it.')}
       </Text>
       <Button icon="plus" title={t('Create a meal')} onPress={() => setCreate(true)} />
+      <Button kind="glass" icon="play" title={t('Recipe from a video')} style={{ marginTop: 8 }} onPress={() => router.push('/recipe-import')} />
     </Screen>
   );
 }
@@ -170,7 +172,7 @@ function MealDetail({ m, onClose }: { m: SavedMeal; onClose: () => void }) {
       ) : null}
       <Card style={{ marginTop: 12 }}>
         <Row style={{ justifyContent: 'space-between' }}>
-          <Text weight={700}>{t('Total')}</Text>
+          <Text weight={700}>{m.servings && m.servings > 1 ? t('One serving') : t('Total')}</Text>
           <Text num size={22}>{`${fmt(m.kcal)} ${t('kcal')}`}</Text>
         </Row>
         <Row style={{ justifyContent: 'space-between', marginTop: 8 }}>
@@ -185,6 +187,44 @@ function MealDetail({ m, onClose }: { m: SavedMeal; onClose: () => void }) {
           </Text>
         </Row>
       </Card>
+      {m.servings && m.servings > 1 ? (
+        <Text variant="small" color="sec" style={{ marginTop: -4, marginBottom: 8, marginHorizontal: 4 }}>
+          {t('The numbers are for one serving. The whole recipe makes {n}.', { n: m.servings })}
+        </Text>
+      ) : null}
+      {m.ingredients?.length && m.steps?.length ? (
+        <Card>
+          <Text weight={700}>{t('Ingredients (one serving)')}</Text>
+          {m.ingredients.map((x, i) => (
+            <Row key={`${x.n}-${i}`} style={{ justifyContent: 'space-between', marginTop: 6 }}>
+              <Text variant="small" style={{ flex: 1 }}>
+                {x.n}
+              </Text>
+              <Text variant="small" color="sec" num>{`${Math.round(x.g)} ${t('g')} · ${fmt(x.k)} ${t('kcal')}`}</Text>
+            </Row>
+          ))}
+        </Card>
+      ) : null}
+      {m.steps?.length ? (
+        <Card>
+          <Text weight={700}>{t('Steps')}</Text>
+          {m.steps.map((x, i) => (
+            <Row key={i} gap={10} style={{ alignItems: 'flex-start', marginTop: 8 }}>
+              <Text num weight={700} style={{ color: c.cobalt, minWidth: 18 }}>
+                {i + 1}
+              </Text>
+              <Text variant="small" style={{ flex: 1 }}>
+                {x}
+              </Text>
+            </Row>
+          ))}
+          {m.source ? (
+            <Text variant="xs" color="sec" numberOfLines={1} style={{ marginTop: 10 }}>
+              {t('From: {s}', { s: m.source })}
+            </Text>
+          ) : null}
+        </Card>
+      ) : null}
       <Card style={{ alignItems: 'center', paddingVertical: 20 }}>
         <Text variant="xs" weight={700} color="sec">
           {t('Meal code')}
