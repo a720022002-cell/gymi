@@ -59,7 +59,6 @@ export default function RecipeImport() {
   const food = useFood();
   const logFood = useLogFood();
   const [url, setUrl] = useState('');
-  const [caption, setCaption] = useState('');
   const [frames, setFrames] = useState<string[] | null>(null);
   const [reading, setReading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -89,15 +88,15 @@ export default function RecipeImport() {
   const run = async () => {
     setBusy(true);
     setErr(null);
-    const r = await askAI<Result>('recipe', { url: url.trim() || undefined, caption: caption.trim() || undefined, frames: frames ?? undefined, lang });
+    const r = await askAI<Result>('recipe', { url: url.trim() || undefined, frames: frames ?? undefined, lang });
     setBusy(false);
     if (r.error || !r.result) return setErr(t(aiErrorText(r.error as AiError)));
     const x = r.result;
     if (!x.found || !x.ingredients?.length) {
       return setErr(
         x.note === 'no_content'
-          ? t('That post doesn’t share its caption (Instagram often hides it). Upload the video, or paste the caption below.')
-          : t('I couldn’t find a recipe in this video. Try another one, or paste the caption.'),
+          ? t('Couldn’t open that link. It may be private, or Instagram hid it. Upload the video instead.')
+          : t('The recipe isn’t written in this post. Upload the video so the AI can read what’s shown in it.'),
       );
     }
     setRes(x);
@@ -141,24 +140,12 @@ export default function RecipeImport() {
     return (
       <Screen title={t('Recipe from a video')} back>
         <Text color="sec" style={{ marginTop: -8 }}>
-          {t('Paste a TikTok, Instagram or YouTube link, or upload the video. The AI writes down the recipe and works out the calories.')}
+          {t('Paste a TikTok, Instagram or YouTube link, or upload the video. The AI finds the recipe and works out the calories.')}
         </Text>
         <Field label={t('Video link')} value={url} onChangeText={setUrl} placeholder="https://www.tiktok.com/…" autoCapitalize="none" autoCorrect={false} inputMode="url" />
         {web ? (
           <Button kind="soft" icon="play" color={c.text} loading={reading} title={frames ? t('Video added ✓ (tap to change)') : t('Or upload the video')} style={{ marginTop: 4 }} onPress={pickVideo} />
         ) : null}
-        <Text variant="small" weight={700} color="sec" style={{ marginTop: 16, marginBottom: 6, marginHorizontal: 4 }}>
-          {t('Caption (optional, helps a lot)')}
-        </Text>
-        <TextInput
-          value={caption}
-          onChangeText={setCaption}
-          multiline
-          placeholder={t('Paste the caption or the ingredients from the post')}
-          placeholderTextColor={c.sec}
-          accessibilityLabel={t('Caption (optional, helps a lot)')}
-          style={{ minHeight: 96, borderRadius: 16, backgroundColor: c.card, padding: 14, fontSize: 15, color: c.text, textAlignVertical: 'top' }}
-        />
         {err ? (
           <Card style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', marginTop: 12 }}>
             <Icon name="warn" size={18} color={c.down} />
@@ -167,9 +154,9 @@ export default function RecipeImport() {
             </Text>
           </Card>
         ) : null}
-        <Button icon="sparkle" title={t('Get the recipe')} loading={busy} disabled={reading || (!url.trim() && !frames && !caption.trim())} style={{ marginTop: 16 }} onPress={run} />
+        <Button icon="sparkle" title={t('Get the recipe')} loading={busy} disabled={reading || (!url.trim() && !frames)} style={{ marginTop: 16 }} onPress={run} />
         <Text variant="xs" color="sec" center style={{ marginTop: 10 }}>
-          {t('The AI reads the caption and what’s shown in the video, not the sound. Instagram often hides captions from apps: if so, upload the video or paste the caption.')}
+          {t('The AI reads the post’s caption and what’s shown in the video, not the sound. If a link doesn’t work (Instagram often hides posts), upload the video.')}
         </Text>
       </Screen>
     );

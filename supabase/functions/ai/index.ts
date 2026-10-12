@@ -183,6 +183,7 @@ const FOOD = {
 
 // Recipe from a video link: the caption and cover picture that TikTok, YouTube and Instagram share publicly.
 // Only these sites are fetched (never any other address).
+const MOBILE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 const LINK_HOSTS = /(^|\.)(tiktok\.com|instagram\.com|youtube\.com|youtu\.be)$/i;
 const toB64 = (buf: ArrayBuffer) => {
   const u = new Uint8Array(buf);
@@ -202,19 +203,38 @@ async function picture(u?: string) {
   return buf && buf.byteLength < 3_000_000 ? toB64(buf) : null;
 }
 async function linkInfo(raw: string): Promise<{ site: string; text: string; image: string | null } | null> {
+  // Links shared from the apps often come with words around them ("Check out this video! https://vm.tiktok.com/…").
+  const found = raw.match(/https?:\/\/[^\s"'<>]+/i)?.[0] ?? raw.trim();
   let url: URL;
   try {
-    url = new URL(raw.trim());
+    url = new URL(found.replace(/^http:/i, 'https:'));
   } catch {
     return null;
   }
   if (url.protocol !== 'https:' || !LINK_HOSTS.test(url.hostname)) return null;
   const host = url.hostname.toLowerCase();
   if (host.endsWith('tiktok.com')) {
-    const r = await getUrl(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url.toString())}`).catch(() => null);
-    const j = r ? await r.json().catch(() => null) : null;
-    if (!j) return { site: 'tiktok', text: '', image: null };
-    return { site: 'tiktok', text: [j.title, j.author_name ? `by ${j.author_name}` : ''].filter(Boolean).join('\n'), image: await picture(j.thumbnail_url) };
+    // Short share links (vm.tiktok.com, tiktok.com/t/…) redirect to the video; find its number.
+    let id = url.pathname.match(/\/(?:video|photo|v)\/(\d{8,})/)?.[1];
+    if (!id) {
+      const r = await getUrl(url.toString(), { headers: { 'User-Agent': MOBILE_UA } }).catch(() => null);
+      id = r?.url.match(/\/(?:video|photo|v)\/(\d{8,})/)?.[1];
+    }
+    if (!id) return { site: 'tiktok', text: '', image: null };
+    const page = `https://www.tiktok.com/@_/video/${id}`;
+    const [o, h] = await Promise.all([
+      getUrl(`https://www.tiktok.com/oembed?url=${encodeURIComponent(page)}`).then((r) => r?.json()).catch(() => null),
+      // The video page has the whole caption, which can be longer than the preview's.
+      getUrl(page, { headers: { 'User-Agent': MOBILE_UA } }).then((r) => r?.text()).catch(() => ''),
+    ]);
+    let desc = '';
+    try {
+      const m = (h ?? '').match(/"desc":"((?:[^"\\]|\\.)*)"/);
+      desc = m ? JSON.parse(`"${m[1]}"`) : '';
+    } catch {}
+    const title = o?.title ?? '';
+    const text = desc.length > title.length ? desc : title;
+    return { site: 'tiktok', text: [text, o?.author_name ? `by ${o.author_name}` : ''].filter(Boolean).join('\n'), image: await picture(o?.thumbnail_url) };
   }
   if (host.endsWith('youtube.com') || host.endsWith('youtu.be')) {
     const r = await getUrl(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(url.toString())}`).catch(() => null);
@@ -230,7 +250,7 @@ async function linkInfo(raw: string): Promise<{ site: string; text: string; imag
 
 const RECIPE = (lang: string) => `You turn a short cooking video (TikTok, Instagram Reels, YouTube Shorts or a clip) into a recipe for a calorie tracker. You get the caption and frames from the video in order; read any text written on screen. ${LANG(lang)}${lang === 'ar' ? ' Write "title", ingredient names and steps in Arabic.' : ''}
 List every ingredient with its amount in grams (convert cups and spoons: 1 cup uncooked rice 185 g, 1 cup flour 125 g, 1 tbsp oil 14 g, 1 tbsp butter 14 g, 1 tbsp sugar 12 g, 1 egg 50 g, 1 cup milk 245 g) and the calories, protein, carbs and fat for that amount, using raw values. If no amount is shown, use a normal amount for that dish.
-"servings" is how many portions the whole recipe makes (from the caption, or a sensible guess). "steps" are short cooking steps in order. "note" says briefly what you had to guess. If this is not a recipe, set found=false and say why in "note".`;
+"servings" is how many portions the whole recipe makes (from the caption, or a sensible guess). If the caption gives the calories or macros per serving, that is the creator's own count: use their servings and keep your grams so one serving lands close to it, unless it is clearly wrong. "steps" are short cooking steps in order. "note" says briefly what you had to guess. If this is not a recipe, set found=false and say why in "note".`;
 const RECIPE_SCHEMA = {
   type: 'object',
   properties: {
