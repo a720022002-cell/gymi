@@ -236,8 +236,9 @@ function BadgeDetail({ b, pinned, count, canPin, onPin, onClose }: { b: Badge; p
 
 type DotState = 'done' | 'today' | 'planned' | 'upcoming' | 'rest' | 'missed';
 
-function WeekDots({ cells, legend }: { cells: { st: DotState; letter?: string }[]; legend: [DotState, string][] }) {
-  const { t } = useT();
+/** The week as dots (a tick when done, a ring for today, a moon for rest), with one short line under it instead of a legend. */
+function WeekDots({ cells, caption }: { cells: { st: DotState; letter?: string }[]; caption: string }) {
+  const { t, lang } = useT();
   const { colors: c } = useSettings();
   const { todayIdx } = useTrain();
   const look = (st: DotState) =>
@@ -268,21 +269,14 @@ function WeekDots({ cells, legend }: { cells: { st: DotState; letter?: string }[
               )}
             </View>
             <Text variant="xs" weight={700} color={i === todayIdx ? c.cobalt : 'sec'} style={{ marginTop: 4 }}>
-              {t(DAYS[i]).slice(0, 1)}
+              {lang === 'ar' ? 'حنثرخجس'[i] : t(DAYS[i]).slice(0, 1)}
             </Text>
           </View>
         ))}
       </Row>
-      <Row gap={14} style={{ justifyContent: 'center', flexWrap: 'wrap', marginTop: 12 }}>
-        {legend.map(([k, l]) => (
-          <Row key={k} gap={5}>
-            <View style={[{ width: 12, height: 12, borderRadius: 6 }, look(k)]} />
-            <Text variant="xs" weight={700} color="sec">
-              {t(l)}
-            </Text>
-          </Row>
-        ))}
-      </Row>
+      <Text variant="xs" weight={700} color="sec" center style={{ marginTop: 12 }}>
+        {caption}
+      </Text>
     </View>
   );
 }
@@ -291,15 +285,16 @@ function OverallStreak() {
   const { t } = useT();
   const { colors: c } = useSettings();
   const s = useStreaks();
-  const train = useTrain();
   const ws = weekStart(s.x.today);
   const cells = DAYS.map((_, i) => {
     const d = addDays(ws, i);
     if (s.active.has(d)) return { st: 'done' as const };
     if (d === s.x.today) return { st: 'today' as const };
-    if (d > s.x.today) return { st: train.week[i]?.w ? ('upcoming' as const) : ('rest' as const) };
+    // Any day you log counts, so there are no rest days here.
+    if (d > s.x.today) return { st: 'upcoming' as const };
     return { st: 'missed' as const };
   });
+  const logged = cells.filter((x) => x.st === 'done').length;
   return (
     <Card style={{ alignItems: 'center', paddingVertical: 24 }}>
       <Ring value={s.overall} max={Math.max(s.best, 1)} size={150} stroke={14}>
@@ -314,15 +309,7 @@ function OverallStreak() {
       <Text variant="small" color="sec" center style={{ marginTop: 4 }}>
         {t('Any day you log something counts: food, a workout, water, or your check-in. Best: {n} days.', { n: s.best })}
       </Text>
-      <WeekDots
-        cells={cells}
-        legend={[
-          ['done', 'Logged'],
-          ['today', 'Today'],
-          ['rest', 'Rest day'],
-          ['upcoming', 'Coming up'],
-        ]}
-      />
+      <WeekDots cells={cells} caption={t('This week: {n} of 7 days logged', { n: logged })} />
     </Card>
   );
 }
@@ -368,14 +355,7 @@ function WorkoutStreak() {
         {t('Every planned workout you finish adds one. Rest days don’t break it, only a missed workout does. Best: {n}.', { n: s.bestWorkouts })}
       </Text>
       {train.setupDone ? (
-        <WeekDots
-          cells={cells}
-          legend={[
-            ['done', 'Done'],
-            ['planned', 'Planned'],
-            ['rest', 'Rest day'],
-          ]}
-        />
+        <WeekDots cells={cells} caption={t('This week: {d} of {p} workouts done', { d: cells.filter((x) => x.st === 'done').length, p: train.week.filter((x) => x?.w).length })} />
       ) : null}
       {recent.length ? (
         <>

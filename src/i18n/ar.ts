@@ -2609,6 +2609,8 @@ export const AR: Record<string, string> = {
   "This was logged as a whole meal, so there is no ingredient list.": "انسجلت كوجبة كاملة، فما فيه قائمة مكونات.",
   "This week": "هالأسبوع",
   "This week: lighter weights and fewer sets (deload)": "هالأسبوع: أوزان أخف وجولات أقل (أسبوع تخفيف)",
+  "This week: {d} of {p} workouts done": "هالأسبوع: خلّصت {d} من {p} تمارين",
+  "This week: {n} of 7 days logged": "هالأسبوع: سجّلت {n} من 7 أيام",
   "This week’s load is {n}× your usual. Consider a lighter day or a deload week.": "حمل هالأسبوع {n}× المعتاد. فكّر بيوم أخف أو أسبوع تخفيف.",
   "This workout counts for {d}.": "هذا التمرين ينحسب ليوم {d}.",
   "This workout is on {n} days. Changes apply to all of them.": "هذا التمرين موجود في {n} أيام. التعديل ينطبق عليها كلها.",
