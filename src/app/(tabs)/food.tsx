@@ -20,7 +20,7 @@ import { useT } from '@/i18n';
 import { useCycleToday } from '@/lib/cyclePhase';
 import { useFood, useLogFood } from '@/lib/food';
 import { type Measure, useHealth } from '@/lib/health';
-import { addDays, fmt, fmtTime, type PlannedMeal, planMeals } from '@/lib/nutrition';
+import { addDays, fmt, fmtTime, hhmmOf, mealAt, type PlannedMeal, planMeals } from '@/lib/nutrition';
 import { fastTimes } from '@/lib/prayer';
 import { weekAvg } from '@/lib/progress';
 import { useSettings } from '@/theme/settings';
@@ -76,6 +76,12 @@ function FoodHome() {
     const [y, m, dd] = d.split('-').map(Number);
     return new Intl.DateTimeFormat(lang === 'ar' ? 'ar' : 'en-US', { weekday: 'short' }).format(new Date(y, m - 1, dd));
   };
+  // Logged food grouped by meal; food logged without a meal goes by the time it was logged.
+  const planned = planMeals(food.plan);
+  const mealOf = (x: (typeof food.logs)[number]) => x.meal || mealAt(planned, hhmmOf(new Date(x.created_at)));
+  // Meals in the order you ate them (logs come oldest first).
+  const order = [...new Set(food.logs.map(mealOf))];
+  const byMeal = order.map((m) => [m, food.logs.filter((x) => mealOf(x) === m)] as const);
   const timeOf = (iso: string) => new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
 
   return (
@@ -250,40 +256,51 @@ function FoodHome() {
             {food.logs.length ? t('{n} items, {k} kcal', { n: food.logs.length, k: fmt(food.eaten.k) }) : t(food.isToday ? 'What you ate today' : 'Nothing logged this day.')}
           </Text>
           {food.logs.length ? (
-            <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden', marginBottom: 12 }}>
-              {food.logs.map((x, i) => (
-                <Springy
-                  key={x.id}
-                  onPress={() => router.push({ pathname: '/logged', params: { id: x.id } })}
-                  scaleTo={0.99}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 60, paddingVertical: 10, paddingHorizontal: 16, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text weight={700} numberOfLines={2}>
-                      {x.name}
-                    </Text>
-                    <Text variant="small" color="sec">
-                      {[x.meal ? t(x.meal) : null, timeOf(x.created_at)].filter(Boolean).join(', ')}
-                    </Text>
-                    {x.sugar_high || x.fat_high ? (
-                      <Row gap={4} style={{ marginTop: 4, flexWrap: 'wrap' }}>
-                        {x.sugar_high ? <WarnChip label={t('High added sugar')} /> : null}
-                        {x.fat_high ? <WarnChip label={t('High fat')} /> : null}
-                      </Row>
-                    ) : null}
-                  </View>
-                  <Text num>{fmt(x.kcal)}</Text>
-                  <Springy
-                    onPress={async () => {
-                      const removed = await food.deleteLog(x.id);
-                      if (removed) toast(t('Removed {name}', { name: removed.name }), { icon: 'trash', undo: () => food.restoreLog(removed) });
-                    }}
-                    accessibilityLabel={t('Delete {name}', { name: x.name })}
-                    style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
-                    <Icon name="trash" size={18} color={c.sec} />
-                  </Springy>
-                </Springy>
-              ))}
-            </View>
+            // One card per meal (breakfast, lunch, dinner, snacks), in the order you ate them.
+            byMeal.map(([meal, items]) => (
+              <View key={meal}>
+                <Row style={{ justifyContent: 'space-between', marginTop: 4, marginBottom: 8, marginHorizontal: 4 }}>
+                  <Text weight={700}>{t(meal)}</Text>
+                  <Text variant="small" weight={700} color="sec" num>
+                    {`${fmt(items.reduce((a, x) => a + +x.kcal, 0))} ${t('kcal')}`}
+                  </Text>
+                </Row>
+                <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden', marginBottom: 14 }}>
+                  {items.map((x, i) => (
+                    <Springy
+                      key={x.id}
+                      onPress={() => router.push({ pathname: '/logged', params: { id: x.id } })}
+                      scaleTo={0.99}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 60, paddingVertical: 10, paddingHorizontal: 16, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text weight={700} numberOfLines={2}>
+                          {x.name}
+                        </Text>
+                        <Text variant="small" color="sec">
+                          {timeOf(x.created_at)}
+                        </Text>
+                        {x.sugar_high || x.fat_high ? (
+                          <Row gap={4} style={{ marginTop: 4, flexWrap: 'wrap' }}>
+                            {x.sugar_high ? <WarnChip label={t('High added sugar')} /> : null}
+                            {x.fat_high ? <WarnChip label={t('High fat')} /> : null}
+                          </Row>
+                        ) : null}
+                      </View>
+                      <Text num>{fmt(x.kcal)}</Text>
+                      <Springy
+                        onPress={async () => {
+                          const removed = await food.deleteLog(x.id);
+                          if (removed) toast(t('Removed {name}', { name: removed.name }), { icon: 'trash', undo: () => food.restoreLog(removed) });
+                        }}
+                        accessibilityLabel={t('Delete {name}', { name: x.name })}
+                        style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
+                        <Icon name="trash" size={18} color={c.sec} />
+                      </Springy>
+                    </Springy>
+                  ))}
+                </View>
+              </View>
+            ))
           ) : (
             <Card style={{ alignItems: 'center', paddingVertical: 26 }}>
               <Icon name="food" size={30} color={c.sec} />

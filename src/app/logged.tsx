@@ -6,11 +6,11 @@ import { WarnChip } from '@/components/food/Chips';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
-import { Button, Card, Row } from '@/components/ui';
+import { Button, Card, Chip, Row } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
 import { type DbFood, foodSource, getFood } from '@/lib/foodsDb';
-import { fmt, planMeals, scaleIngredients } from '@/lib/nutrition';
+import { fmt, hhmmOf, mealAt, mealChoices, planMeals, scaleIngredients } from '@/lib/nutrition';
 import { inGrams } from '@/lib/recipes';
 import { useSettings } from '@/theme/settings';
 
@@ -44,12 +44,15 @@ export default function LoggedScreen() {
   const meal = log.plan_key ? planMeals(food.plan).find((m) => m.key === log.plan_key) : undefined;
   const ing = meal ? scaleIngredients(meal.r, meal.k) : [];
   const f = dbFood?.id === foodId ? dbFood.f : null;
+  const planned = planMeals(food.plan);
+  const mealNames = mealChoices(planned);
+  const curMeal = log.meal || mealAt(planned, hhmmOf(new Date(log.created_at)));
   const time = new Date(log.created_at).toLocaleTimeString(lang === 'ar' ? 'ar-SA' : 'en-US', { hour: 'numeric', minute: '2-digit' });
 
   return (
     <Screen title={t('Meal')} back>
       <Text variant="small" weight={700} color="sec">
-        {[log.meal ? t(log.meal) : null, time].filter(Boolean).join(', ')}
+        {[t(curMeal), time].join(', ')}
       </Text>
       <Text variant="h1" style={{ marginTop: 4 }}>
         {meal ? t(meal.r.n) : log.name}
@@ -65,6 +68,13 @@ export default function LoggedScreen() {
           {log.fat_high ? <WarnChip label={t('High fat')} /> : null}
         </Row>
       ) : null}
+
+      {/* Which meal it counts under; tap another to move it. */}
+      <Row gap={8} style={{ marginTop: 14, flexWrap: 'wrap' }}>
+        {mealNames.map((m) => (
+          <Chip key={m} title={t(m)} on={curMeal === m} onPress={() => food.setLogMeal(log.id, m)} />
+        ))}
+      </Row>
 
       <Row gap={8} style={{ marginTop: 16 }}>
         {(

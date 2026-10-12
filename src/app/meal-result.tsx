@@ -16,7 +16,7 @@ import { useT } from '@/i18n';
 import { type AiError, aiErrorText, askAI } from '@/lib/ai';
 import { useFood, useLogFood } from '@/lib/food';
 import { foodName } from '@/lib/foodsDb';
-import { fmt, planMeals } from '@/lib/nutrition';
+import { fmt, hhmmOf, mealAt, mealChoices, planMeals } from '@/lib/nutrition';
 import { takePendingPhoto } from '@/lib/pending';
 import { type Photo, takePhoto } from '@/lib/photo';
 import { useSettings } from '@/theme/settings';
@@ -52,12 +52,6 @@ const toRows = (items: Item[]): Row_[] =>
   });
 
 /** The planned meal closest before now, else the first one. */
-function guessMeal(names: { n: string; t: string }[]) {
-  const d = new Date();
-  const now = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  const past = names.filter((m) => m.t <= now);
-  return (past[past.length - 1] ?? names[names.length - 1])?.n ?? 'Snack';
-}
 
 /** What the AI found in your meal photo or your words (design: mealphoto). */
 export default function MealResult() {
@@ -69,8 +63,8 @@ export default function MealResult() {
   const { text } = useLocalSearchParams<{ text?: string }>();
   const [photo, setPhoto] = useState<Photo | null>(() => takePendingPhoto());
   const planned = planMeals(food.plan);
-  const mealNames = [...new Set([...planned.map((m) => m.n), 'Snack'])];
-  const [meal, setMeal] = useState(() => guessMeal(planned));
+  const mealNames = mealChoices(planned);
+  const [meal, setMeal] = useState(() => mealAt(planned, hhmmOf()));
   const [picking, setPicking] = useState(false);
   const [res, setRes] = useState<Result | null>(null);
   const [rows, setRows] = useState<Row_[]>([]);

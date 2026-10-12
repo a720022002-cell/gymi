@@ -139,6 +139,27 @@ export function ramadanMeals(city?: string | null, day = localDay()): Meal[] {
   ];
 }
 
+/** Which meal a time belongs to: a meal in your plan within an hour of its time; otherwise by time of day
+ * (breakfast until 11, lunch until 4, a snack until 6:30, then dinner; after midnight a snack). */
+export function mealAt(meals: { n: string; t: string }[], time: string) {
+  const min = (x: string) => Number(x.slice(0, 2)) * 60 + Number(x.slice(3, 5));
+  const now = min(time);
+  let best: { n: string; d: number } | null = null;
+  for (const m of meals) {
+    if (!/^\d{2}:\d{2}/.test(m.t)) continue;
+    const d = Math.abs(min(m.t) - now);
+    if (d <= 60 && (!best || d < best.d)) best = { n: m.n, d };
+  }
+  if (best) return best.n;
+  return now >= 240 && now < 660 ? 'Breakfast' : now >= 660 && now < 960 ? 'Lunch' : now >= 1110 ? 'Dinner' : 'Snack';
+}
+
+/** The meals you can log to: breakfast, lunch, dinner and snack, plus any other meal in your plan (like Pre-workout). */
+export const mealChoices = (meals: { n: string }[]) => [...new Set(['Breakfast', 'Lunch', 'Dinner', 'Snack', ...meals.map((m) => m.n)])];
+
+/** The time of a date as HH:MM. */
+export const hhmmOf = (d = new Date()) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
 export type PlannedMeal = Meal & { key: string; r: CustomRecipe; k: number; p: number; c: number; f: number };
 
 /** Today's suggested meals, sized to the daily calories. */

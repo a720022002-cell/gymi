@@ -3,7 +3,7 @@ import { AppState } from 'react-native';
 
 import { useAuth } from './auth';
 import type { MealPlan } from './coaching';
-import { addDays, ageFromIso, defaultPlan, type FoodPlan, localDay, type Macros, type Person, RAMADAN_SWITCH, targets } from './nutrition';
+import { addDays, ageFromIso, defaultPlan, type FoodPlan, hhmmOf, localDay, type Macros, mealAt, type Person, planMeals, RAMADAN_SWITCH, targets } from './nutrition';
 import { supabase } from './supabase';
 
 export type FoodLog = {
@@ -89,6 +89,8 @@ type Food = {
   kcalLeft: number;
   addLog: (l: NewLog, on?: string) => Promise<FoodLog | null>;
   deleteLog: (id: string) => Promise<FoodLog | null>;
+  /** Move a logged food to another meal. */
+  setLogMeal: (id: string, meal: string) => Promise<void>;
   restoreLog: (l: FoodLog) => Promise<void>;
   saved: SavedMeal[];
   saveMeal: (m: NewSavedMeal) => Promise<SavedMeal | null>;
@@ -278,7 +280,8 @@ export function FoodProvider({ children }: PropsWithChildren) {
     async (l: NewLog, on?: string) => {
       const row = {
         day: on ?? day,
-        meal: l.meal ?? null,
+        // No meal picked: the one for this time of day (from your meal plan), or a snack.
+        meal: l.meal ?? mealAt(planMeals(planRef.current), hhmmOf()),
         name: l.name.slice(0, 200),
         kcal: Math.round(l.kcal),
         protein: Math.round(l.protein * 10) / 10,
@@ -303,6 +306,11 @@ export function FoodProvider({ children }: PropsWithChildren) {
     setLogs((xs) => xs.filter((x) => x.id !== id));
     await supabase.from('food_logs').delete().eq('id', id);
     return removed;
+  }, []);
+
+  const setLogMeal = useCallback(async (id: string, meal: string) => {
+    setLogs((xs) => xs.map((x) => (x.id === id ? { ...x, meal } : x)));
+    await supabase.from('food_logs').update({ meal }).eq('id', id);
   }, []);
 
   const restoreLog = useCallback(async (l: FoodLog) => {
@@ -419,6 +427,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       kcalLeft,
       addLog,
       deleteLog,
+      setLogMeal,
       restoreLog,
       saved,
       saveMeal,
@@ -444,7 +453,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       typeSeed,
       openTyping,
     }),
-    [day, setDay, isToday, balance, logOpen, setLogOpen, typeSeed, openTyping, coach, coachMeals, addMealByCode, ready, today, setupDone, plan, person, draft, savePlan, updatePlan, logs, eaten, target, dayGoal, coachTargets, kcalLeft, addLog, deleteLog, restoreLog, saved, saveMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, addCardio, deleteCardio, steps, setSteps, addWater],
+    [day, setDay, isToday, balance, logOpen, setLogOpen, typeSeed, openTyping, coach, coachMeals, addMealByCode, ready, today, setupDone, plan, person, draft, savePlan, updatePlan, logs, eaten, target, dayGoal, coachTargets, kcalLeft, addLog, deleteLog, setLogMeal, restoreLog, saved, saveMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, addCardio, deleteCardio, steps, setSteps, addWater],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
