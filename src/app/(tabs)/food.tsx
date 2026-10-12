@@ -259,11 +259,14 @@ function FoodHome() {
             // One card per meal (breakfast, lunch, dinner, snacks), in the order you ate them.
             byMeal.map(([meal, items]) => (
               <View key={meal}>
-                <Row style={{ justifyContent: 'space-between', marginTop: 4, marginBottom: 8, marginHorizontal: 4 }}>
+                <Row style={{ justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 4, marginBottom: 8, marginHorizontal: 4 }}>
                   <Text weight={700}>{t(meal)}</Text>
-                  <Text variant="small" weight={700} color="sec" num>
-                    {`${fmt(items.reduce((a, x) => a + +x.kcal, 0))} ${t('kcal')}`}
-                  </Text>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text variant="small" weight={700} color="sec" num>
+                      {`${fmt(items.reduce((a, x) => a + +x.kcal, 0))} ${t('kcal')}`}
+                    </Text>
+                    <Macros p={items.reduce((a, x) => a + +x.protein, 0)} c={items.reduce((a, x) => a + +x.carbs, 0)} f={items.reduce((a, x) => a + +x.fat, 0)} />
+                  </View>
                 </Row>
                 <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden', marginBottom: 14 }}>
                   {items.map((x, i) => (
@@ -279,6 +282,7 @@ function FoodHome() {
                         <Text variant="small" color="sec">
                           {timeOf(x.created_at)}
                         </Text>
+                        <Macros p={+x.protein} c={+x.carbs} f={+x.fat} />
                         {x.sugar_high || x.fat_high ? (
                           <Row gap={4} style={{ marginTop: 4, flexWrap: 'wrap' }}>
                             {x.sugar_high ? <WarnChip label={t('High added sugar')} /> : null}
@@ -449,5 +453,29 @@ function FoodHome() {
 
       <MealMenu meal={menuFor} logged={!!menuFor && loggedKeys.has(menuFor.key)} onClose={() => setMenuFor(null)} />
     </Screen>
+  );
+}
+
+/** Protein, carbs and fat in grams, with the macro colours from the bars above. */
+function Macros({ p, c: carbs, f }: { p: number; c: number; f: number }) {
+  const { t } = useT();
+  const { colors: c } = useSettings();
+  return (
+    <Row gap={10} style={{ marginTop: 3, flexWrap: 'wrap' }}>
+      {(
+        [
+          ['Protein', p, c.cobalt],
+          ['Carbs', carbs, c.macroC],
+          ['Fat', f, c.macroF],
+        ] as const
+      ).map(([label, v, color]) => (
+        <Row key={label} gap={4}>
+          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color }} />
+          <Text variant="xs" color="sec">
+            {`${t(label)} ${Math.round(v)}${t('g')}`}
+          </Text>
+        </Row>
+      ))}
+    </Row>
   );
 }
