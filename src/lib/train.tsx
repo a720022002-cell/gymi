@@ -28,8 +28,9 @@ export type WorkoutLog = {
 /** One set in the workout. Warm-up sets (warm) don't count toward volume, records or next time's numbers. */
 export type SessionSet = { w: string; r: string; done: boolean; lw: number; lr: number; warm?: boolean };
 export type SessionEx = Omit<PlanEx, 'sets'> & { tip: boolean; sets: SessionSet[] };
-/** The workout in progress. Saved on the device so a reload doesn't lose it. */
-export type Session = { name: string; start: number; home: boolean; ex: SessionEx[] };
+/** The workout in progress. Saved on the device so a reload doesn't lose it.
+ * `day` is the day it counts for: the day you pressed Start (or the earlier day you picked), even if you finish after midnight. */
+export type Session = { name: string; start: number; home: boolean; ex: SessionEx[]; day?: string };
 
 type Train = {
   ready: boolean;
@@ -50,7 +51,7 @@ type Train = {
   last: LastSets;
   best: Record<string, number>;
   session: Session | null;
-  startWorkout: (name: string, home: boolean, short: boolean, opts?: { light?: boolean; deload?: boolean; ex?: PlanEx[] }) => void;
+  startWorkout: (name: string, home: boolean, short: boolean, opts?: { light?: boolean; deload?: boolean; ex?: PlanEx[]; day?: string }) => void;
   setSession: (s: Session | null) => void;
   finishWorkout: (names: Record<string, string>) => Promise<WorkoutLog | null>;
   /** Workouts finished in a row without missing a planned one (last 8 weeks). */
@@ -282,7 +283,7 @@ export function TrainProvider({ children }: PropsWithChildren) {
   );
 
   const startWorkout = useCallback(
-    (name: string, home: boolean, short: boolean, opts?: { light?: boolean; deload?: boolean; ex?: PlanEx[] }) => {
+    (name: string, home: boolean, short: boolean, opts?: { light?: boolean; deload?: boolean; ex?: PlanEx[]; day?: string }) => {
       const p = planRef.current;
       if (!p) return;
       // A one-off list (Train together) uses the same building rules as a planned workout.
@@ -292,6 +293,7 @@ export function TrainProvider({ children }: PropsWithChildren) {
       setSession({
         name,
         start: Date.now(),
+        day: opts?.day ?? localDay(),
         home,
         ex: wo.ex.map(({ swapped: _s, target, last: ls, sets, ...x }) => ({
           ...x,
@@ -343,7 +345,7 @@ export function TrainProvider({ children }: PropsWithChildren) {
         exercises.push({ id: x.id, n: names[x.id] ?? x.id, sets: d });
       }
       const row = {
-        day: today,
+        day: s.day ?? localDay(new Date(s.start)),
         name: s.home ? 'Home' : s.name.slice(0, 40),
         started_at: new Date(s.start).toISOString(),
         minutes: Math.min(600, minutes),
@@ -364,7 +366,7 @@ export function TrainProvider({ children }: PropsWithChildren) {
       if (userId) shareWorkout(userId, { name: log.name, minutes: log.minutes, volume: log.volume, prs: log.prs ?? [] }).catch(() => {});
       return log;
     },
-    [session, userId, today, best, last, profile?.weight_kg, setSession],
+    [session, userId, best, last, profile?.weight_kg, setSession],
   );
 
   const value = useMemo<Train>(

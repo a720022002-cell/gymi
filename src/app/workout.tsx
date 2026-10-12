@@ -28,11 +28,13 @@ export default function WorkoutScreen() {
   const toast = useToast();
   const train = useTrain();
   const today = useToday();
-  const { w } = useLocalSearchParams<{ w: string }>();
+  // `day`: train for an earlier day (yesterday, from Home), so a workout after midnight still counts for the day before.
+  const { w, day } = useLocalSearchParams<{ w: string; day?: string }>();
   const [machineFor, setMachineFor] = useState<string | null>(null);
   const p = train.plan;
   if (!p || !w) return <Screen title={t('Workout')} back />;
-  const isToday = w === today.name;
+  const past = !!day && day < train.today;
+  const isToday = !past && w === today.name;
   const home = isToday && today.home;
   const light = isToday && today.light;
   const deload = isToday && today.deload;
@@ -40,7 +42,7 @@ export default function WorkoutScreen() {
 
   const start = () => {
     if (train.session) return router.replace('/active');
-    train.startWorkout(w, home, isToday && today.short, { light, deload });
+    train.startWorkout(w, home, isToday && today.short, { light, deload, day: past ? day : undefined });
     router.replace('/active');
   };
 
@@ -73,6 +75,14 @@ export default function WorkoutScreen() {
           {home || wo.focus ? '. ' : ''}
           {t('{n} exercises, about {m} min.', { n: wo.ex.length, m: wo.min })}
         </Text>
+        {past ? (
+          <Card style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', marginTop: 12 }}>
+            <Icon name="cal" size={20} color={c.cobalt} />
+            <Text variant="small" style={{ flex: 1 }}>
+              {t('This workout counts for {d}.', { d: new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(`${day}T12:00:00`)) })}
+            </Text>
+          </Card>
+        ) : null}
         {light || deload ? (
           <Card style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start', marginTop: 12 }}>
             <Icon name="bolt" size={20} color={c.cobalt} />
