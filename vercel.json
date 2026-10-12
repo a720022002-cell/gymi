@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "npm install",
-  "buildCommand": "npx expo export -p web",
+  "buildCommand": "npx expo export -p web --clear",
   "outputDirectory": "dist",
   "cleanUrls": true,
   "rewrites": [{ "source": "/:path*", "destination": "/" }],
