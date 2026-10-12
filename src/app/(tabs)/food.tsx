@@ -417,6 +417,7 @@ function FoodHome() {
           [
             ['bookmark', 'Saved meals', coach ? t('Your meals and meal codes') : t('{n} saved', { n: food.saved.length }), () => router.push('/saved-meals')],
             ['drop', 'Water', t('{a} of {b} ml', { a: fmt(food.water), b: fmt(food.plan.water) }), () => router.push('/water')],
+            ['pill', 'Vitamins and supplements', health.supplements.some((x) => x.active) ? t('{n} you take', { n: health.supplements.filter((x) => x.active).length }) : t('Add what you take, with reminders'), () => router.push('/vitamins')],
             ...(coach
               ? []
               : ([
