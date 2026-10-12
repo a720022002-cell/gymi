@@ -36,12 +36,13 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
   const [pick, setPick] = useState<number | 'own' | 'ai' | null>(null);
   const [thinking, setThinking] = useState<string | null>(null);
 
+  const split = aiSplit(days, { level, goal: goalWord(food.plan.goal), age: ageFromIso(profile?.date_of_birth) });
+
   const toggle = (x: string) => setInjuries(x === 'None' ? [] : injuries.includes(x) ? injuries.filter((y) => y !== x) : [...injuries, x]);
 
   /** Ask the AI for a plan; check every exercise exists. Falls back to a ready-made split. */
   const aiPlan = async (): Promise<TrainPlan | null> => {
     const exercises = Object.values(EX).map((e) => ({ id: e.id, name: e.en, muscle: e.m, equipment: e.t, avoidFor: e.stress ?? [] }));
-    const split = aiSplit(days, level);
     const { result, error } = await askAI<{ split: string; week: { day: number; workout: string }[]; workouts: { name: string; focus?: string; ex: { id: string; sets: number; reps: string }[] }[] }>('plan', { days, injuries, level, exercises, lang, split: split.label, workouts: split.names, goal: goalWord(food.plan.goal), sex: profile?.gender ?? undefined, age: ageFromIso(profile?.date_of_birth) ?? undefined });
     if (error || !result) {
       toast(t(aiErrorText(error ?? 'failed')), { icon: 'warn' });
@@ -195,7 +196,7 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
           </Text>
           <Option
             title={t('Let the AI build it')}
-            subtitle={t('Picks the split, spreads it across your week and chooses every exercise.')}
+            subtitle={`${t('For you: {x}', { x: t(split.label) })}\n${t(split.why)}`}
             selected={pick === 'ai'}
             onPress={() => setPick('ai')}
             right={

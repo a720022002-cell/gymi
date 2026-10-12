@@ -112,13 +112,23 @@ export const SPLITS: Record<number, [string, string[]][]> = {
   6: [['Push / Pull / Legs × 2', ['Push', 'Pull', 'Legs', 'Push', 'Pull', 'Legs']], ['Upper / Lower × 3', ['Upper', 'Lower', 'Upper', 'Lower', 'Upper', 'Lower']]],
 };
 /** The split the AI plan uses, decided here so the same answers always give the same split; the AI only picks the exercises.
- * A and B days of the same kind use different exercises. */
-export function aiSplit(days: number, level: Level | null | undefined): { label: string; names: string[] } {
-  if (days <= 2) return { label: 'Full body × 2', names: ['Full body A', 'Full body B'] };
-  if (days === 3) return level === 'Beginner' ? { label: 'Full body × 3', names: ['Full body A', 'Full body B', 'Full body C'] } : { label: 'Push / Pull / Legs', names: ['Push', 'Pull', 'Legs'] };
-  if (days === 4) return { label: 'Upper / Lower × 2', names: ['Upper A', 'Lower A', 'Upper B', 'Lower B'] };
-  if (days === 5) return { label: 'Upper / Lower + Push / Pull / Legs', names: ['Upper', 'Lower', 'Push', 'Pull', 'Legs'] };
-  return { label: 'Push / Pull / Legs × 2', names: ['Push A', 'Pull A', 'Legs A', 'Push B', 'Pull B', 'Legs B'] };
+ * It depends on days, level, goal and age, and says why. A, B and C days of the same kind use different exercises. */
+export function aiSplit(days: number, who: { level?: Level | null; goal?: string; age?: number | null }): { label: string; names: string[]; why: string } {
+  const easy = who.level === 'Beginner' || (who.age ?? 0) >= 50;
+  const easyWhy = who.level === 'Beginner' ? 'You’re new, so simpler sessions that repeat the main lifts often build skill and strength fastest.' : 'Shorter sessions with less on each muscle are easier to recover from.';
+  if (days <= 2) return { label: 'Full body × 2', names: ['Full body A', 'Full body B'], why: 'With 2 days, full body is the only way to train every muscle twice a week.' };
+  if (days === 3) {
+    if (easy) return { label: 'Full body × 3', names: ['Full body A', 'Full body B', 'Full body C'], why: easyWhy };
+    if (who.goal === 'cut') return { label: 'Full body × 3', names: ['Full body A', 'Full body B', 'Full body C'], why: 'Full body works more muscle each session, which helps you keep muscle while losing fat.' };
+    return { label: 'Upper / Lower / Full body', names: ['Upper', 'Lower', 'Full body'], why: 'Every muscle twice a week, which builds more muscle than once a week.' };
+  }
+  if (days === 4) return { label: 'Upper / Lower × 2', names: ['Upper A', 'Lower A', 'Upper B', 'Lower B'], why: 'Every muscle twice a week, with a rest day between the same muscles.' };
+  if (days === 5) {
+    if (easy) return { label: 'Upper / Lower × 2 + Full body', names: ['Upper A', 'Lower A', 'Upper B', 'Lower B', 'Full body'], why: easyWhy };
+    return { label: 'Upper / Lower + Push / Pull / Legs', names: ['Upper', 'Lower', 'Push', 'Pull', 'Legs'], why: 'Every muscle twice a week, with more focused days in the second half.' };
+  }
+  if (easy) return { label: 'Upper / Lower × 3', names: ['Upper A', 'Lower A', 'Upper B', 'Lower B', 'Upper C', 'Lower C'], why: easyWhy };
+  return { label: 'Push / Pull / Legs × 2', names: ['Push A', 'Pull A', 'Legs A', 'Push B', 'Pull B', 'Legs B'], why: 'Every muscle twice a week with lots of focused work, which suits experienced lifters.' };
 }
 export const SPREAD: Record<number, number[]> = { 2: [0, 3], 3: [0, 2, 4], 4: [0, 1, 3, 4], 5: [0, 1, 2, 4, 5], 6: [0, 1, 2, 3, 4, 5] };
 

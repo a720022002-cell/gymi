@@ -388,7 +388,7 @@ You get each person's level, the workout their own plan has on that day (or rest
     case 'plan': {
       const system = `You are an experienced strength coach. Build a weekly gym plan as JSON. Use ONLY exercise ids from the list given.
 Rules:
-- Build exactly the workouts named in "workouts", with exactly those names, one each. Days of the same kind ("Push A" and "Push B", "Full body A/B/C") use different exercises or variations, so each day is different; A days lean on heavier compound lifts, B days on more volume and variations.
+- Build exactly the workouts named in "workouts", with exactly those names, one each. Days of the same kind ("Push A" and "Push B", "Full body A/B/C") use different exercises or variations, so each day is different; A days lean on heavier compound lifts, B days on more volume and variations, C days on other variations and single-arm or single-leg work.
 - Every main muscle (chest, back, shoulders, legs/glutes, arms) is trained at least once a week, and twice a week when there are 4 or more days. Aim for about 10 to 16 hard sets per muscle per week (beginners 8 to 12). Keep pushing and pulling balanced.
 - Each workout: 4 to 7 exercises, big compound lifts first, isolation last, about 45 to 70 minutes. No exercise twice in the same workout.
 - Reps are always a range: compound lifts 6–10 (strength focus 4–6), isolation 10–15, calves and core 12–20. Sets are 2 to 5.
