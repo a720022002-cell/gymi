@@ -766,6 +766,7 @@ export const AR: Record<string, string> = {
   "Don’t end with a dot or underscore.": "لا تنهيه بنقطة أو شرطة سفلية.",
   "Don’t forget to log your meals.": "لا تنسى تسجّل وجباتك.",
   "Don’t know a machine?": "ما تعرف اسم الجهاز؟",
+  "Don’t remind me today": "لا تذكّرني اليوم",
   "Don’t use two dots or underscores in a row.": "لا تكتب نقطتين أو شرطتين ورا بعض.",
   "Dose": "الجرعة",
   "Down {n} kg": "نزلت {n} كجم",

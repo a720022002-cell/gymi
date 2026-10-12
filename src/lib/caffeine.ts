@@ -1,5 +1,8 @@
 // Caffeine guessed from what you log, so Gymi can warn you about a big dose. Numbers are typical servings (mg).
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSyncExternalStore } from 'react';
+
+import { localDay } from './nutrition';
 
 /** Usual safe amounts for healthy adults: up to 400 mg a day, about 200 mg at once. */
 export const CAFFEINE_DAY = 400;
@@ -75,7 +78,19 @@ export function caffeineCheck(once: number, before: number, late: boolean): Caff
 // The warning sheet is mounted once at the root; anything that logs food can show it.
 let current: CaffeineAlert | null = null;
 const listeners = new Set<() => void>();
+// "Don't remind me today": the day it was tapped, kept on the device.
+const MUTE_KEY = 'gymi.caffeineMuted';
+let mutedDay: string | null = null;
+AsyncStorage.getItem(MUTE_KEY)
+  .then((d) => (mutedDay = d))
+  .catch(() => {});
+export function muteCaffeineToday() {
+  mutedDay = localDay();
+  AsyncStorage.setItem(MUTE_KEY, mutedDay).catch(() => {});
+  showCaffeineAlert(null);
+}
 export function showCaffeineAlert(a: CaffeineAlert | null) {
+  if (a && mutedDay === localDay()) return;
   current = a;
   listeners.forEach((l) => l());
 }

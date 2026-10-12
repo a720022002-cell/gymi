@@ -1,13 +1,13 @@
 import { View } from 'react-native';
 
 import { useT } from '@/i18n';
-import { CAFFEINE_DAY, CAFFEINE_ONCE, showCaffeineAlert, useCaffeineAlert } from '@/lib/caffeine';
+import { CAFFEINE_DAY, CAFFEINE_ONCE, muteCaffeineToday, showCaffeineAlert, useCaffeineAlert } from '@/lib/caffeine';
 import { useSettings } from '@/theme/settings';
 
 import { Icon } from '../Icon';
 import { Sheet } from '../Sheet';
 import { Text } from '../Text';
-import { Button, Row } from '../ui';
+import { Button, Row, Springy } from '../ui';
 
 /** "That's a lot of caffeine": after logging a big coffee, energy drink or pre-workout. */
 export function CaffeineSheet() {
@@ -49,6 +49,11 @@ export function CaffeineSheet() {
             {t('A guess from what you logged. Pregnant, or sensitive to caffeine? Ask your doctor what’s right for you.')}
           </Text>
           <Button title={t('Got it')} style={{ marginTop: 16 }} onPress={close} />
+          <Springy onPress={muteCaffeineToday} scaleTo={0.97} style={{ alignSelf: 'center', paddingVertical: 12, paddingHorizontal: 16 }}>
+            <Text variant="small" weight={600} color="sec">
+              {t('Don’t remind me today')}
+            </Text>
+          </Springy>
         </View>
       ) : null}
     </Sheet>
