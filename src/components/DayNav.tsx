@@ -1,3 +1,4 @@
+import { getCalendars, getLocales } from 'expo-localization';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
@@ -9,6 +10,7 @@ import { useSettings } from '@/theme/settings';
 
 import { Glass } from './Glass';
 import { Icon } from './Icon';
+import { Ring } from './Ring';
 import { Sheet } from './Sheet';
 import { Text } from './Text';
 import { Button, Row, Springy } from './ui';
@@ -16,30 +18,52 @@ import { Button, Row, Springy } from './ui';
 const fmtDay = (day: string, lang: 'en' | 'ar', o: Intl.DateTimeFormatOptions) =>
   new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', o).format(new Date(`${day}T12:00:00`));
 
-/** A strip of seven days ending today (like Apple Fitness): tap a day, ‹ › for the week before or after, the month for the calendar.
- * Days with food logged have a dot. Logs, water and cardio follow the day you pick. */
+/** The day a week starts on (0 = Sunday): Sunday in Arabic, otherwise what the phone's region uses (Sunday if it doesn't say). */
+export function firstWeekday(lang: 'en' | 'ar') {
+  if (lang === 'ar') return 0;
+  const fw = getCalendars()[0]?.firstWeekday;
+  if (fw) return (fw - 1) % 7;
+  // Some browsers only have the newer getWeekInfo() (Monday = 1 … Sunday = 7).
+  try {
+    const tag = getLocales()[0]?.languageTag;
+    const loc = tag ? (new Intl.Locale(tag) as Intl.Locale & { getWeekInfo?: () => { firstDay: number }; weekInfo?: { firstDay: number } }) : null;
+    const d = loc?.getWeekInfo?.().firstDay ?? loc?.weekInfo?.firstDay;
+    if (d) return d % 7;
+  } catch {}
+  return 0;
+}
+
+/** The first day of the week that holds `day`. */
+const startOfWeek = (day: string, first: number) => addDays(day, -((new Date(`${day}T12:00:00`).getDay() - first + 7) % 7));
+
+/** One week, always in the same order (Sunday first in Arabic): tap a day, ‹ › for the week before or after, the month for the calendar.
+ * Each day has a small ring for how much of that day's calories you ate. Logs, water and cardio follow the day you pick. */
 export function DayNav() {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
   const food = useFood();
   const [cal, setCal] = useState(false);
-  // Seven days ending today (today on the right); the arrows move a whole week back or forward.
-  const back = Math.round((new Date(`${food.today}T12:00:00`).getTime() - new Date(`${food.day}T12:00:00`).getTime()) / 864e5);
-  const end = addDays(food.today, -7 * Math.floor(back / 7));
-  const start = addDays(end, -6);
+  // The week holding the picked day, in a fixed order; days still to come are shown faded.
+  const start = startOfWeek(food.day, firstWeekday(lang));
+  const end = addDays(start, 6);
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
   const lastWeek = end >= food.today;
-  const [logged, setLogged] = useState<{ start: string; days: Set<string> } | null>(null);
+  const [eaten, setEaten] = useState<{ start: string; kcal: Record<string, number> } | null>(null);
   const count = food.logs.length;
 
   useEffect(() => {
     let alive = true;
     supabase
       .from('food_logs')
-      .select('day')
+      .select('day,kcal')
       .gte('day', start)
       .lte('day', end)
-      .then(({ data }) => alive && setLogged({ start, days: new Set((data ?? []).map((x: { day: string }) => x.day)) }));
+      .then(({ data }) => {
+        if (!alive) return;
+        const kcal: Record<string, number> = {};
+        for (const x of (data ?? []) as { day: string; kcal: number }[]) kcal[x.day] = (kcal[x.day] ?? 0) + +x.kcal;
+        setEaten({ start, kcal });
+      });
     return () => {
       alive = false;
     };
@@ -80,12 +104,14 @@ export function DayNav() {
           {chevron(1)}
         </Row>
       </Row>
-      <View style={{ flexDirection: 'row', marginTop: 4 }}>
+      <View style={{ flexDirection: 'row', marginTop: 4, marginBottom: 2 }}>
         {days.map((d) => {
           const sel = d === food.day;
           const today = d === food.today;
           const future = d > food.today;
-          const dot = logged?.start === start && logged.days.has(d);
+          const k = eaten?.start === start ? (eaten.kcal[d] ?? 0) : 0;
+          const goal = food.dayGoal(d);
+          const closed = goal > 0 && k >= goal * 0.95 && k <= goal * 1.1;
           return (
             <Springy
               key={d}
@@ -98,12 +124,21 @@ export function DayNav() {
               <Text variant="xs" weight={700} color={sel || today ? undefined : 'sec'} style={today && !sel ? { color: c.cobalt } : undefined}>
                 {fmtDay(d, lang, { weekday: lang === 'ar' ? 'short' : 'narrow' })}
               </Text>
-              <View style={{ width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: sel ? (today ? c.cobalt : c.text) : 'transparent' }}>
-                <Text num size={16} weight={sel || today ? 800 : 600} style={{ color: sel ? (today ? '#FFFFFF' : c.bg) : today ? c.cobalt : c.text }}>
-                  {Number(d.slice(8))}
-                </Text>
-              </View>
-              <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: dot ? (sel ? c.cobalt : c.sec) : 'transparent' }} />
+              {future ? (
+                <View style={{ width: 42, height: 42, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text num size={15} weight={600}>
+                    {Number(d.slice(8))}
+                  </Text>
+                </View>
+              ) : (
+                <Ring value={k} max={goal} size={42} stroke={3} color={closed ? '#22C55E' : c.cobalt}>
+                  <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: sel ? (today ? c.cobalt : c.text) : 'transparent' }}>
+                    <Text num size={15} weight={sel || today ? 800 : 600} style={{ color: sel ? (today ? '#FFFFFF' : c.bg) : today ? c.cobalt : c.text }}>
+                      {Number(d.slice(8))}
+                    </Text>
+                  </View>
+                </Ring>
+              )}
             </Springy>
           );
         })}
@@ -140,7 +175,8 @@ export function CalendarSheet({ open, onClose }: { open: boolean; onClose: () =>
   const first = `${month}-01`;
   const [y, m] = month.split('-').map(Number);
   const daysIn = new Date(y, m, 0).getDate();
-  const lead = new Date(y, m - 1, 1).getDay();
+  const first0 = firstWeekday(lang);
+  const lead = (new Date(y, m - 1, 1).getDay() - first0 + 7) % 7;
   const last = `${month}-${String(daysIn).padStart(2, '0')}`;
   const thisMonth = food.today.slice(0, 7);
 
@@ -163,7 +199,7 @@ export function CalendarSheet({ open, onClose }: { open: boolean; onClose: () =>
     food.setDay(d);
     onClose();
   };
-  const weekdays = Array.from({ length: 7 }, (_, i) => fmtDay(addDays('2026-10-04', i), lang, { weekday: 'narrow' }));
+  const weekdays = Array.from({ length: 7 }, (_, i) => fmtDay(addDays('2026-10-04', i + first0), lang, { weekday: 'narrow' }));
   const cells = [...Array.from({ length: lead }, () => null), ...Array.from({ length: daysIn }, (_, i) => `${month}-${String(i + 1).padStart(2, '0')}`)];
 
   return (
