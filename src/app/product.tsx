@@ -18,6 +18,7 @@ import { foodByBarcode, foodName, myFix } from '@/lib/foodsDb';
 import { takePhoto } from '@/lib/photo';
 import { supabase } from '@/lib/supabase';
 import { fmt } from '@/lib/nutrition';
+import { addedSugarHigh } from '@/lib/sugar';
 import { useSettings } from '@/theme/settings';
 
 type Product = {
@@ -143,7 +144,7 @@ function Found({ x, code, onFix }: { x: Product; code: string; onFix: () => void
   const add = async () => {
     if (!(grams > 0)) return;
     const name = um === 'serving' ? (sv === 1 ? x.name : `${x.name} ×${sv}`) : `${x.name}, ${Math.round(grams)} ${t(x.unit)}`;
-    const row = await logFood({ name, kcal: x.k * m, protein: x.p * m, carbs: x.c * m, fat: x.f * m, sugar_high: sugar >= 10, fat_high: x.f >= 17.5, barcode: code, food_id: x.id ?? null }, toast, t);
+    const row = await logFood({ name, kcal: x.k * m, protein: x.p * m, carbs: x.c * m, fat: x.f * m, sugar_high: addedSugarHigh(name, sugar), fat_high: x.f >= 17.5, barcode: code, food_id: x.id ?? null }, toast, t);
     if (row) router.back();
   };
 
@@ -307,7 +308,7 @@ function Manual({ code, offline, init }: { code?: string; offline: boolean; init
     });
     const name = um === 'serving' && canServing ? (sv === 1 ? v.name.trim() : `${v.name.trim()} ×${sv}`) : `${v.name.trim()}, ${Math.round(eaten)} ${u}`;
     const row = await logFood(
-      { name, kcal: per.k * m, protein: per.p * m, carbs: per.c * m, fat: per.f * m, sugar_high: per.sugar * m >= 10, fat_high: per.f >= (unit === 'ml' ? 8.75 : 17.5), barcode: code ?? null, food_id: (foodId as string) ?? null },
+      { name, kcal: per.k * m, protein: per.p * m, carbs: per.c * m, fat: per.f * m, sugar_high: addedSugarHigh(name, per.sugar * m), fat_high: per.f >= (unit === 'ml' ? 8.75 : 17.5), barcode: code ?? null, food_id: (foodId as string) ?? null },
       toast,
       t,
     );

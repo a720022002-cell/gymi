@@ -148,6 +148,8 @@ const FOOD_ITEM = {
   required: ['name', 'grams', 'kcal', 'protein', 'carbs', 'fat'],
 };
 /** Meal photo: look first (what, how many, how big), then weigh, then count calories. */
+// What the warning chips mean, so the AI doesn't flag the natural sugar in fruit or milk.
+const FLAGS = '"sugar_high" is true only for ADDED or free sugar of about 10 g or more in the meal: sweets and desserts, sugary drinks and juices, syrups, sweetened coffee or dairy, honey or jam. Whole fruit, dates, plain milk, laban and plain yogurt are natural sugar: false. "fat_high" is true when the meal has more than about 21 g of fat.';
 const MEAL_PHOTO = (lang: string) => `You are a careful dietitian estimating a meal from one photo for a calorie tracker. ${LANG(lang)} Names short.${lang === 'ar' ? ' Write "title", every item "name", "alternatives" and "note" in Arabic (Saudi dish names like كبسة دجاج، مندي، فلافل).' : ''} If the person tells you what the dish is, use that name but still weigh the portions from the photo.
 Work in this order and write it in "seen" (one or two short sentences, English is fine):
 0. If a kitchen scale display or a weight printed on the package is readable, use that number as the total weight and split it between the parts. Say so.
@@ -157,7 +159,7 @@ Work in this order and write it in "seen" (one or two short sentences, English i
 4. Weigh each part in grams from the size and count. For whole fruit and vegetables, count them and use a typical weight per piece, adjusted only a little for size (do not calculate from length and width): the short Middle Eastern cucumber common in Saudi Arabia (14 to 18 cm) is about 120 g, a long English cucumber 300 g; tomato 120 g; onion 150 g; apple 180 g; orange 150 g; banana 120 g peeled; potato 200 g; carrot 70 g. Do not underestimate cooked food: a full dinner plate of rice is 350 to 500 g cooked; one chicken leg quarter is about 250 g with bone (180 g edible); a whole half chicken is about 450 g; one large egg is 50 g; one falafel ball 17 to 20 g; one Arabic bread 60 to 80 g; one medium date 8 g. If the photo shows a shared tray, estimate the whole tray and say so in "note".
 5. Count calories for each part as cooked and served, including the oil or ghee it is cooked in (rice in kabsa or mandi is about 170 to 190 kcal per 100 g; fried foods soak up oil).
 ${PORTIONS}
-"title" is the dish name. Several of the same thing are ONE item with the count in its name (like "Cucumber ×2"), never "left" and "right". Each item is one part of the meal with its grams and the calories and macros for those grams. "confidence" is high, medium or low. If it is not food, return items: [] and a note.`;
+"title" is the dish name. Several of the same thing are ONE item with the count in its name (like "Cucumber ×2"), never "left" and "right". Each item is one part of the meal with its grams and the calories and macros for those grams. "confidence" is high, medium or low. ${FLAGS} If it is not food, return items: [] and a note.`;
 const MEAL_SCHEMA = {
   type: 'object',
   properties: {
@@ -221,7 +223,7 @@ Return JSON: {"reply":"...","actions":[...],"suggest":[...],"card":{...},"memory
         { role: 'user', parts: [img(), { text: `What is on this plate? Estimate each part.${b.note ? ` The person says: ${String(b.note).slice(0, 300)}. Trust this over what you see.` : ''}` }] },
       ], MEAL_SCHEMA);
     case 'food_text':
-      return ask(task, `You turn a description of food into calories for a tracker. ${LANG(lang)} Names short. Estimate normal portions when no amount is given. ${PORTIONS}`, [
+      return ask(task, `You turn a description of food into calories for a tracker. ${LANG(lang)} Names short. Estimate normal portions when no amount is given. ${PORTIONS} ${FLAGS}`, [
         { role: 'user', parts: [{ text: String(b.text ?? '').slice(0, 500) }] },
       ], FOOD);
     case 'label_photo':

@@ -17,6 +17,7 @@ import { useLogFood } from '@/lib/food';
 import { fmt } from '@/lib/nutrition';
 import { takePendingPhoto } from '@/lib/pending';
 import type { Photo } from '@/lib/photo';
+import { addedSugarHigh } from '@/lib/sugar';
 import { useSettings } from '@/theme/settings';
 
 type Label = { name?: string; unit?: 'g' | 'ml'; serving?: number; kcal_100: number; protein_100: number; carbs_100: number; fat_100: number; sugar_100?: number; readable: boolean };
@@ -66,7 +67,7 @@ export default function LabelResult() {
   const add = async () => {
     if (!ok) return;
     const row = await logFood(
-      { name: `${v.name.trim()}, ${Math.round(num(v.g))} ${t(unit)}`, kcal: k, protein: num(v.p) * m, carbs: num(v.c) * m, fat: num(v.f) * m, sugar_high: sugar >= 10, fat_high: num(v.f) >= 17.5 },
+      { name: `${v.name.trim()}, ${Math.round(num(v.g))} ${t(unit)}`, kcal: k, protein: num(v.p) * m, carbs: num(v.c) * m, fat: num(v.f) * m, sugar_high: addedSugarHigh(v.name, sugar), fat_high: num(v.f) >= 17.5 },
       toast,
       t,
     );

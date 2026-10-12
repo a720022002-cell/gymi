@@ -19,6 +19,7 @@ import { foodName } from '@/lib/foodsDb';
 import { fmt, hhmmOf, mealAt, mealChoices, planMeals } from '@/lib/nutrition';
 import { takePendingPhoto } from '@/lib/pending';
 import { type Photo, takePhoto } from '@/lib/photo';
+import { naturalSugar } from '@/lib/sugar';
 import { useSettings } from '@/theme/settings';
 
 type Item = { name: string; grams: number; kcal: number; protein: number; carbs: number; fat: number };
@@ -116,10 +117,14 @@ export default function MealResult() {
   };
   const set = (i: number, patch: Partial<Row_>) => setRows(rows.map((x, j) => (j === i ? { ...x, ...patch } : x)));
 
+  // The AI's sugar flag, but never for plain fruit, dates or milk (their sugar is natural).
+  const sugarHigh = !!res?.sugar_high && !rows.every((x) => naturalSugar(x.name));
+  // High fat from the grams themselves (over about 21 g in one meal), so it's the same every time.
+  const fatHigh = tot.f > 21;
   const add = async () => {
     if (!rows.length || tot.k <= 0) return;
     const name = title.trim() || rows.map((x) => x.name).join(t(', '));
-    const row = await logFood({ name: name.slice(0, 200), parts: rows.map((x) => x.name), kcal: tot.k, protein: tot.p, carbs: tot.c, fat: tot.f, meal, sugar_high: !!res?.sugar_high, fat_high: !!res?.fat_high }, toast, t);
+    const row = await logFood({ name: name.slice(0, 200), parts: rows.map((x) => x.name), kcal: tot.k, protein: tot.p, carbs: tot.c, fat: tot.f, meal, sugar_high: sugarHigh, fat_high: fatHigh }, toast, t);
     if (row) router.back();
   };
 
@@ -263,10 +268,10 @@ export default function MealResult() {
                 </View>
               ))}
             </Row>
-            {res.sugar_high || res.fat_high ? (
+            {sugarHigh || fatHigh ? (
               <Row gap={6} style={{ marginTop: 10 }}>
-                {res.sugar_high ? <WarnChip label={t('High added sugar')} /> : null}
-                {res.fat_high ? <WarnChip label={t('High fat')} /> : null}
+                {sugarHigh ? <WarnChip label={t('High added sugar')} /> : null}
+                {fatHigh ? <WarnChip label={t('High fat')} /> : null}
               </Row>
             ) : null}
           </Card>

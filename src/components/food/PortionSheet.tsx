@@ -5,6 +5,7 @@ import { useT } from '@/i18n';
 import { useLogFood } from '@/lib/food';
 import { type DbFood, foodName, forGrams, type Part, partsTotal, servingLabel } from '@/lib/foodsDb';
 import { fmt } from '@/lib/nutrition';
+import { naturalSugar } from '@/lib/sugar';
 import { useSettings } from '@/theme/settings';
 
 import { Icon } from '../Icon';
@@ -85,7 +86,8 @@ export function PortionSheet({ food: f, onClose, onLogged }: { food: DbFood | nu
       ? `${nm} (${parts.filter((x) => x.g > 0).map((x) => `${partName(x).toLowerCase()} ${Math.round(x.g)} ${t('g')}`).join(', ')})`
       : `${nm}, ${Math.round(g)} ${t(f.unit)}`;
     onClose();
-    const sugarHigh = f.sugar_high || ('sugar' in tot && (tot as { sugar: number }).sugar >= 15);
+    // Only what the food list marks as added sugar; total sugar includes the natural sugar in fruit and milk.
+    const sugarHigh = f.sugar_high && !naturalSugar(name);
     await logFood({ name, kcal: tot.k, protein: tot.p, carbs: tot.c, fat: tot.f, sugar_high: sugarHigh, fat_high: f.fat_high, food_id: f.id }, toast, t);
     onLogged?.();
   };
