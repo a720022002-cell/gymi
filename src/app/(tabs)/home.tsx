@@ -878,7 +878,7 @@ function DayRecap() {
   const items = [
     ...food.logs.map((l) => ({ k: l.id, icon: 'food' as IconName, title: l.name, sub: [l.meal ? t(l.meal) : null, `${fmt(+l.kcal)} ${t('kcal')}`].filter(Boolean).join(t(', ')), go: () => router.push({ pathname: '/logged', params: { id: l.id } }) })),
     ...food.cardio.map((x) => ({ k: x.id, icon: 'run' as IconName, title: x.kind === 'Other' && x.name ? x.name : t(x.kind), sub: t('{m} min, {k} kcal burned', { m: x.minutes, k: fmt(x.kcal) }), go: undefined })),
-    ...workouts.map((w, i) => ({ k: `w${i}`, icon: 'train' as IconName, title: t('{w} workout', { w: t(w.name) }), sub: W.words(t('{m} min, {v} kg lifted', { m: w.minutes, v: fmt(W.num(w.volume)) })), go: undefined })),
+    ...workouts.map((w, i) => ({ k: `w${i}`, icon: 'train' as IconName, title: t('{w} workout', { w: t(w.name) }), sub: W.words(t('{m} min, {v} kg lifted', { m: w.minutes, v: fmt(W.num(w.volume)) })), go: () => router.push({ pathname: '/summary', params: { id: w.id } }) })),
   ];
   return (
     <View style={{ marginBottom: 14 }}>

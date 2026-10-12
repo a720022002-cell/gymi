@@ -30,11 +30,13 @@ import { UpdateBanner } from '@/components/UpdateBanner';
 import { AuthProvider } from '@/lib/auth';
 import { FoodProvider } from '@/lib/food';
 import { HealthProvider } from '@/lib/health';
+import { installLatinDigits } from '@/lib/latinDigits';
 import { TrainProvider } from '@/lib/train';
 import { SignupDraftProvider } from '@/lib/signupDraft';
 import { SettingsProvider, useSettings } from '@/theme/settings';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+installLatinDigits();
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
