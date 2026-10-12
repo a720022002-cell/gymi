@@ -142,6 +142,16 @@ export default function You() {
         onChange={s.setTheme}
       />
 
+      <Label>{t('Gym weights')}</Label>
+      <Segmented<'kg' | 'lb'>
+        value={s.unit}
+        options={[
+          { value: 'kg', label: t('Kilograms (kg)') },
+          { value: 'lb', label: t('Pounds (lb)') },
+        ]}
+        onChange={s.setUnit}
+      />
+
       <Label>{t('Settings')}</Label>
       <List>
         <Item icon="globe" title={t('Language')} value={s.lang === 'ar' ? 'العربية' : 'English'} onPress={() => router.push('/language')} chevron />

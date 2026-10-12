@@ -8,6 +8,7 @@ import { useCycleToday } from '@/lib/cyclePhase';
 import { fmt } from '@/lib/nutrition';
 import { useTrain } from '@/lib/train';
 import { applyShift, buildWorkout, DAYS_LONG, exInfo, shiftPlan, weekStart, workoutTitle } from '@/lib/training';
+import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
 import { OkChip } from '../food/Chips';
@@ -132,6 +133,7 @@ const dateOf = (today: string, offset: number) => {
 /** Today's workout card for Home and Train (design: workoutCard). */
 export function WorkoutCard() {
   const { t, lang } = useT();
+  const W = useWeight();
   const { colors: c } = useSettings();
   const train = useTrain();
   const today = useToday();
@@ -164,7 +166,7 @@ export function WorkoutCard() {
           <OkChip label={t('Done')} />
         </Row>
         <Text variant="h2" style={{ marginTop: 4 }}>
-          {t('{m} min, {v} kg lifted', { m: train.todayLog.minutes, v: fmt(train.todayLog.volume) })}
+          {W.words(t('{m} min, {v} kg lifted', { m: train.todayLog.minutes, v: fmt(W.num(train.todayLog.volume)) }))}
         </Text>
         <Button title={t('See summary')} style={{ marginTop: 16 }} onPress={() => router.push({ pathname: '/summary', params: { id: train.todayLog!.id } })} />
       </Card>
@@ -281,7 +283,7 @@ export function WorkoutCard() {
           {first.target ? (
             <Row gap={2}>
               <Icon name="up" size={15} color={c.up} strokeWidth={2.4} />
-              <Text num weight={700} color="up" size={15}>{`${first.target} ${t('kg')}`}</Text>
+              <Text num weight={700} color="up" size={15}>{`${W.show(first.target)} ${W.label}`}</Text>
             </Row>
           ) : (
             <Text variant="small" color="sec">

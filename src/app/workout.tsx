@@ -15,6 +15,7 @@ import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useTrain } from '@/lib/train';
 import { buildWorkout, exInfo } from '@/lib/training';
+import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
 const WARMUP = ['2 min easy bike or brisk walk', '10 arm circles each way', '10 band pull-aparts', '1 light set of the first exercise'];
@@ -23,6 +24,7 @@ const STRETCH = ['Chest doorway stretch, 30 s each side', 'Overhead triceps stre
 /** Workout detail before you start (design: workout). */
 export default function WorkoutScreen() {
   const { t, lang } = useT();
+  const W = useWeight();
   const { colors: c } = useSettings();
   const insets = useSafeAreaInsets();
   const toast = useToast();
@@ -117,7 +119,7 @@ export default function WorkoutScreen() {
               </Row>
               <Row style={{ justifyContent: 'space-between', marginTop: 12 }}>
                 <Text variant="small" color="sec">
-                  {l ? (info.timed ? t('Last time: {r} s', { r: l.r }) : l.w ? t('Last time: {w} kg × {r}', { w: l.w, r: l.r }) : t('Last time: {r} reps', { r: l.r })) : t('New exercise')}
+                  {l ? (info.timed ? t('Last time: {r} s', { r: l.r }) : l.w ? W.words(t('Last time: {w} kg × {r}', { w: W.show(l.w), r: l.r })) : t('Last time: {r} reps', { r: l.r })) : t('New exercise')}
                 </Text>
                 {info.mach.length > 1 ? (
                   <Springy onPress={() => setMachineFor(x.id)}>

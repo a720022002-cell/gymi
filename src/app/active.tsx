@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { type ComponentProps, useEffect, useRef, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -18,6 +18,7 @@ import { toPlanEx } from '@/lib/exercisesDb';
 import { canListen, listen, stopListening } from '@/lib/speech';
 import { type Session, type SessionEx, useTrain } from '@/lib/train';
 import { exInfo, type PlanEx, rangeText, topReps } from '@/lib/training';
+import { useWeight } from '@/lib/units';
 import { matchExercise, parseSet } from '@/lib/voiceSet';
 import { useSettings } from '@/theme/settings';
 
@@ -41,11 +42,18 @@ function arrow(x: SessionEx): 'up' | 'down' | 'same' | null {
 
 type Tone = 'up' | 'ok' | 'down';
 type Tr = (k: string, v?: Record<string, string | number>) => string;
-const kg = (n: number) => String(Math.round(n * 10) / 10);
+type W = ReturnType<typeof useWeight>;
 
 /** Coach advice for an exercise, from its last finished working set: reps against the target range,
  * the weight jump from the set before, and last time's numbers. Updates after every set. */
-function setAdvice(x: SessionEx, timed: boolean, bodyweight: boolean, t: Tr): { text: string; tone: Tone } | null {
+function setAdvice(x: SessionEx, timed: boolean, bodyweight: boolean, t: Tr, W: W): { text: string; tone: Tone } | null {
+  const a = adviceKg(x, timed, bodyweight, t, W);
+  // Written in kg; shown in lb when you picked pounds.
+  return a ? { ...a, text: W.words(a.text) } : null;
+}
+
+function adviceKg(x: SessionEx, timed: boolean, bodyweight: boolean, t: Tr, W: W): { text: string; tone: Tone } | null {
+  const kg = W.show;
   const work = x.sets.filter((y) => !y.warm);
   const done = work.filter((y) => y.done);
   if (!done.length) return null;
@@ -56,7 +64,7 @@ function setAdvice(x: SessionEx, timed: boolean, bodyweight: boolean, t: Tr): { 
   const prev = done.length > 1 ? done[done.length - 2] : null;
   const w = +last.w || 0;
   const r = +last.r || 0;
-  const step = 2.5;
+  const step = W.step;
   const finished = done.length === work.length;
 
   if (timed) {
@@ -94,6 +102,7 @@ export default function Active() {
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const train = useTrain();
+  const W = useWeight();
   const s = train.session;
   const [now, setNow] = useState(() => Date.now());
   const [rest, setRest] = useState<{ end: number; total: number } | null>(null);
@@ -235,10 +244,11 @@ export default function Active() {
     const name = exInfo(x, lang).name;
     if (si < 0) return toast(t('All {x} sets are already logged', { x: name }), { icon: 'info' });
     const timed = exInfo(x, lang).timed;
-    const ww = timed ? '' : String(w ?? (x.sets[si].w || x.sets[si].lw || 0));
+    // A spoken weight is in your unit; the set keeps kg.
+    const ww = timed ? '' : String(w != null ? W.toKg(w) : x.sets[si].w || x.sets[si].lw || 0);
     const rr = String(r ?? (x.sets[si].r || x.sets[si].lr));
     markSet(ei, si, { w: ww, r: rr });
-    toast(timed ? t('Logged {x}: {r} s', { x: name, r: rr }) : t('Logged {x}: {w} kg × {r}', { x: name, w: ww, r: rr }), { ai: true });
+    toast(timed ? t('Logged {x}: {r} s', { x: name, r: rr }) : W.words(t('Logged {x}: {w} kg × {r}', { x: name, w: W.show(+ww), r: rr })), { ai: true });
   };
 
   const finish = async () => {
@@ -335,7 +345,7 @@ export default function Active() {
                   {t('Set')}
                 </Text>
                 <Text variant="xs" weight={700} color="sec" center style={{ flex: 1 }}>
-                  {info.timed ? '—' : t('kg')}
+                  {info.timed ? '—' : W.label}
                 </Text>
                 <Text variant="xs" weight={700} color="sec" center style={{ flex: 1 }}>
                   {t(info.timed ? 'seconds' : 'reps')}
@@ -359,11 +369,13 @@ export default function Active() {
                       </Text>
                     )}
                   </Springy>
-                  <TextInput
+                  <WeightInput
+                    key={`${si}-${W.unit}`}
                     value={st.w}
+                    W={W}
                     editable={!info.timed}
-                    onChangeText={(v) => setField(ei, si, 'w', digits(v, true))}
-                    placeholder={info.timed ? '—' : st.lw ? String(st.lw) : '—'}
+                    onChange={(v) => setField(ei, si, 'w', v)}
+                    placeholder={info.timed ? '—' : st.lw ? W.show(st.lw) : '—'}
                     placeholderTextColor={c.sec}
                     inputMode="decimal"
                     keyboardType="decimal-pad"
@@ -406,7 +418,7 @@ export default function Active() {
                 </Springy>
               </Row>
               {(() => {
-                const adv = setAdvice(x, info.timed, info.type === 'Bodyweight', t);
+                const adv = setAdvice(x, info.timed, info.type === 'Bodyweight', t, W);
                 if (!adv) return null;
                 const tc = adv.tone === 'up' ? c.up : adv.tone === 'down' ? '#F59E0B' : c.cobalt;
                 return (
@@ -585,5 +597,30 @@ export default function Active() {
         />
       </Sheet>
     </View>
+  );
+}
+
+/** The weight box. It shows and takes your unit (kg or lb) while the set keeps kg. */
+function WeightInput({ value, onChange, W, ...rest }: { value: string; onChange: (kg: string) => void; W: W } & Omit<ComponentProps<typeof TextInput>, 'value' | 'onChangeText' | 'onChange'>) {
+  const shown = (v: string) => (v ? W.show(+v) : '');
+  const [text, setText] = useState(() => shown(value));
+  const [seen, setSeen] = useState(value);
+  // Changed from outside (voice, "same as last time"): show the new number.
+  if (value !== seen) {
+    setSeen(value);
+    setText(shown(value));
+  }
+  return (
+    <TextInput
+      {...rest}
+      value={W.unit === 'kg' ? value : text}
+      onChangeText={(v) => {
+        const d = digits(v, true);
+        const kg = W.unit === 'kg' || !d ? d : String(W.toKg(+d) || '');
+        setText(d);
+        setSeen(kg);
+        onChange(kg);
+      }}
+    />
   );
 }

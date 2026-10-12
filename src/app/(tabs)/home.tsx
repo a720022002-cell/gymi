@@ -34,6 +34,7 @@ import { weekdayOf, weekStart } from '@/lib/training';
 import { fx } from '@/lib/progress';
 import { useStreaks } from '@/lib/useProgress';
 import { addDays, fmt, fmtTime } from '@/lib/nutrition';
+import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
 function greeting() {
@@ -848,6 +849,7 @@ function TipCard() {
 /** An earlier day: the meals, cardio and workouts you logged. Tap a meal to see or delete it; add food to this day from the Food tab or the + button. */
 function DayRecap() {
   const { t } = useT();
+  const W = useWeight();
   const { colors: c } = useSettings();
   const food = useFood();
   const train = useTrain();
@@ -876,7 +878,7 @@ function DayRecap() {
   const items = [
     ...food.logs.map((l) => ({ k: l.id, icon: 'food' as IconName, title: l.name, sub: [l.meal ? t(l.meal) : null, `${fmt(+l.kcal)} ${t('kcal')}`].filter(Boolean).join(t(', ')), go: () => router.push({ pathname: '/logged', params: { id: l.id } }) })),
     ...food.cardio.map((x) => ({ k: x.id, icon: 'run' as IconName, title: x.kind === 'Other' && x.name ? x.name : t(x.kind), sub: t('{m} min, {k} kcal burned', { m: x.minutes, k: fmt(x.kcal) }), go: undefined })),
-    ...workouts.map((w, i) => ({ k: `w${i}`, icon: 'train' as IconName, title: t('{w} workout', { w: t(w.name) }), sub: t('{m} min, {v} kg lifted', { m: w.minutes, v: fmt(w.volume) }), go: undefined })),
+    ...workouts.map((w, i) => ({ k: `w${i}`, icon: 'train' as IconName, title: t('{w} workout', { w: t(w.name) }), sub: W.words(t('{m} min, {v} kg lifted', { m: w.minutes, v: fmt(W.num(w.volume)) })), go: undefined })),
   ];
   return (
     <View style={{ marginBottom: 14 }}>

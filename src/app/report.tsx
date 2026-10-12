@@ -17,6 +17,7 @@ import { useFood } from '@/lib/food';
 import { addDays, fmt } from '@/lib/nutrition';
 import { fx, shortDate } from '@/lib/progress';
 import { type CoachSummary, daysBetween, loadSavedReport, reportRange, type ReportStats, saveReport, useReportData, useReportStats } from '@/lib/report';
+import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
 type Mode = 'week' | 'month' | 'custom';
@@ -88,6 +89,7 @@ export default function ReportScreen() {
 
 function ReportBody({ stats: s, label, a, b, c }: { stats: ReportStats; label: string; a: string; b: string; c: ReturnType<typeof useSettings>['colors'] }) {
   const { t, lang } = useT();
+  const W = useWeight();
   const { profile } = useAuth();
   const key = `gymi.report.${profile?.id ?? ''}.${a}.${b}.${lang}`;
   // null v: checked, nothing saved for this period yet.
@@ -186,7 +188,7 @@ function ReportBody({ stats: s, label, a, b, c }: { stats: ReportStats; label: s
           [t('Average calories'), s.caloriesAvg != null ? `${fmt(s.caloriesAvg)}${s.calorieGoal ? ` / ${fmt(s.calorieGoal)}` : ''} kcal` : '–'],
           [t('Calories on target'), s.calDays[1] ? t('{a} of {b} days', { a: s.calDays[0], b: s.calDays[1] }) : '–'],
           [t('Water goal'), s.waterDays[1] ? t('{a} of {b} days', { a: s.waterDays[0], b: s.waterDays[1] }) : '–'],
-          [t('Training volume'), s.volume ? `${fmt(s.volume)} ${t('kg')}` : '–'],
+          [t('Training volume'), s.volume ? `${fmt(W.num(s.volume))} ${W.label}` : '–'],
           [t('New records'), String(s.prs)],
           [t('Commitment'), s.commitment != null ? `${s.commitment}%` : '–'],
         ].map(([k, val], i) => (

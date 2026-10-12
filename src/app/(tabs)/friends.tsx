@@ -17,6 +17,7 @@ import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
 import { useAuth } from '@/lib/auth';
 import { shortDate } from '@/lib/progress';
+import { useWeight } from '@/lib/units';
 import {
   acceptRequest,
   daysLeft,
@@ -337,6 +338,7 @@ function GroupsTab({ groups, challenges, hasFriends, me }: { groups: Group[]; ch
 
 function ActivityTab({ items, setItems }: { items: FeedItem[] | null; setItems: (f: FeedItem[]) => void }) {
   const { t, lang } = useT();
+  const W = useWeight();
   const { colors: c } = useSettings();
   const toast = useToast();
   const { session } = useAuth();
@@ -355,7 +357,7 @@ function ActivityTab({ items, setItems }: { items: FeedItem[] | null; setItems: 
     );
   const text = (a: FeedItem) => {
     if (a.kind === 'workout') return t('finished {w}', { w: t(a.text) });
-    if (a.kind === 'pr') return t('hit a new record: {x} {w} kg', { x: a.text, w: String(a.data?.w ?? '') });
+    if (a.kind === 'pr') return W.words(t('hit a new record: {x} {w} kg', { x: a.text, w: a.data?.w != null ? W.show(Number(a.data.w)) : '' }));
     return a.text;
   };
   return (

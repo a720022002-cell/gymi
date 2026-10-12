@@ -18,12 +18,14 @@ import { MEAS_INFO } from '@/lib/health';
 import { fmt } from '@/lib/nutrition';
 import { fx, shortDate } from '@/lib/progress';
 import { displayName, type FriendProfile, friendPhotoUrls, friendProfile, friendShowcase, myFriends, removeFriendship, type Showcase } from '@/lib/social';
+import { useWeight } from '@/lib/units';
 import { BadgeIcon } from '@/components/progress/Streaks';
 import { useSettings } from '@/theme/settings';
 
 /** A friend's profile: only what they chose to share (design: friend). */
 export default function FriendScreen() {
   const { t, lang } = useT();
+  const W = useWeight();
   const { colors: c } = useSettings();
   const toast = useToast();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -127,7 +129,7 @@ export default function FriendScreen() {
                 <Text weight={700} style={{ flex: 1 }}>
                   {r.n}
                 </Text>
-                <Text num weight={700}>{`${fx(Number(r.w))} ${t('kg')}`}</Text>
+                <Text num weight={700}>{`${W.show(Number(r.w))} ${W.label}`}</Text>
               </ListRow>
             ))}
           </List>
@@ -144,7 +146,7 @@ export default function FriendScreen() {
                 <Text weight={700} style={{ flex: 1 }}>
                   {r.n}
                 </Text>
-                <Text num weight={700}>{`${fx(Number(r.w))} ${t('kg')}`}</Text>
+                <Text num weight={700}>{`${W.show(Number(r.w))} ${W.label}`}</Text>
               </ListRow>
             ))}
           </List>

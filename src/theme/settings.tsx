@@ -15,11 +15,14 @@ import { type ColorTokens, dark, light } from './tokens';
 
 export type ThemePref = 'system' | 'light' | 'dark';
 export type Lang = 'en' | 'ar';
+/** Unit for gym weights. Everything is saved in kg; lb is only for showing and typing. */
+export type WeightUnit = 'kg' | 'lb';
 
 type Stored = {
   theme: ThemePref;
   lang: Lang | null; // null = not chosen yet, follow the device
   reduce: boolean;
+  unit: WeightUnit;
 };
 
 type Settings = {
@@ -36,10 +39,12 @@ type Settings = {
   setTheme: (t: ThemePref) => void;
   setLang: (l: Lang) => void;
   setReduce: (r: boolean) => void;
+  unit: WeightUnit;
+  setUnit: (u: WeightUnit) => void;
 };
 
 const KEY = 'gymi.settings.v1';
-const DEFAULTS: Stored = { theme: 'system', lang: null, reduce: false };
+const DEFAULTS: Stored = { theme: 'system', lang: null, reduce: false, unit: 'kg' };
 
 const Ctx = createContext<Settings | null>(null);
 
@@ -134,6 +139,8 @@ export function SettingsProvider({ children }: PropsWithChildren) {
       setTheme: (theme) => save({ theme }),
       setLang: (l) => save({ lang: l }),
       setReduce: (reduce) => save({ reduce }),
+      unit: stored.unit === 'lb' ? 'lb' : 'kg',
+      setUnit: (unit) => save({ unit }),
     }),
     [ready, stored, isDark, lang, isRTL, systemReduce, save],
   );

@@ -12,11 +12,13 @@ import { useT } from '@/i18n';
 import { EX, workoutTitle } from '@/lib/training';
 import { fmt } from '@/lib/nutrition';
 import { useTrain } from '@/lib/train';
+import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
 /** Workout done: time, volume, records (design: summary). */
 export default function Summary() {
   const { t, lang } = useT();
+  const W = useWeight();
   const { colors: c } = useSettings();
   const train = useTrain();
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -61,7 +63,7 @@ export default function Summary() {
         {(
           [
             ['Time', t('{n} min', { n: s.minutes })],
-            ['Volume', `${fmt(s.volume)} ${t('kg')}`],
+            ['Volume', `${fmt(W.num(s.volume))} ${W.label}`],
             ['Sets', String(s.sets_done)],
             ['Intensity', t(inten)],
           ] as const
@@ -91,7 +93,7 @@ export default function Summary() {
                   {t('New best weight')}
                 </Text>
               </View>
-              <Text num color="up">{`${p.w} ${t('kg')}`}</Text>
+              <Text num color="up">{`${W.show(p.w)} ${W.label}`}</Text>
             </Row>
           ))}
         </View>

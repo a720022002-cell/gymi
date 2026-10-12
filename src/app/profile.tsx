@@ -24,6 +24,7 @@ import { DEFAULT_SHARE, type FeedItem, feed, getShare, getShowcase, saveShare, s
 import { useTrain } from '@/lib/train';
 import { EX } from '@/lib/training';
 import { useStreaks } from '@/lib/useProgress';
+import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
 const LVN = ['Locked', 'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5'];
@@ -33,6 +34,7 @@ type SecKey = 'streak' | 'prs' | 'workouts' | 'weight' | 'photos';
 /** Your profile: what friends see, with photo, bio, badges, records and more. Eye buttons hide a section (design: profile). */
 export default function Profile() {
   const { t, lang } = useT();
+  const W = useWeight();
   const { colors: c } = useSettings();
   const toast = useToast();
   const { profile, session, updateProfile } = useAuth();
@@ -256,7 +258,7 @@ export default function Profile() {
                 <Text weight={700} style={{ flex: 1 }}>
                   {exName(p.id)}
                 </Text>
-                <Text num weight={700}>{`${train.best[p.id] ?? p.w} ${t('kg')}`}</Text>
+                <Text num weight={700}>{`${W.show(train.best[p.id] ?? p.w)} ${W.label}`}</Text>
               </ListRow>
             ))}
           </List>
@@ -427,7 +429,7 @@ export default function Profile() {
         </Text>
         <View style={{ height: 12 }} />
         <List>
-          {(pick === 'badges' ? unlocked.map((b) => [b.id, t(b.name), t(LVN[badgeLevel(b)])] as const) : records.map(([id, w]) => [id, exName(id), `${w} ${t('kg')}`] as const)).map(([id, n, sub], i) => {
+          {(pick === 'badges' ? unlocked.map((b) => [b.id, t(b.name), t(LVN[badgeLevel(b)])] as const) : records.map(([id, w]) => [id, exName(id), `${W.show(w)} ${W.label}`] as const)).map(([id, n, sub], i) => {
             const at = sel.indexOf(id);
             const max = pick === 'badges' ? 3 : 5;
             return (

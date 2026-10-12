@@ -5,6 +5,7 @@ import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { loadPrefs } from '@/lib/reminders';
 import { challengeTitle, displayName, recentFriendPRs, recentNudges } from '@/lib/social';
+import { useWeight } from '@/lib/units';
 
 import { showBanner } from './NotifyBanner';
 
@@ -14,6 +15,7 @@ const nowIso = () => new Date().toISOString();
 /** While the app is open: a banner when a friend hits a PR or nudges you in a challenge (Notifications → Gym Bros). */
 export function FriendAlerts() {
   const { t } = useT();
+  const W = useWeight();
   const { session } = useAuth();
   const uid = session?.user.id;
 
@@ -31,7 +33,7 @@ export function FriendAlerts() {
         const prs = await recentFriendPRs(from, uid).catch(() => []);
         const a = prs[0];
         if (a && alive) {
-          const w = typeof a.data?.w === 'number' ? ` ${a.data.w} ${t('kg')}` : '';
+          const w = typeof a.data?.w === 'number' ? ` ${W.show(a.data.w)} ${W.label}` : '';
           showBanner({ title: displayName(a), body: t('hit a new PR: {x}', { x: `${a.text}${w}` }), icon: 'trophy', route: '/friends' });
           return;
         }
@@ -46,6 +48,6 @@ export function FriendAlerts() {
       alive = false;
       clearInterval(id);
     };
-  }, [uid, t]);
+  }, [uid, t, W]);
   return null;
 }

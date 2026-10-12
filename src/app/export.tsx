@@ -16,6 +16,7 @@ import { useHealth } from '@/lib/health';
 import { addDays, fmt } from '@/lib/nutrition';
 import { fx, shortDate } from '@/lib/progress';
 import { escHtml, pdfIsPrint, pdfPage, type ReportStats, sharePdf, useReportData, useReportStats } from '@/lib/report';
+import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
 type Inc = { weight: boolean; food: boolean; train: boolean; sleep: boolean; health: boolean };
@@ -23,6 +24,7 @@ type Inc = { weight: boolean; food: boolean; train: boolean; sleep: boolean; hea
 /** A clean summary as a PDF for a doctor or coach: share sheet on phones, print window on the web (design: export). */
 export default function ExportScreen() {
   const { t, lang } = useT();
+  const W = useWeight();
   const { colors: c } = useSettings();
   const toast = useToast();
   const { profile } = useAuth();
@@ -48,7 +50,7 @@ export default function ExportScreen() {
     }
     if (inc.train) {
       out.push([t('Workouts'), x.workouts.planned ? t('{a} of {b}', { a: x.workouts.asPlanned, b: x.workouts.planned }) : String(x.workouts.done)]);
-      x.liftUps.forEach((l) => out.push([l.name, `${fx(l.from)} → ${fx(l.to)} ${t('kg')}`]));
+      x.liftUps.forEach((l) => out.push([l.name, `${W.show(l.from)} → ${W.show(l.to)} ${W.label}`]));
     }
     if (inc.sleep && x.sleepAvg != null) out.push([t('Average sleep'), `${fx(x.sleepAvg)} ${t('h')}`]);
     if (inc.health) {

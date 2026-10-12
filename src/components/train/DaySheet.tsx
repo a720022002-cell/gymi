@@ -4,6 +4,7 @@ import { View } from 'react-native';
 import { useT } from '@/i18n';
 import { useTrain } from '@/lib/train';
 import { buildWorkout, DAYS_LONG, exInfo } from '@/lib/training';
+import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
 import { Icon } from '../Icon';
@@ -15,6 +16,7 @@ import { Button, Chip, Row } from '../ui';
 /** A day in the weekly plan: its exercises, or rest (design: SH.dayplan). */
 export function DaySheet({ d, onClose }: { d: number | null; onClose: () => void }) {
   const { t, lang } = useT();
+  const WU = useWeight();
   const { colors: c } = useSettings();
   const toast = useToast();
   const train = useTrain();
@@ -143,7 +145,7 @@ export function DaySheet({ d, onClose }: { d: number | null; onClose: () => void
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text num>{`${x.sets} × ${x.reps}${info.timed ? ` ${t('s')}` : ''}`}</Text>
                   <Text variant="xs" color="sec">
-                    {x.target ? `${x.target} ${t('kg')}` : t('Pick your weight')}
+                    {x.target ? `${WU.show(x.target)} ${WU.label}` : t('Pick your weight')}
                   </Text>
                 </View>
               </View>

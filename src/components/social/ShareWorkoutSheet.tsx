@@ -6,6 +6,7 @@ import { fmt } from '@/lib/nutrition';
 import { type Group, myGroups, postActivity, shareWorkoutToGroup } from '@/lib/social';
 import type { WorkoutLog } from '@/lib/train';
 import { workoutTitle } from '@/lib/training';
+import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
 import { Icon } from '../Icon';
@@ -17,6 +18,7 @@ import { Button, Card, Chip, Option, Row } from '../ui';
 /** Share a finished workout to your profile (friends see it) or to your groups (design: SH.share). */
 export function ShareWorkoutSheet({ log, open, onClose }: { log: WorkoutLog; open: boolean; onClose: () => void }) {
   const { t } = useT();
+  const W = useWeight();
   const { colors: c } = useSettings();
   const toast = useToast();
   const [where, setWhere] = useState<'profile' | 'groups'>('profile');
@@ -34,7 +36,7 @@ export function ShareWorkoutSheet({ log, open, onClose }: { log: WorkoutLog; ope
   const pr = log.prs?.[0];
   const text = pr
     ? t('{w} done. New record on {x}: {k} kg.', { w: workoutTitle(log.name, t), x: pr.n, k: pr.w })
-    : t('{w} done in {m} minutes, {v} kg lifted.', { w: workoutTitle(log.name, t), m: log.minutes, v: fmt(log.volume) });
+    : W.words(t('{w} done in {m} minutes, {v} kg lifted.', { w: workoutTitle(log.name, t), m: log.minutes, v: fmt(W.num(log.volume)) }));
   const post = async () => {
     setBusy(true);
     let ok = true;

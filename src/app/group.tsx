@@ -17,6 +17,7 @@ import { useAuth } from '@/lib/auth';
 import { fmt } from '@/lib/nutrition';
 import { addGroupMember, type BoardRow, displayName, groupBoard, groupFeed, leaveGroup, timeAgo } from '@/lib/social';
 import { supabase } from '@/lib/supabase';
+import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
 type Post = { id: string; user_id: string; name: string | null; text: string; created_at: string };
@@ -24,6 +25,7 @@ type Post = { id: string; user_id: string; name: string | null; text: string; cr
 /** A group: progress together, the volume board, workouts members shared, and Train together requests (design: group). */
 export default function GroupScreen() {
   const { t, lang } = useT();
+  const W = useWeight();
   const { colors: c } = useSettings();
   const toast = useToast();
   const { session } = useAuth();
@@ -126,7 +128,7 @@ export default function GroupScreen() {
               {nm(m)}
             </Text>
             <Text variant="small" weight={700} color="sec" num>
-              {m.volume == null ? t('Private') : `${fmt(Number(m.volume))} ${t('kg')}`}
+              {m.volume == null ? t('Private') : `${fmt(W.num(Number(m.volume)))} ${W.label}`}
             </Text>
           </Row>
         ))}

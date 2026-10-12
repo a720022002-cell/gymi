@@ -13,6 +13,7 @@ import { recLabel } from '@/lib/recovery';
 import { useTrain } from '@/lib/train';
 import { EX } from '@/lib/training';
 import { useStreaks } from '@/lib/useProgress';
+import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
 import { Bar } from '../Ring';
@@ -28,6 +29,7 @@ export type PTab = 'overall' | 'body' | 'recovery' | 'streaks';
 /** Overall: your month at a glance, tiles, strength and nutrition (design: progOverall). */
 export function Overall({ go }: { go: (t: PTab, sub?: number) => void }) {
   const { t, lang } = useT();
+  const W = useWeight();
   const { colors: c } = useSettings();
   const { profile, session } = useAuth();
   const dev = useDevices(session?.user.id);
@@ -155,7 +157,7 @@ export function Overall({ go }: { go: (t: PTab, sub?: number) => void }) {
             <Text variant="small" weight={700} style={{ flex: 1 }} numberOfLines={1}>
               {exName(id)}
             </Text>
-            <Text num weight={700}>{`${fx(kg)} ${t('kg')}`}</Text>
+            <Text num weight={700}>{`${W.show(kg)} ${W.label}`}</Text>
           </Row>
         ))}
         <Button small kind="ghost" title={t('See all exercises')} style={{ marginTop: 6 }} onPress={() => router.push('/library')} />

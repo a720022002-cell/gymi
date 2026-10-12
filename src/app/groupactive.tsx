@@ -31,6 +31,7 @@ import {
 import { postActivity, setSessionStatus } from '@/lib/social';
 import { useTrain, type WorkoutLog } from '@/lib/train';
 import { exInfo, exMuscle, muscleLabel, workoutKcal } from '@/lib/training';
+import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
 const digits = (v: string, dec: boolean) =>
@@ -52,6 +53,7 @@ type Data = { id: string; g: GroupSessionFull | null; board: BoardMember[] };
 /** Live group workout: take turns, log your own weights, see everyone's sets (design: groupactive). */
 export default function GroupActive() {
   const { t, lang } = useT();
+  const W = useWeight();
   const { colors: c } = useSettings();
   const insets = useSafeAreaInsets();
   const toast = useToast();
@@ -200,7 +202,7 @@ export default function GroupActive() {
     const key = `${ex.id}:${si}`;
     if (st.done) return setMySets(ex.id, { ...mySets, sets: mySets.sets.map((x, j) => (j === si ? { ...x, done: false } : x)) });
     const lw = last[si]?.w ?? last[last.length - 1]?.w ?? 0;
-    const w = timed ? 0 : +(typed[key]?.w ?? '') || st.w || lw || 0;
+    const w = timed ? 0 : W.toKg(+(typed[key]?.w ?? '')) || st.w || lw || 0;
     const r = +(typed[key]?.r ?? '') || st.r || mySets.reps;
     setMySets(ex.id, { ...mySets, sets: mySets.sets.map((x, j) => (j === si ? { w, r, done: true } : x)) });
     if (v === cur) setView(null);
@@ -213,7 +215,7 @@ export default function GroupActive() {
     if (si < 0) return;
     const lw = (train.last[e.id] ?? [])[si]?.w ?? 0;
     const key = `${e.id}:${si}`;
-    const w = exInfo({ id: e.id }, lang).timed || e.type === 2 ? 0 : +(typed[key]?.w ?? '') || lw;
+    const w = exInfo({ id: e.id }, lang).timed || e.type === 2 ? 0 : W.toKg(+(typed[key]?.w ?? '')) || lw;
     const r = +(typed[key]?.r ?? '') || s.reps;
     setMySets(e.id, { ...s, sets: s.sets.map((x, j) => (j === si ? { w, r, done: true } : x)) });
   };
@@ -369,7 +371,7 @@ export default function GroupActive() {
               {t('Set')}
             </Text>
             <Text variant="xs" weight={700} color="sec" center style={{ flex: 1 }}>
-              {timed ? '—' : t('kg')}
+              {timed ? '—' : W.label}
             </Text>
             <Text variant="xs" weight={700} color="sec" center style={{ flex: 1 }}>
               {t(timed ? 'seconds' : 'reps')}
@@ -385,10 +387,10 @@ export default function GroupActive() {
                   {si + 1}
                 </Text>
                 <TextInput
-                  value={st.done ? (timed ? '' : String(st.w ?? '')) : (typed[key]?.w ?? '')}
+                  value={st.done ? (timed || st.w == null ? '' : W.show(+st.w)) : (typed[key]?.w ?? '')}
                   editable={!timed && !st.done}
                   onChangeText={(x) => setTyped({ ...typed, [key]: { ...typed[key], w: digits(x, true) } })}
-                  placeholder={timed ? '—' : lw ? String(lw) : '—'}
+                  placeholder={timed ? '—' : lw ? W.show(lw) : '—'}
                   placeholderTextColor={c.sec}
                   inputMode="decimal"
                   keyboardType="decimal-pad"
