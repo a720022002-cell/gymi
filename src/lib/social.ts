@@ -128,15 +128,6 @@ export async function groupBoard(group: string) {
   return (await rpc<BoardRow[]>('group_board', { p_group: group })).data ?? [];
 }
 
-export async function groupFeed(group: string) {
-  return (await rpc<{ id: string; user_id: string; name: string | null; text: string; created_at: string }[]>('group_feed', { p_group: group })).data ?? [];
-}
-
-export async function postToGroup(group: string, text: string) {
-  const { error } = await supabase.from('group_posts').insert({ group_id: group, text: text.slice(0, 300) });
-  return !error;
-}
-
 export async function myChallenges() {
   return (await rpc<Challenge[]>('my_challenges')).data ?? [];
 }

@@ -1,8 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { View } from 'react-native';
 
 import { Thinking } from '@/components/food/Thinking';
+import { GroupWorkoutsCard } from '@/components/train/GroupWorkoutsCard';
 import { Bar, Ring } from '@/components/Ring';
 import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
@@ -14,29 +15,26 @@ import { Button, Card, NavButton, Row } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { fmt } from '@/lib/nutrition';
-import { addGroupMember, type BoardRow, displayName, groupBoard, groupFeed, leaveGroup, postToGroup, timeAgo } from '@/lib/social';
+import { addGroupMember, type BoardRow, displayName, groupBoard, leaveGroup } from '@/lib/social';
 import { supabase } from '@/lib/supabase';
 import { useSettings } from '@/theme/settings';
 
-type Post = { id: string; user_id: string; name: string | null; text: string; created_at: string };
-
-/** A group: progress together, volume board and the group feed (design: group). */
+/** A group: progress together and the volume board (design: group). */
 export default function GroupScreen() {
-  const { t, lang } = useT();
+  const { t } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
   const { session } = useAuth();
   const me = session?.user.id ?? '';
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [data, setData] = useState<{ id: string; name: string; board: BoardRow[]; posts: Post[] } | null>(null);
-  const [text, setText] = useState('');
+  const [data, setData] = useState<{ id: string; name: string; board: BoardRow[] } | null>(null);
   const [adding, setAdding] = useState(false);
   const [pick, setPick] = useState<string[]>([]);
   const [leaving, setLeaving] = useState(false);
 
   const load = useCallback(async () => {
-    const [g, board, posts] = await Promise.all([supabase.from('groups').select('name').eq('id', id).maybeSingle(), groupBoard(id), groupFeed(id)]);
-    setData({ id, name: (g.data as { name: string } | null)?.name ?? '', board, posts });
+    const [g, board] = await Promise.all([supabase.from('groups').select('name').eq('id', id).maybeSingle(), groupBoard(id)]);
+    setData({ id, name: (g.data as { name: string } | null)?.name ?? '', board });
   }, [id]);
 
   useEffect(() => {
@@ -50,6 +48,9 @@ export default function GroupScreen() {
   }, [load]);
 
   const d = data?.id === id ? data : null;
+  // The other members, for this group's Train together requests (kept stable so the list isn't reloaded on every render).
+  const memberKey = (d?.board ?? []).map((b) => b.user_id).filter((u) => u !== me).join(',');
+  const memberIds = useMemo(() => (memberKey ? memberKey.split(',') : []), [memberKey]);
   if (!d)
     return (
       <Screen title="" back>
@@ -129,56 +130,9 @@ export default function GroupScreen() {
         ))}
       </Card>
       <Text variant="small" weight={700} color="sec" style={{ marginTop: 12, marginBottom: 8, marginHorizontal: 4 }}>
-        {t('Group feed')}
+        {t('Train together requests')}
       </Text>
-      <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 }}>
-        <TextInput
-          value={text}
-          onChangeText={setText}
-          placeholder={t('Write to the group…')}
-          placeholderTextColor={c.sec}
-          maxLength={300}
-          style={{ flex: 1, minHeight: 40, fontSize: 15, color: c.text }}
-        />
-        <Button
-          small
-          icon="send"
-          title={t('Post')}
-          disabled={!text.trim()}
-          onPress={async () => {
-            if (await postToGroup(d.id, text.trim())) {
-              setText('');
-              load();
-            } else toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
-          }}
-        />
-      </Card>
-      {d.posts.length ? (
-        d.posts.map((p) => (
-          <Card key={p.id}>
-            <Row gap={10}>
-              <Avatar id={p.user_id} name={p.name || '?'} size={32} />
-              <View style={{ flex: 1 }}>
-                <Text variant="small" weight={700}>
-                  {p.user_id === me ? t('You') : p.name}
-                </Text>
-                <Text variant="xs" color="sec">
-                  {timeAgo(p.created_at, t, lang)}
-                </Text>
-              </View>
-            </Row>
-            <Text variant="small" style={{ marginTop: 8 }}>
-              {p.text}
-            </Text>
-          </Card>
-        ))
-      ) : (
-        <Card style={{ alignItems: 'center' }}>
-          <Text variant="small" color="sec">
-            {t('No posts yet. Say hi to the group.')}
-          </Text>
-        </Card>
-      )}
+      <GroupWorkoutsCard title={false} members={memberIds} empty={t('No group workouts planned. Tap Train together to invite the group.')} />
       <Button
         kind="soft"
         title={t('Leave group')}

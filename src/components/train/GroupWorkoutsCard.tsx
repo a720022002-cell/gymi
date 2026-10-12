@@ -15,9 +15,10 @@ import { Button, Card, Row, Springy } from '../ui';
 
 /**
  * Planned group workouts (design: groupCard): who's coming, day and time, Start and cancel.
- * Shows nothing when there are none. Used on Train and on Gym Bros.
+ * Shows nothing when there are none (or the empty text, when given). Used on Train, Gym Bros and a group's page
+ * (there only workouts with someone from the group).
  */
-export function GroupWorkoutsCard({ title = true }: { title?: boolean }) {
+export function GroupWorkoutsCard({ title = true, members, empty }: { title?: boolean; members?: string[]; empty?: string }) {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
@@ -27,18 +28,25 @@ export function GroupWorkoutsCard({ title = true }: { title?: boolean }) {
 
   const load = useCallback(async () => {
     const all = await groupSessions();
-    setList(all.filter((g) => g.scheduled_at && g.status === 'open'));
-  }, []);
+    setList(all.filter((g) => g.scheduled_at && g.status === 'open' && (!members || g.people.some((p) => p.id !== me && members.includes(p.id)))));
+  }, [members, me]);
   useFocusEffect(
     useCallback(() => {
       load();
     }, [load]),
   );
 
-  if (!list.length) return null;
+  if (!list.length && !empty) return null;
   return (
     <View>
-      {title ? (
+      {!list.length && empty ? (
+        <Card style={{ alignItems: 'center' }}>
+          <Text variant="small" color="sec" center>
+            {empty}
+          </Text>
+        </Card>
+      ) : null}
+      {title && list.length ? (
         <Text variant="small" weight={700} color="sec" style={{ marginTop: 18, marginBottom: 8, marginHorizontal: 4 }}>
           {t('Group workouts')}
         </Text>
