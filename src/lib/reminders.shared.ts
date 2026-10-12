@@ -42,7 +42,7 @@ export const NCAT_INFO: Record<NCat, { name: string; icon: 'drop' | 'food' | 'tr
   water: { name: 'Water', icon: 'drop', sample: 'Time for a glass of water. You’re 700 ml behind.', route: '/water' },
   food: { name: 'Meals and food', icon: 'food', sample: 'Lunch in 30 minutes: chicken kabsa, 810 kcal.', route: '/food' },
   workout: { name: 'Workouts', icon: 'train', sample: 'Push day in 30 minutes. Light weight, let’s go.', route: '/train' },
-  checkin: { name: 'Morning check-in', icon: 'sun', sample: 'Good morning. Your 30-second check-in is ready.', route: '/home' },
+  checkin: { name: 'Daily check-in', icon: 'sun', sample: 'Your 30-second daily check-in is ready.', route: '/home' },
   sleep: { name: 'Bedtime', icon: 'moon', sample: 'Bed in 30 minutes. Put the phone away soon.', route: '/progress' },
   vitamins: { name: 'Vitamins', icon: 'pill', sample: 'Time for Vitamin D, 50,000 IU.', route: '/vitamins' },
   report: { name: 'Reports', icon: 'doc', sample: 'Your weekly report is ready. You trained 3 of 3 days.', route: '/report' },
@@ -171,7 +171,7 @@ export function buildReminders(
   if (!p.on) return [];
   const out: Reminder[] = [];
   const snd = (s: string) => s !== 'none';
-  if (p.checkin.on) out.push({ title: t('Morning check-in'), body: t('Good morning. Your 30-second check-in is ready.'), time: p.checkin.time, route: '/home', sound: snd(p.checkin.sound) });
+  if (p.checkin.on) out.push({ title: t('Daily check-in'), body: t('Your 30-second daily check-in is ready.'), time: p.checkin.time, route: '/home', sound: snd(p.checkin.sound) });
   if (p.water.on) {
     const w = p.water;
     const body = w.freq === 'behind' ? t('Check your water. Have a glass if you’re behind.') : t('Time for a glass of water.');

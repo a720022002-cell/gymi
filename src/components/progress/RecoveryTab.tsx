@@ -72,7 +72,7 @@ export function RecoveryTab() {
           </View>
         ) : (
           <Text variant="small" color="sec" style={{ marginTop: 6 }}>
-            {t('Do your morning check-in each day to see your recovery over time.')}
+            {t('Do your daily check-in to see your recovery over time.')}
           </Text>
         )}
       </Card>

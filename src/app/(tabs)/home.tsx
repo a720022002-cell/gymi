@@ -49,7 +49,7 @@ export default function Home() {
   const [layout] = useHomeLayout();
   const [coachMode] = useCoachMode();
   const { welcome } = useLocalSearchParams<{ welcome?: string }>();
-  // Right after sign up: "Got an invite code?", then the morning check-in.
+  // Right after sign up: "Got an invite code?", then the daily check-in.
   const [askCode, setAskCode] = useState(welcome === '1');
   const [coach, setCoach] = useState<MyCoach | null>(null);
   const [app, setApp] = useState<Application | null | undefined>(undefined);
@@ -289,7 +289,7 @@ function CheckinCard({ onStart }: { onStart: () => void }) {
       <Mark size={38} color="#FFFFFF" stroke={7} />
       <View style={{ flex: 1 }}>
         <Text variant="h3" color="#FFFFFF">
-          {t('Morning check-in')}
+          {t('Daily check-in')}
         </Text>
         <Text variant="small" color="rgba(255,255,255,0.85)">
           {t('Weight, sleep and energy. Under 30 seconds.')}

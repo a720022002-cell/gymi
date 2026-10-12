@@ -72,7 +72,7 @@ type Health = {
   deleteBlood: (id: string) => Promise<void>;
   /** Food and water per day for the last 120 days, today included (live). */
   days: Record<string, DayTotals>;
-  /** Morning check-in sheet. */
+  /** Daily check-in sheet. */
   checkinOpen: boolean;
   setCheckinOpen: (v: boolean) => void;
 };

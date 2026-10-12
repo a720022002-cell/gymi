@@ -442,7 +442,7 @@ function About() {
     setBusy(false);
     if (r.error) return setE({ save: r.error });
     toast(t('Welcome to Gymi'), { icon: 'check' });
-    // Home asks "Got an invite code?" next, then opens the morning check-in.
+    // Home asks "Got an invite code?" next, then opens the daily check-in.
     router.replace({ pathname: '/home', params: { welcome: '1' } });
   };
 

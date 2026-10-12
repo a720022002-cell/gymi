@@ -21,7 +21,7 @@ import { Button, Card, Chip, Label, ProgDots, Row, Segmented } from '../ui';
 import { Wheel } from '../Wheel';
 import { Choices, fmtDur, WeightWheel } from './bits';
 
-/** Morning check-in: weight, sleep, how you feel (design: SH.checkin). Mounted once at the root. */
+/** Daily check-in: weight, sleep, how you feel (design: SH.checkin). Mounted once at the root. */
 export function CheckinSheet() {
   const health = useHealth();
   return (
