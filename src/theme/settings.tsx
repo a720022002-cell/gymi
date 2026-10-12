@@ -9,7 +9,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { I18nManager, Platform, useColorScheme } from 'react-native';
+import { AccessibilityInfo, I18nManager, Platform, useColorScheme } from 'react-native';
 
 import { type ColorTokens, dark, light } from './tokens';
 
@@ -35,7 +35,7 @@ type Settings = {
   lang: Lang;
   langChosen: boolean;
   isRTL: boolean;
-  /** Solid instead of glass: only the in-app switch (off by default). */
+  /** Effective value: the in-app switch (off by default) OR the phone's accessibility setting. */
   reduceTransparency: boolean;
   reduceSetting: boolean;
   setTheme: (t: ThemePref) => void;
@@ -58,10 +58,30 @@ function deviceLang(): Lang {
   }
 }
 
+/** Is "Reduce Transparency" turned on at the system level? */
+function useSystemReduceTransparency() {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      if (typeof window === 'undefined' || !window.matchMedia) return;
+      const mq = window.matchMedia('(prefers-reduced-transparency: reduce)');
+      const update = () => setOn(mq.matches);
+      update();
+      mq.addEventListener?.('change', update);
+      return () => mq.removeEventListener?.('change', update);
+    }
+    AccessibilityInfo.isReduceTransparencyEnabled?.().then(setOn).catch(() => {});
+    const sub = AccessibilityInfo.addEventListener?.('reduceTransparencyChanged', setOn);
+    return () => sub?.remove();
+  }, []);
+  return on;
+}
+
 export function SettingsProvider({ children }: PropsWithChildren) {
   const [stored, setStored] = useState<Stored>(DEFAULTS);
   const [ready, setReady] = useState(false);
   const scheme = useColorScheme();
+  const systemReduce = useSystemReduceTransparency();
 
   useEffect(() => {
     AsyncStorage.getItem(KEY)
@@ -125,7 +145,7 @@ export function SettingsProvider({ children }: PropsWithChildren) {
       lang,
       langChosen: stored.lang !== null,
       isRTL,
-      reduceTransparency: stored.reduce,
+      reduceTransparency: stored.reduce || systemReduce,
       reduceSetting: stored.reduce,
       setTheme: (theme) => save({ theme }),
       setLang: (l) => save({ lang: l }),
@@ -133,7 +153,7 @@ export function SettingsProvider({ children }: PropsWithChildren) {
       unit: stored.unit === 'lb' ? 'lb' : 'kg',
       setUnit: (unit) => save({ unit }),
     }),
-    [ready, stored, isDark, lang, isRTL, save],
+    [ready, stored, isDark, lang, isRTL, systemReduce, save],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
