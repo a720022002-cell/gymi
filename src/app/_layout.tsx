@@ -17,6 +17,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { BalanceSheet } from '@/components/food/BalanceSheet';
+import { CaffeineSheet } from '@/components/food/CaffeineSheet';
 import { LogSheet } from '@/components/food/LogSheet';
 import { RingClosed } from '@/components/food/RingClosed';
 import { CheckinSheet } from '@/components/health/CheckinSheet';
@@ -96,6 +97,7 @@ function AppStack({ ready }: { ready: boolean }) {
       </Stack>
       <LogSheet />
       <BalanceSheet />
+      <CaffeineSheet />
       <RingClosed />
       <CheckinSheet />
       <ReminderSync />

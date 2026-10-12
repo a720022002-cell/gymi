@@ -1,6 +1,7 @@
 import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
+import { caffeineCheck, showCaffeineAlert } from './caffeine';
 import { useAuth } from './auth';
 import type { MealPlan } from './coaching';
 import { addDays, ageFromIso, defaultPlan, type FoodPlan, hhmmOf, localDay, type Macros, mealAt, type Person, planMeals, RAMADAN_SWITCH, targets } from './nutrition';
@@ -47,6 +48,8 @@ export type Cardio = { id: string; kind: 'Walk' | 'Run' | 'Bike' | 'Swim' | 'Oth
 
 export type NewLog = {
   name: string;
+  /** What's in it (a meal of several items), for the caffeine check. Not saved. */
+  parts?: string[];
   kcal: number;
   protein: number;
   carbs: number;
@@ -487,6 +490,12 @@ export function useLogFood() {
         return null;
       }
       toast(t('Logged to Food: {n} kcal', { n: Math.round(item.kcal) }), { ai: true, undo: () => food.deleteLog(row.id) });
+      // A big coffee, energy drink or pre-workout: warn about the caffeine first.
+      const caf = food.isToday ? caffeineCheck(item.parts?.length ? item.parts.join(', ') : item.name, food.logs.map((l) => l.name), new Date().getHours() >= 15) : null;
+      if (caf) {
+        setTimeout(() => showCaffeineAlert(caf), 900);
+        return row;
+      }
       // Landing up to 10% over still counts as closing the ring (celebrated instead), so the balance sheet waits until it's more.
       const max = food.dayGoal(food.day) + food.burned;
       const wayOver = food.eaten.k + item.kcal > max * 1.1;

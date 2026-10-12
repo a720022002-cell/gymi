@@ -119,7 +119,7 @@ export default function MealResult() {
   const add = async () => {
     if (!rows.length || tot.k <= 0) return;
     const name = title.trim() || rows.map((x) => x.name).join(t(', '));
-    const row = await logFood({ name: name.slice(0, 200), kcal: tot.k, protein: tot.p, carbs: tot.c, fat: tot.f, meal, sugar_high: !!res?.sugar_high, fat_high: !!res?.fat_high }, toast, t);
+    const row = await logFood({ name: name.slice(0, 200), parts: rows.map((x) => x.name), kcal: tot.k, protein: tot.p, carbs: tot.c, fat: tot.f, meal, sugar_high: !!res?.sugar_high, fat_high: !!res?.fat_high }, toast, t);
     if (row) router.back();
   };
 
