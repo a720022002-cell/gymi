@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
+import { Field } from '@/components/Field';
 import { WarnChip } from '@/components/food/Chips';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
@@ -23,6 +24,9 @@ export default function LoggedScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const log = food.logs.find((l) => l.id === id);
   const [dbFood, setDbFood] = useState<{ id: string; f: DbFood | null } | null>(null);
+  // Editing the name and numbers (strings while you type).
+  const [edit, setEdit] = useState<{ name: string; k: string; p: string; c: string; f: string } | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const foodId = log?.food_id ?? null;
   useEffect(() => {
@@ -47,6 +51,24 @@ export default function LoggedScreen() {
   const planned = planMeals(food.plan);
   const mealNames = mealChoices(planned);
   const curMeal = log.meal || mealAt(planned, hhmmOf(new Date(log.created_at)));
+  const num = (v: string) => +v.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[,٫]/g, '.') || 0;
+  const numField = (k: 'k' | 'p' | 'c' | 'f', label: string, unit: string) =>
+    edit ? (
+      <View style={{ flex: 1 }}>
+        <Field label={label} value={edit[k]} onChangeText={(v) => setEdit({ ...edit, [k]: v.replace(/[^\d.,٠-٩٫]/g, '').slice(0, 7) })} inputMode="decimal" keyboardType="decimal-pad" ltr unit={unit} />
+      </View>
+    ) : null;
+  const r1 = (n: number) => String(Math.round(n * 10) / 10);
+  const scale = (m: number) => edit && setEdit({ ...edit, k: String(Math.round(num(edit.k) * m)), p: r1(num(edit.p) * m), c: r1(num(edit.c) * m), f: r1(num(edit.f) * m) });
+  const save = async () => {
+    if (!edit) return;
+    setSaving(true);
+    const ok = await food.updateLog(log.id, { name: edit.name.trim().slice(0, 200), kcal: Math.round(num(edit.k)), protein: Math.round(num(edit.p) * 10) / 10, carbs: Math.round(num(edit.c) * 10) / 10, fat: Math.round(num(edit.f) * 10) / 10 });
+    setSaving(false);
+    if (!ok) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+    setEdit(null);
+    toast(t('Saved'), { icon: 'check' });
+  };
   const time = new Date(log.created_at).toLocaleTimeString(lang === 'ar' ? 'ar-SA' : 'en-US', { hour: 'numeric', minute: '2-digit' });
 
   return (
@@ -95,6 +117,41 @@ export default function LoggedScreen() {
           </Card>
         ))}
       </Row>
+
+      {edit ? (
+        <View style={{ marginTop: 4 }}>
+          <Field label={t('Name')} value={edit.name} onChangeText={(v) => setEdit({ ...edit, name: v })} maxLength={200} />
+          <Row gap={10}>
+            {numField('k', t('Calories'), t('kcal'))}
+            {numField('p', t('Protein'), t('g'))}
+          </Row>
+          <Row gap={10}>
+            {numField('c', t('Carbs'), t('g'))}
+            {numField('f', t('Fat'), t('g'))}
+          </Row>
+          <Text variant="xs" weight={700} color="sec" style={{ marginTop: 12, marginBottom: 6 }}>
+            {t('Ate more or less? Change the portion')}
+          </Text>
+          <Row gap={8} style={{ flexWrap: 'wrap' }}>
+            {[0.5, 1.5, 2].map((m) => (
+              <Chip key={m} title={m === 0.5 ? '½' : `${m}×`} onPress={() => scale(m)} />
+            ))}
+          </Row>
+          <Row gap={8} style={{ marginTop: 16 }}>
+            <Button kind="glass" title={t('Cancel')} style={{ flex: 1 }} onPress={() => setEdit(null)} />
+            <Button title={t('Save')} loading={saving} disabled={!edit.name.trim() || !(num(edit.k) >= 0)} style={{ flex: 1 }} onPress={save} />
+          </Row>
+        </View>
+      ) : (
+        <Button
+          kind="soft"
+          icon="edit"
+          title={t('Edit')}
+          color={c.text}
+          style={{ marginTop: 12 }}
+          onPress={() => setEdit({ name: log.name, k: String(Math.round(+log.kcal)), p: String(+log.protein), c: String(+log.carbs), f: String(+log.fat) })}
+        />
+      )}
 
       {meal ? (
         <>

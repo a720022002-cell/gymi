@@ -91,6 +91,8 @@ type Food = {
   deleteLog: (id: string) => Promise<FoodLog | null>;
   /** Move a logged food to another meal. */
   setLogMeal: (id: string, meal: string) => Promise<void>;
+  /** Change a logged food's name or numbers. */
+  updateLog: (id: string, patch: Partial<Pick<FoodLog, 'name' | 'kcal' | 'protein' | 'carbs' | 'fat'>>) => Promise<boolean>;
   restoreLog: (l: FoodLog) => Promise<void>;
   saved: SavedMeal[];
   saveMeal: (m: NewSavedMeal) => Promise<SavedMeal | null>;
@@ -313,6 +315,13 @@ export function FoodProvider({ children }: PropsWithChildren) {
     await supabase.from('food_logs').update({ meal }).eq('id', id);
   }, []);
 
+  const updateLog = useCallback(async (id: string, patch: Partial<Pick<FoodLog, 'name' | 'kcal' | 'protein' | 'carbs' | 'fat'>>) => {
+    const { data, error } = await supabase.from('food_logs').update(patch).eq('id', id).select('*').single();
+    if (error || !data) return false;
+    setLogs((xs) => xs.map((x) => (x.id === id ? (data as FoodLog) : x)));
+    return true;
+  }, []);
+
   const restoreLog = useCallback(async (l: FoodLog) => {
     const { id: _id, created_at: _c, ...rest } = l;
     const { data } = await supabase.from('food_logs').insert(rest).select('*').single();
@@ -428,6 +437,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       addLog,
       deleteLog,
       setLogMeal,
+      updateLog,
       restoreLog,
       saved,
       saveMeal,
@@ -453,7 +463,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       typeSeed,
       openTyping,
     }),
-    [day, setDay, isToday, balance, logOpen, setLogOpen, typeSeed, openTyping, coach, coachMeals, addMealByCode, ready, today, setupDone, plan, person, draft, savePlan, updatePlan, logs, eaten, target, dayGoal, coachTargets, kcalLeft, addLog, deleteLog, setLogMeal, restoreLog, saved, saveMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, addCardio, deleteCardio, steps, setSteps, addWater],
+    [day, setDay, isToday, balance, logOpen, setLogOpen, typeSeed, openTyping, coach, coachMeals, addMealByCode, ready, today, setupDone, plan, person, draft, savePlan, updatePlan, logs, eaten, target, dayGoal, coachTargets, kcalLeft, addLog, deleteLog, setLogMeal, updateLog, restoreLog, saved, saveMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, addCardio, deleteCardio, steps, setSteps, addWater],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

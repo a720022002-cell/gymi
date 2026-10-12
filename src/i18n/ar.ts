@@ -304,6 +304,7 @@ export const AR: Record<string, string> = {
   "At your meal times": "بأوقات وجباتك",
   "At {g}": "في {g}",
   "At {g}. Pick a time and your coach confirms it.": "في {g}. اختر وقت ومدربك يأكده.",
+  "Ate more or less? Change the portion": "أكلت أكثر أو أقل؟ غيّر الكمية",
   "Aug": "أغسطس",
   "Average": "المتوسط",
   "Average calories": "متوسط السعرات",
