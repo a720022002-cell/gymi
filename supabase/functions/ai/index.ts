@@ -26,6 +26,8 @@ let lastDetail = '';
 let lastModel = '';
 /** Admins can test another model on any task (for comparing accuracy). */
 let modelOverride = '';
+/** Reading tasks (photos, labels, lab reports) answer the same way every time; the chat keeps some variety. */
+let temperature: number | undefined;
 /** Tokens and cost of the last AI call, saved to ai_calls for the admin cost page. */
 let lastUsage = { prompt: 0, completion: 0, cost: 0 };
 const openrouterKey = () => env('OPENROUTER_API_KEY') || env('OpenRouter') || env('OPENROUTER');
@@ -85,6 +87,7 @@ async function openrouterCall(model: string, system: string, msgs: Msg[], schema
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
     body: JSON.stringify({
       model,
+      ...(temperature != null ? { temperature } : {}),
       // Ask OpenRouter to return tokens and the real cost of this call.
       usage: { include: true },
       // PDFs (lab reports) are turned into text by OpenRouter's free PDF reader.
@@ -147,13 +150,14 @@ const FOOD_ITEM = {
 /** Meal photo: look first (what, how many, how big), then weigh, then count calories. */
 const MEAL_PHOTO = (lang: string) => `You are a careful dietitian estimating a meal from one photo for a calorie tracker. ${LANG(lang)} Names short.${lang === 'ar' ? ' Write "title", every item "name", "alternatives" and "note" in Arabic (Saudi dish names like كبسة دجاج، مندي، فلافل).' : ''} If the person tells you what the dish is, use that name but still weigh the portions from the photo.
 Work in this order and write it in "seen" (one or two short sentences, English is fine):
+0. If a kitchen scale display or a weight printed on the package is readable, use that number as the total weight and split it between the parts. Say so.
 1. Name the dish exactly. Gulf, Arab, Indian and fast food are common in Saudi Arabia. Check look-alikes before you decide: kabsa vs mandi vs biryani vs machboos vs mathbi; shawarma wrap vs falafel wrap; shakshuka vs eggs in tomato; harees vs jareesh vs oats; saleeg vs rice pudding; mutabbaq vs pizza; luqaimat vs donut holes. Put the 2 next most likely dish names in "alternatives".
 2. Count what can be counted: chicken pieces, eggs, falafel, dates, bread, sambousek, nuggets. Say the counts.
-3. Size the container: a dinner plate is about 26 cm, a side plate 20 cm, a bowl about 350 ml, a frying pan 26 to 30 cm, a shared Saudi tray (sahan) 45 to 60 cm, a spoon 15 cm. Estimate how full it is and how high the food is piled.
-4. Weigh each part in grams from the size and count. Do not underestimate: a full dinner plate of rice is 350 to 500 g cooked; one chicken leg quarter is about 250 g with bone (180 g edible); a whole half chicken is about 450 g; one large egg is 50 g; one falafel ball 17 to 20 g; one Arabic bread 60 to 80 g; one medium date 8 g. If the photo shows a shared tray, estimate the whole tray and say so in "note".
+3. Size things against what is in the photo: a dinner plate is about 26 cm, a side plate 20 cm, a bowl about 350 ml, a frying pan 26 to 30 cm, a shared Saudi tray (sahan) 45 to 60 cm, a spoon 15 cm, a fork 19 cm, a phone 15 cm. An adult hand: palm about 8.5 cm wide, hand about 19 cm long from wrist to fingertip, a finger about 2 cm wide. Estimate how full the container is and how high the food is piled. For whole fruit or vegetables, estimate each one's length and width in cm.
+4. Weigh each part in grams from the size and count. For whole fruit and vegetables, count them and use a typical weight per piece, adjusted only a little for size (do not calculate from length and width): the short Middle Eastern cucumber common in Saudi Arabia (14 to 18 cm) is about 120 g, a long English cucumber 300 g; tomato 120 g; onion 150 g; apple 180 g; orange 150 g; banana 120 g peeled; potato 200 g; carrot 70 g. Do not underestimate cooked food: a full dinner plate of rice is 350 to 500 g cooked; one chicken leg quarter is about 250 g with bone (180 g edible); a whole half chicken is about 450 g; one large egg is 50 g; one falafel ball 17 to 20 g; one Arabic bread 60 to 80 g; one medium date 8 g. If the photo shows a shared tray, estimate the whole tray and say so in "note".
 5. Count calories for each part as cooked and served, including the oil or ghee it is cooked in (rice in kabsa or mandi is about 170 to 190 kcal per 100 g; fried foods soak up oil).
 ${PORTIONS}
-"title" is the dish name. Each item is one part of the meal with its grams and the calories and macros for those grams. "confidence" is high, medium or low. If it is not food, return items: [] and a note.`;
+"title" is the dish name. Several of the same thing are ONE item with the count in its name (like "Cucumber ×2"), never "left" and "right". Each item is one part of the meal with its grams and the calories and macros for those grams. "confidence" is high, medium or low. If it is not food, return items: [] and a note.`;
 const MEAL_SCHEMA = {
   type: 'object',
   properties: {
@@ -364,6 +368,7 @@ Deno.serve(async (req) => {
     lastModel = '';
     lastDetail = '';
     modelOverride = '';
+    temperature = ['meal_photo', 'food_text', 'label_photo', 'blood', 'machine'].includes(task) ? 0 : undefined;
     if (typeof body.model === 'string' && body.model) {
       const { data: isAdmin } = await admin.from('admins').select('user_id').eq('user_id', u.user.id).maybeSingle();
       if (isAdmin) modelOverride = body.model.slice(0, 100);
