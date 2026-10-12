@@ -17,7 +17,7 @@ import { restDone } from '@/lib/beep';
 import { toPlanEx } from '@/lib/exercisesDb';
 import { canListen, listen, stopListening } from '@/lib/speech';
 import { type Session, type SessionEx, useTrain } from '@/lib/train';
-import { exInfo, type PlanEx, topReps } from '@/lib/training';
+import { exInfo, type PlanEx, rangeText, topReps } from '@/lib/training';
 import { matchExercise, parseSet } from '@/lib/voiceSet';
 import { useSettings } from '@/theme/settings';
 
@@ -77,7 +77,7 @@ function setAdvice(x: SessionEx, timed: boolean, bodyweight: boolean, t: Tr): { 
     if (r >= lo) return { text: `${beat}${t('Done. Top set {w} kg × {r}. Stay at {w} kg until you get {hi} reps.', { w: kg(w), r, hi })}`, tone: 'ok' };
     return { text: t('Done. The last set was heavy ({r} reps). Next time use {w} kg.', { r, w: kg(Math.max(0, w - step)) }), tone: 'down' };
   }
-  if (r > hi + 2) return { text: `${beat}${t('{r} reps is too light for {lo}–{hi}. Go up to {w} kg next set.', { r, lo, hi, w: kg(w + step * 2) })}`, tone: 'up' };
+  if (r > hi + 2) return { text: `${beat}${t('{r} reps is too light for {range}. Go up to {w} kg next set.', { r, range: rangeText(lo, hi), w: kg(w + step * 2) })}`, tone: 'up' };
   if (r > hi) return { text: `${beat}${t('{r} reps, above {hi}. Add {s} kg next set ({w} kg).', { r, hi, s: kg(step), w: kg(w + step) })}`, tone: 'up' };
   if (r === hi) return { text: `${beat}${t('Top of the range. Try {w} kg next set.', { w: kg(w + step) })}`, tone: 'up' };
   if (r >= lo) {

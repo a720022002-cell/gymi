@@ -366,6 +366,25 @@ export function applyShift(week: Day[], sh: NonNullable<ReturnType<typeof shiftP
   return next;
 }
 
+/** A rep target as a range: "8" becomes "8–10", "12" becomes "12–15" and "15" becomes "15–20". Timed holds stay in seconds; anything else is left as it is. */
+export function repRange(reps: string, timed?: boolean) {
+  const s = String(reps ?? '').trim();
+  const m = s.match(/^(\d{1,3})(?:\s*[–-]\s*(\d{1,3}))?$/);
+  if (timed || !m) return s;
+  const a = +m[1];
+  const b = m[2] ? +m[2] : a;
+  if (b > a) return `${a}–${b}`;
+  return `${a}–${a + (a >= 15 ? 5 : a >= 12 ? 3 : 2)}`;
+}
+
+/** Every exercise in the plan with a rep range, never a single number. */
+export function rangePlan<P extends Pick<TrainPlan, 'workouts'>>(p: P): P {
+  return { ...p, workouts: Object.fromEntries(Object.entries(p.workouts ?? {}).map(([k, w]) => [k, { ...w, ex: w.ex.map((x) => ({ ...x, reps: repRange(x.reps, x.time || EX[x.id]?.time) })) }])) };
+}
+
+/** A range for showing: "8" when both ends are the same, never "8–8". */
+export const rangeText = (lo: number, hi: number) => (lo === hi ? String(hi) : `${lo}–${hi}`);
+
 /** Highest number in a reps text like "8–10" or "12". */
 export const topReps = (reps: string) => parseInt(String(reps).split(/[–-]/).pop() ?? '10', 10) || 10;
 

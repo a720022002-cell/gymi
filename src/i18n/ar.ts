@@ -3445,6 +3445,7 @@ export const AR: Record<string, string> = {
   "{p} sent to {n}": "انرسل {p} لـ {n}",
   "{r} reps is below {lo}. Drop to {w} kg so you can do {lo} or more.": "{r} عدّات أقل من {lo}. نزّل لـ {w} كجم عشان تقدر تسوي {lo} أو أكثر.",
   "{r} reps is too light for {lo}–{hi}. Go up to {w} kg next set.": "{r} عدّات يعني الوزن خفيف على مدى {lo}–{hi}. ارفع لـ {w} كجم الجولة الجاية.",
+  "{r} reps is too light for {range}. Go up to {w} kg next set.": "{r} عدّات يعني الوزن خفيف على {range}. ارفع لـ {w} كجم الجولة الجاية.",
   "{r} reps, above {hi}. Add {s} kg next set ({w} kg).": "{r} عدّات، فوق {hi}. زِد {s} كجم الجولة الجاية ({w} كجم).",
   "{r} reps, in the range. Stay at {w} kg and aim for {n}.": "{r} عدّات، داخل المدى. خلك على {w} كجم وحاول توصل {n}.",
   "{r} reps, right in the range. Same again.": "{r} عدّات، بالضبط في المدى. نفسها مرة ثانية.",

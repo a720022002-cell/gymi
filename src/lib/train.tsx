@@ -7,7 +7,7 @@ import { myCoach, myCoachPlans } from './coaching';
 import { addDays, localDay } from './nutrition';
 import { shareWorkout } from './social';
 import { supabase } from './supabase';
-import { buildWorkout, type Day, effectiveWeek, type LastSets, orderWeek, type PlanEx, planFromProgram, topReps, type TrainPlan, weekdayOf, weekStart, workoutKcal } from './training';
+import { buildWorkout, type Day, effectiveWeek, type LastSets, orderWeek, type PlanEx, planFromProgram, rangePlan, topReps, type TrainPlan, weekdayOf, weekStart, workoutKcal } from './training';
 
 export type LoggedEx = { id: string; n: string; sets: { w: number; r: number }[] };
 export type WorkoutLog = {
@@ -112,7 +112,7 @@ export function TrainProvider({ children }: PropsWithChildren) {
       if (!alive) return;
       const raw = p.data?.plan as TrainPlan | undefined;
       // "In order" plans were removed: every plan now uses fixed days.
-      const loaded = raw?.week ? { ...raw, type: 'fixed' as const, skipped: raw.skipped ?? {}, dismiss: raw.dismiss ?? {}, machines: raw.machines ?? {} } : null;
+      const loaded = raw?.week ? { ...rangePlan(raw), type: 'fixed' as const, skipped: raw.skipped ?? {}, dismiss: raw.dismiss ?? {}, machines: raw.machines ?? {} } : null;
       planRef.current = loaded;
       setPlan(loaded);
       setSetupDone(!!p.data?.setup_done && !!raw?.week);
@@ -151,7 +151,7 @@ export function TrainProvider({ children }: PropsWithChildren) {
     setCoach(link && link.status === 'active' ? { name: link.name || link.username, link: link.id } : { name: '', link: '' });
     if (cur?.coach?.id === prog.id && cur.coach.updated_at === prog.updated_at) return;
     const today = localDay();
-    const base = planFromProgram(prog);
+    const base = rangePlan(planFromProgram(prog));
     const next: TrainPlan = {
       ...base,
       since: cur?.coach?.id === prog.id ? (cur.since ?? today) : today,
@@ -195,8 +195,10 @@ export function TrainProvider({ children }: PropsWithChildren) {
   const recTools = useMemo(() => (rec.day === today ? rec.tools : []), [rec, today]);
 
   const savePlan = useCallback(
-    async (p: TrainPlan, done?: boolean) => {
+    async (plan: TrainPlan, done?: boolean) => {
       if (!userId) return false;
+      // Reps are always a range ("8–10"), whoever made the plan.
+      const p = rangePlan(plan);
       setPlan(p);
       planRef.current = p;
       if (done !== undefined) setSetupDone(done);
@@ -209,7 +211,7 @@ export function TrainProvider({ children }: PropsWithChildren) {
   const updatePlan = useCallback(
     (patch: Partial<TrainPlan>) => {
       if (!planRef.current) return;
-      const next = { ...planRef.current, ...patch };
+      const next = patch.workouts ? rangePlan({ ...planRef.current, ...patch }) : { ...planRef.current, ...patch };
       planRef.current = next;
       setPlan(next);
       clearTimeout(saveTimer.current);
