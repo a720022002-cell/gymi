@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { Field } from '@/components/Field';
+import { Thinking } from '@/components/food/Thinking';
 import { TimeField } from '@/components/food/TimeField';
 import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
@@ -12,10 +13,10 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
-import { friendLevels, startGroupWorkout } from '@/lib/groupWorkout';
+import { friendLevels, setGroupSessionInfo, startGroupWorkout } from '@/lib/groupWorkout';
 import { addDays, fmtTime } from '@/lib/nutrition';
 import { displayName, type FriendRow, myFriends } from '@/lib/social';
-import { COLORS, LEVELS, type Level, type Person, scheme, TOG } from '@/lib/together';
+import { applyTogether, buildTogether, COLORS, fallbackPlan, friendsDay, LEVELS, type Level, myDayInfo, noteText, type Person, scheme, type TogetherPlan } from '@/lib/together';
 import { useTrain } from '@/lib/train';
 import { DAYS, DAYS_LONG, exInfo, exMuscle, muscleLabel, type PlanEx } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
@@ -43,6 +44,8 @@ export default function Together() {
   const [day, setDay] = useState(0);
   const [time, setTime] = useState('18:30');
   const [busy, setBusy] = useState(false);
+  // The workout the AI built from everyone's plan for the chosen day (and what joining means for each person).
+  const [built, setBuilt] = useState<{ key: string; plan: TogetherPlan } | null>(null);
 
   // Friends and their levels; friends passed in (from a friend's page or a group) are picked already.
   useEffect(() => {
@@ -67,6 +70,45 @@ export default function Together() {
 
   const all: P[] = [{ name: t('You'), level: myLevel, me: true }, ...people];
   const appFriends = people.filter((p) => p.id);
+  const date = addDays(train.today, day);
+  // Who's in, as keys: "me", a friend's id, or "local-<n>" for a friend who isn't on Gymi.
+  const keyOf = (p: P, i: number) => (p.me ? 'me' : (p.id ?? `local-${i}`));
+  const buildKey = `${date}|${all.map(keyOf).join(',')}`;
+  useEffect(() => {
+    if (!ready) return;
+    let alive = true;
+    (async () => {
+      const friendsInfo = await friendsDay(appFriends.map((p) => p.id as string), date);
+      const info = all.map((p, i) => {
+        if (p.me) return myDayInfo(train.plan, date, profile?.name || t('You'), myLevel, train.logs);
+        const f = friendsInfo.find((x) => x.key === p.id);
+        return f ?? { key: keyOf(p, i), name: p.name, level: p.level, planned: null, plannedEx: [], injuries: [], recent: [] };
+      });
+      const plan = await buildTogether(info, date, lang).catch(() => fallbackPlan(info));
+      if (alive) setBuilt({ key: buildKey, plan });
+    })();
+    return () => {
+      alive = false;
+    };
+    // buildKey covers the people and the day.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, buildKey]);
+  const plan = built?.key === buildKey ? built.plan : null;
+  const TOG = plan?.ex ?? [];
+  const title = plan ? t(plan.title) : '';
+  /** Save the title and each person's note on the invite, and apply your own part to your plan. */
+  const saveInfo = async (sid: string, when: string) => {
+    if (!plan) return;
+    const notes = Object.fromEntries(
+      all.flatMap((p, i) => {
+        const k = keyOf(p, i);
+        const id = p.me ? session?.user.id : p.id;
+        return id && plan.notes[k] ? [[id, { ...plan.notes[k], day: when }]] : [];
+      }),
+    );
+    await setGroupSessionInfo(sid, plan.title, notes);
+    if (train.plan && when === date) train.updatePlan(applyTogether(train.plan, sid, plan.notes.me?.action, when));
+  };
 
   const addPerson = () => {
     const n = name.trim().slice(0, 20);
@@ -94,6 +136,7 @@ export default function Together() {
   const startLive = async () => {
     setBusy(true);
     const sid = await startGroupWorkout(workout, appFriends.map((p) => p.id as string), appFriends.map((p) => p.level), myLevel);
+    if (sid) await saveInfo(sid, train.today);
     setBusy(false);
     if (!sid) return toast(t('Couldn’t start. Please try again.'), { icon: 'warn' });
     toast(t('Invite sent. Friends join from Gym Bros.'), { icon: 'users' });
@@ -114,6 +157,7 @@ export default function Together() {
     if (at.getTime() < Date.now()) return toast(t('That time has passed. Pick a later time.'), { icon: 'clock' });
     setBusy(true);
     const sid = await startGroupWorkout(workout, appFriends.map((p) => p.id as string), appFriends.map((p) => p.level), myLevel, at);
+    if (sid) await saveInfo(sid, date);
     setBusy(false);
     if (!sid) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
     toast(t('Invite sent to {names} for {when}', { names: appFriends.map((p) => p.name).join(t(', ')), when: whenText(day) }), { icon: 'users', action: { label: t('View'), fn: () => router.replace('/train') } });
@@ -204,6 +248,13 @@ export default function Together() {
       </Screen>
     );
 
+  if (!plan)
+    return (
+      <Screen title={t('Train together')} back onBack={() => setReady(false)}>
+        <Thinking message={t('Matching everyone’s plans…')} />
+      </Screen>
+    );
+
   return (
     <Screen title={t('Train together')} back onBack={() => setReady(false)}>
       <Row gap={0} style={{ justifyContent: 'center' }}>
@@ -214,7 +265,7 @@ export default function Together() {
         ))}
       </Row>
       <Text variant="h2" center style={{ marginTop: 12 }}>
-        {t('Full body with {names}', { names })}
+        {t('{w} with {names}', { w: title, names })}
       </Text>
       <Text variant="small" color="sec" center style={{ marginTop: 4 }}>
         {t('{n} exercises, about {m} min. Take turns: while one person lifts, the others rest.', { n: TOG.length, m: 45 + all.length * 8 })}
@@ -236,6 +287,30 @@ export default function Together() {
           ))}
         </Row>
       </Card>
+      {all.some((p, i) => noteText(plan.notes[keyOf(p, i)], lang)) ? (
+        <Card>
+          <Text variant="xs" weight={700} color="sec">
+            {t('What joining changes for each person')}
+          </Text>
+          {all.map((p, i) => {
+            const n = plan.notes[keyOf(p, i)];
+            if (!noteText(n, lang)) return null;
+            return (
+              <Row key={i} gap={10} style={{ alignItems: 'flex-start', marginTop: 10 }}>
+                {avatar(p, i, 28)}
+                <View style={{ flex: 1 }}>
+                  <Text variant="small" weight={700}>
+                    {p.name}
+                  </Text>
+                  <Text variant="small" color="sec">
+                    {noteText(n, lang)}
+                  </Text>
+                </View>
+              </Row>
+            );
+          })}
+        </Card>
+      ) : null}
       {TOG.map(([id, type], i) => {
         const info = exInfo({ id }, lang);
         return (

@@ -231,6 +231,27 @@ Return JSON: {"reply":"...","actions":[...],"suggest":[...],"card":{...},"memory
         },
         required: ['kcal_100', 'protein_100', 'carbs_100', 'fat_100', 'readable'],
       });
+    case 'together': {
+      // One workout for a group, built from everyone's own plan for that day.
+      const system = `You plan one gym workout that a group of friends does together.
+You get each person's level, the workout their own plan has on that day (or rest), injuries, and their workouts in the last 7 days.
+1. Pick the focus that fits the most people's plans that day (for example most have Push, so Push). Avoid muscles that someone trained in the last 2 days or that hurt an injury when you can.
+2. Choose 5 to 7 exercises ONLY from the "exercises" list (use their exact ids). Start with 1 or 2 main compound lifts (type 1), then accessories (type 0); a timed core move at the end is type 2. No exercise that hurts anyone's injury.
+3. "title" is the workout name in English, 1 to 3 words: use "Push", "Pull", "Legs", "Upper", "Lower" or "Full body" when it fits.
+4. For every person give "action", "text" (English) and "text_ar" (the same in simple Saudi Arabic): one short sentence to that person saying exactly what happens to their plan if they join:
+   - "replace": they had a similar workout that day, so this counts as it (e.g. "This counts as your Push day.").
+   - "move": they had a different workout that day; it moves to their next rest day this week (e.g. "Your Pull day moves to your next rest day.").
+   - "extra": it was their rest day or they have no plan; their plan stays the same (mention if they trained the same muscles very recently).`;
+      return ask(task, system, [{ role: 'user', parts: [{ text: JSON.stringify({ day: b.day, people: b.people, exercises: b.exercises }).slice(0, 14000) }] }], {
+        type: 'object',
+        properties: {
+          title: { type: 'string' },
+          exercises: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, type: { type: 'number' } }, required: ['id', 'type'] } },
+          people: { type: 'array', items: { type: 'object', properties: { key: { type: 'string' }, action: { type: 'string' }, text: { type: 'string' }, text_ar: { type: 'string' } }, required: ['key', 'action', 'text', 'text_ar'] } },
+        },
+        required: ['title', 'exercises', 'people'],
+      });
+    }
     case 'machine':
       return ask(task, `You recognize gym machines and equipment from a photo. "name" is the common English gym name; "name_ar" is the same name in Arabic as Saudi gym-goers say it; "works" lists the main muscles in English and "works_ar" in Arabic. Suggest "sets" (3 or 4) and "reps" (like "10–12") for a normal gym-goer. "search" is 1 to 3 English words to find it in an exercise list. If it is not gym equipment, set known=false.`, [
         { role: 'user', parts: [img(), { text: 'What gym machine or exercise is this?' }] },

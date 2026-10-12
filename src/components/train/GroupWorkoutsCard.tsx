@@ -4,7 +4,9 @@ import { View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
-import { groupSessions, type GroupSessionRow, joinGroupWorkout, leaveGroupWorkout, whenLabel } from '@/lib/groupWorkout';
+import { groupSessionInfo, groupSessions, type GroupSessionRow, joinGroupWorkout, leaveGroupWorkout, whenLabel } from '@/lib/groupWorkout';
+import { applyTogether, noteText, type TogetherAction } from '@/lib/together';
+import { useTrain } from '@/lib/train';
 import { useSettings } from '@/theme/settings';
 
 import { Icon } from '../Icon';
@@ -24,12 +26,23 @@ export function GroupWorkoutsCard({ title = true, members, empty }: { title?: bo
   const toast = useToast();
   const { session } = useAuth();
   const me = session?.user.id ?? '';
+  const train = useTrain();
   const [list, setList] = useState<GroupSessionRow[]>([]);
+  const [info, setInfo] = useState<Awaited<ReturnType<typeof groupSessionInfo>>>({});
 
   const load = useCallback(async () => {
     const all = await groupSessions();
-    setList(all.filter((g) => g.scheduled_at && g.status === 'open' && (!members || g.people.some((p) => p.id !== me && members.includes(p.id)))));
+    const shown = all.filter((g) => g.scheduled_at && g.status === 'open' && (!members || g.people.some((p) => p.id !== me && members.includes(p.id))));
+    setList(shown);
+    setInfo(await groupSessionInfo(shown.map((g) => g.id)));
   }, [members, me]);
+
+  /** Accepting applies your part to your plan (for example your Pull day moves to your next rest day). */
+  const accept = (id: string) => {
+    const n = info[id]?.notes?.[me];
+    if (!train.plan || !n) return;
+    train.updatePlan(applyTogether(train.plan, id, n.action as TogetherAction, n.day));
+  };
   useFocusEffect(
     useCallback(() => {
       load();
@@ -66,20 +79,42 @@ export function GroupWorkoutsCard({ title = true, members, empty }: { title?: bo
               ))}
             </Row>
             <View style={{ flex: 1 }}>
-              <Text weight={700}>{t('Full body with {names}', { names: joined || t('friends') })}</Text>
+              <Text weight={700}>{t('{w} with {names}', { w: t(info[g.id]?.title || 'Full body'), names: joined || t('friends') })}</Text>
               <Text variant="small" color="sec">
                 {`${w.day}, ${w.time}. ${g.host === me ? t('Waiting for replies.') : t('{n} invited you.', { n: g.host_name ?? '' })}`}
               </Text>
-              <Button
-                small
-                icon="play"
-                title={t('Start')}
-                style={{ marginTop: 8, alignSelf: 'flex-start' }}
-                onPress={async () => {
-                  await joinGroupWorkout(g.id);
-                  router.push({ pathname: '/groupactive', params: { id: g.id } });
-                }}
-              />
+              {noteText(info[g.id]?.notes?.[me], lang) ? (
+                <View style={{ marginTop: 8, backgroundColor: c.inset, borderRadius: 12, paddingVertical: 8, paddingHorizontal: 10 }}>
+                  <Text variant="xs" weight={700} color="sec">
+                    {t(train.plan?.togetherDone?.[g.id] ? 'For you' : 'If you join')}
+                  </Text>
+                  <Text variant="small">{noteText(info[g.id].notes[me], lang)}</Text>
+                </View>
+              ) : null}
+              <Row gap={8} style={{ marginTop: 8 }}>
+                {g.host !== me && info[g.id]?.notes?.[me] && !train.plan?.togetherDone?.[g.id] ? (
+                  <Button
+                    small
+                    icon="check"
+                    title={t('Accept')}
+                    onPress={() => {
+                      accept(g.id);
+                      toast(t('You’re in. Your plan is updated.'), { icon: 'check' });
+                    }}
+                  />
+                ) : null}
+                <Button
+                  small
+                  kind={g.host !== me && !train.plan?.togetherDone?.[g.id] ? 'glass' : 'primary'}
+                  icon="play"
+                  title={t('Start')}
+                  onPress={async () => {
+                    accept(g.id);
+                    await joinGroupWorkout(g.id);
+                    router.push({ pathname: '/groupactive', params: { id: g.id } });
+                  }}
+                />
+              </Row>
             </View>
             <Springy
               accessibilityLabel={t('Cancel group workout')}

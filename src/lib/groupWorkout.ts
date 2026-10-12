@@ -20,6 +20,19 @@ export async function startGroupWorkout(workout: GroupEx[], members: string[], l
   return error ? null : (data as string);
 }
 
+/** Host: the workout's title and, for each person, what joining changes in their plan. */
+export async function setGroupSessionInfo(id: string, title: string, notes: Record<string, { action: string; text: string; text_ar?: string; day: string }>) {
+  const { data } = await supabase.rpc('set_group_session_info', { p_id: id, p_title: title, p_notes: notes });
+  return !!data;
+}
+
+/** Titles and notes of group workouts (members can read their sessions). */
+export async function groupSessionInfo(ids: string[]): Promise<Record<string, { title: string | null; notes: Record<string, { action: string; text: string; text_ar?: string; day: string }> }>> {
+  if (!ids.length) return {};
+  const { data } = await supabase.from('group_sessions').select('id,title,notes').in('id', ids);
+  return Object.fromEntries(((data as { id: string; title: string | null; notes: Record<string, { action: string; text: string; text_ar?: string; day: string }> | null }[] | null) ?? []).map((x) => [x.id, { title: x.title, notes: x.notes ?? {} }]));
+}
+
 export async function groupSessions(): Promise<GroupSessionRow[]> {
   const { data } = await supabase.rpc('my_group_sessions');
   return ((data as GroupSessionRow[] | null) ?? []).map((x) => ({ ...x, people: x.people ?? [] }));

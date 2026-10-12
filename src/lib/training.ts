@@ -50,6 +50,8 @@ export type TrainPlan = {
   light?: string;
   deload?: string;
   deloadDismissed?: string;
+  /** Train together invites already applied to this plan (session id). */
+  togetherDone?: Record<string, true>;
   /** Day you answered "make today lighter?" after poor sleep or low recovery. */
   lightAsked?: string;
   /** 'fixed': same days every week. 'order': the next workout in order, with a rest day between. */
