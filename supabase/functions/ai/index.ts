@@ -264,6 +264,17 @@ const RECIPE_SCHEMA = {
   required: ['found', 'title', 'servings', 'ingredients', 'steps'],
 };
 
+
+/** Fingerprint of the plan answers (and the exercise list and rules version), so the same answers find the same plan. */
+const PLAN_RULES_VERSION = 2;
+async function planCacheKey(b: Record<string, unknown>) {
+  const ages = Number(b.age) ? Math.floor(Number(b.age) / 10) * 10 : null;
+  const ex = ((b.exercises as { id: string }[]) ?? []).map((e) => e.id).sort().join(',');
+  const src = JSON.stringify([PLAN_RULES_VERSION, b.split, b.workouts, b.days, [...((b.injuries as string[]) ?? [])].sort(), b.level, b.goal, b.sex, ages, b.lang, ex]);
+  const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(src));
+  return [...new Uint8Array(h)].map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+
 async function run(task: string, b: Record<string, unknown>) {
   const lang = String(b.lang ?? 'en');
   const img = (k = 'image'): Part => ({ image: String(b[k]), mime: String(b.mime ?? 'image/jpeg') });
@@ -377,14 +388,14 @@ You get each person's level, the workout their own plan has on that day (or rest
     case 'plan': {
       const system = `You are an experienced strength coach. Build a weekly gym plan as JSON. Use ONLY exercise ids from the list given.
 Rules:
-- Short English workout names like "Push", "Pull", "Legs", "Upper", "Lower", "Full body". Weekday 0 = Sunday. Spread workouts with rest days where possible and never train the same muscles on two days in a row.
+- Build exactly the workouts named in "workouts", with exactly those names, one each. Days of the same kind ("Push A" and "Push B", "Full body A/B/C") use different exercises or variations, so each day is different; A days lean on heavier compound lifts, B days on more volume and variations.
 - Every main muscle (chest, back, shoulders, legs/glutes, arms) is trained at least once a week, and twice a week when there are 4 or more days. Aim for about 10 to 16 hard sets per muscle per week (beginners 8 to 12). Keep pushing and pulling balanced.
 - Each workout: 4 to 7 exercises, big compound lifts first, isolation last, about 45 to 70 minutes. No exercise twice in the same workout.
 - Reps are always a range: compound lifts 6–10 (strength focus 4–6), isolation 10–15, calves and core 12–20. Sets are 2 to 5.
 - Match the level: Beginner = machines and dumbbells, 4 to 5 exercises, mostly 3 sets of 10–12. Intermediate = 5 to 6 exercises, 3 to 4 sets. Advanced = 6 to 7 exercises, free-weight compound lifts first with 4 to 5 sets.
 - Match the goal: "cut" keeps the heavy compound lifts (to keep muscle) with slightly less total volume; "bulk" has the most volume; "maintain" sits in between.
 - Respect injuries: never use an exercise whose "avoidFor" includes one of them; pick a safe alternative for that muscle.`;
-      return ask(task, `${system} Use exactly ${Number(b.days) || 3} training days a week, no more and no less.`, [{ role: 'user', parts: [{ text: JSON.stringify({ days: b.days, injuries: b.injuries, level: b.level, goal: b.goal, sex: b.sex, age: b.age, exercises: b.exercises }) }] }], {
+      return ask(task, system, [{ role: 'user', parts: [{ text: JSON.stringify({ split: b.split, workouts: b.workouts, days: b.days, injuries: b.injuries, level: b.level, goal: b.goal, sex: b.sex, age: b.age, exercises: b.exercises }) }] }], {
         type: 'object',
         properties: {
           split: { type: 'string' },
@@ -398,7 +409,7 @@ Rules:
             },
           },
         },
-        required: ['split', 'week', 'workouts'],
+        required: ['workouts'],
       });
     }
     case 'plan_review': {
@@ -514,15 +525,22 @@ Deno.serve(async (req) => {
     lastModel = '';
     lastDetail = '';
     modelOverride = '';
-    temperature = ['meal_photo', 'food_text', 'label_photo', 'blood', 'machine'].includes(task) ? 0 : undefined;
+    temperature = ['meal_photo', 'food_text', 'label_photo', 'blood', 'machine', 'plan', 'plan_review', 'recipe'].includes(task) ? 0 : undefined;
     if (typeof body.model === 'string' && body.model) {
       const { data: isAdmin } = await admin.from('admins').select('user_id').eq('user_id', u.user.id).maybeSingle();
       if (isAdmin) modelOverride = body.model.slice(0, 100);
     }
     lastUsage = { prompt: 0, completion: 0, cost: 0 };
     let result;
+    // Plans: the same answers give the same plan (the AI alone would pick slightly different exercises each time).
+    const planKey = task === 'plan' ? await planCacheKey(body) : null;
+    if (planKey) {
+      const { data: hit } = await admin.from('ai_plan_cache').select('result').eq('key', planKey).maybeSingle();
+      if (hit?.result) return json({ result: hit.result, cached: true });
+    }
     try {
       result = await run(task, body);
+      if (planKey && result) await admin.from('ai_plan_cache').upsert({ key: planKey, result });
     } catch (e) {
       await log(false, (e as Error).message === 'busy' || (e as Error).message === 'ai_off' ? `${(e as Error).message}: ${lastDetail}` : (e as Error).message);
       throw e;

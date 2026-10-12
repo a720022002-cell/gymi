@@ -8,7 +8,7 @@ import { useFood } from '@/lib/food';
 import { ageFromIso } from '@/lib/nutrition';
 import { useTrain } from '@/lib/train';
 import { aiErrorText, askAI } from '@/lib/ai';
-import { DAYS, type Day, EX, INJURIES, LEVEL_DESC, type Level, onceNote, planFromSplit, planOwn, SPLITS, SPREAD, type TrainPlan, workoutMinutes } from '@/lib/training';
+import { aiSplit, DAYS, type Day, EX, INJURIES, LEVEL_DESC, type Level, onceNote, planFromSplit, planOwn, SPLITS, SPREAD, type TrainPlan, workoutMinutes } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
 
 import { Thinking } from '../food/Thinking';
@@ -41,7 +41,8 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
   /** Ask the AI for a plan; check every exercise exists. Falls back to a ready-made split. */
   const aiPlan = async (): Promise<TrainPlan | null> => {
     const exercises = Object.values(EX).map((e) => ({ id: e.id, name: e.en, muscle: e.m, equipment: e.t, avoidFor: e.stress ?? [] }));
-    const { result, error } = await askAI<{ split: string; week: { day: number; workout: string }[]; workouts: { name: string; focus?: string; ex: { id: string; sets: number; reps: string }[] }[] }>('plan', { days, injuries, level, exercises, lang, goal: goalWord(food.plan.goal), sex: profile?.gender ?? undefined, age: ageFromIso(profile?.date_of_birth) ?? undefined });
+    const split = aiSplit(days, level);
+    const { result, error } = await askAI<{ split: string; week: { day: number; workout: string }[]; workouts: { name: string; focus?: string; ex: { id: string; sets: number; reps: string }[] }[] }>('plan', { days, injuries, level, exercises, lang, split: split.label, workouts: split.names, goal: goalWord(food.plan.goal), sex: profile?.gender ?? undefined, age: ageFromIso(profile?.date_of_birth) ?? undefined });
     if (error || !result) {
       toast(t(aiErrorText(error ?? 'failed')), { icon: 'warn' });
       return null;
@@ -52,14 +53,17 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
       const ex = (w.ex ?? []).filter((x) => EX[x.id]).map((x) => ({ id: x.id, sets: Math.min(8, Math.max(1, Math.round(+x.sets || 3))), reps: String(x.reps || '8–12').slice(0, 7) }));
       if (name && ex.length) workouts[name] = { ex, focus: String(w.focus ?? '').slice(0, 60), min: workoutMinutes(ex) };
     }
+    // The days are set here too: one workout per training day, spread with rest days, the same every time.
     const week: Day[] = DAYS.map(() => ({ w: null, lock: false }));
-    // Keep exactly the number of days you picked.
-    for (const d of (result.week ?? []).filter((x) => x.day >= 0 && x.day <= 6 && workouts[x.workout]).slice(0, days)) week[d.day].w = d.workout;
-    if (!week.some((d) => d.w)) {
+    split.names.forEach((n, i) => {
+      const d = SPREAD[days]?.[i];
+      if (d != null) week[d].w = n;
+    });
+    if (split.names.some((n) => !workouts[n])) {
       toast(t('The AI plan didn’t work out, so I used a ready-made one.'), { icon: 'info' });
       return null;
     }
-    return { days, injuries, split: String(result.split || 'AI plan').slice(0, 40), week, workouts, machines: {}, homeMode: false, skipped: {}, dismiss: {}, level: level ?? undefined };
+    return { days, injuries, split: split.label, week, workouts, machines: {}, homeMode: false, skipped: {}, dismiss: {}, level: level ?? undefined };
   };
 
   const build = async () => {
