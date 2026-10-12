@@ -2260,6 +2260,7 @@ export const AR: Record<string, string> = {
   "Share your link": "شارك رابطك",
   "Share your workout": "شارك تمرينك",
   "Shared to your groups": "انشارك في مجموعاتك",
+  "Shared workouts": "التمارين المشتركة",
   "Shopping list": "قائمة المشتريات",
   "Short version": "نسخة قصيرة",
   "Short version ready, about 25 minutes": "النسخة القصيرة جاهزة، تقريباً 25 دقيقة",

@@ -15,26 +15,28 @@ import { Button, Card, NavButton, Row } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { fmt } from '@/lib/nutrition';
-import { addGroupMember, type BoardRow, displayName, groupBoard, leaveGroup } from '@/lib/social';
+import { addGroupMember, type BoardRow, displayName, groupBoard, groupFeed, leaveGroup, timeAgo } from '@/lib/social';
 import { supabase } from '@/lib/supabase';
 import { useSettings } from '@/theme/settings';
 
-/** A group: progress together and the volume board (design: group). */
+type Post = { id: string; user_id: string; name: string | null; text: string; created_at: string };
+
+/** A group: progress together, the volume board, workouts members shared, and Train together requests (design: group). */
 export default function GroupScreen() {
-  const { t } = useT();
+  const { t, lang } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
   const { session } = useAuth();
   const me = session?.user.id ?? '';
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [data, setData] = useState<{ id: string; name: string; board: BoardRow[] } | null>(null);
+  const [data, setData] = useState<{ id: string; name: string; board: BoardRow[]; posts: Post[] } | null>(null);
   const [adding, setAdding] = useState(false);
   const [pick, setPick] = useState<string[]>([]);
   const [leaving, setLeaving] = useState(false);
 
   const load = useCallback(async () => {
-    const [g, board] = await Promise.all([supabase.from('groups').select('name').eq('id', id).maybeSingle(), groupBoard(id)]);
-    setData({ id, name: (g.data as { name: string } | null)?.name ?? '', board });
+    const [g, board, posts] = await Promise.all([supabase.from('groups').select('name').eq('id', id).maybeSingle(), groupBoard(id), groupFeed(id)]);
+    setData({ id, name: (g.data as { name: string } | null)?.name ?? '', board, posts });
   }, [id]);
 
   useEffect(() => {
@@ -129,6 +131,33 @@ export default function GroupScreen() {
           </Row>
         ))}
       </Card>
+      {d.posts.length ? (
+        <>
+          <Text variant="small" weight={700} color="sec" style={{ marginTop: 12, marginBottom: 8, marginHorizontal: 4 }}>
+            {t('Shared workouts')}
+          </Text>
+          <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden', marginBottom: 12 }}>
+            {d.posts.map((p, i) => (
+              <Row key={p.id} gap={12} style={{ alignItems: 'flex-start', paddingVertical: 12, paddingHorizontal: 14, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
+                <Avatar id={p.user_id} name={p.name || '?'} size={32} />
+                <View style={{ flex: 1 }}>
+                  <Row style={{ justifyContent: 'space-between' }}>
+                    <Text variant="small" weight={700}>
+                      {p.user_id === me ? t('You') : p.name}
+                    </Text>
+                    <Text variant="xs" color="sec">
+                      {timeAgo(p.created_at, t, lang)}
+                    </Text>
+                  </Row>
+                  <Text variant="small" style={{ marginTop: 2 }}>
+                    {p.text}
+                  </Text>
+                </View>
+              </Row>
+            ))}
+          </View>
+        </>
+      ) : null}
       <Text variant="small" weight={700} color="sec" style={{ marginTop: 12, marginBottom: 8, marginHorizontal: 4 }}>
         {t('Train together requests')}
       </Text>
