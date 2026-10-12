@@ -9,7 +9,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { AccessibilityInfo, I18nManager, Platform, useColorScheme } from 'react-native';
+import { I18nManager, Platform, useColorScheme } from 'react-native';
 
 import { type ColorTokens, dark, light } from './tokens';
 
@@ -23,6 +23,8 @@ type Stored = {
   lang: Lang | null; // null = not chosen yet, follow the device
   reduce: boolean;
   unit: WeightUnit;
+  /** Reduce transparency was switched off once for everyone (it's off by default now). */
+  reduceReset?: boolean;
 };
 
 type Settings = {
@@ -33,7 +35,7 @@ type Settings = {
   lang: Lang;
   langChosen: boolean;
   isRTL: boolean;
-  /** Effective value: the in-app switch OR the phone's accessibility setting. */
+  /** Solid instead of glass: only the in-app switch (off by default). */
   reduceTransparency: boolean;
   reduceSetting: boolean;
   setTheme: (t: ThemePref) => void;
@@ -44,7 +46,7 @@ type Settings = {
 };
 
 const KEY = 'gymi.settings.v1';
-const DEFAULTS: Stored = { theme: 'system', lang: null, reduce: false, unit: 'kg' };
+const DEFAULTS: Stored = { theme: 'system', lang: null, reduce: false, unit: 'kg', reduceReset: true };
 
 const Ctx = createContext<Settings | null>(null);
 
@@ -56,35 +58,24 @@ function deviceLang(): Lang {
   }
 }
 
-/** Is "Reduce Transparency" turned on at the system level? */
-function useSystemReduceTransparency() {
-  const [on, setOn] = useState(false);
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      if (typeof window === 'undefined' || !window.matchMedia) return;
-      const mq = window.matchMedia('(prefers-reduced-transparency: reduce)');
-      const update = () => setOn(mq.matches);
-      update();
-      mq.addEventListener?.('change', update);
-      return () => mq.removeEventListener?.('change', update);
-    }
-    AccessibilityInfo.isReduceTransparencyEnabled?.().then(setOn).catch(() => {});
-    const sub = AccessibilityInfo.addEventListener?.('reduceTransparencyChanged', setOn);
-    return () => sub?.remove();
-  }, []);
-  return on;
-}
-
 export function SettingsProvider({ children }: PropsWithChildren) {
   const [stored, setStored] = useState<Stored>(DEFAULTS);
   const [ready, setReady] = useState(false);
   const scheme = useColorScheme();
-  const systemReduce = useSystemReduceTransparency();
 
   useEffect(() => {
     AsyncStorage.getItem(KEY)
       .then((raw) => {
-        if (raw) setStored({ ...DEFAULTS, ...JSON.parse(raw) });
+        if (!raw) return;
+        const old = JSON.parse(raw) as Partial<Stored>;
+        const saved = { ...DEFAULTS, ...old } as Stored;
+        // Once: glass on for everyone, including people who turned the switch on before. They can turn it back on.
+        if (!old.reduceReset) {
+          saved.reduce = false;
+          saved.reduceReset = true;
+          AsyncStorage.setItem(KEY, JSON.stringify(saved)).catch(() => {});
+        }
+        setStored(saved);
       })
       .catch(() => {})
       .finally(() => setReady(true));
@@ -134,7 +125,7 @@ export function SettingsProvider({ children }: PropsWithChildren) {
       lang,
       langChosen: stored.lang !== null,
       isRTL,
-      reduceTransparency: stored.reduce || systemReduce,
+      reduceTransparency: stored.reduce,
       reduceSetting: stored.reduce,
       setTheme: (theme) => save({ theme }),
       setLang: (l) => save({ lang: l }),
@@ -142,7 +133,7 @@ export function SettingsProvider({ children }: PropsWithChildren) {
       unit: stored.unit === 'lb' ? 'lb' : 'kg',
       setUnit: (unit) => save({ unit }),
     }),
-    [ready, stored, isDark, lang, isRTL, systemReduce, save],
+    [ready, stored, isDark, lang, isRTL, save],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
