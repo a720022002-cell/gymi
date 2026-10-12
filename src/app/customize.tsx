@@ -6,12 +6,14 @@ import { List, ListRow } from '@/components/social/List';
 import { Text } from '@/components/Text';
 import { Chip, Label, Row, Springy, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
+import { useAuth } from '@/lib/auth';
 import { HOME_NAMES, RING_NAMES, RINGS, useHomeLayout } from '@/lib/homeLayout';
 import { useSettings } from '@/theme/settings';
 
 /** Edit home: move cards up or down and turn off what you don't need (design: customize). */
 export default function Customize() {
   const { t } = useT();
+  const female = useAuth().profile?.gender === 'female';
   const { colors: c } = useSettings();
   const [l, save] = useHomeLayout();
   const move = (i: number, d: number) => {
@@ -44,7 +46,7 @@ export default function Customize() {
         {t('Move cards up or down. Turn off what you don’t need.')}
       </Text>
       <List>
-        {l.order.map((k, i) => (
+        {l.order.filter((k) => k !== 'cycle' || female).map((k, i) => (
           <ListRow key={k} first={!i}>
             <View style={{ gap: 2 }}>
               <Springy accessibilityLabel={t('Move up')} disabled={!i} onPress={() => move(i, -1)} style={{ width: 32, height: 24, alignItems: 'center', justifyContent: 'center', opacity: i ? 1 : 0.3 }}>

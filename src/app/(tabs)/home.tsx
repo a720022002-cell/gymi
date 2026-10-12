@@ -33,7 +33,8 @@ import { useTrain } from '@/lib/train';
 import { weekdayOf, weekStart } from '@/lib/training';
 import { fx } from '@/lib/progress';
 import { useStreaks } from '@/lib/useProgress';
-import { addDays, fmt, fmtTime } from '@/lib/nutrition';
+import { addDays, fmt, fmtTime, localDay } from '@/lib/nutrition';
+import { useCycleToday } from '@/lib/cyclePhase';
 import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
@@ -124,6 +125,7 @@ export default function Home() {
       {layout.order
         .filter((k) => !layout.hidden.includes(k) && !(k === 'water' && rings.length > 1 && rings.includes('water')))
         .filter((k) => !past || k === 'calories' || k === 'water' || k === 'workout')
+        .filter((k) => k !== 'cycle' || profile?.gender === 'female')
         .map((k) =>
           k === 'calories' ? (
             <MainCard key={k} />
@@ -138,6 +140,8 @@ export default function Home() {
                 <WorkoutCard />
               </View>
             )
+          ) : k === 'cycle' ? (
+            <CycleCard key={k} />
           ) : k === 'readings' ? (
             <ReadingsCard key={k} />
           ) : k === 'streak' ? (
@@ -842,6 +846,36 @@ function TipCard() {
           {tip}
         </Text>
       </View>
+    </Card>
+  );
+}
+
+/** Cycle, for women: today's phase and the next period. Private; opens the cycle screen. */
+function CycleCard() {
+  const { t } = useT();
+  const { colors: c } = useSettings();
+  const cy = useCycleToday();
+  const today = localDay();
+  const until = cy ? Math.max(0, Math.round((new Date(`${cy.next}T12:00:00`).getTime() - new Date(`${today}T12:00:00`).getTime()) / 864e5)) : 0;
+  const sub = !cy
+    ? t('Log your period to see your phase. Private. Never shared.')
+    : cy.phase === 'Period'
+      ? t('Period day {n}', { n: cy.day })
+      : cy.late
+        ? t('Your period is late')
+        : `${t(cy.phase)} · ${t('Next period in {n} days', { n: until })}`;
+  return (
+    <Card onPress={() => router.push('/period')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(236,72,153,0.14)', alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name="drop" size={22} color="#EC4899" />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text weight={700}>{t('Cycle')}</Text>
+        <Text variant="small" color="sec">
+          {sub}
+        </Text>
+      </View>
+      <Icon name="chev" size={16} color={c.sec} />
     </Card>
   );
 }
