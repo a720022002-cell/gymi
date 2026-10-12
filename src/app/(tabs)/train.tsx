@@ -13,6 +13,7 @@ import { GroupWorkoutsCard } from '@/components/train/GroupWorkoutsCard';
 import { DeloadCard, RecoveryCard } from '@/components/train/RecoveryCard';
 import { TrainSetup } from '@/components/train/TrainSetup';
 import { MissedCard, WorkoutCard } from '@/components/train/WorkoutCard';
+import { PlanReviewCard } from '@/components/train/PlanReviewCard';
 import { WorkoutBell } from '@/components/train/WorkoutBell';
 import { Button, Card, Row, Springy, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
@@ -56,6 +57,7 @@ export default function Train() {
       <Card>
         <WeekStrip />
       </Card>
+      <PlanReviewCard />
       <RecoveryCard />
       <MissedCard />
       <WorkoutCard />

@@ -3,6 +3,9 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { useT } from '@/i18n';
+import { useAuth } from '@/lib/auth';
+import { useFood } from '@/lib/food';
+import { ageFromIso } from '@/lib/nutrition';
 import { useTrain } from '@/lib/train';
 import { aiErrorText, askAI } from '@/lib/ai';
 import { DAYS, type Day, EX, INJURIES, LEVEL_DESC, type Level, onceNote, planFromSplit, planOwn, SPLITS, SPREAD, type TrainPlan, workoutMinutes } from '@/lib/training';
@@ -14,6 +17,7 @@ import { Screen } from '../Screen';
 import { Text } from '../Text';
 import { useToast } from '../Toast';
 import { Button, Card, Chip, Option, ProgDots, Row, Springy } from '../ui';
+import { goalWord } from './PlanReviewCard';
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -23,6 +27,8 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
   const { colors: c } = useSettings();
   const toast = useToast();
   const train = useTrain();
+  const food = useFood();
+  const { profile } = useAuth();
   const [step, setStep] = useState(0);
   const [level, setLevel] = useState<Level | null>(train.plan?.level ?? null);
   const [days, setDays] = useState(train.plan?.days ?? 3);
@@ -35,7 +41,7 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
   /** Ask the AI for a plan; check every exercise exists. Falls back to a ready-made split. */
   const aiPlan = async (): Promise<TrainPlan | null> => {
     const exercises = Object.values(EX).map((e) => ({ id: e.id, name: e.en, muscle: e.m, equipment: e.t, avoidFor: e.stress ?? [] }));
-    const { result, error } = await askAI<{ split: string; week: { day: number; workout: string }[]; workouts: { name: string; focus?: string; ex: { id: string; sets: number; reps: string }[] }[] }>('plan', { days, injuries, level, exercises, lang });
+    const { result, error } = await askAI<{ split: string; week: { day: number; workout: string }[]; workouts: { name: string; focus?: string; ex: { id: string; sets: number; reps: string }[] }[] }>('plan', { days, injuries, level, exercises, lang, goal: goalWord(food.plan.goal), sex: profile?.gender ?? undefined, age: ageFromIso(profile?.date_of_birth) ?? undefined });
     if (error || !result) {
       toast(t(aiErrorText(error ?? 'failed')), { icon: 'warn' });
       return null;

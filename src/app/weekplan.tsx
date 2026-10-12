@@ -10,7 +10,12 @@ import { CoachBanner } from '@/components/train/CoachBanner';
 import { DaySheet } from '@/components/train/DaySheet';
 import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
+import { useFood } from '@/lib/food';
+import { useHealth } from '@/lib/health';
+import { addDays } from '@/lib/nutrition';
+import { runReview } from '@/lib/planReview';
 import { useTrain } from '@/lib/train';
+import { goalWord } from '@/components/train/PlanReviewCard';
 import { DAYS, DAYS_LONG, type Day, onceNote, splitRepeats } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
 
@@ -18,10 +23,13 @@ const ROW = 64;
 const GAP = 8;
 
 export default function WeekPlan() {
-  const { t } = useT();
+  const { t, lang } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
   const train = useTrain();
+  const food = useFood();
+  const health = useHealth();
+  const [checking, setChecking] = useState(false);
   const { fresh } = useLocalSearchParams<{ fresh?: string }>();
   const [open, setOpen] = useState<number | null>(null);
   const [over, setOver] = useState<number | null>(null);
@@ -160,7 +168,36 @@ export default function WeekPlan() {
         <Button small kind="soft" icon="unlock" title={t('Unlock all')} onPress={() => save(week.map((x) => ({ ...x, lock: false })))} />
       </Row>
       </View>
-      <Button title={t('Save plan')} style={{ marginTop: 20 }} onPress={() => (fresh ? router.replace('/train') : router.back())} />
+      <Card style={{ marginTop: 20 }}>
+        <Text weight={700}>{t('Update the plan from your results')}</Text>
+        <Text variant="small" color="sec" style={{ marginTop: 4 }}>
+          {t('Every week the AI looks at your workouts: lifts that stopped going up, missed days and recovery. It changes the plan only where it helps, and you can undo it.')}
+        </Text>
+        <Button
+          small
+          kind="soft"
+          icon="sparkle"
+          color={c.text}
+          loading={checking}
+          disabled={train.logs.filter((l) => l.day >= addDays(train.today, -35)).length < 2}
+          title={t('Check my plan now')}
+          style={{ marginTop: 10 }}
+          onPress={async () => {
+            setChecking(true);
+            const next = await runReview(plan, train.logs, health.checkins, train.today, goalWord(food.plan.goal), lang);
+            setChecking(false);
+            if (!next) return toast(t('Couldn’t check the plan. Please try again.'), { icon: 'warn' });
+            await train.savePlan(next);
+            router.replace('/train');
+          }}
+        />
+        {train.logs.filter((l) => l.day >= addDays(train.today, -35)).length < 2 ? (
+          <Text variant="xs" color="sec" style={{ marginTop: 6 }}>
+            {t('Do at least 2 workouts first, so there are results to look at.')}
+          </Text>
+        ) : null}
+      </Card>
+      <Button title={t('Save plan')} style={{ marginTop: 12 }} onPress={() => (fresh ? router.replace('/train') : router.back())} />
       <DaySheet d={open} onClose={() => setOpen(null)} />
     </Screen>
   );

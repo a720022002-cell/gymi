@@ -375,8 +375,16 @@ You get each person's level, the workout their own plan has on that day (or rest
         required: ['known', 'name', 'group', 'equipment'],
       });
     case 'plan': {
-      const system = `You are a strength coach. Build a weekly gym plan as JSON. Use ONLY exercise ids from the list given. 4 to 7 exercises per workout, big lifts first. Respect injuries: avoid exercises that stress them. Short English workout names like "Push", "Pull", "Legs", "Upper", "Lower", "Full body". Spread workouts with rest days where possible (weekday 0 = Sunday). Match the level: Beginner = machines and dumbbells, 4 to 5 exercises, 3 sets of 10–12; Intermediate = 5 to 6 exercises, 3 to 4 sets; Advanced = 6 to 7 exercises, free-weight compound lifts first with 4 to 5 sets.`;
-      return ask(task, `${system} Use exactly ${Number(b.days) || 3} training days a week, no more and no less.`, [{ role: 'user', parts: [{ text: JSON.stringify({ days: b.days, injuries: b.injuries, level: b.level, exercises: b.exercises }) }] }], {
+      const system = `You are an experienced strength coach. Build a weekly gym plan as JSON. Use ONLY exercise ids from the list given.
+Rules:
+- Short English workout names like "Push", "Pull", "Legs", "Upper", "Lower", "Full body". Weekday 0 = Sunday. Spread workouts with rest days where possible and never train the same muscles on two days in a row.
+- Every main muscle (chest, back, shoulders, legs/glutes, arms) is trained at least once a week, and twice a week when there are 4 or more days. Aim for about 10 to 16 hard sets per muscle per week (beginners 8 to 12). Keep pushing and pulling balanced.
+- Each workout: 4 to 7 exercises, big compound lifts first, isolation last, about 45 to 70 minutes. No exercise twice in the same workout.
+- Reps are always a range: compound lifts 6–10 (strength focus 4–6), isolation 10–15, calves and core 12–20. Sets are 2 to 5.
+- Match the level: Beginner = machines and dumbbells, 4 to 5 exercises, mostly 3 sets of 10–12. Intermediate = 5 to 6 exercises, 3 to 4 sets. Advanced = 6 to 7 exercises, free-weight compound lifts first with 4 to 5 sets.
+- Match the goal: "cut" keeps the heavy compound lifts (to keep muscle) with slightly less total volume; "bulk" has the most volume; "maintain" sits in between.
+- Respect injuries: never use an exercise whose "avoidFor" includes one of them; pick a safe alternative for that muscle.`;
+      return ask(task, `${system} Use exactly ${Number(b.days) || 3} training days a week, no more and no less.`, [{ role: 'user', parts: [{ text: JSON.stringify({ days: b.days, injuries: b.injuries, level: b.level, goal: b.goal, sex: b.sex, age: b.age, exercises: b.exercises }) }] }], {
         type: 'object',
         properties: {
           split: { type: 'string' },
@@ -391,6 +399,38 @@ You get each person's level, the workout their own plan has on that day (or rest
           },
         },
         required: ['split', 'week', 'workouts'],
+      });
+    }
+    case 'plan_review': {
+      // Weekly check: read how the last weeks went and change the plan only where the results say so.
+      const system = `You are an experienced strength coach reviewing a client's last weeks of training to update their weekly plan. ${LANG(lang)}
+You get: the current plan (workout names, exercise ids, sets and reps), each exercise's recent sessions (best set per session, oldest first), how many planned workouts they did, recovery and sleep averages, goal, level and injuries, and the exercise list you may use.
+Weights already go up on their own after each session when the person reaches the top of the rep range, so do NOT add changes just to make it harder. Only change what the results show needs changing:
+- An exercise that stalled (no more weight or reps over its last 3 or more sessions): swap it for a close variation for the same muscle ("swap", "to" = the English exercise name from the list), or change that workout's rep range.
+- Workouts they keep cutting short or skipping, or adherence under about 60%: remove the last isolation exercise of the longest workout, or one set less ("sets" delta -1). Say in the summary that fewer days might fit better.
+- Low recovery (under about 50) or short sleep (under 6 h) most days: one set less on the hardest workout, or a "deload" week if they have trained hard for 5 or more weeks.
+- A muscle that gets clearly too little work: "add" one exercise for it (sets 3, reps as a range).
+- Things going well (most lifts going up, good adherence): no changes.
+Use the exact workout names and exercise ids from the plan. At most 4 changes; fewer is better; "changes" can be empty.
+"summary": 1 or 2 short sentences for the person, with their real numbers (like "Bench press went up 5 kg; the leg press stayed at 120 kg for 4 sessions, so I swapped it"). Each change has a short "why".`;
+      return ask(task, system, [{ role: 'user', parts: [{ text: JSON.stringify(b.data ?? {}).slice(0, 30000) }] }], {
+        type: 'object',
+        properties: {
+          summary: { type: 'string' },
+          changes: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                op: { type: 'string', enum: ['sets', 'reps', 'swap', 'remove', 'add', 'deload'] },
+                workout: { type: 'string' }, delta: { type: 'number' }, reps: { type: 'string' }, from: { type: 'string' }, to: { type: 'string' },
+                ex: { type: 'string' }, search: { type: 'string' }, sets: { type: 'number' }, why: { type: 'string' },
+              },
+              required: ['op'],
+            },
+          },
+        },
+        required: ['summary', 'changes'],
       });
     }
     case 'report':

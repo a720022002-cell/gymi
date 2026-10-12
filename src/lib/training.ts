@@ -60,6 +60,9 @@ export type TrainPlan = {
   queue?: string[];
   /** Set when the plan is your coach's program (and which version of it). */
   coach?: { id: string; updated_at?: string };
+  /** The weekly AI check of your results (day it ran), and the last one: what changed and what to put back on Undo. */
+  reviewedAt?: string;
+  review?: { at: string; summary: string; changes: import('./coach').PlanChange[]; prev: { workouts: Record<string, Workout>; deload?: string; light?: string }; seen?: boolean };
   /** Training level you picked (Train together uses it). */
   level?: Level;
 };
