@@ -37,6 +37,12 @@ export function InviteCodeSheet({ open, onDone, cancel }: { open: boolean; onDon
       toast(t('You and {n} are now Gym Bros', { n: f.name || f.username || '' }), { icon: 'users' });
       return onDone('friend');
     }
+    if (f.status === 'requested') {
+      setBusy(false);
+      setV('');
+      toast(t('Friend request sent to @{u}', { u: f.username ?? '' }), { icon: 'users' });
+      return onDone('friend');
+    }
     if (f.status === 'self') {
       setBusy(false);
       return setErr(t('That’s your own code.'));

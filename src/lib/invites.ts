@@ -7,7 +7,7 @@ import { supabase } from './supabase';
 export const REF_GOAL = 5;
 
 export type MyInvite = { code: string | null; count: number; months: number };
-export type ClaimResult = { status: 'ok' | 'friends' | 'bad' | 'self' | 'auth' | 'failed'; name?: string | null; username?: string };
+export type ClaimResult = { status: 'ok' | 'friends' | 'requested' | 'bad' | 'self' | 'auth' | 'failed'; name?: string | null; username?: string };
 
 /** Your personal code ("OMAR-7K2"), how many friends joined with it and the free months earned. */
 export async function myInvite(): Promise<MyInvite> {
@@ -16,8 +16,8 @@ export async function myInvite(): Promise<MyInvite> {
 }
 
 /**
- * Use a friend's invite code (or the username from an older link). You become Gym Bros right away.
- * 'ok' = it also counted toward their free month, 'friends' = you were already counted.
+ * Use a friend's invite code: you become Gym Bros right away. A username (from an older link) only sends a friend request.
+ * 'ok' = it also counted toward their free month, 'friends' = you were already counted, 'requested' = request sent.
  */
 export async function claimInvite(code: string): Promise<ClaimResult> {
   const { data, error } = await supabase.rpc('claim_invite', { p_code: code.trim() });

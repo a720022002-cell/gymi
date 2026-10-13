@@ -192,13 +192,29 @@ const toB64 = (buf: ArrayBuffer) => {
   return btoa(s);
 };
 const unHtml = (x: string) => x.replace(/&quot;/g, '"').replace(/&#39;|&#x27;/g, "'").replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)));
-async function getUrl(u: string, init?: RequestInit) {
-  const r = await fetch(u, { ...init, signal: AbortSignal.timeout(8000), redirect: 'follow' });
-  return r.ok ? r : null;
+/** Fetch a page from the allowed hosts only. Redirects are followed by hand so every step is checked (https, allowed host). */
+async function getUrl(u: string, init?: RequestInit, hosts: RegExp = LINK_HOSTS) {
+  let url = u;
+  for (let hop = 0; hop < 5; hop++) {
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return null;
+    }
+    if (parsed.protocol !== 'https:' || !hosts.test(parsed.hostname)) return null;
+    const r = await fetch(parsed, { ...init, signal: AbortSignal.timeout(8000), redirect: 'manual' });
+    const next = r.status >= 300 && r.status < 400 ? r.headers.get('location') : null;
+    if (!next) return r.ok ? Object.assign(r, { finalUrl: parsed.toString() }) : null;
+    url = new URL(next, parsed).toString();
+  }
+  return null;
 }
+/** Thumbnails only come from the video sites' own image servers. */
+const IMG_HOSTS = /(^|\.)(tiktokcdn\.com|tiktokcdn-us\.com|tiktokcdn-eu\.com|ibyteimg\.com|cdninstagram\.com|fbcdn\.net|ytimg\.com|ggpht\.com)$/i;
 async function picture(u?: string) {
-  if (!u || !/^https:\/\//.test(u)) return null;
-  const r = await getUrl(u).catch(() => null);
+  if (!u) return null;
+  const r = await getUrl(u, undefined, IMG_HOSTS).catch(() => null);
   const buf = r ? await r.arrayBuffer() : null;
   return buf && buf.byteLength < 3_000_000 ? toB64(buf) : null;
 }
@@ -218,7 +234,7 @@ async function linkInfo(raw: string): Promise<{ site: string; text: string; imag
     let id = url.pathname.match(/\/(?:video|photo|v)\/(\d{8,})/)?.[1];
     if (!id) {
       const r = await getUrl(url.toString(), { headers: { 'User-Agent': MOBILE_UA } }).catch(() => null);
-      id = r?.url.match(/\/(?:video|photo|v)\/(\d{8,})/)?.[1];
+      id = r?.finalUrl.match(/\/(?:video|photo|v)\/(\d{8,})/)?.[1];
     }
     if (!id) return { site: 'tiktok', text: '', image: null };
     const page = `https://www.tiktok.com/@_/video/${id}`;
@@ -265,14 +281,30 @@ const RECIPE_SCHEMA = {
 };
 
 
-/** Fingerprint of the plan answers (and the exercise list and rules version), so the same answers find the same plan. */
-const PLAN_RULES_VERSION = 2;
+/** Fingerprint of the plan answers (and the whole exercise list, injury info included, and rules version), so the same answers find the same plan.
+ * A changed exercise list gives a different key, so it can never reach other people's plans. */
+const PLAN_RULES_VERSION = 3;
+type PlanEx = { id: string; name?: string; muscle?: string; equipment?: string; avoidFor?: string[] };
 async function planCacheKey(b: Record<string, unknown>) {
   const ages = Number(b.age) ? Math.floor(Number(b.age) / 10) * 10 : null;
-  const ex = ((b.exercises as { id: string }[]) ?? []).map((e) => e.id).sort().join(',');
+  const ex = [...((b.exercises as PlanEx[]) ?? [])].sort((x, y) => String(x.id).localeCompare(String(y.id))).map((e) => [e.id, e.name, e.muscle, e.equipment, [...(e.avoidFor ?? [])].sort()]);
   const src = JSON.stringify([PLAN_RULES_VERSION, b.split, b.workouts, b.days, [...((b.injuries as string[]) ?? [])].sort(), b.level, b.goal, b.sex, ages, b.lang, ex]);
   const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(src));
   return [...new Uint8Array(h)].map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+/** Only a complete, safe plan is kept: every asked-for workout has exercises, every exercise is from the list, none loads an injury. */
+function goodPlan(result: unknown, b: Record<string, unknown>) {
+  const r = result as { workouts?: { name?: string; ex?: { id?: string }[] }[] } | null;
+  const list = new Map(((b.exercises as PlanEx[]) ?? []).map((e) => [e.id, e]));
+  const hurt = new Set((b.injuries as string[]) ?? []);
+  const byName = new Map((r?.workouts ?? []).map((w) => [String(w.name ?? '').trim(), w.ex ?? []]));
+  return ((b.workouts as string[]) ?? []).every((n) => {
+    const ex = byName.get(n) ?? [];
+    return ex.length > 0 && ex.every((x) => {
+      const e = list.get(String(x.id));
+      return !!e && !(e.avoidFor ?? []).some((a) => hurt.has(a));
+    });
+  });
 }
 
 async function run(task: string, b: Record<string, unknown>) {
@@ -519,6 +551,12 @@ Deno.serve(async (req) => {
     }
     const log = (ok: boolean, error?: string) =>
       admin.from('ai_calls').insert({ user_id: u.user.id, task, model: lastModel, prompt_tokens: lastUsage.prompt, completion_tokens: lastUsage.completion, cost_usd: lastUsage.cost, ok, error: error?.slice(0, 300) ?? null }).then(() => {}, () => {});
+    // Plans: the same answers give the same plan (the AI alone would pick slightly different exercises each time).
+    const planKey = task === 'plan' ? await planCacheKey(body) : null;
+    if (planKey) {
+      const { data: hit } = await admin.from('ai_plan_cache').select('result').eq('key', planKey).maybeSingle();
+      if (hit?.result) return json({ result: hit.result, cached: true });
+    }
     const { data: ok } = await admin.rpc('ai_take', { p_user: u.user.id, p_limit: Number(env('AI_DAILY_LIMIT', '80')) });
     if (ok === false) return json({ error: 'limit' }, 429);
 
@@ -532,15 +570,9 @@ Deno.serve(async (req) => {
     }
     lastUsage = { prompt: 0, completion: 0, cost: 0 };
     let result;
-    // Plans: the same answers give the same plan (the AI alone would pick slightly different exercises each time).
-    const planKey = task === 'plan' ? await planCacheKey(body) : null;
-    if (planKey) {
-      const { data: hit } = await admin.from('ai_plan_cache').select('result').eq('key', planKey).maybeSingle();
-      if (hit?.result) return json({ result: hit.result, cached: true });
-    }
     try {
       result = await run(task, body);
-      if (planKey && result) await admin.from('ai_plan_cache').upsert({ key: planKey, result });
+      if (planKey && result && goodPlan(result, body)) await admin.from('ai_plan_cache').upsert({ key: planKey, result });
     } catch (e) {
       await log(false, (e as Error).message === 'busy' || (e as Error).message === 'ai_off' ? `${(e as Error).message}: ${lastDetail}` : (e as Error).message);
       throw e;
