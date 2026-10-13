@@ -5,8 +5,8 @@ export type ChatAction =
   | { type: 'food'; name: string; kcal: number; protein: number; carbs: number; fat: number; logId?: string; undone?: boolean }
   | { type: 'cardio'; kind: 'Walk' | 'Run' | 'Bike' | 'Swim'; minutes: number; intensity: number; kcal?: number; logId?: string; undone?: boolean }
   | { type: 'water'; ml: number; logId?: string; undone?: boolean }
-  | { type: 'sleep'; hours: number; prev?: number | null; undone?: boolean }
-  | { type: 'weight'; kg: number; prev?: number | null; undone?: boolean }
+  | { type: 'sleep'; hours: number; prev?: number | null; day?: string; undone?: boolean }
+  | { type: 'weight'; kg: number; prev?: number | null; day?: string; undone?: boolean }
   // Suggestions: nothing changes until you tap Apply (Undo puts the old plan back).
   | { type: 'plan'; title: string; changes: PlanChange[]; state?: 'applied' | 'dismissed'; prev?: unknown }
   | { type: 'targets'; title: string; kcal?: number; protein?: number; water?: number; state?: 'applied' | 'dismissed'; prev?: { kcal: number; perKg: number; carbG: number | null; water: number } };

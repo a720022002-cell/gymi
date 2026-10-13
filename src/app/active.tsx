@@ -520,6 +520,7 @@ export default function Active() {
         like={swapFor !== null && s.ex[swapFor] ? (({ name, muscle }) => ({ id: s.ex[swapFor].id, name, muscle }))(exInfo(s.ex[swapFor], lang)) : null}
         title={swapFor !== null && s.ex[swapFor] ? t('Replace {x}', { x: exInfo(s.ex[swapFor], lang).name }) : ''}
         exclude={s.ex.map((x) => x.id)}
+        injuries={train.plan?.injuries}
         onClose={() => setSwapFor(null)}
         onPick={(e) => {
           if (swapFor === null || !s.ex[swapFor]) return setSwapFor(null);

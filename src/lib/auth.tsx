@@ -6,6 +6,12 @@ import { setAvatarUrl } from './avatars';
 import { EMAIL_CODES, siteUrl } from './config';
 import { friendlyAuthError, supabase, supabaseConfigured } from './supabase';
 
+// Opened from a "Reset password" email link? Then the new-password screen doesn't ask for the old one.
+// Read before Supabase clears the link from the address.
+let fromResetLink = typeof window !== 'undefined' && typeof window.location?.hash === 'string' && /type=recovery/.test(window.location.hash + window.location.search);
+/** True when this visit came from a "Reset password" email link. */
+export const cameFromResetLink = () => fromResetLink;
+
 export type Profile = {
   id: string;
   username: string;
@@ -135,7 +141,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       })
       .finally(() => alive && setLoading(false));
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      if (event === 'PASSWORD_RECOVERY') fromResetLink = true;
       setSession(s);
       // Defer: don't call Supabase inside this callback.
       setTimeout(() => loadProfile(s?.user.id), 0);

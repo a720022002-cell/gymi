@@ -54,11 +54,13 @@ export function Overall({ go }: { go: (t: PTab, sub?: number) => void }) {
   const sAvg = sleeps.length ? sleeps.reduce((a, x) => a + (x.sleep_h ?? 0), 0) / sleeps.length : null;
   const cm = s.commitment;
   const vol = weeklyVolume(train.logs, train.today);
-  // This week so far vs last week up to the same weekday; hidden on the first day of the week (Sunday).
+  // This week so far vs last week up to the same day. Today counts only once you've trained, so a new week
+  // (or a morning before your workout) isn't shown as a drop. Hidden on Sunday until you train.
   const wd = weekdayOf(train.today);
+  const upTo = train.logs.some((l) => l.day === train.today) ? 0 : 1;
   const lastWkStart = addDays(train.today, -7 - wd);
-  const lastSoFar = train.logs.filter((l) => l.day >= lastWkStart && l.day <= addDays(train.today, -7)).reduce((a, l) => a + Number(l.volume), 0);
-  const volUp = wd >= 1 && lastSoFar > 0 ? Math.round(((vol[7] - lastSoFar) / lastSoFar) * 100) : null;
+  const lastSoFar = train.logs.filter((l) => l.day >= lastWkStart && l.day <= addDays(train.today, -7 - upTo)).reduce((a, l) => a + Number(l.volume), 0);
+  const volUp = wd - upTo >= 0 && lastSoFar > 0 ? Math.round(((vol[7] - lastSoFar) / lastSoFar) * 100) : null;
   const prs = Object.entries(train.best)
     .filter(([, v]) => v > 0)
     .sort((a, b) => b[1] - a[1])

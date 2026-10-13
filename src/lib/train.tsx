@@ -7,7 +7,7 @@ import { myCoach, myCoachPlans } from './coaching';
 import type { DayTotals } from './health';
 import { addDays, localDay } from './nutrition';
 import { shareWorkout } from './social';
-import { supabase } from './supabase';
+import { selectAll, supabase } from './supabase';
 import { buildWorkout, type Day, effectiveWeek, isLightLog, type LastSets, orderWeek, type PlanEx, planFromProgram, plannedOn, rangePlan, topReps, type TrainPlan, weekdayOf, weekStart, workoutKcal } from './training';
 
 /** `light`: done as a lighter day or deload, so its weights don't set next time's numbers. */
@@ -162,9 +162,9 @@ export function TrainProvider({ children }: PropsWithChildren) {
     let alive = true;
     (async () => {
       const [w, f, c, b] = await Promise.all([
-        supabase.from('workout_logs').select('day,started_at,prs').order('day', { ascending: false }).limit(5000),
-        supabase.rpc('my_day_totals'),
-        supabase.from('checkins').select('day').limit(5000),
+        selectAll((a, z) => supabase.from('workout_logs').select('day,started_at,prs').order('day', { ascending: false }).order('started_at', { ascending: false }).range(a, z)),
+        selectAll((a, z) => supabase.rpc('my_day_totals').range(a, z)),
+        selectAll((a, z) => supabase.from('checkins').select('day').order('day').range(a, z)),
         supabase.rpc('my_best_lifts'),
       ]);
       if (!alive || w.error) return;
@@ -422,13 +422,22 @@ export function TrainProvider({ children }: PropsWithChildren) {
       let downs = 0;
       const prs: WorkoutLog['prs'] = [];
       const exercises: LoggedEx[] = [];
+      // Records compare with your best ever. If your whole history hasn't loaded yet, fetch the bests now.
+      let known = best;
+      if (!history) {
+        const { data: b } = await supabase.rpc('my_best_lifts');
+        if (Array.isArray(b)) {
+          known = { ...best };
+          for (const r of b as { id: string; w: number }[]) if (r.id) known[r.id] = Math.max(known[r.id] ?? 0, Number(r.w) || 0);
+        }
+      }
       for (const x of s.ex) {
         const d = x.sets.filter((y) => y.done && !y.warm).map((y) => ({ w: +y.w || 0, r: +y.r || 0 }));
         if (!d.length) continue;
         setsDone += d.length;
         d.forEach((y) => (volume += y.w * y.r));
         const top = Math.max(...d.map((y) => y.w));
-        const prev = best[x.id] ?? 0;
+        const prev = known[x.id] ?? 0;
         if (top > prev && prev > 0) prs.push({ id: x.id, n: names[x.id] ?? x.id, w: top });
         const v = d.reduce((a, y) => a + y.w * y.r + y.r * 0.01, 0);
         const done = x.sets.filter((y) => y.done && !y.warm);
@@ -464,7 +473,7 @@ export function TrainProvider({ children }: PropsWithChildren) {
       if (userId) shareWorkout(userId, { name: log.name, minutes: log.minutes, volume: log.volume, prs: log.prs ?? [] }).catch(() => {});
       return log;
     },
-    [session, userId, best, last, profile?.weight_kg, setSession, keep],
+    [session, userId, best, history, last, profile?.weight_kg, setSession, keep],
   );
 
   const value = useMemo<Train>(

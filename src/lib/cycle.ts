@@ -81,8 +81,10 @@ export function averages(periods: Period[], s: CycleSettings) {
 export function cycleNow(periods: Period[], s: CycleSettings, today: string) {
   const sorted = [...periods].sort((a, b) => a.start_day.localeCompare(b.start_day));
   const last = sorted.filter((p) => p.start_day <= today).at(-1);
-  const { cycle, bleed, varies } = averages(sorted, s);
+  const { cycle, bleed, varies, gaps } = averages(sorted, s);
   if (!last) return null;
+  // Irregular cycles: only late once it's longer than your longest recent cycle, not just the average.
+  const lateAfter = Math.max(cycle, ...gaps.slice(-6)) + 2;
   const day = diff(last.start_day, today) + 1;
   const ov = cycle - 14;
   // No end logged: still on it while it's under OPEN_PERIOD_MAX days old (even past your usual length), then treat it as ended.
@@ -91,7 +93,7 @@ export function cycleNow(periods: Period[], s: CycleSettings, today: string) {
   const phase: Phase = onPeriod ? 'Period' : day < ov - 1 ? 'Follicular' : day <= ov + 1 ? 'Ovulation' : 'Luteal';
   const next = addDays(last.start_day, cycle);
   const ovDay = addDays(last.start_day, ov - 1);
-  return { last, day, cycle, bleed, varies, phase, next, untilNext: diff(today, next), ovDay, fertileFrom: addDays(ovDay, -5), fertileTo: addDays(ovDay, 1), late: day > cycle + 2, open };
+  return { last, day, cycle, bleed, varies, phase, next, untilNext: diff(today, next), ovDay, fertileFrom: addDays(ovDay, -5), fertileTo: addDays(ovDay, 1), late: day > lateAfter, open };
 }
 
 /** What a calendar day looks like: period, expected period, fertile, ovulation. */

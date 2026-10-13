@@ -8,14 +8,17 @@ import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, ErrorText } from '@/components/ui';
 import { useT } from '@/i18n';
-import { useAuth } from '@/lib/auth';
+import { cameFromResetLink, useAuth } from '@/lib/auth';
 import { passwordError } from '@/lib/validation';
 
-/** Where the "Reset password" email link lands. The link logs you in, then you pick a new password. */
+/** Where the "Reset password" email link lands. The link logs you in, then you pick a new password.
+ * Opened any other way (already logged in), it asks for your current password first. */
 export default function ResetPassword() {
   const { t } = useT();
   const auth = useAuth();
   const toast = useToast();
+  const [old, setOld] = useState('');
+  const [needOld] = useState(() => !cameFromResetLink());
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +30,10 @@ export default function ResetPassword() {
     if (pw !== pw2) return setError('Passwords don’t match');
     setError(null);
     setBusy(true);
+    if (needOld && !(await auth.checkPassword(old))) {
+      setBusy(false);
+      return setError('That password is not right.');
+    }
     const r = await auth.setNewPassword(pw);
     setBusy(false);
     if (r.error) return setError(r.error);
@@ -47,6 +54,18 @@ export default function ResetPassword() {
       ) : (
         <View>
           <Text variant="h1">{t('Choose a new password')}</Text>
+          {needOld ? (
+            <Field
+              label={t('Current password')}
+              value={old}
+              onChangeText={(v) => { setOld(v); setError(null); }}
+              secureTextEntry
+              autoComplete="current-password"
+              textContentType="password"
+              autoCapitalize="none"
+              ltr
+            />
+          ) : null}
           <Field
             label={t('New password')}
             value={pw}

@@ -246,7 +246,8 @@ function Measurements() {
               <Springy onPress={() => setOne(k, (vals[k] ?? 0) + 0.5)} accessibilityLabel={t('More')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
                 <Icon name="plus" size={16} strokeWidth={2.2} />
               </Springy>
-              {!['waist', 'chest', 'arm'].includes(k) ? (
+              {/* Any row can go (keep at least one), so you never save a number you didn't measure. */}
+              {keys.length > 1 ? (
                 <Springy onPress={() => setKeys((x) => x.filter((y) => y !== k))} accessibilityLabel={t('Remove')} style={{ width: 28, alignItems: 'center' }}>
                   <Icon name="close" size={14} color={c.sec} />
                 </Springy>

@@ -93,6 +93,8 @@ type Food = {
   day: string;
   setDay: (d: string) => void;
   isToday: boolean;
+  /** The day the loaded logs and water belong to (for a moment after changing day, still the old one). */
+  loadedDay: string | null;
   setupDone: boolean;
   plan: FoodPlan;
   person: Person;
@@ -175,6 +177,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
   const [plan, setPlan] = useState<FoodPlan>(defaultPlan(80));
   const [draft, setDraft] = useState<FoodPlan | null>(null);
   const [logs, setLogs] = useState<FoodLog[]>([]);
+  const [loadedDay, setLoadedDay] = useState<string | null>(null);
   const [saved, setSaved] = useState<SavedMeal[]>([]);
   const [moves, setMoves] = useState<Move[]>([]);
   const [waterLogs, setWaterLogs] = useState<WaterLog[]>([]);
@@ -289,6 +292,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       setPlan(RAMADAN_SWITCH ? loaded : { ...loaded, ramadan: false });
       setSetupDone(!!p.data?.setup_done);
       setLogs((l.data as FoodLog[]) ?? []);
+      setLoadedDay(day);
       setSaved((s.data as SavedMeal[]) ?? []);
       setMoves((m.data as Move[]) ?? []);
       setWaterLogs((w.data as WaterLog[]) ?? []);
@@ -377,7 +381,8 @@ export function FoodProvider({ children }: PropsWithChildren) {
       const row = {
         day: on ?? day,
         // No meal picked: the one for this time of day (from your meal plan), or a snack.
-        meal: l.meal ?? mealAt(planMeals(planRef.current), hhmmOf()),
+        // An earlier day: the clock now says nothing about when it was eaten, so a snack.
+        meal: l.meal ?? ((on ?? day) < today ? 'Snack' : mealAt(planMeals(planRef.current), hhmmOf())),
         name: l.name.slice(0, 200),
         kcal: Math.round(l.kcal),
         protein: Math.round(l.protein * 10) / 10,
@@ -394,7 +399,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       if (row.day === day) setLogs((xs) => [...xs, data as FoodLog]);
       return data as FoodLog;
     },
-    [day],
+    [day, today],
   );
 
   const deleteLog = useCallback(async (id: string) => {
@@ -513,6 +518,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       day,
       setDay,
       isToday,
+      loadedDay,
       setupDone,
       plan,
       person,
@@ -561,7 +567,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       typeSeed,
       openTyping,
     }),
-    [day, setDay, isToday, balance, logOpen, setLogOpen, typeSeed, openTyping, coach, coachMeals, addMealByCode, ready, today, setupDone, plan, person, draft, savePlan, applyWeight, weightNote, clearWeightNote, preg, updatePlan, logs, eaten, target, dayGoal, coachTargets, kcalLeft, addLog, deleteLog, setLogMeal, updateLog, restoreLog, saved, saveMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, addCardio, deleteCardio, steps, setSteps, addWater],
+    [day, setDay, isToday, loadedDay, balance, logOpen, setLogOpen, typeSeed, openTyping, coach, coachMeals, addMealByCode, ready, today, setupDone, plan, person, draft, savePlan, applyWeight, weightNote, clearWeightNote, preg, updatePlan, logs, eaten, target, dayGoal, coachTargets, kcalLeft, addLog, deleteLog, setLogMeal, updateLog, restoreLog, saved, saveMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, addCardio, deleteCardio, steps, setSteps, addWater],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

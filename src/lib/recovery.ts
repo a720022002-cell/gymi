@@ -6,7 +6,8 @@ export type RecoveryInput = {
   today: string;
   checkin?: { day: string; sleep: number | null; sore: number | null; energy: number | null } | null;
   logs: WorkoutLog[];
-  protein: { eaten: number; target: number } | null;
+  /** Protein eaten today and yesterday (null: nothing logged yesterday). Yesterday's is what fed last night's recovery. */
+  protein: { eaten: number; yesterday?: number | null; target: number } | null;
   water: { ml: number; goal: number };
   /** Recovery logged today (REC_TOOLS ids). */
   tools?: string[];
@@ -60,7 +61,9 @@ export function recovery(x: RecoveryInput) {
   const energy = en != null ? [45, 80, 100][en] : 80;
   const { ratio: acwr, early } = loadRatio(x.logs, x.today);
   const load = clamp(100 - Math.abs(acwr - 1) * 120, 30, 100);
-  const fuel = x.protein && x.protein.target ? clamp((x.protein.eaten / x.protein.target) * 100, 40, 100) : 75;
+  // Yesterday's protein, so the morning score isn't low just because you haven't eaten yet today.
+  const py = x.protein?.yesterday ?? null;
+  const fuel = x.protein && x.protein.target && py != null ? clamp((py / x.protein.target) * 100, 40, 100) : 75;
   const bonus = toolsBonus(x.tools);
   const score = Math.round(clamp(sleep * 0.3 + sore * 0.2 + energy * 0.15 + load * 0.2 + fuel * 0.15 + bonus, 5, 99));
   const parts = [
@@ -68,7 +71,7 @@ export function recovery(x: RecoveryInput) {
     { key: 'Soreness', icon: 'body', value: sore, sub: so != null ? { t: ['None', 'A little', 'Very sore'][so] } : null },
     { key: 'Energy', icon: 'bolt', value: energy, sub: en != null ? { t: ['Tired', 'Normal', 'Great'][en] } : null },
     { key: 'Training load', icon: 'train', value: Math.round(load), sub: early ? { t: 'Building your baseline' } : { t: '{n}× your usual', n: Math.round(acwr * 10) / 10 } },
-    { key: 'Nutrition', icon: 'food', value: Math.round(fuel), sub: x.protein ? { t: '{a} of {b} g protein', a: Math.round(x.protein.eaten), b: Math.round(x.protein.target) } : null },
+    { key: 'Nutrition', icon: 'food', value: Math.round(fuel), sub: x.protein && py != null ? { t: '{a} of {b} g protein yesterday', a: Math.round(py), b: Math.round(x.protein.target) } : null },
   ] as const;
   return { score, bonus, parts, acwr, early, checked: sl != null || so != null || en != null, sleepH: sl ?? undefined, sore: so ?? 0 };
 }

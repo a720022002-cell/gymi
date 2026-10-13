@@ -4,7 +4,7 @@ import { useAuth } from './auth';
 import { useFood } from './food';
 import { addDays } from './nutrition';
 import type { Photo } from './photo';
-import { supabase } from './supabase';
+import { selectAll, supabase } from './supabase';
 
 export type Checkin = {
   day: string;
@@ -50,10 +50,12 @@ type Health = {
   ready: boolean;
   checkins: Checkin[];
   todayCheckin: Checkin | null;
-  saveCheckin: (patch: Partial<Omit<Checkin, 'day'>>) => Promise<boolean>;
+  /** Save today's check-in, or another day's (`on`). */
+  saveCheckin: (patch: Partial<Omit<Checkin, 'day'>>, on?: string) => Promise<boolean>;
   measures: Measure[];
   weights: Measure[];
-  logWeight: (kg: number) => Promise<boolean>;
+  /** Log today's weight, or another day's (`on`). Only today's updates your targets. */
+  logWeight: (kg: number, on?: string) => Promise<boolean>;
   /** Remove one day's weight (used by Undo in the coach chat). */
   deleteWeight: (day: string) => Promise<void>;
   saveMeasures: (vals: Partial<Record<MeasKind, number>>) => Promise<boolean>;
@@ -107,14 +109,14 @@ export function HealthProvider({ children }: PropsWithChildren) {
     let alive = true;
     (async () => {
       const from = addDays(today, -HISTORY);
-      const [c, m, ph, s, b, f, w] = await Promise.all([
+      const [c, m, ph, s, b, f] = await Promise.all([
         supabase.from('checkins').select('day,sleep_h,sleep_q,bed,wake,energy,sore,score,sleep_parts').gte('day', from).order('day'),
-        supabase.from('measurements').select('day,kind,value').order('day').limit(2000),
+        selectAll<Measure>((a, z) => supabase.from('measurements').select('day,kind,value').order('day').order('kind').range(a, z)),
         supabase.from('progress_photos').select('id,day,path').order('day'),
         supabase.from('supplements').select('id,name,dose,unit,freq,active,remind,time').order('created_at'),
         supabase.from('blood_tests').select('id,day,title,values,file_path,file_name,file_mime').order('day', { ascending: false }),
-        supabase.from('food_logs').select('day,kcal,protein').gte('day', from).lt('day', today).limit(5000),
-        supabase.from('water_logs').select('day,ml').gte('day', from).lt('day', today).limit(5000),
+        // One row per day (single logs would go over the database's 1000-row limit).
+        supabase.rpc('my_day_totals').gte('day', from).lt('day', today),
       ]);
       if (!alive) return;
       const num = <T extends Record<string, unknown>>(rows: T[] | null, keys: (keyof T)[]) =>
@@ -129,12 +131,7 @@ export function HealthProvider({ children }: PropsWithChildren) {
       setSupplements((s.data as Supplement[]) ?? []);
       setBlood((b.data as BloodTest[]) ?? []);
       const d: Record<string, DayTotals> = {};
-      for (const r of (f.data as { day: string; kcal: number; protein: number }[]) ?? []) {
-        const x = (d[r.day] ??= { k: 0, p: 0, w: 0 });
-        x.k += Number(r.kcal);
-        x.p += Number(r.protein);
-      }
-      for (const r of (w.data as { day: string; ml: number }[]) ?? []) (d[r.day] ??= { k: 0, p: 0, w: 0 }).w += r.ml;
+      for (const r of (f.data as { day: string; kcal: number; protein: number; ml: number }[] | null) ?? []) d[r.day] = { k: Number(r.kcal), p: Number(r.protein), w: Number(r.ml) };
       setPast(d);
       setReadyFor(`${userId}:${today}`);
     })();
@@ -143,20 +140,34 @@ export function HealthProvider({ children }: PropsWithChildren) {
     };
   }, [userId, today]);
 
+  // The Food page can show an earlier day. Its live numbers belong to that day, and today keeps the last numbers seen for today.
+  const loaded = food.loadedDay === food.day;
+  const live = loaded && (food.logs.length || food.water) ? { k: food.eaten.k, p: food.eaten.p, w: food.water } : null;
+  const [todayLive, setTodayLive] = useState<{ day: string; key: string; v: DayTotals | null } | null>(null);
+  const liveKey = live ? `${live.k}:${live.p}:${live.w}` : '';
+  // Remember today's numbers while the Food page shows today (updated during render, React's pattern for this).
+  if (food.isToday && loaded && (todayLive?.day !== today || todayLive.key !== liveKey)) setTodayLive({ day: today, key: liveKey, v: live });
   const days = useMemo(() => {
     const d = { ...past };
-    if (food.logs.length || food.water) d[today] = { k: food.eaten.k, p: food.eaten.p, w: food.water };
+    if (food.day !== today) {
+      if (live) d[food.day] = live;
+      else if (loaded) delete d[food.day];
+      const t = todayLive?.day === today ? todayLive.v : null;
+      if (t) d[today] = t;
+    } else if (live) d[today] = live;
+    else if (!loaded && todayLive?.day === today && todayLive.v) d[today] = todayLive.v;
     return d;
-  }, [past, today, food.logs.length, food.eaten.k, food.eaten.p, food.water]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [past, today, food.day, loaded, liveKey, todayLive]);
 
   const todayCheckin = checkins.find((x) => x.day === today) ?? null;
 
   const saveCheckin = useCallback(
-    async (patch: Partial<Omit<Checkin, 'day'>>) => {
+    async (patch: Partial<Omit<Checkin, 'day'>>, on = today) => {
       if (!userId) return false;
-      const prev = checkins.find((x) => x.day === today);
-      const row: Checkin = { day: today, sleep_h: null, sleep_q: null, bed: null, wake: null, energy: null, sore: null, score: null, ...prev, ...patch };
-      setCheckins((xs) => [...xs.filter((x) => x.day !== today), row].sort((a, b) => a.day.localeCompare(b.day)));
+      const prev = checkins.find((x) => x.day === on);
+      const row: Checkin = { day: on, sleep_h: null, sleep_q: null, bed: null, wake: null, energy: null, sore: null, score: null, ...prev, ...patch };
+      setCheckins((xs) => [...xs.filter((x) => x.day !== on), row].sort((a, b) => a.day.localeCompare(b.day)));
       const { error } = await supabase.from('checkins').upsert({ user_id: userId, ...row, updated_at: new Date().toISOString() });
       return !error;
     },
@@ -164,13 +175,13 @@ export function HealthProvider({ children }: PropsWithChildren) {
   );
 
   const putMeasures = useCallback(
-    async (vals: Partial<Record<MeasKind, number>>) => {
+    async (vals: Partial<Record<MeasKind, number>>, on = today) => {
       if (!userId) return false;
       const rows = Object.entries(vals)
         .filter(([, v]) => typeof v === 'number' && v > 0)
-        .map(([kind, v]) => ({ user_id: userId, day: today, kind: kind as MeasKind, value: Math.round((v as number) * 10) / 10 }));
+        .map(([kind, v]) => ({ user_id: userId, day: on, kind: kind as MeasKind, value: Math.round((v as number) * 10) / 10 }));
       if (!rows.length) return true;
-      setMeasures((xs) => [...xs.filter((x) => !(x.day === today && rows.some((r) => r.kind === x.kind))), ...rows.map(({ day, kind, value }) => ({ day, kind, value }))].sort((a, b) => a.day.localeCompare(b.day)));
+      setMeasures((xs) => [...xs.filter((x) => !(x.day === on && rows.some((r) => r.kind === x.kind))), ...rows.map(({ day, kind, value }) => ({ day, kind, value }))].sort((a, b) => a.day.localeCompare(b.day)));
       const { error } = await supabase.from('measurements').upsert(rows, { onConflict: 'user_id,day,kind' });
       return !error;
     },
@@ -179,9 +190,9 @@ export function HealthProvider({ children }: PropsWithChildren) {
 
   const applyWeight = food.applyWeight;
   const logWeight = useCallback(
-    async (kg: number) => {
-      const ok = await putMeasures({ weight: kg });
-      if (ok) {
+    async (kg: number, on = today) => {
+      const ok = await putMeasures({ weight: kg }, on);
+      if (ok && on === today) {
         // Targets follow your weight: this week's average when there are other weigh-ins, otherwise this one.
         const week = [...measures.filter((m) => m.kind === 'weight' && m.day >= addDays(today, -6) && m.day !== today).map((m) => m.value), kg];
         await applyWeight(week.reduce((a, b) => a + b, 0) / week.length, kg).catch(() => false);

@@ -187,18 +187,24 @@ export default function Coach() {
     let cafSoFar = food.isToday ? caffeineToday(food.logs.map((l) => l.name), food.waterLogs) : 0;
     let caf: CaffeineAlert | null = null;
     for (const a of acts) {
-      if (a.type === 'food' && a.kcal > 0) {
-        const row = await food.addLog({ name: a.name, kcal: a.kcal, protein: a.protein || 0, carbs: a.carbs || 0, fat: a.fat || 0 }, food.today);
+      if (a.type === 'food' && +a.kcal > 0) {
+        // Sensible limits for one thing eaten, and a name even if the AI left it out.
+        const g = (x: unknown, max: number) => Math.min(max, Math.max(0, +(x as number) || 0));
+        const item = { name: String(a.name ?? '').trim().slice(0, 120) || t('Food'), kcal: g(a.kcal, 4000), protein: g(a.protein, 300), carbs: g(a.carbs, 600), fat: g(a.fat, 300) };
+        const row = await food.addLog(item, food.today);
         if (row) {
-          done.push({ ...a, logId: row.id });
-          caf = caf ?? caffeineCheck(caffeineOf(a.name), cafSoFar, new Date().getHours() >= 15);
-          cafSoFar += caffeineOf(a.name);
+          done.push({ ...a, ...item, logId: row.id });
+          caf = caf ?? caffeineCheck(caffeineOf(item.name), cafSoFar, new Date().getHours() >= 15);
+          cafSoFar += caffeineOf(item.name);
         }
-      } else if (a.type === 'cardio' && a.minutes > 0) {
+      } else if (a.type === 'cardio' && +a.minutes > 0) {
         const k = Math.max(0, CARDIO.findIndex(([n]) => n === a.kind));
-        const kcal = cardioKcal(k, Math.min(2, Math.max(0, a.intensity ?? 1)), food.plan.weight || 80, a.minutes);
-        const row = await food.addCardio({ kind: CARDIO[k][0], minutes: Math.round(a.minutes), intensity: a.intensity ?? 1, kcal }, food.today);
-        if (row) done.push({ ...a, kind: CARDIO[k][0], kcal, logId: row.id });
+        // At most 5 hours in one go.
+        const minutes = Math.min(300, Math.round(+a.minutes));
+        const intensity = Math.min(2, Math.max(0, Math.round(+(a.intensity ?? 1)) || 0));
+        const kcal = cardioKcal(k, intensity, food.plan.weight || 80, minutes);
+        const row = await food.addCardio({ kind: CARDIO[k][0], minutes, intensity, kcal }, food.today);
+        if (row) done.push({ ...a, kind: CARDIO[k][0], minutes, intensity, kcal, logId: row.id });
       } else if (a.type === 'water' && a.ml > 0) {
         const ml = Math.min(5000, Math.round(a.ml));
         await food.addWater(ml, 'Water', food.today);
@@ -209,14 +215,14 @@ export default function Coach() {
         const hours = r1(a.hours);
         const prev = health.todayCheckin?.sleep_h ?? null;
         if (await health.saveCheckin({ sleep_h: hours, sleep_parts: null })) {
-          done.push({ type: 'sleep', hours, prev });
+          done.push({ type: 'sleep', hours, prev, day: food.today });
           toast(t('Logged to Sleep: {n} h', { n: fx(hours) }), { ai: true });
         }
       } else if (a.type === 'weight' && a.kg >= 30 && a.kg <= 250) {
         const kg = r1(a.kg);
         const prev = health.weights.find((w) => w.day === food.today)?.value ?? null;
         if (await health.logWeight(kg)) {
-          done.push({ type: 'weight', kg, prev });
+          done.push({ type: 'weight', kg, prev, day: food.today });
           toast(t('Logged to Progress: {n} kg', { n: fx(kg) }), { ai: true });
         }
       }
@@ -269,10 +275,11 @@ export default function Coach() {
       if (!a.logId) return toast(t('Remove this drink on the Water screen.'), { icon: 'info' });
       await food.deleteWater(a.logId);
     }
-    if (a.type === 'sleep') await health.saveCheckin({ sleep_h: a.prev ?? null });
+    // Undo the day it was logged on, even if that was yesterday.
+    if (a.type === 'sleep') await health.saveCheckin({ sleep_h: a.prev ?? null }, a.day ?? food.today);
     if (a.type === 'weight') {
-      if (a.prev != null) await health.logWeight(a.prev);
-      else await health.deleteWeight(food.today);
+      if (a.prev != null) await health.logWeight(a.prev, a.day ?? food.today);
+      else await health.deleteWeight(a.day ?? food.today);
     }
     const next = (m.actions ?? []).map((x, j) => (j === i ? { ...x, undone: true } : x));
     setAll((xs) => (xs ?? []).map((x) => (x.id === m.id ? { ...x, actions: next } : x)));

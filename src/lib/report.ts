@@ -18,21 +18,16 @@ export function useReportData(from: string, to: string) {
     if (from > to) return;
     let alive = true;
     (async () => {
-      const [f, w, l, c, m] = await Promise.all([
-        supabase.from('food_logs').select('day,kcal,protein').gte('day', from).lte('day', to).limit(10000),
-        supabase.from('water_logs').select('day,ml').gte('day', from).lte('day', to).limit(10000),
+      // Food and water come as one short row per day: the database sends at most 1000 rows, and single logs would go over it.
+      const [f, l, c, m] = await Promise.all([
+        supabase.rpc('my_day_totals').gte('day', from).lte('day', to),
         supabase.from('workout_logs').select('*').gte('day', from).lte('day', to).order('day').limit(500),
         supabase.from('checkins').select('day,sleep_h,sleep_q,bed,wake,energy,sore,score').gte('day', from).lte('day', to).order('day'),
         supabase.from('measurements').select('day,kind,value').in('kind', ['weight', 'waist']).gte('day', from).lte('day', to).order('day'),
       ]);
       if (!alive) return;
       const days: Record<string, DayTotals> = {};
-      for (const r of (f.data as { day: string; kcal: number; protein: number }[]) ?? []) {
-        const x = (days[r.day] ??= { k: 0, p: 0, w: 0 });
-        x.k += Number(r.kcal);
-        x.p += Number(r.protein);
-      }
-      for (const r of (w.data as { day: string; ml: number }[]) ?? []) (days[r.day] ??= { k: 0, p: 0, w: 0 }).w += r.ml;
+      for (const r of (f.data as { day: string; kcal: number; protein: number; ml: number }[] | null) ?? []) days[r.day] = { k: Number(r.kcal), p: Number(r.protein), w: Number(r.ml) };
       const ms = ((m.data as Measure[]) ?? []).map((x) => ({ ...x, value: Number(x.value) }));
       setState({
         key: `${from}|${to}`,

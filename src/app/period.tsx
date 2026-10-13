@@ -251,7 +251,7 @@ function TodayTab({ st, reload, uid }: { st: State; reload: () => void; uid: str
             </Text>
           </Ring>
           <Text variant="h3" style={{ marginTop: 16 }}>
-            {now.phase === 'Period' ? t('Period day {n}', { n: now.day }) : now.late ? t('Your period is {n} days late', { n: now.day - now.cycle }) : t('Next period in {n} days', { n: Math.max(0, now.untilNext) })}
+            {now.phase === 'Period' ? t('Period day {n}', { n: now.day }) : now.late ? t('Your period is {n} days late', { n: now.day - now.cycle }) : now.untilNext > 0 ? t('Next period in {n} days', { n: now.untilNext }) : t('Your period could start any day')}
           </Text>
           <Text variant="small" color="sec">
             {t('Expected {d}', { d: shortDate(now.next, lang) })}

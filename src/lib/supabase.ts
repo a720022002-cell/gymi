@@ -33,3 +33,16 @@ export function friendlyAuthError(message?: string): string {
   if (m.includes('fetch') || m.includes('network')) return 'You’re offline. Check your connection and try again.';
   return 'Something went wrong. Please try again.';
 }
+
+/** Every row of a query, page by page: the database sends at most 1000 rows at a time.
+ * `page(from, to)` must order the rows, so pages don't overlap. Stops after `max` rows. */
+export async function selectAll<T>(page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>, max = 20000) {
+  const out: T[] = [];
+  for (let from = 0; from < max; from += 1000) {
+    const { data, error } = await page(from, from + 999);
+    if (error) return { data: from ? out : null, error };
+    out.push(...(data ?? []));
+    if (!data || data.length < 1000) break;
+  }
+  return { data: out, error: null };
+}

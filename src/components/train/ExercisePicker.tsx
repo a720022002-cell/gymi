@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
 import { useT } from '@/i18n';
+import { injuriesStrained } from '@/lib/coachPlan';
 import { type DbExercise, dbExName, getExercise, searchExercises } from '@/lib/exercisesDb';
 import { exMuscle, FILTER_MUSCLES, muscleLabel } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
@@ -42,13 +43,15 @@ async function similarTo(like: { id: string; muscle: string; name: string }): Pr
     .map((y) => y.x);
 }
 
-/** Search the exercise list to add or replace one (design: SH.expick). When replacing, exercises for the same muscle come first; "Other exercise" opens the full search. */
+/** Search the exercise list to add or replace one (design: SH.expick). When replacing, exercises for the same muscle come first; "Other exercise" opens the full search.
+ * With `injuries`, exercises that load one of them go to the end of the list with a warning. */
 export function ExercisePicker({
   open,
   title,
   replacing,
   like,
   exclude,
+  injuries,
   onClose,
   onPick,
 }: {
@@ -57,6 +60,7 @@ export function ExercisePicker({
   replacing?: boolean;
   like?: { id: string; muscle: string; name: string } | null;
   exclude?: string[];
+  injuries?: string[];
   onClose: () => void;
   onPick: (e: DbExercise) => void;
 }) {
@@ -105,7 +109,12 @@ export function ExercisePicker({
     setAll(false);
     onPick(e);
   };
-  const row = (e: DbExercise, i: number) => (
+  const hurts = (e: DbExercise) => injuriesStrained(e, injuries ?? []);
+  // Safe exercises first; ones that load an injury keep their order at the end.
+  const safeFirst = (xs: DbExercise[]) => [...xs.filter((e) => !hurts(e).length), ...xs.filter((e) => hurts(e).length)];
+  const row = (e: DbExercise, i: number) => {
+    const hurt = hurts(e);
+    return (
     <Springy key={e.id} onPress={() => pick(e)} scaleTo={0.99} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 56, paddingVertical: 8, paddingHorizontal: 14, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text weight={700} numberOfLines={1}>
@@ -114,13 +123,19 @@ export function ExercisePicker({
         <Text variant="xs" color="sec" numberOfLines={1}>
           {[muscleLabel(exMuscle(e.id, e.muscle, e.muscles), lang, t), t(e.equipment), e.machines?.[0] ? (lang === 'ar' ? e.machines[0][1] : e.machines[0][0]) : null].filter(Boolean).join(t(', '))}
         </Text>
+        {hurt.length ? (
+          <Text variant="xs" weight={700} color="down" numberOfLines={1}>
+            {t('May strain your injury: {x}', { x: hurt.map((x) => t(x)).join(t(', ')) })}
+          </Text>
+        ) : null}
       </View>
       <Icon name={replacing ? 'swap' : 'plus'} size={18} color={c.cobalt} strokeWidth={2.2} />
     </Springy>
-  );
+    );
+  };
 
   if (showSimilar) {
-    const sim = similar?.id === like.id ? similar.list.filter((e) => !exclude?.includes(e.id)) : null;
+    const sim = similar?.id === like.id ? safeFirst(similar.list.filter((e) => !exclude?.includes(e.id))) : null;
     return (
       <Sheet open={open} onClose={close}>
         <Text variant="h2">{title}</Text>
@@ -143,7 +158,7 @@ export function ExercisePicker({
     );
   }
 
-  const list = results.filter((e) => !exclude?.includes(e.id));
+  const list = safeFirst(results.filter((e) => !exclude?.includes(e.id)));
   return (
     <Sheet open={open} onClose={close}>
       <Text variant="h2">{title}</Text>

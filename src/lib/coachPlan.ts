@@ -14,10 +14,15 @@ const REPS = /^\d{1,3}(\s*[–-]\s*\d{1,3})?$/;
  * Train together uses). Others from the full list borrow it from the common exercise they match by id or by name
  * ("Seated overhead press" counts as Overhead press). */
 export function strainsInjury(e: { id: string; name_en?: string }, injuries: string[]) {
-  if (!injuries.length) return false;
+  return injuriesStrained(e, injuries).length > 0;
+}
+
+/** Which of your injuries an exercise loads (from the matching exercise in our own list). */
+export function injuriesStrained(e: { id: string; name_en?: string }, injuries: string[]) {
+  if (!injuries.length) return [];
   const name = (e.name_en ?? '').toLowerCase();
   const like = EX[e.id] ? [EX[e.id]] : Object.values(EX).filter((x) => x.fedb === e.id || (!!name && name.includes(x.en.toLowerCase())));
-  return like.some((x) => x.stress?.some((s) => injuries.includes(s)));
+  return injuries.filter((i) => like.some((x) => x.stress?.includes(i)));
 }
 
 /** Keep only suggestions that make sense for this plan, and look up the exercises they name. */

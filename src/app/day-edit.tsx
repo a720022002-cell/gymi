@@ -10,6 +10,7 @@ import { ExercisePicker } from '@/components/train/ExercisePicker';
 import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { toPlanEx } from '@/lib/exercisesDb';
+import { toLatinDigits } from '@/lib/latinDigits';
 import { useTrain } from '@/lib/train';
 import { copyName, DAYS_LONG, exInfo, type PlanEx, type TrainPlan, workoutMinutes } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
@@ -150,7 +151,7 @@ export default function DayEdit() {
                   <TextInput
                     value={x.reps}
                     maxLength={7}
-                    onChangeText={(v) => setEx(W.ex.map((y, j) => (j === i ? { ...y, reps: v } : y)))}
+                    onChangeText={(v) => setEx(W.ex.map((y, j) => (j === i ? { ...y, reps: toLatinDigits(v) } : y)))}
                     onBlur={() => !x.reps.trim() && setEx(W.ex.map((y, j) => (j === i ? { ...y, reps: '10' } : y)))}
                     accessibilityLabel={t('Reps')}
                     style={{ width: 64, height: 36, borderRadius: 8, backgroundColor: c.inset, textAlign: 'center', fontFamily: fontFor('sora', 600), color: c.text, outlineStyle: 'none' } as object}
@@ -183,6 +184,7 @@ export default function DayEdit() {
         like={pick !== null && pick >= 0 && W.ex[pick] ? (({ name, muscle }) => ({ id: W.ex[pick].id, name, muscle }))(exInfo(W.ex[pick], lang)) : null}
         title={pick !== null && pick >= 0 && W.ex[pick] ? t('Replace {x}', { x: exInfo(W.ex[pick], lang).name }) : t('Add an exercise')}
         exclude={pick === -1 ? W.ex.map((x) => x.id) : undefined}
+        injuries={train.plan?.injuries}
         onClose={() => setPick(null)}
         onPick={(e) => {
           const pe = toPlanEx(e);

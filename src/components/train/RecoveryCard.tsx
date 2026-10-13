@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth';
 import { useDevices } from '@/lib/devices';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
+import { addDays } from '@/lib/nutrition';
 import { recLabel, recovery } from '@/lib/recovery';
 import { useTrain } from '@/lib/train';
 import { droppingLifts, EX, weekStart } from '@/lib/training';
@@ -23,7 +24,7 @@ export function useRecovery() {
   const food = useFood();
   const { session } = useAuth();
   const devices = useDevices(session?.user.id);
-  const { todayCheckin: ci } = useHealth();
+  const { todayCheckin: ci, days } = useHealth();
   // Sleep you logged wins; otherwise last night's sleep from your watch.
   const watchSleep = devices.days.find((d) => d.day === train.today)?.sleep_h ?? null;
   const sleep = ci?.sleep_h ?? watchSleep;
@@ -31,7 +32,8 @@ export function useRecovery() {
     today: train.today,
     checkin: ci || sleep != null ? { day: train.today, sleep, sore: ci?.sore ?? null, energy: ci?.energy ?? null } : null,
     logs: train.logs,
-    protein: food.setupDone ? { eaten: food.eaten.p, target: food.target.p } : null,
+    // From the day totals, so looking at another day on the Food page doesn't change it.
+    protein: food.setupDone ? { eaten: days[train.today]?.p ?? 0, yesterday: days[addDays(train.today, -1)]?.p ?? null, target: food.target.p } : null,
     water: { ml: food.water, goal: food.plan.water || 2800 },
     tools: train.recTools,
   };

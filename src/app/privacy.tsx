@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Platform, Share, TextInput, View } from 'react-native';
 
+import { Field } from '@/components/Field';
 import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
@@ -23,10 +24,11 @@ export default function Privacy() {
   const { t } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
-  const { session, logOut } = useAuth();
+  const { session, logOut, checkPassword } = useAuth();
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [typed, setTyped] = useState('');
+  const [pw, setPw] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -54,6 +56,11 @@ export default function Privacy() {
   const del = async () => {
     setDeleting(true);
     setErr(null);
+    // Your password first, so someone holding your unlocked phone can't delete your account.
+    if (!(await checkPassword(pw))) {
+      setDeleting(false);
+      return setErr(t('That password is not right.'));
+    }
     const { error } = await supabase.functions.invoke('account', { body: { action: 'delete', confirm: 'DELETE' } });
     setDeleting(false);
     if (error) return setErr(t('Couldn’t delete. Please try again.'));
@@ -90,7 +97,7 @@ export default function Privacy() {
             </Text>
           </View>
         </Row>
-        <Button kind="danger" title={t('Delete my account')} style={{ marginTop: 12 }} onPress={() => (setTyped(''), setStep(1))} />
+        <Button kind="danger" title={t('Delete my account')} style={{ marginTop: 12 }} onPress={() => (setTyped(''), setPw(''), setStep(1))} />
       </Card>
       <Text variant="xs" color="sec" style={{ marginHorizontal: 4 }}>
         {t('AI photos are sent to the AI to read them and are not kept by Gymi. Progress photos are private to you.')}
@@ -124,8 +131,9 @@ export default function Privacy() {
               placeholderTextColor={c.sec}
               style={{ marginTop: 12, height: 52, borderRadius: 16, backgroundColor: c.card, textAlign: 'center', fontSize: 18, letterSpacing: 2, fontFamily: 'Sora_600SemiBold', color: c.text }}
             />
+            <Field label={t('Password')} value={pw} onChangeText={(v) => (setPw(v), setErr(null))} secureTextEntry autoComplete="current-password" textContentType="password" autoCapitalize="none" ltr />
             <ErrorText>{err}</ErrorText>
-            <Button kind="danger" title={t('Delete for good')} loading={deleting} disabled={typed.trim().toUpperCase() !== 'DELETE'} style={{ marginTop: 12 }} onPress={del} />
+            <Button kind="danger" title={t('Delete for good')} loading={deleting} disabled={typed.trim().toUpperCase() !== 'DELETE' || !pw} style={{ marginTop: 12 }} onPress={del} />
             <Button kind="ghost" title={t('Cancel')} style={{ marginTop: 8 }} onPress={() => setStep(0)} />
           </View>
         )}

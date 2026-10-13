@@ -863,7 +863,7 @@ function CycleCard() {
       ? t('Period day {n}', { n: cy.day })
       : cy.late
         ? t('Your period is late')
-        : `${t(cy.phase)} · ${t('Next period in {n} days', { n: until })}`;
+        : `${t(cy.phase)} · ${until > 0 ? t('Next period in {n} days', { n: until }) : t('Your period could start any day')}`;
   return (
     <Card onPress={() => router.push('/period')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
       <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(236,72,153,0.14)', alignItems: 'center', justifyContent: 'center' }}>
