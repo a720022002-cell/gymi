@@ -2,13 +2,23 @@
 import type { ChatAction, PlanChange } from './coach';
 import { searchExercises, toPlanEx } from './exercisesDb';
 import type { FoodPlan } from './nutrition';
-import { exInfo, type TrainPlan, weekStart } from './training';
+import { EX, exInfo, type TrainPlan, weekStart } from './training';
 
 type Suggestion = Extract<ChatAction, { type: 'plan' } | { type: 'targets' }>;
 
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : Number(v));
 const str = (v: unknown, n = 80) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
 const REPS = /^\d{1,3}(\s*[–-]\s*\d{1,3})?$/;
+
+/** Does this exercise strain one of the injuries? Common exercises have a stress list (EX[...].stress, the same check
+ * Train together uses). Others from the full list borrow it from the common exercise they match by id or by name
+ * ("Seated overhead press" counts as Overhead press). */
+export function strainsInjury(e: { id: string; name_en?: string }, injuries: string[]) {
+  if (!injuries.length) return false;
+  const name = (e.name_en ?? '').toLowerCase();
+  const like = EX[e.id] ? [EX[e.id]] : Object.values(EX).filter((x) => x.fedb === e.id || (!!name && name.includes(x.en.toLowerCase())));
+  return like.some((x) => x.stress?.some((s) => injuries.includes(s)));
+}
 
 /** Keep only suggestions that make sense for this plan, and look up the exercises they name. */
 export async function prepareSuggestions(raw: unknown, plan: TrainPlan | null): Promise<Suggestion[]> {
@@ -43,7 +53,8 @@ export async function prepareSuggestions(raw: unknown, plan: TrainPlan | null): 
         if (!words) continue;
         if (c.op === 'swap' && !inWorkout(workout, str(c.from))) continue;
         const have = plan.workouts[workout].ex.map((y) => y.id);
-        const found = (await searchExercises(words, null, null, 8)).find((e) => !have.includes(e.id));
+        // Never swap in or add an exercise that strains an injury in the plan: the first safe hit, or no change at all.
+        const found = (await searchExercises(words, null, null, 8)).find((e) => !have.includes(e.id) && !strainsInjury(e, plan.injuries ?? []));
         if (!found) continue;
         const toEx = toPlanEx(found);
         if (c.op === 'swap') changes.push({ op: 'swap', workout, from: str(c.from), to: words, toEx });
@@ -64,7 +75,10 @@ export function applyPlanChanges(plan: TrainPlan, changes: PlanChange[], today: 
   const each = (w: string, fn: (ex: TrainPlan['workouts'][string]['ex']) => TrainPlan['workouts'][string]['ex']) => {
     for (const k of w === 'all' ? Object.keys(workouts) : [w]) if (workouts[k]) workouts[k].ex = fn(workouts[k].ex);
   };
+  // Checked again here: a suggestion saved in an older chat may predate the injury check.
+  const unsafe = (c: PlanChange) => (c.op === 'swap' || c.op === 'add') && !!c.toEx && strainsInjury({ id: c.toEx.id, name_en: c.toEx.n }, plan.injuries ?? []);
   for (const c of changes) {
+    if (unsafe(c)) continue;
     if (c.op === 'deload') deload = weekStart(today);
     else if (c.op === 'light') {
       light = today;

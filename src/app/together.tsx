@@ -7,9 +7,11 @@ import { Thinking } from '@/components/food/Thinking';
 import { TimeField } from '@/components/food/TimeField';
 import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
+import { Sheet } from '@/components/Sheet';
 import { Avatar } from '@/components/social/Avatar';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
+import { StaleSessionChoice, useStaleSession } from '@/components/train/WorkoutCard';
 import { Button, Card, Chip, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
@@ -31,6 +33,9 @@ export default function Together() {
   const toast = useToast();
   const { profile, session } = useAuth();
   const train = useTrain();
+  // A workout left open from an earlier day: save or discard it first.
+  const stale = useStaleSession();
+  const [staleOpen, setStaleOpen] = useState(false);
   const params = useLocalSearchParams<{ friend?: string; members?: string }>();
   // Your level is the one in your training plan; without one, it comes from how much you trained in the last 6 months.
   const recent = train.logs.length;
@@ -125,6 +130,7 @@ export default function Together() {
 
   const workout = TOG.map(([id, type]) => ({ id, type }));
   const startLocal = () => {
+    if (stale) return setStaleOpen(true);
     if (train.session) return router.replace('/active');
     const ex: PlanEx[] = TOG.map(([id, type]) => {
       const s = scheme(myLevel, type);
@@ -364,6 +370,9 @@ export default function Together() {
         <Button icon="play" title={t('Start together now')} style={{ marginTop: 16 }} onPress={startLocal} />
       )}
       <Button kind="glass" title={t('Change people')} style={{ marginTop: 8 }} onPress={() => setReady(false)} />
+      <Sheet open={staleOpen && stale} onClose={() => setStaleOpen(false)}>
+        <StaleSessionChoice onDone={() => setStaleOpen(false)} />
+      </Sheet>
     </Screen>
   );
 }

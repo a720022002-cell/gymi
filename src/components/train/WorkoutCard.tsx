@@ -1,11 +1,11 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { CY_PLAN } from '@/lib/cycle';
 import { useCycleToday } from '@/lib/cyclePhase';
-import { fmt } from '@/lib/nutrition';
+import { addDays, fmt, localDay } from '@/lib/nutrition';
 import { useTrain } from '@/lib/train';
 import { applyShift, buildWorkout, DAYS_LONG, exInfo, shiftPlan, weekStart, workoutTitle } from '@/lib/training';
 import { useWeight } from '@/lib/units';
@@ -30,6 +30,70 @@ export function useToday() {
   const name = train.todayName;
   const wo = p && name ? buildWorkout(p, name, { home, short, light, deload, last: train.last }) : null;
   return { name, home, short, light, deload, wo, skipped: !!p?.skipped[train.today], done: !!train.todayLog };
+}
+
+const HOUR = 3_600_000;
+
+/** A workout left open (Finish never tapped): started more than 12 hours ago, or on an earlier day and over 4 hours ago
+ * (so a workout that runs past midnight isn't cut off). It must be saved or thrown away before today's workout. */
+export function useStaleSession() {
+  const train = useTrain();
+  const s = train.session;
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  if (!s) return false;
+  const age = now - s.start;
+  return age > 12 * HOUR || (localDay(new Date(s.start)) < train.today && age > 4 * HOUR);
+}
+
+/** The choice for a workout left open: save it (only if it has working sets) or discard it. */
+export function StaleSessionChoice({ onDone }: { onDone?: () => void }) {
+  const { t } = useT();
+  const { colors: c } = useSettings();
+  const toast = useToast();
+  const train = useTrain();
+  const [saving, setSaving] = useState(false);
+  const s = train.session;
+  if (!s) return null;
+  const started = localDay(new Date(s.start));
+  const yesterday = started === addDays(train.today, -1);
+  const work = s.ex.reduce((a, x) => a + x.sets.filter((y) => y.done && !y.warm).length, 0);
+  const title = s.home ? t('Home workout') : s.name === 'Together' ? t('Train together') : t('{w} workout', { w: t(s.name) });
+
+  const save = async () => {
+    setSaving(true);
+    const log = await train.finishWorkout(Object.fromEntries(s.ex.map((x) => [x.id, exInfo(x, 'en').name])));
+    setSaving(false);
+    if (!log) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+    toast(t('Saved. You can start today’s workout now.'), { icon: 'check' });
+    onDone?.();
+  };
+  const discard = () => {
+    train.setSession(null);
+    toast(t('Workout discarded'), { icon: 'trash', undo: () => train.setSession(s) });
+    onDone?.();
+  };
+
+  return (
+    <View>
+      <Text variant="small" weight={700} color="sec">
+        {title}
+      </Text>
+      <Text variant="h2" style={{ marginTop: 4 }}>
+        {t(yesterday ? 'You didn’t finish yesterday’s workout' : 'You didn’t finish your last workout')}
+      </Text>
+      <Text variant="small" color="sec" style={{ marginTop: 4 }}>
+        {work ? t('Save it or discard it, then start today’s workout.') : t('No working sets were logged, so there’s nothing to save. Discard it to start today’s workout.')}
+      </Text>
+      {work ? (
+        <Button icon="check" title={t(saving ? 'Saving…' : yesterday ? 'Finish yesterday’s workout' : 'Finish that workout')} disabled={saving} style={{ marginTop: 16 }} onPress={save} />
+      ) : null}
+      <Button kind={work ? 'ghost' : 'soft'} icon="trash" title={t('Discard it')} color={c.down} disabled={saving} style={{ marginTop: work ? 8 : 16 }} onPress={discard} />
+    </View>
+  );
 }
 
 /** Next planned workout after today, like "Pull on Thursday". */
@@ -138,6 +202,7 @@ export function WorkoutCard() {
   const train = useTrain();
   const today = useToday();
   const next = useNextWorkout();
+  const stale = useStaleSession();
   const [skipOpen, setSkipOpen] = useState(false);
   const cycle = useCycleToday();
   const toast = useToast();
@@ -153,6 +218,14 @@ export function WorkoutCard() {
           {t('Answer 3 quick questions and get a plan that fits your week.')}
         </Text>
         <Button title={t('Set up training')} onPress={() => router.push('/train')} />
+      </Card>
+    );
+
+  // Yesterday's workout is still open: it blocks today's until it's saved or discarded.
+  if (stale)
+    return (
+      <Card>
+        <StaleSessionChoice />
       </Card>
     );
 

@@ -10,7 +10,7 @@ import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
-import { useToday } from '@/components/train/WorkoutCard';
+import { StaleSessionChoice, useStaleSession, useToday } from '@/components/train/WorkoutCard';
 import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useTrain } from '@/lib/train';
@@ -33,6 +33,9 @@ export default function WorkoutScreen() {
   // `day`: train for an earlier day (yesterday, from Home), so a workout after midnight still counts for the day before.
   const { w, day } = useLocalSearchParams<{ w: string; day?: string }>();
   const [machineFor, setMachineFor] = useState<string | null>(null);
+  // A workout left open from an earlier day: save or discard it before starting this one.
+  const stale = useStaleSession();
+  const [staleOpen, setStaleOpen] = useState(false);
   const p = train.plan;
   if (!p || !w) return <Screen title={t('Workout')} back />;
   const past = !!day && day < train.today;
@@ -43,6 +46,7 @@ export default function WorkoutScreen() {
   const wo = buildWorkout(p, w, { home, short: isToday && today.short, light, deload, last: train.last });
 
   const start = () => {
+    if (stale) return setStaleOpen(true);
     if (train.session) return router.replace('/active');
     train.startWorkout(w, home, isToday && today.short, { light, deload, day: past ? day : undefined });
     router.replace('/active');
@@ -145,9 +149,13 @@ export default function WorkoutScreen() {
               {t('About {m} min', { m: wo.min })}
             </Text>
           </View>
-          <Button icon="play" title={t(train.session ? 'Continue workout' : 'Start workout')} disabled={!wo.ex.length} onPress={start} style={{ paddingHorizontal: 22 }} />
+          <Button icon="play" title={t(train.session && !stale ? 'Continue workout' : 'Start workout')} disabled={!wo.ex.length} onPress={start} style={{ paddingHorizontal: 22 }} />
         </Glass>
       </View>
+
+      <Sheet open={staleOpen && stale} onClose={() => setStaleOpen(false)}>
+        <StaleSessionChoice onDone={() => setStaleOpen(false)} />
+      </Sheet>
 
       <Sheet open={!!machineFor} onClose={() => setMachineFor(null)}>
         {mInfo && mEx ? (

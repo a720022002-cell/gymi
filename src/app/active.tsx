@@ -15,11 +15,9 @@ import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { restDone } from '@/lib/beep';
 import { toPlanEx } from '@/lib/exercisesDb';
-import { canListen, listen, stopListening } from '@/lib/speech';
 import { type Session, type SessionEx, useTrain } from '@/lib/train';
 import { exInfo, type PlanEx, rangeText, topReps } from '@/lib/training';
 import { useWeight } from '@/lib/units';
-import { matchExercise, parseSet } from '@/lib/voiceSet';
 import { useSettings } from '@/theme/settings';
 
 const REST = 90;
@@ -108,7 +106,6 @@ export default function Active() {
   const [rest, setRest] = useState<{ end: number; total: number } | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [heard, setHeard] = useState<string | null>(null);
   // The set whose number was tapped: make it a warm-up or a working set, or delete it.
   const [setMenu, setSetMenu] = useState<{ ei: number; si: number } | null>(null);
   // Swapping an exercise mid-workout: which one, then whether to keep the change in your plan.
@@ -148,6 +145,8 @@ export default function Active() {
 
   const tot = s.ex.reduce((a, x) => a + x.sets.length, 0);
   const dn = s.ex.reduce((a, x) => a + x.sets.filter((y) => y.done).length, 0);
+  // Only working sets make a workout: warm-ups alone don't save a log, mark the day done or raise the streak.
+  const workDone = s.ex.reduce((a, x) => a + x.sets.filter((y) => y.done && !y.warm).length, 0);
   const secs = Math.floor((now - s.start) / 1000);
   const elapsed = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
 
@@ -176,13 +175,13 @@ export default function Active() {
       const warmSet = { w: '', r: '', done: false, lw: ref.lw ? Math.round(ref.lw * 0.5 * 2) / 2 : 0, lr: Math.max(ref.lr, 12), warm: true };
       return [...sets.slice(0, at), warmSet, ...sets.slice(at)];
     });
-  const markSet = (ei: number, si: number, said?: { w: string; r: string }) => {
+  const markSet = (ei: number, si: number) => {
     const x = s.ex[ei];
     const st = x.sets[si];
     const info = exInfo(x, lang);
-    if (st.done && !said) return update((ss) => ({ ...ss, ex: ss.ex.map((e, i) => (i !== ei ? e : { ...e, sets: e.sets.map((y, j) => (j === si ? { ...y, done: false } : y)) })) }));
-    const w = said?.w ?? (st.w === '' ? String(st.lw || 0) : st.w);
-    const r = said?.r ?? (st.r === '' ? String(st.lr) : st.r);
+    if (st.done) return update((ss) => ({ ...ss, ex: ss.ex.map((e, i) => (i !== ei ? e : { ...e, sets: e.sets.map((y, j) => (j === si ? { ...y, done: false } : y)) })) }));
+    const w = st.w === '' ? String(st.lw || 0) : st.w;
+    const r = st.r === '' ? String(st.lr) : st.r;
     const easy = !st.warm && +r >= topReps(x.reps) && +w >= st.lw && info.type !== 'Bodyweight' && !info.timed && +w > 0;
     const next: Session = {
       ...s,
@@ -231,37 +230,8 @@ export default function Active() {
     setSwapped(null);
   };
 
-  // Say a set: "Bench 80 kilos, 10 reps" fills and finishes the next set of that exercise (design: voiceSet).
-  const voiceSet = async () => {
-    if (heard !== null) return stopListening();
-    if (!canListen()) return toast(t('Voice input isn’t available here. Type your sets instead.'), { icon: 'mic' });
-    setHeard('');
-    const text = await listen(lang);
-    if (!text) {
-      setHeard(null);
-      return toast(t('I didn’t catch that. Try “Bench 80 kilos, 10 reps”.'), { icon: 'mic' });
-    }
-    setHeard(text);
-    setTimeout(() => setHeard(null), 1500);
-    const { w, r } = parseSet(text);
-    if (w === null && r === null) return toast(t('I didn’t catch the weight or reps. Try “80 kilos, 10 reps”.'), { icon: 'mic' });
-    const named = matchExercise(text, s.ex.map((x) => `${exInfo(x, 'en').name} ${lang === 'ar' ? exInfo(x, 'ar').name : ''}`));
-    const ei = named >= 0 ? named : s.ex.findIndex((x) => x.sets.some((y) => !y.done));
-    if (ei < 0) return toast(t('All sets are already logged'), { icon: 'info' });
-    const x = s.ex[ei];
-    const si = x.sets.findIndex((y) => !y.done && !y.warm) >= 0 ? x.sets.findIndex((y) => !y.done && !y.warm) : x.sets.findIndex((y) => !y.done);
-    const name = exInfo(x, lang).name;
-    if (si < 0) return toast(t('All {x} sets are already logged', { x: name }), { icon: 'info' });
-    const timed = exInfo(x, lang).timed;
-    // A spoken weight is in your unit; the set keeps kg.
-    const ww = timed ? '' : String(w != null ? W.toKg(w) : x.sets[si].w || x.sets[si].lw || 0);
-    const rr = String(r ?? (x.sets[si].r || x.sets[si].lr));
-    markSet(ei, si, { w: ww, r: rr });
-    toast(timed ? t('Logged {x}: {r} s', { x: name, r: rr }) : W.words(t('Logged {x}: {w} kg × {r}', { x: name, w: W.show(+ww), r: rr })), { ai: true });
-  };
-
   const finish = async () => {
-    if (!dn) return setConfirm(true);
+    if (!workDone) return setConfirm(true);
     setSaving(true);
     const names = Object.fromEntries(s.ex.map((x) => [x.id, exInfo(x, 'en').name]));
     const log = await train.finishWorkout(names);
@@ -500,18 +470,9 @@ export default function Active() {
                 {t('Tap ✓ after each set')}
               </Text>
             </View>
-            <Springy onPress={voiceSet} scaleTo={0.92} accessibilityLabel={t('Log a set by voice')} style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: heard !== null ? c.cobalt : c.inset }}>
-              <Icon name="mic" size={20} color={heard !== null ? '#FFFFFF' : c.text} />
-            </Springy>
             <Button small kind="glass" icon="timer" title={t('Rest')} onPress={() => setRest({ end: Date.now() + REST * 1000, total: REST })} />
           </Glass>
         )}
-        {heard !== null ? (
-          <Glass style={{ position: 'absolute', bottom: 76, alignSelf: 'center', borderRadius: 22, paddingHorizontal: 16, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Icon name="mic" size={18} color={c.cobalt} />
-            <Text weight={700}>{heard ? `“${heard}”` : t('Listening…')}</Text>
-          </Glass>
-        ) : null}
       </View>
 
       <Sheet open={!!setMenu} onClose={() => setSetMenu(null)}>
@@ -600,7 +561,7 @@ export default function Active() {
       <Sheet open={confirm} onClose={() => setConfirm(false)}>
         <Text variant="h2">{t('Finish without logging?')}</Text>
         <Text color="sec" style={{ marginTop: 4 }}>
-          {t('You haven’t finished any sets yet.')}
+          {dn ? t('Warm-up sets don’t count. Finish at least one working set to save this workout.') : t('You haven’t finished any sets yet.')}
         </Text>
         <Button title={t('Keep training')} style={{ marginTop: 16 }} onPress={() => setConfirm(false)} />
         <Button
@@ -624,7 +585,7 @@ function WeightInput({ value, onChange, W, ...rest }: { value: string; onChange:
   const shown = (v: string) => (v ? W.show(+v) : '');
   const [text, setText] = useState(() => shown(value));
   const [seen, setSeen] = useState(value);
-  // Changed from outside (voice, "same as last time"): show the new number.
+  // Changed from outside ("same as last time"): show the new number.
   if (value !== seen) {
     setSeen(value);
     setText(shown(value));
