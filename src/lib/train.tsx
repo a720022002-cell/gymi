@@ -4,12 +4,14 @@ import { AppState } from 'react-native';
 
 import { useAuth } from './auth';
 import { myCoach, myCoachPlans } from './coaching';
+import type { DayTotals } from './health';
 import { addDays, localDay } from './nutrition';
 import { shareWorkout } from './social';
 import { supabase } from './supabase';
-import { buildWorkout, type Day, effectiveWeek, type LastSets, orderWeek, type PlanEx, planFromProgram, rangePlan, topReps, type TrainPlan, weekdayOf, weekStart, workoutKcal } from './training';
+import { buildWorkout, type Day, effectiveWeek, isLightLog, type LastSets, orderWeek, type PlanEx, planFromProgram, plannedOn, rangePlan, topReps, type TrainPlan, weekdayOf, weekStart, workoutKcal } from './training';
 
-export type LoggedEx = { id: string; n: string; sets: { w: number; r: number }[] };
+/** `light`: done as a lighter day or deload, so its weights don't set next time's numbers. */
+export type LoggedEx = { id: string; n: string; light?: boolean; sets: { w: number; r: number }[] };
 export type WorkoutLog = {
   id: string;
   day: string;
@@ -30,7 +32,18 @@ export type SessionSet = { w: string; r: string; done: boolean; lw: number; lr: 
 export type SessionEx = Omit<PlanEx, 'sets'> & { tip: boolean; sets: SessionSet[] };
 /** The workout in progress. Saved on the device so a reload doesn't lose it.
  * `day` is the day it counts for: the day you pressed Start (or the earlier day you picked), even if you finish after midnight. */
-export type Session = { name: string; start: number; home: boolean; ex: SessionEx[]; day?: string };
+export type Session = { name: string; start: number; home: boolean; ex: SessionEx[]; day?: string; light?: boolean };
+
+/** A workout left open: it counts for an earlier day and was started more than 12 hours ago.
+ * Finish it (it still counts for its day) or throw it away with discardSession. */
+export function isStale(s: Session | null, today = localDay(), now = Date.now()) {
+  if (!s) return false;
+  return (s.day ?? localDay(new Date(s.start))) !== today && now - s.start > 12 * 3600_000;
+}
+
+/** Your whole history, kept small: every workout's day, start and records, food and water per day,
+ * check-in days and best weight on each exercise. Badges and best streaks use it. */
+export type History = { workouts: Pick<WorkoutLog, 'day' | 'started_at' | 'prs'>[]; days: Record<string, DayTotals>; checkins: string[]; best: Record<string, number> };
 
 type Train = {
   ready: boolean;
@@ -43,21 +56,32 @@ type Train = {
   /** This week, Sunday to Saturday, with moves for this week only. */
   week: Day[];
   setWeek: (week: Day[], thisWeekOnly: boolean) => void;
+  /** Change the weekly plan for good. If this week has its own moves, they get the same change and stay. */
+  editWeek: (edit: (week: Day[]) => Day[], opts?: { layout?: boolean }) => void;
   /** Weekdays (0 = Sunday) this week with a finished workout. */
   doneIdx: Set<number>;
   todayName: string | null;
   todayLog: WorkoutLog | null;
   logs: WorkoutLog[];
   last: LastSets;
+  /** Best weight ever on each exercise. */
   best: Record<string, number>;
+  /** Heaviest weight in your last few normal (not lighter or deload) sessions on each exercise. */
+  top: Record<string, number>;
   session: Session | null;
+  /** True when the open workout was left from an earlier day (see isStale). */
+  stale: boolean;
+  /** Throw away the open workout without saving it. */
+  discardSession: () => void;
   startWorkout: (name: string, home: boolean, short: boolean, opts?: { light?: boolean; deload?: boolean; ex?: PlanEx[]; day?: string }) => void;
   setSession: (s: Session | null) => void;
   finishWorkout: (names: Record<string, string>) => Promise<WorkoutLog | null>;
-  /** Workouts finished in a row without missing a planned one (last 8 weeks). */
+  /** Workouts finished in a row without missing a planned one. */
   streak: number;
-  /** Longest run of workouts in a row in the history we have (about 4 months). */
+  /** Longest run of workouts in a row in your whole history. */
   bestStreak: number;
+  /** Your whole history (null until it loads). */
+  history: History | null;
   /** Your coach's program is your plan: their name and your message thread. */
   coach: { name: string; link: string } | null;
   /** Recovery you logged today (stretching, nap…). */
@@ -82,6 +106,8 @@ export function TrainProvider({ children }: PropsWithChildren) {
   const [session, setSessionState] = useState<Session | null>(null);
   const [coach, setCoach] = useState<{ name: string; link: string } | null>(null);
   const [rec, setRec] = useState<{ day: string; tools: string[] }>({ day: '', tools: [] });
+  const [hist, setHist] = useState<(History & { uid: string }) | null>(null);
+  const history = hist && hist.uid === userId ? hist : null;
   const planRef = useRef(plan);
   useEffect(() => {
     planRef.current = plan;
@@ -125,6 +151,35 @@ export function TrainProvider({ children }: PropsWithChildren) {
       }
       setReadyFor(userId);
     })();
+    return () => {
+      alive = false;
+    };
+  }, [userId]);
+
+  // Your whole history, a few small rows. Loads after the screen is ready; until then the last 120 days are used.
+  useEffect(() => {
+    if (!userId) return;
+    let alive = true;
+    (async () => {
+      const [w, f, c, b] = await Promise.all([
+        supabase.from('workout_logs').select('day,started_at,prs').order('day', { ascending: false }).limit(5000),
+        supabase.rpc('my_day_totals'),
+        supabase.from('checkins').select('day').limit(5000),
+        supabase.rpc('my_best_lifts'),
+      ]);
+      if (!alive || w.error) return;
+      const days: Record<string, DayTotals> = {};
+      for (const r of (f.data as { day: string; kcal: number; protein: number; ml: number }[] | null) ?? []) days[r.day] = { k: Number(r.kcal), p: Number(r.protein), w: Number(r.ml) };
+      const best: Record<string, number> = {};
+      for (const r of (b.data as { id: string; w: number }[] | null) ?? []) if (r.id) best[r.id] = Number(r.w) || 0;
+      setHist({
+        uid: userId,
+        workouts: (w.data as History['workouts']) ?? [],
+        days,
+        checkins: ((c.data as { day: string }[] | null) ?? []).map((x) => x.day),
+        best,
+      });
+    })().catch(() => {});
     return () => {
       alive = false;
     };
@@ -235,31 +290,57 @@ export function TrainProvider({ children }: PropsWithChildren) {
     [start, updatePlan],
   );
 
+  // A lasting change goes on the plan's own week; this week's moves (if any) get the same change, so they stay for this week only.
+  // Moving workouts to other days (layout) means earlier days can't be judged as missed any more.
+  const editWeek = useCallback(
+    (edit: (w: Day[]) => Day[], opts?: { layout?: boolean }) => {
+      const p = planRef.current;
+      if (!p) return;
+      const ov = p.override?.start === start ? { ...p.override, week: edit(p.override.week) } : p.override;
+      updatePlan({ week: edit(p.week), override: ov, ...(opts?.layout === false ? {} : { weekSince: today }) });
+    },
+    [start, today, updatePlan],
+  );
+
   const doneIdx = useMemo(() => new Set(logs.filter((l) => l.day >= start && l.day <= addDays(start, 6)).map((l) => weekdayOf(l.day))), [logs, start]);
   const todayLog = logs.find((l) => l.day === today) ?? null;
   const todayName = week[todayIdx]?.w ?? null;
 
-  // Last time's sets and best weight for each exercise.
-  const { last, best } = useMemo(() => {
+  // Last time's sets, best weight ever, and the heaviest weight in the last 3 normal sessions for each exercise.
+  // Lighter and deload sessions are left out of last time and the last 3, so a lighter week never cuts twice.
+  const light = plan?.light;
+  const deload = plan?.deload;
+  const lifetimeBest = history?.best;
+  const { last, best, top } = useMemo(() => {
     const last: LastSets = {};
-    const best: Record<string, number> = {};
-    for (const l of logs)
+    const best: Record<string, number> = { ...lifetimeBest };
+    const top: Record<string, number> = {};
+    const seen: Record<string, number> = {};
+    for (const l of logs) {
+      const reduced = isLightLog(l, { light, deload });
       for (const x of l.exercises ?? []) {
-        if (!last[x.id] && x.sets.length) last[x.id] = x.sets;
-        best[x.id] = Math.max(best[x.id] ?? 0, ...x.sets.map((s) => s.w));
+        const w = Math.max(0, ...x.sets.map((s) => s.w));
+        best[x.id] = Math.max(best[x.id] ?? 0, w);
+        if (reduced || !x.sets.length) continue;
+        if (!last[x.id]) last[x.id] = x.sets;
+        if ((seen[x.id] = (seen[x.id] ?? 0) + 1) <= 3) top[x.id] = Math.max(top[x.id] ?? 0, w);
       }
-    return { last, best };
-  }, [logs]);
+    }
+    return { last, best, top };
+  }, [logs, light, deload, lifetimeBest]);
 
-  // Workouts in a row: a planned workout missed (not done, not skipped) ends the run.
-  // Plans in order (no fixed days) end it after 3 days in a row without training.
+  // Workouts in a row: a planned workout missed (not done, not skipped or dismissed) ends the run.
+  // Each day is judged by that week's plan, with moves for that week only. Plans in order (no fixed days) end it after 3 days in a row without training.
+  const lifeWorkouts = history?.workouts;
   const { streak, bestStreak } = useMemo(() => {
     if (!plan) return { streak: 0, bestStreak: 0 };
-    const days = new Set(logs.map((l) => l.day));
+    const days = new Set([...logs.map((l) => l.day), ...(lifeWorkouts ?? []).map((l) => l.day)]);
+    const first = [...days].sort()[0] ?? today;
+    const span = Math.min(3650, Math.max(0, Math.round((new Date(`${today}T12:00:00`).getTime() - new Date(`${first}T12:00:00`).getTime()) / 864e5)));
     let run = 0;
     let best = 0;
     let gap = 0;
-    for (let i = 120; i >= 0; i--) {
+    for (let i = span; i >= 0; i--) {
       const d = addDays(today, -i);
       if (days.has(d)) {
         run++;
@@ -267,12 +348,12 @@ export function TrainProvider({ children }: PropsWithChildren) {
         best = Math.max(best, run);
       } else if (i > 0) {
         gap++;
-        const missed = plan.type === 'order' ? gap >= 3 : !!plan.week[weekdayOf(d)]?.w && !plan.skipped[d] && !(plan.since && d < plan.since);
+        const missed = plan.type === 'order' ? gap >= 3 : plannedOn(plan, d);
         if (missed) run = 0;
       }
     }
     return { streak: run, bestStreak: best };
-  }, [logs, plan, today]);
+  }, [logs, lifeWorkouts, plan, today]);
 
   const setSession = useCallback(
     (s: Session | null) => {
@@ -283,6 +364,8 @@ export function TrainProvider({ children }: PropsWithChildren) {
     },
     [userId],
   );
+  const discardSession = useCallback(() => setSession(null), [setSession]);
+  const stale = isStale(session, today);
 
   const startWorkout = useCallback(
     (name: string, home: boolean, short: boolean, opts?: { light?: boolean; deload?: boolean; ex?: PlanEx[]; day?: string }) => {
@@ -290,13 +373,14 @@ export function TrainProvider({ children }: PropsWithChildren) {
       if (!p) return;
       // A one-off list (Train together) uses the same building rules as a planned workout.
       const src = opts?.ex ? { ...p, workouts: { ...p.workouts, [name]: { ex: opts.ex, focus: '', min: 0 } } } : p;
-      const wo = buildWorkout(src, name, { home, short, light: opts?.light, deload: opts?.deload, last });
+      const wo = buildWorkout(src, name, { home, short, light: opts?.light, deload: opts?.deload, last, top });
       const lighter = !!(opts?.light || opts?.deload);
       setSession({
         name,
         start: Date.now(),
         day: opts?.day ?? localDay(),
         home,
+        ...(lighter ? { light: true } : {}),
         ex: wo.ex.map(({ swapped: _s, target, last: ls, sets, ...x }) => ({
           ...x,
           tip: false,
@@ -307,16 +391,25 @@ export function TrainProvider({ children }: PropsWithChildren) {
         })),
       });
     },
-    [last, setSession],
+    [last, top, setSession],
   );
 
-  const addLog = useCallback(async (row: Omit<WorkoutLog, 'id'>) => {
-    const { data, error } = await supabase.from('workout_logs').insert(row).select('*').single();
-    if (error || !data) return null;
-    const log = { ...(data as WorkoutLog), volume: +data.volume };
+  // A new log goes into the recent list and the whole history.
+  const keep = useCallback((log: WorkoutLog) => {
     setLogs((xs) => [log, ...xs]);
-    return log;
+    setHist((h) => h && { ...h, workouts: [{ day: log.day, started_at: log.started_at, prs: log.prs }, ...h.workouts] });
   }, []);
+
+  const addLog = useCallback(
+    async (row: Omit<WorkoutLog, 'id'>) => {
+      const { data, error } = await supabase.from('workout_logs').insert(row).select('*').single();
+      if (error || !data) return null;
+      const log = { ...(data as WorkoutLog), volume: +data.volume };
+      keep(log);
+      return log;
+    },
+    [keep],
+  );
 
   const finishWorkout = useCallback(
     async (names: Record<string, string>) => {
@@ -344,16 +437,19 @@ export function TrainProvider({ children }: PropsWithChildren) {
           if (v > lv + 0.001) ups++;
           else if (v < lv - 0.001) downs++;
         }
-        exercises.push({ id: x.id, n: names[x.id] ?? x.id, sets: d });
+        exercises.push({ id: x.id, n: names[x.id] ?? x.id, ...(s.light ? { light: true } : {}), sets: d });
       }
+      // Calories use realistic minutes: never more than 3 hours, or about 6 minutes a set when the workout was left open.
+      const logged = Math.min(600, minutes);
+      const kcalMin = Math.min(logged, 180, Math.max(30, setsDone * 6));
       const row = {
         day: s.day ?? localDay(new Date(s.start)),
         name: s.home ? 'Home' : s.name.slice(0, 40),
         started_at: new Date(s.start).toISOString(),
-        minutes: Math.min(600, minutes),
+        minutes: logged,
         volume: Math.round(volume * 10) / 10,
         sets_done: setsDone,
-        kcal: workoutKcal(minutes, Number(profile?.weight_kg ?? 80)),
+        kcal: workoutKcal(kcalMin, Number(profile?.weight_kg ?? 80)),
         exercises,
         prs,
         ups,
@@ -362,18 +458,18 @@ export function TrainProvider({ children }: PropsWithChildren) {
       const { data, error } = await supabase.from('workout_logs').insert(row).select('*').single();
       if (error || !data) return null;
       const log = { ...(data as WorkoutLog), volume: +data.volume };
-      setLogs((xs) => [log, ...xs]);
+      keep(log);
       setSession(null);
       // Friends see it in Gym Bros, if you share workouts.
       if (userId) shareWorkout(userId, { name: log.name, minutes: log.minutes, volume: log.volume, prs: log.prs ?? [] }).catch(() => {});
       return log;
     },
-    [session, userId, best, last, profile?.weight_kg, setSession],
+    [session, userId, best, last, profile?.weight_kg, setSession, keep],
   );
 
   const value = useMemo<Train>(
-    () => ({ ready, setupDone, plan, savePlan, updatePlan, today, todayIdx, week, setWeek, doneIdx, todayName, todayLog, logs, last, best, session, startWorkout, setSession, finishWorkout, streak, bestStreak, coach, recTools, setRecTools, addLog }),
-    [ready, setupDone, plan, savePlan, updatePlan, today, todayIdx, week, setWeek, doneIdx, todayName, todayLog, logs, last, best, session, startWorkout, setSession, finishWorkout, streak, bestStreak, coach, recTools, setRecTools, addLog],
+    () => ({ ready, setupDone, plan, savePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, best, top, session, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, recTools, setRecTools, addLog }),
+    [ready, setupDone, plan, savePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, best, top, session, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, recTools, setRecTools, addLog],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

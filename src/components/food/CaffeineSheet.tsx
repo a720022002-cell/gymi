@@ -15,7 +15,9 @@ export function CaffeineSheet() {
   const { colors: c } = useSettings();
   const a = useCaffeineAlert();
   const close = () => showCaffeineAlert(null);
-  const overDay = !!a && a.day > CAFFEINE_DAY;
+  const max = a?.max ?? CAFFEINE_DAY;
+  const preg = max < CAFFEINE_DAY;
+  const overDay = !!a && a.day > max;
   return (
     <Sheet open={!!a} onClose={close}>
       {a ? (
@@ -28,7 +30,9 @@ export function CaffeineSheet() {
           </Text>
           <Text color="sec" style={{ marginTop: 6 }}>
             {overDay
-              ? t('About {n} mg of caffeine today. The usual safe amount for adults is up to {max} mg a day.', { n: a.day, max: CAFFEINE_DAY })
+              ? preg
+                ? t('About {n} mg of caffeine today. In pregnancy, the usual advice is up to {max} mg a day.', { n: a.day, max })
+                : t('About {n} mg of caffeine today. The usual safe amount for adults is up to {max} mg a day.', { n: a.day, max })
               : t('About {n} mg in one go. More than {max} mg at once can cause a racing heart, shakes or a crash later.', { n: a.once, max: CAFFEINE_ONCE })}
           </Text>
           <View style={{ marginTop: 14, gap: 10 }}>

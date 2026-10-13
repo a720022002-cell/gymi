@@ -98,7 +98,7 @@ export function DeloadCard() {
       </Card>
     );
   if (p.deloadDismissed === week) return null;
-  const drops = droppingLifts(train.logs);
+  const drops = droppingLifts(train.logs, train.plan);
   if (drops.length < 2) return null;
   const names = drops.slice(0, 2).map((id) => (EX[id] ? (lang === 'ar' ? EX[id].ar : EX[id].en) : (train.logs.flatMap((l) => l.exercises).find((x) => x.id === id)?.n ?? id)).toLowerCase());
   return (

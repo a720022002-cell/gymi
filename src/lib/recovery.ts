@@ -37,12 +37,16 @@ export function dailyLoad(logs: WorkoutLog[], today: string, n = 14) {
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
-/** Training load: this week's volume against the usual week (last 4 weeks). 1.0 = normal. */
+/** Training load: this week's volume against the usual week (up to the last 4 weeks). 1.0 = normal.
+ * With under 2 weeks of history there's no usual week yet, so it stays neutral (`early`). */
 function loadRatio(logs: WorkoutLog[], today: string) {
+  const first = logs.reduce<string | null>((a, l) => (l.day <= today && (a == null || l.day < a) ? l.day : a), null);
+  const days = first ? Math.round((new Date(`${today}T12:00:00`).getTime() - new Date(`${first}T12:00:00`).getTime()) / 864e5) + 1 : 0;
+  if (days < 14) return { ratio: 1, early: true };
   const sum = (from: string, to: string) => logs.filter((l) => l.day > from && l.day <= to).reduce((a, l) => a + l.volume, 0);
   const acute = sum(addDays(today, -7), today);
-  const chronic = sum(addDays(today, -28), today) / 4;
-  return chronic > 0 ? acute / chronic : 1;
+  const chronic = sum(addDays(today, -28), today) / clamp(days / 7, 1, 4);
+  return { ratio: chronic > 0 ? acute / chronic : 1, early: false };
 }
 
 /** Recovery score from 5 to 99 and what went into it (design: recScore, simpler without a watch). */
@@ -54,7 +58,7 @@ export function recovery(x: RecoveryInput) {
   const sleep = sl != null ? clamp(((sl - 5) / 3) * 100, 0, 100) : 75;
   const sore = so != null ? [100, 70, 35][so] : 80;
   const energy = en != null ? [45, 80, 100][en] : 80;
-  const acwr = loadRatio(x.logs, x.today);
+  const { ratio: acwr, early } = loadRatio(x.logs, x.today);
   const load = clamp(100 - Math.abs(acwr - 1) * 120, 30, 100);
   const fuel = x.protein && x.protein.target ? clamp((x.protein.eaten / x.protein.target) * 100, 40, 100) : 75;
   const bonus = toolsBonus(x.tools);
@@ -63,10 +67,10 @@ export function recovery(x: RecoveryInput) {
     { key: 'Sleep', icon: 'moon', value: Math.round(sleep), sub: sl != null ? { t: '{n} h last night', n: sl } : null },
     { key: 'Soreness', icon: 'body', value: sore, sub: so != null ? { t: ['None', 'A little', 'Very sore'][so] } : null },
     { key: 'Energy', icon: 'bolt', value: energy, sub: en != null ? { t: ['Tired', 'Normal', 'Great'][en] } : null },
-    { key: 'Training load', icon: 'train', value: Math.round(load), sub: { t: '{n}× your usual', n: Math.round(acwr * 10) / 10 } },
+    { key: 'Training load', icon: 'train', value: Math.round(load), sub: early ? { t: 'Building your baseline' } : { t: '{n}× your usual', n: Math.round(acwr * 10) / 10 } },
     { key: 'Nutrition', icon: 'food', value: Math.round(fuel), sub: x.protein ? { t: '{a} of {b} g protein', a: Math.round(x.protein.eaten), b: Math.round(x.protein.target) } : null },
   ] as const;
-  return { score, bonus, parts, acwr, checked: sl != null || so != null || en != null, sleepH: sl ?? undefined, sore: so ?? 0 };
+  return { score, bonus, parts, acwr, early, checked: sl != null || so != null || en != null, sleepH: sl ?? undefined, sore: so ?? 0 };
 }
 
 export const recLabel = (v: number): [string, 'up' | 'cobalt' | 'sec' | 'down'] =>
@@ -101,7 +105,7 @@ export function recTips(r: ReturnType<typeof recovery>, x: RecoveryInput, cycle?
   if (x.protein && x.protein.eaten < x.protein.target * 0.9)
     t.push({ icon: 'food', title: 'Eat your protein', body: 'You still need {n} g today. Have Greek yogurt or a shake before bed. It helps repair overnight.', vars: { n: Math.round(x.protein.target - x.protein.eaten) } });
   if (x.water.ml < x.water.goal * 0.7) t.push({ icon: 'drop', title: 'Drink more water', body: 'You’re at {a} of {b} ml. Even mild dehydration slows recovery.', vars: { a: x.water.ml, b: x.water.goal } });
-  if (r.acwr > 1.3) t.push({ icon: 'train', title: 'Training load jumped', body: 'This week’s load is {n}× your usual. Consider a lighter day or a deload week.', vars: { n: Math.round(r.acwr * 10) / 10 } });
+  if (!r.early && r.acwr > 1.3) t.push({ icon: 'train', title: 'Training load jumped', body: 'This week’s load is {n}× your usual. Consider a lighter day or a deload week.', vars: { n: Math.round(r.acwr * 10) / 10 } });
   if (r.score < 50) t.push({ icon: 'bolt', title: 'Make today light', body: 'Swap the workout for a 30-minute walk and mobility. You’ll train better tomorrow.' });
   t.push({ icon: 'walk', title: 'Move on rest days', body: 'A 20 to 30 minute easy walk increases blood flow and speeds up recovery.' });
   return t.slice(0, 5);

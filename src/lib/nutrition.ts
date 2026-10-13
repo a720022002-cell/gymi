@@ -88,9 +88,32 @@ export const bmr = (weight: number, p: Person) =>
 const pad = (n: number) => String(n).padStart(2, '0');
 const hhmm = (h: number, m: number) => `${pad((h + 24) % 24)}:${pad(m)}`;
 
+/** Calories that keep your weight where it is (no goal change). */
+export const maintenance = (f: Pick<FoodPlan, 'weight' | 'activity' | 'sun'>, p: Person) => bmr(f.weight, p) * ACT_FACTOR[f.activity] + (f.sun ? 120 : 0);
+
+/** Lowest daily calories we suggest: 10% above what you burn at rest, and never under 1,200 (women) or 1,500 (men). */
+export const kcalFloor = (weight: number, p: Person) => Math.round(Math.max(bmr(weight, p) * 1.1, p.gender === 'male' ? 1500 : 1200) / 10) * 10;
+
+/** Under 18: no cut or bulk, you stay at maintenance so you have energy to grow. */
+export const isMinor = (p: Person) => p.age < 18;
+
+/** Suggested daily calories for the goal. A cut never takes more than 25% off maintenance, and never goes under the floor. */
+export function suggestKcal(f: Pick<FoodPlan, 'weight' | 'activity' | 'sun' | 'goal'>, p: Person) {
+  const tdee = maintenance(f, p);
+  const adj = isMinor(p) ? 0 : Math.max(GOAL_ADJ[f.goal], -0.25 * tdee);
+  return Math.round(Math.max(tdee + adj, kcalFloor(f.weight, p)) / 10) * 10;
+}
+
+/** What calcPlan suggested before the floor and the 25% cap (to tell untouched plans from ones changed by hand). */
+export const oldSuggestKcal = (f: Pick<FoodPlan, 'weight' | 'activity' | 'sun' | 'goal'>, p: Person) => Math.round((maintenance(f, p) + GOAL_ADJ[f.goal]) / 10) * 10;
+
+/** Suggested water (ml): 35 ml per kg, more for sun and an active day. */
+export const suggestWater = (f: Pick<FoodPlan, 'weight' | 'activity' | 'sun'>) => Math.round((f.weight * 35 + (f.sun ? 700 : 0) + (f.activity >= 2 ? 300 : 0)) / 100) * 100;
+
 /** Work out calories, protein, water, meal times and workout time from the setup answers. */
-export function calcPlan(f: FoodPlan, person: Person): FoodPlan {
-  const t = bmr(f.weight, person) * ACT_FACTOR[f.activity] + (f.sun ? 120 : 0) + GOAL_ADJ[f.goal];
+export function calcPlan(plan: FoodPlan, person: Person): FoodPlan {
+  // Safety net: under 18 always means maintain.
+  const f = isMinor(person) && plan.goal !== 2 ? { ...plan, goal: 2 } : plan;
   const start = f.noWork ? '09:00' : f.work[0]?.s ?? '09:00';
   const end = f.noWork ? '17:00' : f.work[f.work.length - 1]?.e ?? '17:00';
   const [sh, sm] = start.split(':').map(Number);
@@ -98,11 +121,11 @@ export function calcPlan(f: FoodPlan, person: Person): FoodPlan {
   const lunch = Math.round((sh + eh) / 2);
   return {
     ...f,
-    kcal: Math.round(t / 10) * 10,
+    kcal: suggestKcal(f, person),
     perKg: [1.8, 1.8, 1.6, 2.2, 2.0][f.goal],
     carbG: null,
     fatG: null,
-    water: Math.round((f.weight * 35 + (f.sun ? 700 : 0) + (f.activity >= 2 ? 300 : 0)) / 100) * 100,
+    water: suggestWater(f),
     meals: [
       { n: 'Breakfast', t: hhmm(sh - 1, sm === 0 ? 15 : 0) },
       { n: 'Lunch', t: hhmm(lunch, 30) },
@@ -114,6 +137,35 @@ export function calcPlan(f: FoodPlan, person: Person): FoodPlan {
     picks: {},
     custom: {},
   };
+}
+
+/**
+ * New weight, height, birthday or gender: update calories and water, and keep everything you changed yourself
+ * (meals, picks, custom recipes, protein per kg, carbs and fat). If you moved calories or water away from our
+ * suggestion, that difference is kept. `prev` is who the old plan was worked out for (defaults to `person`).
+ */
+export function recalcTargets(plan: FoodPlan, person: Person, opts: { weight?: number; prev?: Person } = {}): FoodPlan {
+  const weight = Math.round((opts.weight ?? plan.weight) * 10) / 10;
+  const prev = opts.prev ?? person;
+  const goal = isMinor(person) ? 2 : plan.goal;
+  const next = { ...plan, weight, goal };
+  // Calories still at what we suggested (now, or before the calorie floor existed) count as untouched.
+  const kcalOff = plan.kcal === oldSuggestKcal(plan, prev) ? 0 : plan.kcal - suggestKcal(plan, prev);
+  const floor = kcalFloor(weight, person);
+  let kcal = suggestKcal(next, person) + kcalOff;
+  // Never pushed under the floor by a recalculation (unless you had already set it lower yourself).
+  if (kcal < floor) kcal = Math.max(kcal, Math.min(plan.kcal, floor));
+  const water = suggestWater(next) + (plan.water - suggestWater(plan));
+  return { ...next, kcal: Math.round(kcal / 10) * 10, water: Math.min(6000, Math.max(1000, Math.round(water / 100) * 100)) };
+}
+
+/** Pregnant: no deficit (never under maintenance) plus about 300 kcal; breastfeeding plus 400. Only changes what's shown, not the saved plan. */
+export function withPregnancy(f: FoodPlan, p: Person, extra: number): FoodPlan {
+  const base = targets(f).k;
+  const k = Math.max(base, Math.round(maintenance(f, p) / 10) * 10) + extra;
+  // Carbs set by hand: the extra calories go to carbs, so your protein and fat stay the same.
+  if (f.carbG != null) return { ...f, carbG: f.carbG + Math.round((k - base) / 4) };
+  return { ...f, kcal: k };
 }
 
 export type Macros = { k: number; p: number; c: number; f: number };

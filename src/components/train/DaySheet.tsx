@@ -27,10 +27,8 @@ export function DaySheet({ d, onClose }: { d: number | null; onClose: () => void
   const isToday = d === train.todayIdx;
   const label = `${t(DAYS_LONG[d])}${isToday ? t(', today') : ''}`;
 
-  const setDay = (name: string | null) => {
-    const next = train.week.map((x, i) => (i === d ? { ...x, w: name } : x));
-    train.setWeek(next, false);
-  };
+  // For good; this week's own moves (if any) get the same change and stay.
+  const setDay = (name: string | null) => train.editWeek((wk) => wk.map((x, i) => (i === d ? { ...x, w: name } : x)));
 
   if (!w) {
     const opts = [...new Set(Object.keys(p.workouts))];
@@ -82,7 +80,7 @@ export function DaySheet({ d, onClose }: { d: number | null; onClose: () => void
   }
 
   const W = p.workouts[w];
-  const b = buildWorkout(p, w, { last: train.last });
+  const b = buildWorkout(p, w, { last: train.last, top: train.top });
   const sets = b.ex.reduce((a, x) => a + x.sets, 0);
   const canStart = isToday && !train.todayLog && b.ex.length > 0;
   return (

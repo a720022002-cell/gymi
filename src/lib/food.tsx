@@ -1,10 +1,29 @@
 import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
-import { caffeineCheck, caffeineOf, caffeineToday, showCaffeineAlert } from './caffeine';
+import { caffeineCheck, caffeineOf, caffeineToday, setCaffeinePregnant, showCaffeineAlert } from './caffeine';
 import { useAuth } from './auth';
 import type { MealPlan } from './coaching';
-import { addDays, ageFromIso, defaultPlan, type FoodPlan, hhmmOf, localDay, type Macros, mealAt, type Person, planMeals, RAMADAN_SWITCH, targets } from './nutrition';
+import { cycleVersion, peekCycle } from './cycle';
+import {
+  addDays,
+  ageFromIso,
+  defaultPlan,
+  type FoodPlan,
+  hhmmOf,
+  isMinor,
+  kcalFloor,
+  localDay,
+  type Macros,
+  mealAt,
+  oldSuggestKcal,
+  type Person,
+  planMeals,
+  RAMADAN_SWITCH,
+  recalcTargets,
+  targets,
+  withPregnancy,
+} from './nutrition';
 import { supabase } from './supabase';
 
 export type FoodLog = {
@@ -81,6 +100,13 @@ type Food = {
   draft: FoodPlan | null;
   setDraft: (p: FoodPlan | null) => void;
   savePlan: (p: FoodPlan, setupDone?: boolean) => Promise<boolean>;
+  /** A new weigh-in (or weekly average): when it's 2 kg or more away from the plan's weight, calories, protein and water follow it. */
+  applyWeight: (kg: number, latest?: number) => Promise<boolean>;
+  /** Set after targets were updated for a new weight (Food shows a toast, then clears it). */
+  weightNote: number | null;
+  clearWeightNote: () => void;
+  /** Pregnancy mode is on (cycle tracking): no calorie deficit, +300 kcal, caffeine up to 200 mg. */
+  preg: boolean;
   updatePlan: (patch: Partial<FoodPlan>) => void;
   logs: FoodLog[];
   eaten: Macros;
@@ -135,7 +161,7 @@ type Food = {
 const Ctx = createContext<Food | null>(null);
 
 export function FoodProvider({ children }: PropsWithChildren) {
-  const { session, profile } = useAuth();
+  const { session, profile, updateProfile } = useAuth();
   const userId = session?.user.id;
   const [today, setToday] = useState(localDay());
   const [picked, setPicked] = useState<string | null>(null);
@@ -160,6 +186,13 @@ export function FoodProvider({ children }: PropsWithChildren) {
   const [coachTargets, setCoachTargets] = useState<Food['coachTargets']>(null);
   const [coach, setCoach] = useState<Food['coach']>(null);
   const [coachMeals, setCoachMeals] = useState<MealPlan | null>(null);
+  const [weightNote, setWeightNote] = useState<number | null>(null);
+  const clearWeightNote = useCallback(() => setWeightNote(null), []);
+  // Pregnancy mode lives with the cycle data; re-read when it changes (checked every minute and when the app comes back).
+  const [cycleVer, setCycleVer] = useState(cycleVersion());
+  const [cyc, setCyc] = useState<{ uid: string; preg: boolean } | null>(null);
+  const female = profile?.gender === 'female';
+  const preg = female && !!cyc && cyc.uid === userId && cyc.preg;
   const setLogOpen = useCallback((v: boolean) => {
     setLogOpenState(v);
     if (!v) setTypeSeed(null);
@@ -168,25 +201,50 @@ export function FoodProvider({ children }: PropsWithChildren) {
     setTypeSeed(text);
     setLogOpenState(true);
   }, []);
-  const planRef = useRef(plan);
-  const logsRef = useRef(logs);
-  useEffect(() => {
-    planRef.current = plan;
-    logsRef.current = logs;
-  }, [plan, logs]);
-  const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-
   const person: Person = useMemo(
     () => ({ gender: profile?.gender ?? null, age: ageFromIso(profile?.date_of_birth), height: Number(profile?.height_cm ?? 175) }),
     [profile?.gender, profile?.date_of_birth, profile?.height_cm],
   );
+  const planRef = useRef(plan);
+  const logsRef = useRef(logs);
+  const personRef = useRef(person);
+  useEffect(() => {
+    planRef.current = plan;
+    logsRef.current = logs;
+    personRef.current = person;
+  }, [plan, logs, person]);
+  const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // The last weigh-in applyWeight already looked at (so loading doesn't redo it with a single day's weight).
+  const weighedRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!userId || !female) return;
+    let alive = true;
+    peekCycle(userId)
+      .then((c) => alive && setCyc({ uid: userId, preg: c.settings?.mode === 'preg' }))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [userId, female, cycleVer]);
+
+  // Caffeine checks anywhere in the app use 200 mg a day in pregnancy.
+  useEffect(() => {
+    setCaffeinePregnant(preg);
+  }, [preg]);
 
   // A new day starts when the app comes back after midnight.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s) => {
-      if (s === 'active') setToday(localDay());
+      if (s === 'active') {
+        setToday(localDay());
+        setCycleVer(cycleVersion());
+      }
     });
-    const id = setInterval(() => setToday(localDay()), 60_000);
+    const id = setInterval(() => {
+      setToday(localDay());
+      setCycleVer(cycleVersion());
+    }, 60_000);
     return () => {
       sub.remove();
       clearInterval(id);
@@ -211,8 +269,23 @@ export function FoodProvider({ children }: PropsWithChildren) {
         supabase.rpc('my_coach_plans'),
       ]);
       if (!alive) return;
-      const base = defaultPlan(Number(profile?.weight_kg ?? 80));
-      const loaded = p.data?.plan ? { ...base, ...(p.data.plan as FoodPlan) } : base;
+      const pw = Number(profile?.weight_kg ?? 0);
+      const base = defaultPlan(pw || 80);
+      let loaded = p.data?.plan ? { ...base, ...(p.data.plan as FoodPlan) } : base;
+      // Your profile weight is the one that counts: 2 kg or more away from the plan's weight updates the targets.
+      // Plans made before the calorie floor that are still under it (and untouched) are lifted to it.
+      if (p.data?.setup_done) {
+        const who = personRef.current;
+        const stale = pw > 0 && pw !== weighedRef.current && Math.abs(pw - loaded.weight) >= 2;
+        const unsafe = loaded.carbG == null && loaded.kcal < kcalFloor(loaded.weight, who) && loaded.kcal === oldSuggestKcal(loaded, who);
+        // Under 18 never cuts or bulks.
+        const minor = isMinor(who) && loaded.goal !== 2;
+        if (stale || unsafe || minor) {
+          loaded = recalcTargets(loaded, who, { weight: stale ? pw : loaded.weight });
+          supabase.from('food_plans').upsert({ user_id: userId, plan: loaded }).then(() => {});
+          if (stale) setWeightNote(loaded.weight);
+        }
+      }
       setPlan(RAMADAN_SWITCH ? loaded : { ...loaded, ramadan: false });
       setSetupDone(!!p.data?.setup_done);
       setLogs((l.data as FoodLog[]) ?? []);
@@ -252,9 +325,23 @@ export function FoodProvider({ children }: PropsWithChildren) {
       const { error } = await supabase
         .from('food_plans')
         .upsert({ user_id: userId, plan: p, ...(done !== undefined ? { setup_done: done } : {}) });
+      // Saving from setup or the plan screen: the weight typed there becomes your profile weight too.
+      if (!error && done && Math.abs(p.weight - Number(profile?.weight_kg ?? 0)) >= 0.1) updateProfile({ weight_kg: Math.round(p.weight * 10) / 10 }).catch(() => {});
       return !error;
     },
-    [userId],
+    [userId, profile?.weight_kg, updateProfile],
+  );
+
+  const applyWeight = useCallback(
+    async (kg: number, latest?: number) => {
+      weighedRef.current = Math.round((latest ?? kg) * 10) / 10;
+      const cur = planRef.current;
+      if (!setupDone || !(kg > 0) || Math.abs(kg - cur.weight) < 2) return false;
+      const ok = await savePlan(recalcTargets(cur, personRef.current, { weight: kg }));
+      if (ok) setWeightNote(Math.round(kg * 10) / 10);
+      return ok;
+    },
+    [setupDone, savePlan],
   );
 
   // Small changes (meal swaps, shopping ticks) save quietly after a moment.
@@ -272,10 +359,10 @@ export function FoodProvider({ children }: PropsWithChildren) {
   );
 
   const target = useMemo(() => {
-    const base = targets(plan);
+    const base = targets(preg ? withPregnancy(plan, person, 300) : plan);
     if (!coachTargets) return base;
     return { k: coachTargets.kcal, p: coachTargets.protein, f: base.f, c: Math.max(0, Math.round((coachTargets.kcal - coachTargets.protein * 4 - base.f * 9) / 4)) };
-  }, [plan, coachTargets]);
+  }, [plan, coachTargets, preg, person]);
   const eaten = useMemo(
     () => logs.reduce((a, x) => ({ k: a.k + +x.kcal, p: a.p + +x.protein, c: a.c + +x.carbs, f: a.f + +x.fat }), { k: 0, p: 0, c: 0, f: 0 }),
     [logs],
@@ -432,6 +519,10 @@ export function FoodProvider({ children }: PropsWithChildren) {
       draft,
       setDraft,
       savePlan,
+      applyWeight,
+      weightNote,
+      clearWeightNote,
+      preg,
       updatePlan,
       logs,
       eaten,
@@ -470,7 +561,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       typeSeed,
       openTyping,
     }),
-    [day, setDay, isToday, balance, logOpen, setLogOpen, typeSeed, openTyping, coach, coachMeals, addMealByCode, ready, today, setupDone, plan, person, draft, savePlan, updatePlan, logs, eaten, target, dayGoal, coachTargets, kcalLeft, addLog, deleteLog, setLogMeal, updateLog, restoreLog, saved, saveMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, addCardio, deleteCardio, steps, setSteps, addWater],
+    [day, setDay, isToday, balance, logOpen, setLogOpen, typeSeed, openTyping, coach, coachMeals, addMealByCode, ready, today, setupDone, plan, person, draft, savePlan, applyWeight, weightNote, clearWeightNote, preg, updatePlan, logs, eaten, target, dayGoal, coachTargets, kcalLeft, addLog, deleteLog, setLogMeal, updateLog, restoreLog, saved, saveMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, addCardio, deleteCardio, steps, setSteps, addWater],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

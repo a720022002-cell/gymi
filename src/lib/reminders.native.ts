@@ -15,7 +15,7 @@ const PREFIX = 'gymi-rem-';
 const LEGACY = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;
 const OUR_ROUTES = ['/home', '/water', '/food', '/train', '/vitamins'];
 
-/** Replace all scheduled reminders with these (daily, or weekly with weekday; local on the phone). */
+/** Replace all scheduled reminders with these (daily, weekly with weekday, or monthly with monthDay; local on the phone). */
 export async function scheduleReminders(list: Reminder[], ask = false): Promise<'ok' | 'denied' | 'unsupported'> {
   let perm = await Notifications.getPermissionsAsync();
   if (!perm.granted && ask) perm = await Notifications.requestPermissionsAsync({ ios: { allowAlert: true, allowBadge: false, allowSound: true } });
@@ -35,7 +35,9 @@ export async function scheduleReminders(list: Reminder[], ask = false): Promise<
       content: { title: r.title, body: r.body, data: { route: r.route }, sound: r.sound !== false },
       trigger: r.weekday
         ? { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: r.weekday, hour, minute, channelId: 'reminders' }
-        : { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute, channelId: 'reminders' },
+        : r.monthDay
+          ? { type: Notifications.SchedulableTriggerInputTypes.MONTHLY, day: r.monthDay, hour, minute, channelId: 'reminders' }
+          : { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute, channelId: 'reminders' },
     });
   }
   return 'ok';

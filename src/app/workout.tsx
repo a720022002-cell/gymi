@@ -43,7 +43,7 @@ export default function WorkoutScreen() {
   const home = isToday && today.home;
   const light = isToday && today.light;
   const deload = isToday && today.deload;
-  const wo = buildWorkout(p, w, { home, short: isToday && today.short, light, deload, last: train.last });
+  const wo = buildWorkout(p, w, { home, short: isToday && today.short, light, deload, last: train.last, top: train.top });
 
   const start = () => {
     if (stale) return setStaleOpen(true);

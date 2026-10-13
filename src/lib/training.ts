@@ -44,6 +44,9 @@ export type TrainPlan = {
   homeDay?: string;
   /** Day the plan was made. Days before it are never "missed". */
   since?: string;
+  /** Day the weekly layout last changed (a workout moved to another weekday). Earlier days are never "missed" either,
+   * since we don't know which days they were planned on then. */
+  weekSince?: string;
   /** Today's quick check-in for the recovery score. */
   checkin?: { day: string; sleep: number; sore: number; energy: number };
   /** Lighter day (date) and deload week (Sunday of that week). */
@@ -258,7 +261,22 @@ export function splitRepeats(plan: TrainPlan): Partial<TrainPlan> {
     return { ...d, w: name };
   });
   const order = week.filter((d) => d.w).map((d) => d.w as string);
-  return { workouts, week, queue: order, override: undefined };
+  // This week's moves stay: the 2nd, 3rd… time a workout comes up gets the same new name as in the plan.
+  const names: Record<string, string[]> = {};
+  plan.week.forEach((d, i) => d.w && (names[d.w] ??= []).push(week[i].w as string));
+  let override = plan.override;
+  if (override) {
+    const n: Record<string, number> = {};
+    override = {
+      ...override,
+      week: override.week.map((d) => {
+        if (!d.w) return d;
+        n[d.w] = (n[d.w] ?? 0) + 1;
+        return { ...d, w: names[d.w]?.[n[d.w] - 1] ?? d.w };
+      }),
+    };
+  }
+  return { workouts, week, queue: order, override };
 }
 
 /** Workouts in the order they come in the week (each once). */
@@ -318,7 +336,7 @@ export type LastSets = Record<string, { w: number; r: number }[]>;
 export type BuiltEx = PlanEx & { swapped: boolean; target: number; last: { w: number; r: number }[] };
 
 /** The workout for today, with injury swaps, short or home version, and last time's numbers. */
-export function buildWorkout(plan: TrainPlan, name: string, opts: { home?: boolean; short?: boolean; light?: boolean; deload?: boolean; last: LastSets }) {
+export function buildWorkout(plan: TrainPlan, name: string, opts: { home?: boolean; short?: boolean; light?: boolean; deload?: boolean; last: LastSets; top?: Record<string, number> }) {
   const home = opts.home;
   const base: PlanEx[] = home ? tplEx(WK.Home.ex) : (plan.workouts[name]?.ex ?? []);
   const inj = plan.injuries;
@@ -330,8 +348,9 @@ export function buildWorkout(plan: TrainPlan, name: string, opts: { home?: boole
     return { ...x, id, ...(swap ? { n: undefined, ar: undefined } : {}), swapped: !!swap, last, target: last.length ? Math.max(...last.map((s) => s.w)) : 0 };
   });
   // Lighter day: one set less and about 10% less weight. Deload week: one set less and about 60%.
+  // Cut from your best recent normal session, so an old lighter session doesn't make it cut twice.
   const cut = opts.deload ? 0.6 : opts.light ? 0.9 : 1;
-  if (cut < 1) ex = ex.map((x) => ({ ...x, sets: Math.max(2, x.sets - 1), target: Math.round((x.target * cut) / 2.5) * 2.5 }));
+  if (cut < 1) ex = ex.map((x) => ({ ...x, sets: Math.max(2, x.sets - 1), target: Math.round((Math.max(x.target, opts.top?.[x.id] ?? 0) * cut) / 2.5) * 2.5 }));
   let min = home ? WK.Home.min : (plan.workouts[name]?.min ?? workoutMinutes(base));
   if (cut < 1) min = Math.round((min * 0.85) / 5) * 5;
   if (opts.short && ex.length > 3) {
@@ -352,6 +371,23 @@ export const weekdayOf = (day: string) => new Date(`${day}T12:00:00`).getDay();
 
 /** This week's days (with any moves for this week only). */
 export const effectiveWeek = (plan: TrainPlan, start: string) => (plan.override?.start === start ? plan.override.week : plan.week);
+
+/**
+ * True when missing a day counts as a missed workout: a workout was on it in that week's plan (with moves for that
+ * week only), it wasn't skipped or dismissed, and it isn't before the plan was made or its days last changed.
+ */
+export function plannedOn(plan: TrainPlan, day: string) {
+  if ((plan.since && day < plan.since) || (plan.weekSince && day < plan.weekSince)) return false;
+  if (plan.skipped[day] || plan.dismiss?.[day]) return false;
+  return !!effectiveWeek(plan, weekStart(day))[weekdayOf(day)]?.w;
+}
+
+/** A lighter-day or deload session: its weights were lower on purpose, so they never set next time's numbers.
+ * Newer logs carry a flag; older ones are matched to the plan's lighter day and deload week. */
+export function isLightLog(l: { day: string; exercises?: { light?: boolean }[] | null }, plan?: Pick<TrainPlan, 'light' | 'deload'> | null) {
+  if (l.exercises?.some((x) => x.light)) return true;
+  return !!plan && (l.day === plan.light || (!!plan.deload && weekStart(l.day) === plan.deload));
+}
 
 /**
  * Move a workout from one day to a later day; the rest of the week shifts one workout later
@@ -427,8 +463,9 @@ export function topWeights(logs: { day: string; exercises: { id: string; sets: {
   return logs.flatMap((l) => l.exercises.filter((x) => x.id === id).map((x) => Math.max(0, ...x.sets.map((s) => s.w)))).filter((w) => w > 0);
 }
 
-/** Lifts that dropped two sessions in a row (design: deload suggestion). */
-export function droppingLifts(logs: { day: string; exercises: { id: string; n: string; sets: { w: number }[] }[] }[]) {
+/** Lifts that dropped two sessions in a row (design: deload suggestion). Lighter and deload sessions don't count. */
+export function droppingLifts(all: { day: string; exercises: { id: string; n: string; light?: boolean; sets: { w: number }[] }[] }[], plan?: Pick<TrainPlan, 'light' | 'deload'> | null) {
+  const logs = all.filter((l) => !isLightLog(l, plan));
   const ids = [...new Set(logs.flatMap((l) => l.exercises.map((x) => x.id)))];
   return ids.filter((id) => {
     const w = topWeights(logs, id);

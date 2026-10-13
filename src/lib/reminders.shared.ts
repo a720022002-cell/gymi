@@ -77,8 +77,56 @@ export const SOUND_NAMES: Record<string, string> = {
 export const FREQ: Record<WaterFreq, string> = { '1h': 'Every hour', '2h': 'Every 2 hours', '3h': 'Every 3 hours', day: 'Once a day', behind: 'Only when I’m behind' };
 export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-/** weekday: 1 = Sunday … 7 = Saturday (weekly). Without it the reminder is daily. */
-export type Reminder = { title: string; body: string; time: string; route?: string; weekday?: number; sound?: boolean };
+/** weekday: 1 = Sunday … 7 = Saturday (weekly); monthDay: 1–28 (monthly). Without either the reminder is daily. */
+export type Reminder = { title: string; body: string; time: string; route?: string; weekday?: number; monthDay?: number; sound?: boolean };
+
+/** The one day a weekly or monthly vitamin reminds: w = weekday (1 = Sunday … 7), m = day of the month (1–28). */
+export type VitDay = { w?: number; m?: number };
+export type VitReminder = { id?: string; name: string; time: string; freq?: string };
+const VIT_KEY = (uid: string) => `gymi.vitDays.v1.${uid}`;
+const vitSubs = new Set<() => void>();
+
+/** Days picked for weekly and monthly vitamins. Kept on this phone, like the reminders themselves. */
+export async function loadVitDays(uid: string): Promise<Record<string, VitDay>> {
+  try {
+    const v = await AsyncStorage.getItem(VIT_KEY(uid));
+    return v ? (JSON.parse(v) as Record<string, VitDay>) : {};
+  } catch {
+    return {};
+  }
+}
+export async function saveVitDay(uid: string, id: string, d: VitDay) {
+  const all = await loadVitDays(uid);
+  all[id] = { ...all[id], ...d };
+  await AsyncStorage.setItem(VIT_KEY(uid), JSON.stringify(all)).catch(() => {});
+  vitSubs.forEach((f) => f());
+}
+/** Hear about a changed vitamin day (ReminderSync reschedules). */
+export function onVitDays(f: () => void) {
+  vitSubs.add(f);
+  return () => {
+    vitSubs.delete(f);
+  };
+}
+/** The default day for a vitamin without one: today (the day it was added or first reminded). */
+export const vitDayDefault = (now = new Date()): Required<VitDay> => ({ w: now.getDay() + 1, m: Math.min(28, now.getDate()) });
+
+/** Days for these vitamins' reminders; a weekly or monthly one without a day gets today's, saved so it stays put. */
+export async function vitaminDays(uid: string, vits: VitReminder[]) {
+  const all = await loadVitDays(uid);
+  const def = vitDayDefault();
+  let dirty = false;
+  for (const v of vits) {
+    if (!v.id) continue;
+    const d = all[v.id] ?? {};
+    const add = v.freq === 'Weekly' && !d.w ? { w: def.w } : v.freq === 'Monthly' && !d.m ? { m: def.m } : null;
+    if (!add) continue;
+    all[v.id] = { ...d, ...add };
+    dirty = true;
+  }
+  if (dirty) await AsyncStorage.setItem(VIT_KEY(uid), JSON.stringify(all)).catch(() => {});
+  return all;
+}
 
 const KEY = (uid: string) => `gymi.reminders.v1.${uid}`;
 const subs = new Set<(p: Prefs) => void>();
@@ -165,7 +213,17 @@ export function inQuiet(q: Prefs['quiet'], time: string) {
 /** The reminders these settings make (local notifications on the phone). */
 export function buildReminders(
   p: Prefs,
-  x: { meals: { n: string; t: string }[]; vitamins: { name: string; time: string }[]; workoutTime?: string | null; workoutName?: string | null; workoutToday?: string | null },
+  x: {
+    meals: { n: string; t: string }[];
+    vitamins: VitReminder[];
+    /** Weekly and monthly vitamins' days, by id (see vitaminDays). */
+    vitDays?: Record<string, VitDay>;
+    workoutTime?: string | null;
+    workoutName?: string | null;
+    workoutToday?: string | null;
+    /** Your plan's week, Sunday to Saturday: the workout's name, or null on rest days. */
+    workoutWeek?: (string | null)[] | null;
+  },
   t: (s: string, v?: Record<string, string | number>) => string,
 ): Reminder[] {
   if (!p.on) return [];
@@ -196,17 +254,33 @@ export function buildReminders(
   }
   if (p.workout.on) {
     const at = x.workoutTime || p.workout.time;
-    const name = x.workoutName ?? x.workoutToday;
-    const body = p.workout.before
-      ? t('{w} in {n} minutes. Light weight, let’s go.', { w: name ? t(name) : t('Your workout'), n: p.workout.before })
-      : t('Time for your workout. Light weight, let’s go.');
-    out.push({ title: t('Workouts'), body, time: hhmm(toMin(at) - p.workout.before), route: '/train', sound: snd(p.workout.sound) });
+    const m = toMin(at) - p.workout.before;
+    const body = (name: string | null | undefined) =>
+      p.workout.before
+        ? t('{w} in {n} minutes. Light weight, let’s go.', { w: name ? t(name) : t('Your workout'), n: p.workout.before })
+        : name
+          ? t('Time for {w}. Light weight, let’s go.', { w: t(name) })
+          : t('Time for your workout. Light weight, let’s go.');
+    const days = (x.workoutWeek ?? []).map((w, i) => [w, i] as const).filter(([w]) => !!w);
+    // With a plan, only on its workout days (a reminder before midnight goes on the day before).
+    if (days.length)
+      for (const [w, i] of days)
+        out.push({ title: t('Workouts'), body: body(w), time: hhmm(m), weekday: ((i + (m < 0 ? -1 : 0) + 7) % 7) + 1, route: '/train', sound: snd(p.workout.sound) });
+    else out.push({ title: t('Workouts'), body: body(x.workoutName ?? x.workoutToday), time: hhmm(m), route: '/train', sound: snd(p.workout.sound) });
   }
   if (p.sleep.on) {
     if (p.sleep.wind) out.push({ title: t('Bedtime'), body: t('Bed in 30 minutes. Put the phone away soon.'), time: hhmm(toMin(p.sleep.time) - 30), sound: snd(p.sleep.sound) });
     out.push({ title: t('Bedtime'), body: t('Time for bed. Good sleep helps you recover.'), time: p.sleep.time, sound: snd(p.sleep.sound) });
   }
-  if (p.vitamins.on) for (const v of x.vitamins.slice(0, 8)) out.push({ title: v.name, body: t('Time to take {n}.', { n: v.name }), time: v.time, route: '/vitamins', sound: snd(p.vitamins.sound) });
+  if (p.vitamins.on) {
+    const def = vitDayDefault();
+    for (const v of x.vitamins.slice(0, 8)) {
+      // Weekly ones on their one weekday, monthly ones on their one day of the month; the rest daily.
+      const d = (v.id && x.vitDays?.[v.id]) || {};
+      const when = v.freq === 'Weekly' ? { weekday: d.w ?? def.w } : v.freq === 'Monthly' ? { monthDay: d.m ?? def.m } : {};
+      out.push({ title: v.name, body: t('Time to take {n}.', { n: v.name }), time: v.time, route: '/vitamins', sound: snd(p.vitamins.sound), ...when });
+    }
+  }
   if (p.report.on) out.push({ title: t('Reports'), body: t('Your weekly report is ready.'), time: p.report.time, route: '/report', weekday: Math.max(0, WEEKDAYS.indexOf(p.report.day)) + 1, sound: snd(p.report.sound) });
   // Quiet hours win over everything except your own vitamin times.
   return out.filter((r) => /^\d{2}:\d{2}$/.test(r.time) && (r.route === '/vitamins' || !inQuiet(p.quiet, r.time))).slice(0, 60);

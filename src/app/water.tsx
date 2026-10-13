@@ -16,7 +16,7 @@ import { Button, Card, Chip, Label, NavButton, Row, Springy } from '@/components
 import { useT } from '@/i18n';
 import { caffeineCheck, caffeineOfDrink, caffeineToday, showCaffeineAlert } from '@/lib/caffeine';
 import { useFood } from '@/lib/food';
-import { calcPlan, fmt, fmtTime } from '@/lib/nutrition';
+import { fmt, fmtTime, suggestWater } from '@/lib/nutrition';
 import { fastTimes } from '@/lib/prayer';
 import { fx } from '@/lib/progress';
 import { useSettings } from '@/theme/settings';
@@ -182,7 +182,7 @@ export default function WaterScreen() {
         open={goalOpen}
         onClose={() => setGoalOpen(false)}
         value={goal}
-        suggested={calcPlan(food.plan, food.person).water}
+        suggested={suggestWater(food.plan)}
         onSave={(v) => {
           food.updatePlan({ water: v });
           setGoalOpen(false);

@@ -4,7 +4,8 @@ import { TextInput, View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
-import { ACTIVITY, bodyFatList, calcPlan, type FoodPlan, GOAL_DESC, GOAL_ORDER, GOALS } from '@/lib/nutrition';
+import { ACTIVITY, bodyFatList, calcPlan, type FoodPlan, GOAL_DESC, GOAL_ORDER, GOALS, isMinor } from '@/lib/nutrition';
+import { useWeight } from '@/lib/units';
 import { cleanNumber } from '@/lib/validation';
 import { useSettings } from '@/theme/settings';
 
@@ -26,15 +27,19 @@ export function SetupWizard({ inTab }: { inTab?: boolean }) {
   const { colors: c } = useSettings();
   const toast = useToast();
   const food = useFood();
+  const wu = useWeight();
+  const minor = isMinor(food.person);
+  // The weight field is in your unit (kg or lb); the plan always saves kg.
+  const [lo, hi] = wu.unit === 'lb' ? [66, 550] : [30, 250];
   const [step, setStep] = useState(0);
   const [thinking, setThinking] = useState<string | null>(null);
   const f = food.draft ?? food.plan;
   const set = (patch: Partial<FoodPlan>) => food.setDraft({ ...f, ...patch });
-  const [wText, setWText] = useState(String(f.weight));
+  const [wText, setWText] = useState(String(wu.num(f.weight)));
   const [wErr, setWErr] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!food.draft) food.setDraft({ ...food.plan });
+    if (!food.draft) food.setDraft({ ...food.plan, ...(minor ? { goal: 2 } : {}) });
     // Start the draft once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -52,9 +57,9 @@ export function SetupWizard({ inTab }: { inTab?: boolean }) {
   };
 
   const stepWeight = (d: number) => {
-    const w = Math.round(Math.min(250, Math.max(30, f.weight + d)) * 10) / 10;
-    set({ weight: w });
-    setWText(String(w));
+    const v = Math.round(Math.min(hi, Math.max(lo, wu.num(f.weight) + d)) * 10) / 10;
+    set({ weight: Math.round(wu.toKg(v) * 10) / 10 });
+    setWText(String(v));
   };
 
   const title = t(inTab ? 'Set up your calories' : 'Calorie setup');
@@ -87,30 +92,30 @@ export function SetupWizard({ inTab }: { inTab?: boolean }) {
             {t('Weight and activity')}
           </Text>
           <Card style={{ marginTop: 16 }}>
-            <Stepper onMinus={() => stepWeight(-0.1)} onPlus={() => stepWeight(0.1)} labels={[t('Decrease'), t('Increase')]}>
+            <Stepper onMinus={() => stepWeight(wu.unit === 'lb' ? -0.5 : -0.1)} onPlus={() => stepWeight(wu.unit === 'lb' ? 0.5 : 0.1)} labels={[t('Decrease'), t('Increase')]}>
               <TextInput
                 value={wText}
                 onChangeText={(v) => {
                   const s = cleanNumber(v, true);
                   setWText(s);
                   const n = parseFloat(s);
-                  const ok = n >= 30 && n <= 250;
-                  setWErr(s && !ok && s.replace('.', '').length >= 2 ? 'Enter a weight between 30 and 250 kg' : null);
-                  if (ok) set({ weight: Math.round(n * 10) / 10 });
+                  const ok = n >= lo && n <= hi;
+                  setWErr(s && !ok && s.replace('.', '').length >= 2 ? t('Enter a weight between {a} and {b} {unit}', { a: lo, b: hi, unit: wu.label }) : null);
+                  if (ok) set({ weight: Math.round(wu.toKg(n) * 10) / 10 });
                 }}
                 onBlur={() => {
-                  setWText(String(f.weight));
+                  setWText(String(wu.num(f.weight)));
                   setWErr(null);
                 }}
                 inputMode="decimal"
                 keyboardType="decimal-pad"
-                accessibilityLabel={t('Weight in kg')}
+                accessibilityLabel={wu.words(t('Weight in kg'))}
                 style={{ fontFamily: fontFor('sora', 600), fontSize: 44, letterSpacing: -1.7, color: c.text, textAlign: 'center', width: '100%', maxWidth: 180, borderBottomWidth: 2, borderStyle: 'dashed', borderColor: c.line, outlineStyle: 'none', direction: 'ltr' } as object}
               />
             </Stepper>
-            <ErrorText>{wErr ? t(wErr) : null}</ErrorText>
+            <ErrorText>{wErr}</ErrorText>
             <Text variant="small" weight={700} color="sec" center style={{ marginTop: 4 }}>
-              {t('kg')}
+              {wu.label}
             </Text>
           </Card>
           <Label>{t('How active is your day?')}</Label>
@@ -129,8 +134,24 @@ export function SetupWizard({ inTab }: { inTab?: boolean }) {
           <Text color="sec" style={{ marginTop: 4, marginBottom: 16 }}>
             {t('You can change this any time.')}
           </Text>
+          {minor ? (
+            <Card style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
+              <Icon name="info" size={20} color={c.cobalt} />
+              <Text variant="small" style={{ flex: 1 }}>
+                {t('Under 18: we keep you at maintenance so you have energy to grow.')}
+              </Text>
+            </Card>
+          ) : null}
           {GOAL_ORDER.map((i) => (
-            <Option key={i} icon={i < 2 ? 'up' : i === 2 ? 'minus' : 'down'} title={t(GOALS[i])} subtitle={t(GOAL_DESC[i])} selected={f.goal === i} onPress={() => set({ goal: i })} />
+            <Option
+              key={i}
+              icon={i < 2 ? 'up' : i === 2 ? 'minus' : 'down'}
+              title={t(GOALS[i])}
+              subtitle={t(GOAL_DESC[i])}
+              selected={(minor ? 2 : f.goal) === i}
+              disabled={minor && i !== 2}
+              onPress={() => set({ goal: minor ? 2 : i })}
+            />
           ))}
           <Button title={t('Next')} style={{ marginTop: 24 }} onPress={next} />
         </View>

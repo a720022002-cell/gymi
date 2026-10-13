@@ -23,8 +23,9 @@ export function useProgressInput(): ProgressInput {
       protein: food.target.p,
       water: food.plan.water || 2800,
       goal: food.plan.goal,
+      life: train.history,
     }),
-    [food.today, health.days, train.logs, health.checkins, health.measures, train.setupDone, train.plan, food.setupDone, food.target.k, food.target.p, food.plan.water, food.plan.goal],
+    [food.today, health.days, train.logs, health.checkins, health.measures, train.setupDone, train.plan, food.setupDone, food.target.k, food.target.p, food.plan.water, food.plan.goal, train.history],
   );
 }
 

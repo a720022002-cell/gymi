@@ -503,6 +503,11 @@ function About() {
         ) : null}
       </View>
       <ErrorText>{e.dob ? t(e.dob) : null}</ErrorText>
+      {dob && !e.dob && ageFrom(dob) >= 13 && ageFrom(dob) < 18 ? (
+        <Text variant="small" color="sec" style={{ marginTop: 2, marginHorizontal: 4 }}>
+          {t('Under 18: we keep you at maintenance so you have energy to grow.')}
+        </Text>
+      ) : null}
 
       <Field
         label={t('Height')}

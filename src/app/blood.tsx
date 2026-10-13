@@ -19,7 +19,38 @@ import { type Photo, takePhoto } from '@/lib/photo';
 import { shortDate } from '@/lib/progress';
 import { useSettings } from '@/theme/settings';
 
-type Read = { title?: string; day?: string; values: { name: string; value: number; unit: string; low?: number | null; high?: number | null; flag?: number }[] };
+type Read = { title?: string; day?: string; values: { name: string; value: number | string; unit: string; low?: number | null; high?: number | null; flag?: number }[] };
+
+/**
+ * A lab value as a number: "<10" and "≤10" read as 10 and below it, ">500" and "≥500" as 500 and above it,
+ * "1,234" as 1234, Arabic digits too. Null when it isn't a number ("Negative", "Trace").
+ */
+function readLab(raw: number | string | null | undefined): { n: number; cmp: -1 | 0 | 1 } | null {
+  if (raw == null) return null;
+  if (typeof raw === 'number') return Number.isFinite(raw) ? { n: raw, cmp: 0 } : null;
+  let s = String(raw)
+    .trim()
+    .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+    .replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
+    .replace(/\u066B/g, '.')
+    .replace(/[\u066C\s]/g, '');
+  const m = /^(<=?|>=?|≤|≥|lessthan|morethan|greaterthan|over|under)?(.*)$/i.exec(s);
+  const op = (m?.[1] ?? '').toLowerCase();
+  s = m?.[2] ?? s;
+  // A comma before exactly 3 digits groups thousands; any other comma is a decimal point.
+  s = s.replace(/,(?=\d{3}(\D|$))/g, '').replace(',', '.');
+  if (!/^[-+]?\d*\.?\d+$/.test(s)) return null;
+  return { n: Number(s), cmp: op.startsWith('<') || op === '≤' || op === 'lessthan' || op === 'under' ? -1 : op ? 1 : 0 };
+}
+
+/** Low (-1), high (1) or normal (0) against the standard range; null when the value can't be placed in it. */
+function flagOf(r: { n: number; cmp: -1 | 0 | 1 }, low: number | null, high: number | null): -1 | 0 | 1 | null {
+  if (low == null && high == null) return null;
+  // "<x" is below x: low when x is at or under the low end, normal when the range has no low end and x is within it.
+  if (r.cmp < 0) return low != null && r.n <= low ? -1 : low == null && high != null && r.n <= high ? 0 : null;
+  if (r.cmp > 0) return high != null && r.n >= high ? 1 : high == null && low != null && r.n >= low ? 0 : null;
+  return low != null && r.n < low ? -1 : high != null && r.n > high ? 1 : 0;
+}
 
 /** Blood tests: a PDF or photo of a lab report; the AI reads the values and flags what's outside the range. The file is kept to open later (design: blood). */
 export default function BloodScreen() {
@@ -58,10 +89,11 @@ export default function BloodScreen() {
       .map((v) => {
         const low = typeof v.low === 'number' ? v.low : null;
         const high = typeof v.high === 'number' ? v.high : null;
-        const n = Number(v.value);
-        // Check against the standard range ourselves; fall back to the AI's flag.
-        const flag = (low != null && n < low ? -1 : high != null && n > high ? 1 : low != null || high != null ? 0 : Math.sign(Number(v.flag) || 0)) as -1 | 0 | 1;
-        return { name: String(v.name).slice(0, 60), value: n, unit: String(v.unit ?? '').slice(0, 20), low, high, flag };
+        const r = readLab(v.value);
+        // Check against the standard range ourselves; fall back to the AI's flag. "<10" or "Negative" stay as written.
+        const flag = (r ? flagOf(r, low, high) : null) ?? (Math.sign(Number(v.flag) || 0) as -1 | 0 | 1);
+        const value = r && r.cmp === 0 ? r.n : String(v.value).trim().slice(0, 30);
+        return { name: String(v.name).slice(0, 60), value, unit: String(v.unit ?? '').slice(0, 20), low, high, flag };
       });
     // A file is still kept when no values could be read, so you can open it later.
     if (!values.length && 'photo' in src) {
@@ -166,6 +198,11 @@ function Report({ b }: { b: BloodTest }) {
   };
   const bad = b.values.filter((v) => v.flag !== 0);
   const range = (v: BloodValue) => (v.low != null && v.high != null ? `${v.low}–${v.high}` : v.low != null ? `> ${v.low}` : v.high != null ? `< ${v.high}` : null);
+  // Only call a value normal when we could actually place it in the range ("Negative" can't be).
+  const placed = (v: BloodValue) => {
+    const r = readLab(v.value);
+    return !!r && flagOf(r, v.low ?? null, v.high ?? null) != null;
+  };
   return (
     <View>
       <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -207,13 +244,13 @@ function Report({ b }: { b: BloodTest }) {
               </View>
               <View style={{ alignItems: 'flex-end' }}>
                 <Text num>
-                  {String(v.value)}{' '}
+                  {v.value == null || v.value === '' || (typeof v.value === 'number' && !Number.isFinite(v.value)) ? '–' : String(v.value)}{' '}
                   <Text variant="small" color="sec">
                     {v.unit}
                   </Text>
                 </Text>
-                <Text variant="xs" weight={700} color={v.flag ? 'down' : range(v) ? 'up' : 'sec'}>
-                  {t(v.flag < 0 ? 'Low' : v.flag > 0 ? 'High' : range(v) ? 'Normal' : 'No range')}
+                <Text variant="xs" weight={700} color={v.flag ? 'down' : range(v) && placed(v) ? 'up' : 'sec'}>
+                  {t(v.flag < 0 ? 'Low' : v.flag > 0 ? 'High' : !range(v) ? 'No range' : placed(v) ? 'Normal' : 'Check your report')}
                 </Text>
               </View>
             </Row>

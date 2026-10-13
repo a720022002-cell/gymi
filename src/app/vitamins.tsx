@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { TimeField } from '@/components/food/TimeField';
@@ -11,9 +11,11 @@ import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Label, NavButton, Row, Springy, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
+import { useAuth } from '@/lib/auth';
 import { type Supplement, useHealth } from '@/lib/health';
 import { fmtTime } from '@/lib/nutrition';
 import { previewNotification } from '@/lib/previewNotify';
+import { onVitDays, saveVitDay, type VitDay, vitaminDays, vitDayDefault, WEEKDAYS } from '@/lib/reminders';
 import { useSettings } from '@/theme/settings';
 
 type Draft = Omit<Supplement, 'id'> & { id?: string };
@@ -25,8 +27,28 @@ export default function VitaminsScreen() {
   const { colors: c } = useSettings();
   const toast = useToast();
   const h = useHealth();
+  const { session } = useAuth();
+  const uid = session?.user.id;
   const [draft, setDraft] = useState<Draft | null>(null);
   const act = h.supplements.filter((v) => v.active).length;
+  // The day weekly and monthly reminders go off (kept on this phone; a new one gets today).
+  const [days, setDays] = useState<{ uid: string; v: Record<string, VitDay> } | null>(null);
+  const timed = JSON.stringify(h.supplements.filter((v) => v.freq !== 'Daily').map((v) => ({ id: v.id, name: v.name, time: v.time, freq: v.freq })));
+  useEffect(() => {
+    if (!uid) return;
+    let alive = true;
+    const load = () => vitaminDays(uid, JSON.parse(timed)).then((v) => alive && setDays({ uid, v }));
+    load();
+    const off = onVitDays(load);
+    return () => {
+      alive = false;
+      off();
+    };
+  }, [uid, timed]);
+  const dayOf = (v: Supplement) => ({ ...vitDayDefault(), ...(days && days.uid === uid ? days.v[v.id] : null) });
+  const pickDay = (v: Supplement, d: VitDay) => {
+    if (uid) saveVitDay(uid, v.id, d);
+  };
 
   const preview = async () => {
     const v = h.supplements.find((x) => x.active && x.remind) ?? h.supplements.find((x) => x.active);
@@ -85,6 +107,41 @@ export default function VitaminsScreen() {
                         {t('Remind me at')}
                       </Text>
                       <TimeField value={v.time} onChange={(x) => quick(v, { time: x })} label={t('Remind me at')} bg={c.card} />
+                    </Row>
+                  ) : null}
+                  {v.remind && v.freq === 'Weekly' ? (
+                    <View style={{ paddingVertical: 10, borderTopWidth: 1, borderTopColor: c.line }}>
+                      <Text variant="small" weight={700}>
+                        {t('Remind me on')}
+                      </Text>
+                      <Row gap={6} style={{ flexWrap: 'wrap', marginTop: 8 }}>
+                        {WEEKDAYS.map((d, i) => (
+                          <Chip key={d} title={t(d)} on={dayOf(v).w === i + 1} onPress={() => pickDay(v, { w: i + 1 })} />
+                        ))}
+                      </Row>
+                    </View>
+                  ) : null}
+                  {v.remind && v.freq === 'Monthly' ? (
+                    <Row style={{ minHeight: 52, borderTopWidth: 1, borderTopColor: c.line, justifyContent: 'space-between' }}>
+                      <Text variant="small" weight={700}>
+                        {t('Day {n} of each month', { n: dayOf(v).m })}
+                      </Text>
+                      <Row gap={6}>
+                        {(
+                          [
+                            ['−', 'Earlier day', -1],
+                            ['+', 'Later day', 1],
+                          ] as const
+                        ).map(([sign, label, step]) => (
+                          <Springy
+                            key={sign}
+                            onPress={() => pickDay(v, { m: Math.min(28, Math.max(1, dayOf(v).m + step)) })}
+                            accessibilityLabel={t(label)}
+                            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: c.card, alignItems: 'center', justifyContent: 'center' }}>
+                            <Text weight={700}>{sign}</Text>
+                          </Springy>
+                        ))}
+                      </Row>
                     </Row>
                   ) : null}
                 </View>

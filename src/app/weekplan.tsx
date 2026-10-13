@@ -77,16 +77,14 @@ export default function WeekPlan() {
     toast(t('Each day now has its own workout. Tap one to change its exercises.'), { icon: 'check' });
   };
 
-  const save = (next: Day[]) => train.setWeek(next, false);
+  // Changes are for good. If this week has its own moves, they get the same change and stay for this week.
+  const lock = (on: (x: Day, i: number) => boolean) => train.editWeek((w) => w.map((x, j) => ({ ...x, lock: on(x, j) })), { layout: false });
   const drop = (from: number, to: number) => {
     if (to === from) return;
     if (week[to].lock) return toast(t('{day} is locked', { day: t(DAYS_LONG[to]) }), { icon: 'lock' });
-    const next = week.map((d) => ({ ...d }));
-    const tmp = next[to].w;
-    next[to].w = next[from].w;
-    next[from].w = tmp;
-    save(next);
-    toast(t('{w} moved to {day}', { w: t(next[to].w ?? 'Rest'), day: t(DAYS_LONG[to]) }), { icon: 'cal' });
+    const moved = week[from].w;
+    train.editWeek((w) => w.map((d, j) => (j === to ? { ...d, w: w[from].w } : j === from ? { ...d, w: w[to].w } : d)));
+    toast(t('{w} moved to {day}', { w: t(moved ?? 'Rest'), day: t(DAYS_LONG[to]) }), { icon: 'cal' });
   };
 
   return (
@@ -155,7 +153,7 @@ export default function WeekPlan() {
               />
             </View>
             <Springy
-              onPress={() => save(week.map((x, j) => (j === i ? { ...x, lock: !x.lock } : x)))}
+              onPress={() => lock((x, j) => (j === i ? !d.lock : x.lock))}
               accessibilityLabel={t(d.lock ? 'Unlock {day}' : 'Lock {day}', { day: t(DAYS_LONG[i]) })}
               style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' }}>
               <Icon name={d.lock ? 'lock' : 'unlock'} size={20} color={d.lock ? c.cobalt : c.sec} />
@@ -164,8 +162,8 @@ export default function WeekPlan() {
         ))}
       </View>
       <Row gap={8} style={{ marginTop: 10 }}>
-        <Button small kind="soft" icon="lock" title={t('Lock all')} onPress={() => save(week.map((x) => ({ ...x, lock: true })))} />
-        <Button small kind="soft" icon="unlock" title={t('Unlock all')} onPress={() => save(week.map((x) => ({ ...x, lock: false })))} />
+        <Button small kind="soft" icon="lock" title={t('Lock all')} onPress={() => lock(() => true)} />
+        <Button small kind="soft" icon="unlock" title={t('Unlock all')} onPress={() => lock(() => false)} />
       </Row>
       </View>
       <Card style={{ marginTop: 20 }}>

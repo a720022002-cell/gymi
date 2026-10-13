@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { Glass } from '@/components/Glass';
@@ -20,7 +20,7 @@ import { useT } from '@/i18n';
 import { useCycleToday } from '@/lib/cyclePhase';
 import { useFood, useLogFood } from '@/lib/food';
 import { type Measure, useHealth } from '@/lib/health';
-import { addDays, fmt, fmtTime, hhmmOf, mealAt, type PlannedMeal, planMeals } from '@/lib/nutrition';
+import { addDays, fmt, fmtTime, hhmmOf, kcalFloor, mealAt, type PlannedMeal, planMeals } from '@/lib/nutrition';
 import { fastTimes } from '@/lib/prayer';
 import { weekAvg } from '@/lib/progress';
 import { useSettings } from '@/theme/settings';
@@ -63,8 +63,16 @@ function FoodHome() {
   // Cut or bulk, weight flat for 2 weeks, not dismissed in the last 2 weeks, and the coach isn't in charge.
   const cutting = food.plan.goal >= 3;
   const bulking = food.plan.goal <= 1;
-  const showPlateau = !coach && (cutting || bulking) && (!food.plan.plateauDay || food.plan.plateauDay <= addDays(food.today, -14)) && plateau(health.weights, food.today);
+  const showPlateau = !coach && !food.preg && (cutting || bulking) && (!food.plan.plateauDay || food.plan.plateauDay <= addDays(food.today, -14)) && plateau(health.weights, food.today);
   const adjust = cutting ? -150 : 150;
+  // Targets were updated for a new weigh-in (see applyWeight): say so once.
+  const weightNote = food.weightNote;
+  const clearWeightNote = food.clearWeightNote;
+  useEffect(() => {
+    if (weightNote == null) return;
+    toast(t('Your targets were updated for your new weight.'), { icon: 'scale' });
+    clearWeightNote();
+  }, [weightNote, clearWeightNote, toast, t]);
   const coachLogged = (n: string) => food.logs.some((l) => l.name.startsWith(`${n} (`) && l.meal === n);
   const left = food.kcalLeft;
   const goal = food.dayGoal(food.day);
@@ -126,6 +134,19 @@ function FoodHome() {
           </View>
         </Card>
       ) : null}
+      {food.preg && !coach ? (
+        <Card style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+          <Icon name="heart" color={c.cobalt} />
+          <View style={{ flex: 1 }}>
+            <Text variant="small" weight={700}>
+              {t('Pregnancy mode')}
+            </Text>
+            <Text variant="small" color="sec">
+              {t('No calorie deficit while you’re pregnant. Your goal includes about 300 kcal extra, and caffeine is kept to 200 mg a day.')}
+            </Text>
+          </View>
+        </Card>
+      ) : null}
       {cycle?.phase === 'Luteal' ? (
         <Card style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
           <Icon name="drop" color={c.cobalt} />
@@ -156,7 +177,7 @@ function FoodHome() {
               title={t('Apply {n} kcal', { n: `${adjust > 0 ? '+' : '−'}${Math.abs(adjust)}` })}
               onPress={async () => {
                 const before = food.plan;
-                const k = Math.min(6000, Math.max(800, food.target.k + adjust));
+                const k = Math.min(6000, Math.max(kcalFloor(food.plan.weight, food.person), food.target.k + adjust));
                 await food.savePlan({ ...food.plan, kcal: k, carbG: null, plateauDay: food.today });
                 toast(t('Daily calories set to {k} kcal', { k: fmt(k) }), { ai: true, undo: () => food.savePlan(before) });
               }}
@@ -213,7 +234,8 @@ function FoodHome() {
             <Text weight={700}>{t('Adjusted goals this week')}</Text>
             <Springy
               onPress={() => {
-                const ids = food.moves.filter((m) => upcoming.includes(m.day)).map((m) => m.id);
+                // Today's matching offset (from balancing) goes too.
+                const ids = food.moves.filter((m) => upcoming.includes(m.day) || m.day === food.today).map((m) => m.id);
                 food.removeMoves(ids);
                 toast(t('Goals reset'), { icon: 'cal' });
               }}>

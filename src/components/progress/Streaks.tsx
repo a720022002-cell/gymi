@@ -8,7 +8,7 @@ import { addDays } from '@/lib/nutrition';
 import { type Badge, badgeLevel, badgeProgress, COMMIT_LABEL, type CommitKey } from '@/lib/progress';
 import { getShowcase, saveShowcase, type Showcase } from '@/lib/social';
 import { useTrain } from '@/lib/train';
-import { DAYS, DAYS_LONG, weekStart } from '@/lib/training';
+import { DAYS, DAYS_LONG, plannedOn, weekStart } from '@/lib/training';
 import { useStreaks } from '@/lib/useProgress';
 import { useSettings } from '@/theme/settings';
 
@@ -325,7 +325,8 @@ function WorkoutStreak() {
     const w = train.week[i]?.w;
     if (train.doneIdx.has(i)) return { st: 'done' as const };
     if (!w) return { st: 'rest' as const };
-    if (d < train.today) return { st: train.plan?.skipped[d] ? ('rest' as const) : ('missed' as const) };
+    // Skipped or dismissed days, and days before the plan or its days last changed, aren't missed.
+    if (d < train.today) return { st: train.plan && plannedOn(train.plan, d) ? ('missed' as const) : ('rest' as const) };
     return { st: d === train.today ? ('today' as const) : ('planned' as const), letter: t(w).slice(0, 1) };
   });
   const recent = train.logs.slice(0, 10).reverse();

@@ -7,11 +7,11 @@ import { useCycleToday } from '@/lib/cyclePhase';
 import { phoneSource, useDevices } from '@/lib/devices';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
-import { fmt } from '@/lib/nutrition';
+import { addDays, fmt } from '@/lib/nutrition';
 import { fx, shortDate, weeklyVolume } from '@/lib/progress';
 import { recLabel } from '@/lib/recovery';
 import { useTrain } from '@/lib/train';
-import { EX } from '@/lib/training';
+import { EX, weekdayOf } from '@/lib/training';
 import { useStreaks } from '@/lib/useProgress';
 import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
@@ -42,15 +42,23 @@ export function Overall({ go }: { go: (t: PTab, sub?: number) => void }) {
   const w = health.weights;
   const waist = health.measures.filter((m) => m.kind === 'waist');
   const cur = w.at(-1)?.value;
-  const dw = w.length > 1 ? w.at(-1)!.value - w[0].value : 0;
+  // Compare with about 30 days ago: the last weight on or before then, else the first one since.
+  const monthAgo = addDays(food.today, -30);
+  const base = w.length > 1 ? ([...w].reverse().find((x) => x.day <= monthAgo) ?? w.find((x) => x.day > monthAgo) ?? null) : null;
+  const hasDw = base != null && base !== w.at(-1);
+  const dw = hasDw ? w.at(-1)!.value - base.value : 0;
   const dWaist = waist.length > 1 ? waist.at(-1)!.value - waist[0].value : 0;
   const goal = food.plan.goal;
-  const goodW = w.length < 2 ? null : goal >= 3 ? dw < 0 : goal <= 1 ? dw > 0 : Math.abs(dw) < 1;
+  const goodW = !hasDw ? null : goal >= 3 ? dw < 0 : goal <= 1 ? dw > 0 : Math.abs(dw) < 1;
   const sleeps = health.checkins.filter((x) => x.sleep_h != null).slice(-7);
   const sAvg = sleeps.length ? sleeps.reduce((a, x) => a + (x.sleep_h ?? 0), 0) / sleeps.length : null;
   const cm = s.commitment;
   const vol = weeklyVolume(train.logs, train.today);
-  const volUp = vol[6] > 0 ? Math.round(((vol[7] - vol[6]) / vol[6]) * 100) : null;
+  // This week so far vs last week up to the same weekday; hidden on the first day of the week (Sunday).
+  const wd = weekdayOf(train.today);
+  const lastWkStart = addDays(train.today, -7 - wd);
+  const lastSoFar = train.logs.filter((l) => l.day >= lastWkStart && l.day <= addDays(train.today, -7)).reduce((a, l) => a + Number(l.volume), 0);
+  const volUp = wd >= 1 && lastSoFar > 0 ? Math.round(((vol[7] - lastSoFar) / lastSoFar) * 100) : null;
   const prs = Object.entries(train.best)
     .filter(([, v]) => v > 0)
     .sort((a, b) => b[1] - a[1])
@@ -59,12 +67,11 @@ export function Overall({ go }: { go: (t: PTab, sub?: number) => void }) {
 
   const mood = cm == null ? 'Your first days' : cm >= 80 && r.score >= 60 ? 'You’re on track' : cm >= 65 ? 'Good, with room to grow' : 'Let’s get back on track';
   const lines: string[] = [];
-  if (w.length > 1)
+  if (hasDw)
     lines.push(
-      t(goal >= 3 ? 'You’ve lost {n} kg since {d}.' : goal <= 1 ? 'You’ve gained {n} kg since {d}.' : 'Your weight moved {n} kg since {d}.', {
-        n: fx(Math.abs(dw)),
-        d: shortDate(w[0].day, lang),
-      }),
+      Math.abs(dw) < 0.3
+        ? t('Your weight stayed about the same since {d}.', { d: shortDate(base.day, lang) })
+        : t(dw < 0 ? 'You’ve lost {n} kg since {d}.' : 'You’ve gained {n} kg since {d}.', { n: fx(Math.abs(dw)), d: shortDate(base.day, lang) }),
     );
   else lines.push(t('Log your weight a few mornings a week to see your trend here.'));
   if (cm != null) lines.push(t('You hit {n}% of your plan in the last 30 days.', { n: cm }));
@@ -118,7 +125,7 @@ export function Overall({ go }: { go: (t: PTab, sub?: number) => void }) {
       </Card>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 2 }}>
-        {tile('scale', t('Weight'), cur ? `${fx(cur)} ${t('kg')}` : '–', w.length > 1 ? `${arrow(dw)} ${fx(Math.abs(dw))} ${t('kg')}` : t('Log your weight'), () => go('body'), goodW)}
+        {tile('scale', t('Weight'), cur ? `${fx(cur)} ${t('kg')}` : '–', hasDw ? `${arrow(dw)} ${fx(Math.abs(dw))} ${t('kg')}` : t('Log your weight'), () => go('body'), goodW)}
         {tile('ruler', t('Waist'), waist.length ? `${fx(waist.at(-1)!.value)} cm` : '–', waist.length > 1 ? `${arrow(dWaist)} ${fx(Math.abs(dWaist))} cm` : t('Add measurements'), () => go('body'), waist.length > 1 ? dWaist < 0 : null)}
         {tile('moon', t('Sleep'), sAvg != null ? `${fx(sAvg)} ${t('h')}` : '–', t('Average, last 7 nights'), () => go('recovery'), sAvg != null ? sAvg >= 7 : null)}
         {tile('bolt', t('Recovery'), `${r.score}%`, t(recLabel(r.score)[0]), () => go('recovery'), r.score >= 60)}

@@ -177,13 +177,19 @@ export function HealthProvider({ children }: PropsWithChildren) {
     [userId, today],
   );
 
+  const applyWeight = food.applyWeight;
   const logWeight = useCallback(
     async (kg: number) => {
       const ok = await putMeasures({ weight: kg });
-      if (ok) updateProfile({ weight_kg: Math.round(kg * 10) / 10 }).catch(() => {});
+      if (ok) {
+        // Targets follow your weight: this week's average when there are other weigh-ins, otherwise this one.
+        const week = [...measures.filter((m) => m.kind === 'weight' && m.day >= addDays(today, -6) && m.day !== today).map((m) => m.value), kg];
+        await applyWeight(week.reduce((a, b) => a + b, 0) / week.length, kg).catch(() => false);
+        updateProfile({ weight_kg: Math.round(kg * 10) / 10 }).catch(() => {});
+      }
       return ok;
     },
-    [putMeasures, updateProfile],
+    [putMeasures, updateProfile, measures, today, applyWeight],
   );
 
   const deleteWeight = useCallback(async (day: string) => {

@@ -4,7 +4,7 @@ import { TextInput, View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
-import { addDays, fmt } from '@/lib/nutrition';
+import { addDays, bmr, fmt } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
 
 import { Icon } from '../Icon';
@@ -21,8 +21,13 @@ export function BalanceSheet() {
   const food = useFood();
   const kind = food.balance;
   const under = kind === 'under';
-  const amt = Math.max(0, Math.round(under ? food.kcalLeft : -food.kcalLeft));
   const days = useMemo(() => [1, 2, 3, 4].map((n) => addDays(food.today, n)), [food.today]);
+  // Taking calories never drops a day under max(resting burn, 1,200 kcal).
+  const minDay = Math.ceil(Math.max(bmr(food.plan.weight, food.person), 1200) / 10) * 10;
+  const room = (d: string) => (under ? Infinity : Math.max(0, Math.floor((food.dayGoal(d) - minDay) / 10) * 10));
+  // Today was already balanced once: what's left can't be moved again (it would keep pushing the next days down).
+  const done = food.moves.some((m) => m.day === food.today && (under ? m.kcal < 0 : m.kcal > 0));
+  const full = Math.max(0, Math.round(under ? food.kcalLeft : -food.kcalLeft));
   const dayName = (d: string) => {
     const [y, m, dd] = d.split('-').map(Number);
     return new Intl.DateTimeFormat(lang === 'ar' ? 'ar' : 'en-US', { weekday: 'short' }).format(new Date(y, m - 1, dd));
@@ -34,16 +39,35 @@ export function BalanceSheet() {
   const [freeAsk, setFreeAsk] = useState(false);
   const sel = picked.length ? picked : days.slice(0, 2);
   const sign = under ? 1 : -1;
+  const shown = mode === 'tomorrow' ? [days[0]] : sel;
+  // Only as much as the chosen days can take; the rest stays on today.
+  const amt = Math.min(full, shown.reduce((a, d) => a + room(d), 0));
+  const capped = amt < full;
 
+  // Evenly, but no day past its room (what doesn't fit goes to the days that still have some).
   const even = (n: number, ds: string[]) => {
-    const base = Math.floor(n / ds.length / 10) * 10;
     const r: Record<string, number> = {};
-    ds.forEach((d) => (r[d] = base));
-    r[ds[0]] += n - base * ds.length;
+    ds.forEach((d) => (r[d] = 0));
+    let rest = n;
+    let open = ds.filter((d) => room(d) > 0);
+    while (rest > 0 && open.length) {
+      const share = Math.max(10, Math.floor(rest / open.length / 10) * 10);
+      for (const d of open) {
+        const add = Math.min(share, room(d) - r[d], rest);
+        r[d] += add;
+        rest -= add;
+      }
+      open = open.filter((d) => room(d) - r[d] > 0);
+      if (rest > 0 && rest < 10 && open.length) {
+        r[open[0]] += rest;
+        rest = 0;
+      }
+    }
     return r;
   };
   const alloc: Record<string, number> = mode === 'tomorrow' ? { [days[0]]: amt } : split === 'even' ? even(amt, sel) : Object.fromEntries(sel.map((d) => [d, custom[d] ?? even(amt, sel)[d]]));
   const left = amt - Object.values(alloc).reduce((a, b) => a + (b || 0), 0);
+  const tooLow = Object.entries(alloc).some(([d, v]) => v > room(d));
   const heavy = Object.values(alloc).some((v) => v > 500);
   const proteinLeft = Math.max(0, Math.round(food.target.p - food.eaten.p));
 
@@ -53,11 +77,12 @@ export function BalanceSheet() {
   };
 
   const confirm = async () => {
-    if (left !== 0) return;
+    if (left !== 0 || tooLow || done || amt <= 0) return;
     const rows = Object.entries(alloc)
       .filter(([, v]) => v > 0)
       .map(([day, v]) => ({ day, kcal: sign * v }));
-    const added = await food.addMoves(rows);
+    // The same amount is settled on today, so today no longer shows as over (or under) and can't be moved twice.
+    const added = await food.addMoves([...rows, { day: food.today, kcal: -sign * amt }]);
     close();
     toast(rows.map((r) => `${dayName(r.day)} ${r.kcal > 0 ? '+' : '−'}${fmt(Math.abs(r.kcal))}`).join(', ') + ` ${t('kcal')}`, {
       icon: 'cal',
@@ -66,8 +91,22 @@ export function BalanceSheet() {
   };
 
   return (
-    <Sheet open={!!kind && amt > 0} onClose={close}>
-      {freeAsk ? (
+    <Sheet open={!!kind && full > 0} onClose={close}>
+      {done && !freeAsk ? (
+        <View>
+          <View style={{ alignItems: 'center' }}>
+            <Icon name="info" size={30} color={c.cobalt} />
+            <Text variant="h2" center style={{ marginTop: 8 }}>
+              {under ? t('You have {n} kcal left today', { n: fmt(full) }) : t('You’re {n} kcal over today', { n: fmt(full) })}
+            </Text>
+            <Text variant="small" color="sec" center style={{ marginTop: 4 }}>
+              {t('You already moved calories from today. Moving more would make the next days too low. One day won’t undo your progress.')}
+            </Text>
+          </View>
+          {under ? <Button title={t('Have a free meal')} kind="cobalt" style={{ marginTop: 16 }} onPress={() => (proteinLeft > 0 ? setFreeAsk(true) : (close(), toast(t('Enjoy it. Anything up to {n} kcal fits today.', { n: fmt(full) }), { ai: true })))} /> : null}
+          <Button title={t('Got it')} kind={under ? 'ghost' : undefined} style={{ marginTop: under ? 8 : 16 }} onPress={close} />
+        </View>
+      ) : freeAsk ? (
         <View>
           <View style={{ alignItems: 'center' }}>
             <Icon name="warn" size={30} color={c.down} />
@@ -102,7 +141,7 @@ export function BalanceSheet() {
           <View style={{ alignItems: 'center' }}>
             <Icon name="info" size={30} color={c.cobalt} />
             <Text variant="h2" center style={{ marginTop: 8 }}>
-              {under ? t('You have {n} kcal left today', { n: fmt(amt) }) : t('You’re {n} kcal over today', { n: fmt(amt) })}
+              {under ? t('You have {n} kcal left today', { n: fmt(full) }) : t('You’re {n} kcal over today', { n: fmt(full) })}
             </Text>
             <Text variant="small" color="sec" center style={{ marginTop: 4 }}>
               {t(under ? 'Add them to other days this week, or enjoy a free meal.' : 'Take it from other days this week. One day won’t undo your progress.')}
@@ -188,6 +227,14 @@ export function BalanceSheet() {
               </Text>
             </View>
           ) : null}
+          {capped ? (
+            <View style={{ flexDirection: 'row', gap: 6, marginTop: 8, alignItems: 'flex-start' }}>
+              <Icon name="info" size={16} color={c.sec} />
+              <Text variant="small" color="sec" style={{ flex: 1 }}>
+                {t('Only {n} kcal can move without taking a day under {min} kcal. The rest stays on today.', { n: fmt(amt), min: fmt(minDay) })}
+              </Text>
+            </View>
+          ) : null}
           {heavy && !under ? (
             <View style={{ flexDirection: 'row', gap: 6, marginTop: 8, alignItems: 'flex-start' }}>
               <Icon name="info" size={16} color={c.sec} />
@@ -197,8 +244,8 @@ export function BalanceSheet() {
             </View>
           ) : null}
           <Button
-            title={left !== 0 ? (left > 0 ? t('Place {n} more kcal', { n: fmt(left) }) : t('{n} kcal too many', { n: fmt(-left) })) : under ? t('Add {n} kcal to other days', { n: fmt(amt) }) : t('Take {n} kcal from other days', { n: fmt(amt) })}
-            disabled={left !== 0}
+            title={tooLow ? t('That takes a day under {n} kcal', { n: fmt(minDay) }) : left !== 0 ? (left > 0 ? t('Place {n} more kcal', { n: fmt(left) }) : t('{n} kcal too many', { n: fmt(-left) })) : under ? t('Add {n} kcal to other days', { n: fmt(amt) }) : t('Take {n} kcal from other days', { n: fmt(amt) })}
+            disabled={left !== 0 || tooLow || amt <= 0}
             style={{ marginTop: 16 }}
             onPress={confirm}
           />

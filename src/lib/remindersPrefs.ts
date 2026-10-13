@@ -6,7 +6,8 @@ import { useAuth } from './auth';
 import { useFood } from './food';
 import { useHealth } from './health';
 import { fmtTime } from './nutrition';
-import { buildReminders, DEFAULT_PREFS, FREQ, loadPrefs, type NCat, type Prefs, remindersSupported, savePrefs, scheduleReminders } from './reminders';
+import { buildReminders, DEFAULT_PREFS, FREQ, loadPrefs, type NCat, type Prefs, remindersSupported, savePrefs, scheduleReminders, vitaminDays } from './reminders';
+import { useTrain } from './train';
 
 /** Reminder settings for the Notifications screens: read, save, and reschedule on the phone. */
 export function useReminderPrefs() {
@@ -15,6 +16,7 @@ export function useReminderPrefs() {
   const uid = session?.user.id;
   const food = useFood();
   const health = useHealth();
+  const { week } = useTrain();
   const [p, setP] = useState<{ uid: string; v: Prefs } | null>(null);
 
   useEffect(() => {
@@ -35,20 +37,23 @@ export function useReminderPrefs() {
       setP({ uid, v: next });
       await savePrefs(uid, next);
       if (!remindersSupported) return 'ok';
+      const vitamins = health.supplements.filter((x) => x.active && x.remind);
       return scheduleReminders(
         buildReminders(
           next,
           {
             meals: food.setupDone ? food.plan.meals : [],
-            vitamins: health.supplements.filter((x) => x.active && x.remind),
+            vitamins,
+            vitDays: await vitaminDays(uid, vitamins),
             workoutTime: food.plan.myWorkoutTime || food.plan.workoutTime || null,
+            workoutWeek: week.length ? week.map((d) => d.w) : null,
           },
           t,
         ),
         ask,
       );
     },
-    [uid, food.setupDone, food.plan.meals, food.plan.myWorkoutTime, food.plan.workoutTime, health.supplements, t],
+    [uid, food.setupDone, food.plan.meals, food.plan.myWorkoutTime, food.plan.workoutTime, health.supplements, week, t],
   );
 
   return { prefs, ready: !!p, save };

@@ -7,6 +7,15 @@ import { localDay } from './nutrition';
 /** Usual safe amounts for healthy adults: up to 400 mg a day, about 200 mg at once. */
 export const CAFFEINE_DAY = 400;
 export const CAFFEINE_ONCE = 200;
+/** In pregnancy the usual advice is up to 200 mg a day. */
+export const CAFFEINE_DAY_PREG = 200;
+
+// Today's daily limit: FoodProvider sets it to 200 mg in pregnancy mode, so every caffeine check uses it.
+let dayLimit = CAFFEINE_DAY;
+export const caffeineDayLimit = () => dayLimit;
+export function setCaffeinePregnant(on: boolean) {
+  dayLimit = on ? CAFFEINE_DAY_PREG : CAFFEINE_DAY;
+}
 
 // First match wins, so the specific drinks come before the general ones.
 const DRINKS: [RegExp, number][] = [
@@ -65,13 +74,14 @@ export function caffeineToday(foodNames: string[], drinks: { kind: string; ml: n
   return foodNames.reduce((a, x) => a + caffeineOf(x), 0) + drinks.reduce((a, d) => a + caffeineOfDrink(d.kind, d.ml), 0);
 }
 
-export type CaffeineAlert = { once: number; day: number; late: boolean };
+/** max: the daily limit used (400 mg, or 200 mg in pregnancy). */
+export type CaffeineAlert = { once: number; day: number; late: boolean; max?: number };
 
 /** Should this drink warn you? Once: a big single dose (mg). Day: today's total just went past the daily amount. */
-export function caffeineCheck(once: number, before: number, late: boolean): CaffeineAlert | null {
+export function caffeineCheck(once: number, before: number, late: boolean, max = dayLimit): CaffeineAlert | null {
   if (!once) return null;
   const day = before + once;
-  if (once > CAFFEINE_ONCE || (day > CAFFEINE_DAY && before <= CAFFEINE_DAY)) return { once, day, late };
+  if (once > CAFFEINE_ONCE || (day > max && before <= max)) return { once, day, late, max };
   return null;
 }
 

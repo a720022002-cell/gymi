@@ -15,7 +15,7 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Row, Segmented, Springy, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
-import { bmr, calcPlan, type FoodPlan, fmt, fmtTime, GOALS, RAMADAN_SWITCH, targets } from '@/lib/nutrition';
+import { type FoodPlan, fmt, fmtTime, GOALS, isMinor, kcalFloor, RAMADAN_SWITCH, suggestWater, targets, withPregnancy } from '@/lib/nutrition';
 import { CITIES, DEFAULT_CITY, fastTimes } from '@/lib/prayer';
 import { fx } from '@/lib/progress';
 import { useSettings } from '@/theme/settings';
@@ -35,8 +35,12 @@ export default function FoodResults() {
   const f = food.draft ?? food.plan;
   const set = (patch: Partial<FoodPlan>) => food.setDraft({ ...f, ...patch });
   const tg = targets(f);
-  const rest = Math.round(bmr(f.weight, food.person) / 10) * 10;
-  const low = tg.k < rest;
+  // Lowest we suggest: 10% above your resting burn, at least 1,200 (women) or 1,500 (men) kcal.
+  const floor = kcalFloor(f.weight, food.person);
+  const low = tg.k < floor;
+  const minor = isMinor(food.person);
+  // Pregnancy mode: what Food will use each day (no deficit, +300 kcal).
+  const pregK = food.preg ? targets(withPregnancy(f, food.person, 300)).k : null;
 
   useEffect(() => {
     if (!food.draft) food.setDraft({ ...food.plan });
@@ -105,7 +109,7 @@ export default function FoodResults() {
             </View>
             <Text variant="small" weight={700} color="sec" center style={{ marginTop: 4 }}>
               {t('kcal a day, {goal}', {
-                goal: t(GOALS[f.goal]).toLowerCase(),
+                goal: t(GOALS[minor ? 2 : f.goal]).toLowerCase(),
               })}
             </Text>
             {low ? (
@@ -121,7 +125,17 @@ export default function FoodResults() {
                 }}>
                 <Icon name="warn" size={20} color={c.down} />
                 <Text variant="small" style={{ flex: 1 }}>
-                  {t('This is below what your body burns at rest (about {n} kcal). Staying this low can cost muscle and energy. You can still save it.', { n: fmt(rest) })}
+                  {t('This is below the safe minimum for you (about {n} kcal a day). Eating this little can cost muscle, energy and health. We don’t recommend it, but you can still save it.', { n: fmt(floor) })}
+                </Text>
+              </View>
+            ) : null}
+            {minor || pregK != null ? (
+              <View style={{ marginTop: 12, backgroundColor: c.inset, borderRadius: 16, padding: 12, flexDirection: 'row', gap: 8, alignItems: 'flex-start' }}>
+                <Icon name="info" size={20} color={c.cobalt} />
+                <Text variant="small" style={{ flex: 1 }}>
+                  {pregK != null
+                    ? t('Pregnancy mode is on: no calorie deficit, and about 300 kcal extra. Your daily goal in Food is {n} kcal. Caffeine: up to 200 mg a day.', { n: fmt(pregK) })
+                    : t('Under 18: we keep you at maintenance so you have energy to grow.')}
                 </Text>
               </View>
             ) : null}
@@ -291,7 +305,7 @@ export default function FoodResults() {
         open={waterOpen}
         onClose={() => setWaterOpen(false)}
         value={f.water}
-        suggested={calcPlan(f, food.person).water}
+        suggested={suggestWater(f)}
         onSave={(v) => {
           set({ water: v });
           setWaterOpen(false);

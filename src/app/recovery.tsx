@@ -245,7 +245,7 @@ export default function RecoveryScreen() {
             {t('Training load, 14 days')}
           </Text>
           <Text variant="xs" weight={700} color="sec">
-            {t('{n}× usual', { n: Math.round(r.acwr * 10) / 10 })}
+            {r.early ? t('Building your baseline') : t('{n}× usual', { n: Math.round(r.acwr * 10) / 10 })}
           </Text>
         </Row>
         <View style={{ marginTop: 8 }}>

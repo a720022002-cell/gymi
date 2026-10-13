@@ -1,7 +1,7 @@
 import type { Checkin, DayTotals, Measure } from './health';
 import { addDays } from './nutrition';
-import type { WorkoutLog } from './train';
-import { type TrainPlan, weekdayOf, weekStart } from './training';
+import type { History, WorkoutLog } from './train';
+import { plannedOn, type TrainPlan, weekStart } from './training';
 
 export type ProgressInput = {
   today: string;
@@ -16,14 +16,24 @@ export type ProgressInput = {
   water: number;
   /** 0-1 bulk, 2 maintain, 3-4 cut. */
   goal: number;
+  /** Your whole history (null until it loads; then only the recent data above is used). */
+  life?: History | null;
 };
+
+/** Food and water for every day: your whole history, with the recent days (and today) on top. */
+const allDays = (x: ProgressInput): Record<string, DayTotals> => ({ ...x.life?.days, ...x.days });
+
+/** Every workout's day, start and records: your whole history once it has loaded. */
+const allWorkouts = (x: ProgressInput): Pick<WorkoutLog, 'day' | 'started_at' | 'prs'>[] => (x.life && x.life.workouts.length >= x.logs.length ? x.life.workouts : x.logs);
 
 /** Days you logged anything: food, water, a workout, your check-in or a measurement. */
 export function activeDays(x: ProgressInput) {
   const s = new Set<string>();
-  for (const [d, v] of Object.entries(x.days)) if (v.k > 0 || v.w > 0) s.add(d);
+  for (const [d, v] of Object.entries(allDays(x))) if (v.k > 0 || v.w > 0) s.add(d);
   x.logs.forEach((l) => s.add(l.day));
+  x.life?.workouts.forEach((l) => s.add(l.day));
   x.checkins.forEach((c) => s.add(c.day));
+  x.life?.checkins.forEach((d) => s.add(d));
   x.measures.forEach((m) => s.add(m.day));
   return s;
 }
@@ -43,18 +53,19 @@ export function overallStreak(active: Set<string>, today: string) {
   return { streak, best: Math.max(best, streak) };
 }
 
-/** Best run of planned workouts without missing one (last 120 days). */
+/** Best run of planned workouts without missing one, since the plan was made. */
 export function bestWorkoutStreak(x: ProgressInput, current: number) {
   const p = x.plan;
   if (!p) return current;
-  const done = new Set(x.logs.map((l) => l.day));
+  const done = new Set(allWorkouts(x).map((l) => l.day));
+  x.logs.forEach((l) => done.add(l.day));
   let best = 0;
   let run = 0;
-  for (let i = 120; i >= 0; i--) {
-    const d = addDays(x.today, -i);
-    if (p.since && d < p.since) continue;
+  const first = [...done].sort()[0];
+  if (!first) return current;
+  for (let d = p.since && p.since > first ? p.since : first; d <= x.today; d = addDays(d, 1)) {
     if (done.has(d)) best = Math.max(best, ++run);
-    else if (i > 0 && p.week[weekdayOf(d)]?.w && !p.skipped[d]) run = 0;
+    else if (d < x.today && plannedOn(p, d)) run = 0;
   }
   return Math.max(best, current);
 }
@@ -87,7 +98,8 @@ export function commitWindow(x: ProgressInput, from: string, to: string, first: 
   for (let d = from < first ? first : from; d <= to; d = addDays(d, 1)) {
     const p = x.plan;
     if (p && !(p.since && d < p.since)) {
-      const planned = !!p.week[weekdayOf(d)]?.w && !p.skipped[d];
+      // That week's plan, with moves for that week only; skipped and dismissed days don't count.
+      const planned = plannedOn(p, d);
       if (planned) add('work', done.has(d), d);
       else if (done.has(d)) extra++;
     }
@@ -151,18 +163,20 @@ export type Badge = { id: string; name: string; unit: string; tiers: number[]; v
 
 /** Badges with levels (design: BADGE2). */
 export function badges(x: ProgressInput, bestStreak: number): Badge[] {
-  const daysHit = (f: (v: DayTotals) => boolean) => Object.values(x.days).filter(f).length;
+  const days = allDays(x);
+  const logs = allWorkouts(x);
+  const daysHit = (f: (v: DayTotals) => boolean) => Object.values(days).filter(f).length;
   const months: Record<string, number> = {};
-  x.logs.forEach((l) => (months[l.day.slice(0, 7)] = (months[l.day.slice(0, 7)] ?? 0) + 1));
+  logs.forEach((l) => (months[l.day.slice(0, 7)] = (months[l.day.slice(0, 7)] ?? 0) + 1));
   const w = x.measures.filter((m) => m.kind === 'weight');
   const dw = w.length > 1 ? w.at(-1)!.value - w[0].value : 0;
   const toward = x.goal >= 3 ? -dw : x.goal <= 1 ? dw : 0;
   return [
-    { id: 'workouts', name: 'Workouts', unit: 'workouts', tiers: [1, 10, 50, 100, 250], v: x.logs.length, icon: 'train' },
+    { id: 'workouts', name: 'Workouts', unit: 'workouts', tiers: [1, 10, 50, 100, 250], v: logs.length, icon: 'train' },
     { id: 'streak', name: 'Streak', unit: 'days in a row', tiers: [7, 30, 100, 365], v: bestStreak, icon: 'flame' },
     { id: 'protein', name: 'Protein pro', unit: 'days hitting protein', tiers: [5, 30, 100], v: x.foodSetup ? daysHit((v) => v.p >= x.protein * 0.9) : 0, icon: 'food' },
-    { id: 'early', name: 'Early bird', unit: 'workouts before 8 AM', tiers: [1, 10, 30], v: x.logs.filter((l) => new Date(l.started_at).getHours() < 8).length, icon: 'sun' },
-    { id: 'prs', name: 'Record breaker', unit: 'personal records', tiers: [1, 5, 25, 50], v: x.logs.reduce((a, l) => a + (l.prs?.length ?? 0), 0), icon: 'trophy' },
+    { id: 'early', name: 'Early bird', unit: 'workouts before 8 AM', tiers: [1, 10, 30], v: logs.filter((l) => new Date(l.started_at).getHours() < 8).length, icon: 'sun' },
+    { id: 'prs', name: 'Record breaker', unit: 'personal records', tiers: [1, 5, 25, 50], v: logs.reduce((a, l) => a + (l.prs?.length ?? 0), 0), icon: 'trophy' },
     { id: 'water', name: 'Hydrated', unit: 'days hitting water', tiers: [7, 30, 100], v: daysHit((v) => v.w >= x.water), icon: 'drop' },
     { id: 'iron', name: 'Iron month', unit: 'months with 12+ workouts', tiers: [1, 3, 6, 12], v: Object.values(months).filter((n) => n >= 12).length, icon: 'bolt' },
     { id: 'lost', name: x.goal <= 1 ? 'Stronger' : 'Lighter', unit: 'kg toward your goal', tiers: [1, 5, 10, 20], v: Math.max(0, Math.round(toward * 10) / 10), icon: 'scale' },

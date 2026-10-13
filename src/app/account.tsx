@@ -17,7 +17,7 @@ import { type Profile, useAuth } from '@/lib/auth';
 import { EMAIL_CODES } from '@/lib/config';
 import { COUNTRIES } from '@/lib/countries';
 import { useFood } from '@/lib/food';
-import { ageFromIso, calcPlan } from '@/lib/nutrition';
+import { ageFromIso, recalcTargets } from '@/lib/nutrition';
 import { supabase } from '@/lib/supabase';
 import { ageFrom, cleanUsername, daysIn, type Dob, dobToIso, emailError, fullPhone, passwordError, phoneMessage, usernameError } from '@/lib/validation';
 import { useSettings } from '@/theme/settings';
@@ -50,13 +50,15 @@ export default function Account() {
   const emailOk = !!user?.email_confirmed_at && !user?.new_email;
   const dob = isoToDob(profile?.date_of_birth);
 
-  // Changing gender, birthday or height updates your calories and protein (unless your coach set them).
+  // Changing gender, birthday or height updates your calories and water (unless your coach set them).
+  // Only the numbers are worked out again: your meals, recipes and anything you changed by hand stay.
   const savePerson = async (patch: Partial<Profile>) => {
+    const prev = food.person;
     const r = await updateProfile(patch);
     if (r.error) return r.error;
     if (food.setupDone && !food.coachTargets) {
       const next = { ...profile, ...patch };
-      await food.savePlan(calcPlan(food.plan, { gender: next.gender ?? null, age: ageFromIso(next.date_of_birth), height: Number(next.height_cm ?? 175) }));
+      await food.savePlan(recalcTargets(food.plan, { gender: next.gender ?? null, age: ageFromIso(next.date_of_birth), height: Number(next.height_cm ?? 175) }, { prev }));
       toast(t('Saved. Your calorie and protein targets are updated.'), { icon: 'check' });
     } else toast(t('Saved'), { icon: 'check' });
     setOpen(null);

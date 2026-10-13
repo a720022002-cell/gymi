@@ -55,6 +55,9 @@ export const CY_PLAN: Record<Phase, { t: string; f: string; r: string }> = {
   },
 };
 
+/** An open period (no end logged) counts as ongoing for up to this many days; after that it's treated as ended at your usual length. */
+export const OPEN_PERIOD_MAX = 10;
+
 const diff = (a: string, b: string) => Math.round((new Date(`${b}T12:00:00`).getTime() - new Date(`${a}T12:00:00`).getTime()) / 864e5);
 
 /** Average cycle and period length from your history (falls back to your settings). */
@@ -63,7 +66,8 @@ export function averages(periods: Period[], s: CycleSettings) {
   const gaps: number[] = [];
   for (let i = 1; i < starts.length; i++) {
     const g = diff(starts[i - 1], starts[i]);
-    if (g >= 18 && g <= 45) gaps.push(g);
+    // Long cycles (PCOS, perimenopause) count too, up to about 3 months.
+    if (g >= 18 && g <= 90) gaps.push(g);
   }
   const recent = gaps.slice(-6);
   const cycle = recent.length ? Math.round(recent.reduce((a, b) => a + b, 0) / recent.length) : s.cycle_len;
@@ -81,19 +85,22 @@ export function cycleNow(periods: Period[], s: CycleSettings, today: string) {
   if (!last) return null;
   const day = diff(last.start_day, today) + 1;
   const ov = cycle - 14;
-  const onPeriod = last.end_day ? today <= last.end_day : day <= bleed;
+  // No end logged: still on it while it's under OPEN_PERIOD_MAX days old (even past your usual length), then treat it as ended.
+  const open = !last.end_day && day <= OPEN_PERIOD_MAX;
+  const onPeriod = last.end_day ? today <= last.end_day : open;
   const phase: Phase = onPeriod ? 'Period' : day < ov - 1 ? 'Follicular' : day <= ov + 1 ? 'Ovulation' : 'Luteal';
   const next = addDays(last.start_day, cycle);
   const ovDay = addDays(last.start_day, ov - 1);
-  return { last, day, cycle, bleed, varies, phase, next, untilNext: diff(today, next), ovDay, fertileFrom: addDays(ovDay, -5), fertileTo: addDays(ovDay, 1), late: day > cycle + 2, open: !last.end_day };
+  return { last, day, cycle, bleed, varies, phase, next, untilNext: diff(today, next), ovDay, fertileFrom: addDays(ovDay, -5), fertileTo: addDays(ovDay, 1), late: day > cycle + 2, open };
 }
 
 /** What a calendar day looks like: period, expected period, fertile, ovulation. */
 export function dayInfo(date: string, periods: Period[], s: CycleSettings, today: string) {
   const { cycle, bleed } = averages(periods, s);
-  // A period with no end yet lasts your usual number of days, but never past today.
+  // A period with no end yet runs to today while it's still open (under OPEN_PERIOD_MAX days), else your usual number of days.
   const endOf = (p: Period) => {
     if (p.end_day) return p.end_day;
+    if (diff(p.start_day, today) < OPEN_PERIOD_MAX) return today;
     const usual = addDays(p.start_day, bleed - 1);
     return usual < today ? usual : today;
   };
