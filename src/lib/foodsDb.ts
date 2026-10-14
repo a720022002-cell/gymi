@@ -23,6 +23,8 @@ export type DbFood = {
   sugar_100: number | null;
   fiber_100?: number | null;
   sodium_100?: number | null;
+  /** Extra label values per 100 (saturated fat, cholesterol, vitamins…), see lib/nutrients. */
+  nutrients?: Record<string, number> | null;
   parts: Part[] | null;
   sugar_high: boolean;
   fat_high: boolean;

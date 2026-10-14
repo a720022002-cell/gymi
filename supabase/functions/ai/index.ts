@@ -408,13 +408,20 @@ Return JSON: {"reply":"...","actions":[...],"suggest":[...],"card":{...},"memory
       return { ...out, site };
     }
     case 'label_photo':
-      return ask(task, `You read nutrition labels. ${LANG(lang)} Read the per 100 g (or 100 ml) column. If only per serving is shown, convert to per 100 g using the serving size.`, [
+      return ask(task, `You read nutrition labels. ${LANG(lang)} Read the per 100 g (or 100 ml) column. If only per serving is shown, convert to per 100 g using the serving size.
+Also read fiber_100 (g) and sodium_100 (mg; if only salt is printed, sodium mg = salt g × 400) when printed. In "extra_100" put any of these that are printed, per 100: sat_fat (g), trans_fat (g), chol (mg), added_sugar (g), vit_d (µg), calcium (mg), iron (mg), potassium (mg), vit_c (mg). If a vitamin or mineral is only given as % daily value, convert with these daily values: vitamin D 20 µg, calcium 1300 mg, iron 18 mg, potassium 4700 mg, vitamin C 90 mg. Leave out anything not printed; never guess.`, [
         { role: 'user', parts: [img(), { text: 'Read this nutrition label.' }] },
       ], {
         type: 'object',
         properties: {
           name: { type: 'string' }, unit: { type: 'string', enum: ['g', 'ml'] }, serving: { type: 'number' },
-          kcal_100: { type: 'number' }, protein_100: { type: 'number' }, carbs_100: { type: 'number' }, fat_100: { type: 'number' }, sugar_100: { type: 'number' }, readable: { type: 'boolean' },
+          kcal_100: { type: 'number' }, protein_100: { type: 'number' }, carbs_100: { type: 'number' }, fat_100: { type: 'number' }, sugar_100: { type: 'number' },
+          fiber_100: { type: 'number' }, sodium_100: { type: 'number' },
+          extra_100: {
+            type: 'object',
+            properties: Object.fromEntries(['sat_fat', 'trans_fat', 'chol', 'added_sugar', 'vit_d', 'calcium', 'iron', 'potassium', 'vit_c'].map((k) => [k, { type: 'number' }])),
+          },
+          readable: { type: 'boolean' },
         },
         required: ['kcal_100', 'protein_100', 'carbs_100', 'fat_100', 'readable'],
       });

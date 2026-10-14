@@ -39,6 +39,7 @@ export type FoodLog = {
   fat_high: boolean;
   food_id: string | null;
   plan_key: string | null;
+  barcode?: string | null;
   created_at: string;
 };
 

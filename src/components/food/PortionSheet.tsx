@@ -4,6 +4,7 @@ import { TextInput, View } from 'react-native';
 import { useT } from '@/i18n';
 import { useLogFood } from '@/lib/food';
 import { type DbFood, foodName, forGrams, type Part, partsTotal, servingLabel } from '@/lib/foodsDb';
+import { factsOf } from '@/lib/nutrients';
 import { fmt } from '@/lib/nutrition';
 import { naturalSugar } from '@/lib/sugar';
 import { useSettings } from '@/theme/settings';
@@ -14,6 +15,7 @@ import { fontFor, Text } from '../Text';
 import { useToast } from '../Toast';
 import { Button, Chip, Row, Springy } from '../ui';
 import { WarnChip } from './Chips';
+import { NutritionFacts, useMyFacts } from './NutritionFacts';
 
 /** Set how much you ate, then log it (design: SH.portion). Dishes show each part's grams. */
 export function PortionSheet({ food: f, onClose, onLogged }: { food: DbFood | null; onClose: () => void; onLogged?: () => void }) {
@@ -23,6 +25,7 @@ export function PortionSheet({ food: f, onClose, onLogged }: { food: DbFood | nu
   const logFood = useLogFood();
   const [g, setG] = useState(100);
   const [parts, setParts] = useState<Part[] | null>(null);
+  const [mine, setMine] = useMyFacts(f?.id ?? null);
 
   // Start from one serving each time a new food opens.
   const [prev, setPrev] = useState<DbFood | null>(null);
@@ -155,6 +158,17 @@ export function PortionSheet({ food: f, onClose, onLogged }: { food: DbFood | nu
           </Row>
         </View>
       )}
+      <NutritionFacts
+        per100={factsOf(f, mine)}
+        grams={tot.g}
+        unit={f.unit}
+        serving={f.serving_g}
+        factsKey={f.id}
+        mine={mine}
+        onMine={setMine}
+        main={{ kcal: tot.k, protein: tot.p, carbs: tot.c, fat: tot.f }}
+        bg="rgba(127,127,135,0.1)"
+      />
       <Row gap={6} style={{ marginTop: 12, alignItems: 'flex-start' }}>
         <Icon name="info" size={16} color={c.sec} />
         <Text variant="small" color="sec" style={{ flex: 1 }}>

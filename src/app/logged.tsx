@@ -4,6 +4,7 @@ import { View } from 'react-native';
 
 import { Field } from '@/components/Field';
 import { WarnChip } from '@/components/food/Chips';
+import { NutritionFacts, useMyFacts } from '@/components/food/NutritionFacts';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
@@ -11,6 +12,7 @@ import { Button, Card, Chip, Row } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
 import { type DbFood, foodSource, getFood } from '@/lib/foodsDb';
+import { type Facts, factsKey, factsOf, offFactsFor, withMine } from '@/lib/nutrients';
 import { fmt, hhmmOf, mealAt, mealChoices, planMeals, scaleIngredients } from '@/lib/nutrition';
 import { inGrams } from '@/lib/recipes';
 import { useSettings } from '@/theme/settings';
@@ -29,6 +31,19 @@ export default function LoggedScreen() {
   const [saving, setSaving] = useState(false);
 
   const foodId = log?.food_id ?? null;
+  // A scanned product that isn't in our food list: its label from Open Food Facts.
+  const barcode = !foodId ? (log?.barcode ?? null) : null;
+  const [off, setOff] = useState<{ code: string; f: Facts } | null>(null);
+  useEffect(() => {
+    if (!barcode) return;
+    let alive = true;
+    offFactsFor(barcode).then((f) => alive && setOff({ code: barcode, f }));
+    return () => {
+      alive = false;
+    };
+  }, [barcode]);
+  const key = factsKey(foodId, barcode);
+  const [mine, setMine] = useMyFacts(key);
   useEffect(() => {
     if (!foodId) return;
     let alive = true;
@@ -172,28 +187,10 @@ export default function LoggedScreen() {
         </>
       ) : f ? (
         <>
-          <Text variant="h3" style={{ marginTop: 22, marginBottom: 10, marginHorizontal: 2 }}>
-            {t('Nutrition per 100 {u}', { u: t(f.unit) })}
-          </Text>
-          <Card>
-            {(
-              [
-                ['Calories', `${fmt(f.kcal_100)} ${t('kcal')}`],
-                ['Protein', `${Math.round(f.protein_100 * 10) / 10} ${t('g')}`],
-                ['Carbs', `${Math.round(f.carbs_100 * 10) / 10} ${t('g')}`],
-                ['Fat', `${Math.round(f.fat_100 * 10) / 10} ${t('g')}`],
-                ...(f.sugar_100 != null ? ([['Sugar', `${Math.round(f.sugar_100 * 10) / 10} ${t('g')}`]] as const) : []),
-                ...(f.fiber_100 != null ? ([['Fiber', `${Math.round(+f.fiber_100 * 10) / 10} ${t('g')}`]] as const) : []),
-                ...(f.sodium_100 != null ? ([['Sodium', `${Math.round(+f.sodium_100)} ${t('mg')}`]] as const) : []),
-              ] as const
-            ).map(([a, b], i) => (
-              <Row key={a} style={{ justifyContent: 'space-between', marginTop: i ? 10 : 0 }}>
-                <Text color="sec">{t(a)}</Text>
-                <Text weight={700}>{b}</Text>
-              </Row>
-            ))}
-          </Card>
-          <Text variant="small" color="sec" style={{ marginHorizontal: 4 }}>
+          <View style={{ marginTop: 10 }}>
+            <NutritionFacts per100={factsOf(f, mine)} grams={100} unit={f.unit} serving={f.serving_g} factsKey={key} mine={mine} onMine={setMine} />
+          </View>
+          <Text variant="small" color="sec" style={{ marginTop: 12, marginHorizontal: 4 }}>
             {t('One serving: {s}', { s: `${Math.round(f.serving_g)} ${t(f.unit)}` })}
           </Text>
           {f.is_estimate ? (
@@ -202,6 +199,10 @@ export default function LoggedScreen() {
             </Text>
           ) : null}
         </>
+      ) : barcode && off && off.code === barcode && Object.keys(off.f).length ? (
+        <View style={{ marginTop: 10 }}>
+          <NutritionFacts per100={withMine(off.f, mine)} grams={100} unit="g" factsKey={key} mine={mine} onMine={setMine} />
+        </View>
       ) : (
         <Text variant="small" color="sec" style={{ marginTop: 16, marginHorizontal: 4 }}>
           {t('This was logged as a whole meal, so there is no ingredient list.')}
