@@ -8,6 +8,7 @@ import { Glass } from '@/components/Glass';
 import { Icon, type IconName, Mark } from '@/components/Icon';
 import { Ring } from '@/components/Ring';
 import { FreeMonthAlert } from '@/components/FreeMonthAlert';
+import { RecapGate } from '@/components/RecapGate';
 import { InviteCodeSheet } from '@/components/InviteCodeSheet';
 import { hoursText } from '@/components/coach/GymHours';
 import { CalendarButton, DayNav } from '@/components/DayNav';
@@ -161,6 +162,7 @@ export default function Home() {
         }}
       />
       {askCode ? null : <FreeMonthAlert />}
+      <RecapGate paused={askCode} />
     </Screen>
   );
 }

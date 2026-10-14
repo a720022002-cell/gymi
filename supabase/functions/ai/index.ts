@@ -518,6 +518,35 @@ Use the exact workout names and exercise ids from the plan. At most 4 changes; f
         required: ['summary', 'changes'],
       });
     }
+    case 'recap': {
+      // The weekly recap story: what went well, what got in the way, tips, and up to 3 changes the person can apply.
+      const system = `You are Gymi, a warm, honest fitness coach writing a short weekly recap that is shown as a story on the phone. ${LANG(lang)}
+You get last week's real numbers ("week"), the week before for comparison ("weekBefore"), which goals were hit ("goals"), the training plan, food targets, the goal, level and injuries.
+Use only these numbers and say them plainly (for example "you trained 2 of 4 days", "protein averaged 98 g of 150"). Never invent numbers. Every sentence is short and simple. Never give medical advice.
+- "headline": one short line to the person about their week (max 8 words). Celebrate if "allHit" is true; be kind and practical if not.
+- "wins": 1 to 3 real things that went well, even in a hard week.
+- "problems": only if not all goals were hit: up to 3 things that got in the way, each {"title","detail"}, found in the numbers (missed workout days and which weekdays, days far over or under calories, weekend vs weekdays, low protein, short sleep, low recovery). Otherwise [].
+- "tips": 2 or 3 practical tips to keep improving or to fix the problems, each {"title","detail"}, with local food ideas when about food (laban, eggs, chicken, dates…).
+- "suggest": up to 3 changes the app can apply, each ONE idea the person can pick:
+  training plan: {"type":"plan","title":"short line saying what changes and why","changes":[...]} with 1 or 2 changes from:
+    {"op":"sets","workout":"<workout name or all>","delta":-1|1}, {"op":"reps","workout":"<name or all>","reps":"8–12"},
+    {"op":"swap","workout":"<name>","from":"<exercise id from plan>","to":"<English exercise name from the exercise list>"},
+    {"op":"remove","workout":"<name>","ex":"<exercise id>"}, {"op":"add","workout":"<name>","search":"<English exercise name from the list>","sets":3,"reps":"10–12"}, {"op":"deload"}.
+    Use the exact workout names and exercise ids from "plan". Never anything that loads an injury.
+  food targets: {"type":"targets","title":"short reason","kcal":n,"protein":n,"water":ml} with only what changes (never when "coachManagesFood" is true). Change calories by at most 200 kcal.
+  If any goal was missed, give 1 to 3 suggestions that fit what went wrong, for example: workouts missed → shorter workouts ("sets" delta -1 on all, or "remove" the last exercise of the longest workout); low recovery or short sleep → "deload" or one set less; weight not moving the right way while calories were on target → change calories by 100 to 150 kcal; calories over on some days → keep the target, don't lower it (say so in a tip instead). If every goal was hit, give exactly 1 small step up (one more set for a muscle that gets less work, or a slightly heavier rep range). Only plan changes and food targets can be applied; everything else goes in "tips".`;
+      return ask(task, system, [{ role: 'user', parts: [{ text: JSON.stringify(b.data ?? {}).slice(0, 30000) }] }], {
+        type: 'object',
+        properties: {
+          headline: { type: 'string' },
+          wins: { type: 'array', items: { type: 'string' } },
+          problems: { type: 'array', items: { type: 'object', properties: { title: { type: 'string' }, detail: { type: 'string' } }, required: ['title', 'detail'] } },
+          tips: { type: 'array', items: { type: 'object', properties: { title: { type: 'string' }, detail: { type: 'string' } }, required: ['title', 'detail'] } },
+          suggest: { type: 'array', items: { type: 'object' } },
+        },
+        required: ['headline', 'wins', 'problems', 'tips', 'suggest'],
+      });
+    }
     case 'report':
       return ask(task, `You are a friendly fitness coach writing a short progress report. ${LANG(lang)} Use simple words and the real numbers given. Each point is one short sentence. Never give medical advice. "well": 2 or 3 things that went well. "improve": 2 or 3 things to improve, each with one small action. "focus": one clear goal for the next period.`, [
         { role: 'user', parts: [{ text: JSON.stringify(b.stats ?? {}).slice(0, 4000) }] },

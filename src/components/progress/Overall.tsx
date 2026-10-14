@@ -125,6 +125,7 @@ export function Overall({ go }: { go: (t: PTab, sub?: number) => void }) {
           </View>
         </Row>
       </Card>
+      <Button kind="soft" icon="play" title={t('Last week’s recap')} color={c.text} style={{ marginBottom: 12 }} onPress={() => router.push('/recap')} />
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 2 }}>
         {tile('scale', t('Weight'), cur ? `${fx(cur)} ${t('kg')}` : '–', hasDw ? `${arrow(dw)} ${fx(Math.abs(dw))} ${t('kg')}` : t('Log your weight'), () => go('body'), goodW)}

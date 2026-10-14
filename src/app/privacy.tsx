@@ -16,7 +16,7 @@ import { useSettings } from '@/theme/settings';
 
 const TABLES = [
   'profiles', 'food_plans', 'food_logs', 'saved_meals', 'calorie_moves', 'water_logs', 'train_plans', 'workout_logs', 'cardio_logs', 'step_logs',
-  'chat_messages', 'checkins', 'measurements', 'progress_photos', 'supplements', 'blood_tests', 'friend_share', 'activities', 'cycle_settings', 'cycle_periods', 'cycle_logs', 'food_facts_mine',
+  'chat_messages', 'checkins', 'measurements', 'progress_photos', 'supplements', 'blood_tests', 'friend_share', 'activities', 'cycle_settings', 'cycle_periods', 'cycle_logs', 'food_facts_mine', 'weekly_recaps',
 ];
 
 /** Privacy and data: download everything, or delete the account (design: privacy). */
