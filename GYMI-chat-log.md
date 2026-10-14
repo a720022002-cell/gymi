@@ -107,7 +107,9 @@ Passwords and keys are left out on purpose.
 - **Saved meals:** scan a barcode while building a meal, and edit saved meals.
 - **Food search:** "Recent" foods, and your own name for a scanned product (only you see it).
 - **Balance it** opens by itself from 100 kcal over, on a bulk or a cut.
-- **Weekly recap:** a sample to approve first: `docs/recap-sample.html`.
+- **Weekly recap (built):** a story about last week on the first open of a new week, with a celebration or "what got in the way", AI tips, and AI changes you pick and apply. Video: `docs/marketing/recap-demo.mp4`.
+- **Weight history:** tap the weight chart to see every weigh-in and fix or delete one.
+- **Coach:** answers in the language you write in; its suggested meal can be saved or logged.
 
 ---
 
