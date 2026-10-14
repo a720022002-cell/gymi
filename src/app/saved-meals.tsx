@@ -1,6 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
-import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { router } from 'expo-router';
+import { useState } from 'react';
 import { Platform, Share, TextInput, View } from 'react-native';
 
 import { Field } from '@/components/Field';
@@ -12,10 +12,9 @@ import { Button, Card, ErrorText, Label, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { type SavedMeal, useFood, useLogFood } from '@/lib/food';
 import { PickFood, per100 } from '@/components/food/PickFood';
+import { useScanProduct } from '@/components/food/useScanProduct';
 import { foodName } from '@/lib/foodsDb';
 import { fmt } from '@/lib/nutrition';
-import { takePendingBarcode } from '@/lib/pending';
-import { lookupProduct } from '@/lib/products';
 import { useSettings } from '@/theme/settings';
 
 type Ing = NonNullable<SavedMeal['ingredients']>[number] & { per: { k: number; p: number; c: number; f: number } };
@@ -301,27 +300,11 @@ function CreateMeal({ onDone, edit }: { onDone: () => void; edit?: SavedMeal }) 
   const [items, setItems] = useState<Ing[]>(() => (edit ? toIngs(edit) : []));
   const [picking, setPicking] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [scanning, setScanning] = useState(false);
 
-  // Back from the barcode scanner: look the product up and add one serving of it.
-  useFocusEffect(
-    useCallback(() => {
-      const code = takePendingBarcode();
-      if (!code) return;
-      setScanning(true);
-      lookupProduct(code, lang)
-        .catch(() => null)
-        .then((p) => {
-          setScanning(false);
-          if (!p) {
-            toast(t('We couldn’t find this product. Add it with your own numbers.'), { icon: 'info' });
-            return setPicking(true);
-          }
-          const n = [p.name, p.brand && !p.name.includes(p.brand) ? p.brand : null].filter(Boolean).join(', ');
-          setItems((xs) => [...xs, { id: p.id, n, g: Math.round(p.size), k: 0, p: 0, c: 0, f: 0, per: { k: p.k, p: p.p, c: p.c, f: p.f } }]);
-          toast(t('Added {name}', { name: n }), { icon: 'check' });
-        });
-    }, [lang, t, toast]),
+  // A scanned product is added as one serving.
+  const { scanning, scan } = useScanProduct(
+    (f) => setItems((xs) => [...xs, { id: f.id, n: f.n, g: f.g, k: 0, p: 0, c: 0, f: 0, per: f.per }]),
+    () => setPicking(true),
   );
 
   const tot = items.reduce((a, x) => ({ k: a.k + (x.per.k * x.g) / 100, p: a.p + (x.per.p * x.g) / 100, c: a.c + (x.per.c * x.g) / 100, f: a.f + (x.per.f * x.g) / 100 }), { k: 0, p: 0, c: 0, f: 0 });
@@ -399,7 +382,7 @@ function CreateMeal({ onDone, edit }: { onDone: () => void; edit?: SavedMeal }) 
           <Button small kind="soft" icon="plus" title={t('Add an ingredient')} style={{ alignSelf: 'stretch' }} onPress={() => setPicking(true)} />
         </View>
         <View style={{ flex: 1 }}>
-          <Button small kind="soft" icon="barcode" title={t('Scan a barcode')} loading={scanning} style={{ alignSelf: 'stretch' }} onPress={() => router.push({ pathname: '/barcode', params: { pick: '1' } })} />
+          <Button small kind="soft" icon="barcode" title={t('Scan a barcode')} loading={scanning} style={{ alignSelf: 'stretch' }} onPress={scan} />
         </View>
       </Row>
       {edit?.servings && edit.servings > 1 ? (
@@ -441,9 +424,13 @@ function CreateMeal({ onDone, edit }: { onDone: () => void; edit?: SavedMeal }) 
           setPicking(false);
           setItems([...items, { id: f.id, n: foodName(f, lang), g: Math.round(f.serving_g), k: 0, p: 0, c: 0, f: 0, per: per100(f) }]);
         }}
-        onOwn={(f) => {
+        onOwn={(fs) => {
           setPicking(false);
-          setItems([...items, { n: f.n, g: Math.round(f.g), k: 0, p: 0, c: 0, f: 0, per: f.per }]);
+          setItems((xs) => [...xs, ...fs.map((f) => ({ n: f.n, g: Math.round(f.g), k: 0, p: 0, c: 0, f: 0, per: f.per }))]);
+        }}
+        onScan={() => {
+          setPicking(false);
+          scan();
         }}
       />
     </Screen>

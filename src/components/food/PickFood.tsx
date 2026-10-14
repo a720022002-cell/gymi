@@ -7,6 +7,7 @@ import { Sheet } from '@/components/Sheet';
 import { Text } from '@/components/Text';
 import { Button, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
+import { aiErrorText, askAI } from '@/lib/ai';
 import { type DbFood, foodName, forGrams, partsTotal, searchFoods, servingLabel } from '@/lib/foodsDb';
 import { fmt } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
@@ -27,17 +28,53 @@ const num = (s: string) =>
     .replace(/[,٫]/g, '.')
     .replace(/[^\d.]/g, '') || 0;
 
-/** Search the food database and pick one ingredient, or add your own with your own numbers. */
-export function PickFood({ open, onClose, onPick, onOwn }: { open: boolean; onClose: () => void; onPick: (f: DbFood) => void; onOwn?: (f: OwnFood) => void }) {
+type AiItem = { name: string; grams: number; kcal: number; protein: number; carbs: number; fat: number };
+
+/**
+ * Search the food database and pick one ingredient, add your own with your own numbers, describe it for the AI
+ * ("70 g garlic sauce": only that is worked out, nothing else changes), or scan a barcode (`onScan`).
+ */
+export function PickFood({
+  open,
+  onClose,
+  onPick,
+  onOwn,
+  onScan,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onPick: (f: DbFood) => void;
+  onOwn?: (fs: OwnFood[]) => void;
+  onScan?: () => void;
+}) {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
   const [q, setQ] = useState('');
+  const [asking, setAsking] = useState(false);
+  const askAi = async () => {
+    const text = q.trim();
+    if (!text || !onOwn || asking) return;
+    setAsking(true);
+    const { result, error } = await askAI<{ items?: AiItem[] }>('food_text', { lang, text });
+    setAsking(false);
+    const items = (result?.items ?? []).filter((x) => x && x.name && +x.kcal > 0);
+    if (error || !items.length) return setAiErr(error ? aiErrorText(error) : 'I couldn’t work that out. Try saying the food and amount, like “70 g garlic sauce”.');
+    setAiErr(null);
+    setQ('');
+    onOwn(
+      items.map((x) => {
+        const g = Math.max(1, +x.grams || 100);
+        return { n: String(x.name).slice(0, 80), g: Math.round(g), per: { k: (+x.kcal * 100) / g, p: ((+x.protein || 0) * 100) / g, c: ((+x.carbs || 0) * 100) / g, f: ((+x.fat || 0) * 100) / g } };
+      }),
+    );
+  };
+  const [aiErr, setAiErr] = useState<string | null>(null);
   const [own, setOwn] = useState<{ n: string; g: string; k: string; p: string; c: string; f: string } | null>(null);
   const ownOk = !!own && own.n.trim() && num(own.g) > 0 && num(own.k) > 0;
   const saveOwn = () => {
     if (!own || !ownOk || !onOwn) return;
     const g = num(own.g);
-    onOwn({ n: own.n.trim().slice(0, 80), g, per: { k: (num(own.k) * 100) / g, p: (num(own.p) * 100) / g, c: (num(own.c) * 100) / g, f: (num(own.f) * 100) / g } });
+    onOwn([{ n: own.n.trim().slice(0, 80), g, per: { k: (num(own.k) * 100) / g, p: (num(own.p) * 100) / g, c: (num(own.c) * 100) / g, f: (num(own.f) * 100) / g } }]);
     setOwn(null);
   };
   const [results, setResults] = useState<DbFood[]>([]);
@@ -96,7 +133,35 @@ export function PickFood({ open, onClose, onPick, onOwn }: { open: boolean; onCl
       ) : (
         <View>
           <Text variant="h2">{t('Add an ingredient')}</Text>
-          <Field value={q} onChangeText={setQ} placeholder={t('Chicken breast, rice, laban…')} autoCorrect={false} />
+          <Field value={q} onChangeText={(v) => (setQ(v), setAiErr(null))} placeholder={t('Chicken breast, rice, laban…')} autoCorrect={false} />
+          {onOwn && q.trim() ? (
+            <Springy
+              onPress={askAi}
+              disabled={asking}
+              scaleTo={0.99}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 52, marginTop: 10, paddingHorizontal: 14, borderRadius: 18, backgroundColor: 'rgba(51,85,255,0.14)' }}>
+              {asking ? <ActivityIndicator color={c.cobalt} /> : <Icon name="sparkle" size={18} color={c.cobalt} />}
+              <Text variant="small" weight={700} style={{ flex: 1 }}>
+                {asking ? t('Working out the calories') : t('Add “{q}” with AI', { q: q.trim() })}
+              </Text>
+            </Springy>
+          ) : null}
+          {aiErr ? (
+            <Text variant="small" color="down" style={{ marginTop: 6 }}>
+              {t(aiErr)}
+            </Text>
+          ) : null}
+          {onScan ? (
+            <Springy
+              onPress={onScan}
+              scaleTo={0.99}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 52, marginTop: 10, paddingHorizontal: 14, borderRadius: 18, backgroundColor: 'rgba(127,127,135,0.1)' }}>
+              <Icon name="barcode" size={18} color={c.cobalt} />
+              <Text variant="small" weight={700} style={{ flex: 1 }}>
+                {t('Scan a barcode')}
+              </Text>
+            </Springy>
+          ) : null}
           <View style={{ marginTop: 10, minHeight: 200 }}>
             {loading && !results.length ? (
               <ActivityIndicator color={c.cobalt} style={{ marginTop: 30 }} />

@@ -6,6 +6,7 @@ import { TextInput, View } from 'react-native';
 import { Field } from '@/components/Field';
 import { WarnChip } from '@/components/food/Chips';
 import { per100, PickFood } from '@/components/food/PickFood';
+import { useScanProduct } from '@/components/food/useScanProduct';
 import { Thinking } from '@/components/food/Thinking';
 import { Icon, Mark } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
@@ -73,6 +74,11 @@ export default function MealResult() {
   const [busy, setBusy] = useState(true);
   const [note, setNote] = useState('');
   const [title, setTitle] = useState('');
+  // A scanned product is added as one more ingredient (the photo isn't looked at again).
+  const { scanning, scan } = useScanProduct(
+    (f) => setRows((xs) => [...xs, { name: f.n, g: f.g, u: 'g', own: true, per: { k: f.per.k / 100, p: f.per.p / 100, c: f.per.c / 100, f: f.per.f / 100 } }]),
+    () => setPicking(true),
+  );
 
   const run = (withNote?: string, pic = photo) => {
     setBusy(true);
@@ -241,7 +247,7 @@ export default function MealResult() {
               ))}
             </View>
           ) : null}
-          <Button small kind="soft" icon="plus" title={t('Add an ingredient')} style={{ marginTop: 10, alignSelf: 'stretch' }} onPress={() => setPicking(true)} />
+          <Button small kind="soft" icon="plus" title={t('Add an ingredient')} loading={scanning} style={{ marginTop: 10, alignSelf: 'stretch' }} onPress={() => setPicking(true)} />
           <Field label={t('How was it cooked?')} optional={t('(optional)')} value={note} onChangeText={setNote} placeholder={t('For example: chicken grilled, rice cooked with a little ghee.')} />
           {note.trim() ? <Button small kind="soft" icon="sparkle" title={t('Ask again with this')} style={{ marginTop: 8 }} onPress={() => run(note.trim())} /> : null}
 
@@ -305,9 +311,13 @@ export default function MealResult() {
           const per = per100(f);
           setRows([...rows, { name: foodName(f, lang), g: Math.round(f.serving_g), u: 'g', per: { k: per.k / 100, p: per.p / 100, c: per.c / 100, f: per.f / 100 } }]);
         }}
-        onOwn={(f) => {
+        onOwn={(fs) => {
           setPicking(false);
-          setRows([...rows, { name: f.n, g: Math.round(f.g), u: 'g', own: true, per: { k: f.per.k / 100, p: f.per.p / 100, c: f.per.c / 100, f: f.per.f / 100 } }]);
+          setRows((xs) => [...xs, ...fs.map((f) => ({ name: f.n, g: Math.round(f.g), u: 'g' as const, own: true, per: { k: f.per.k / 100, p: f.per.p / 100, c: f.per.c / 100, f: f.per.f / 100 } }))]);
+        }}
+        onScan={() => {
+          setPicking(false);
+          scan();
         }}
       />
     </Screen>

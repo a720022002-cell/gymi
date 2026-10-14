@@ -3767,4 +3767,6 @@ export const AR: Record<string, string> = {
   "Day off": "إجازة",
   "Your first recap comes on {day}": "أول ملخص أسبوعي يجيك يوم {day}",
   "It covers a whole week in Gymi, so keep logging this week.": "الملخص يغطي أسبوع كامل في Gymi، فكمّل تسجيل هالأسبوع.",
+  "Add “{q}” with AI": "أضف «{q}» بالذكاء الاصطناعي",
+  "I couldn’t work that out. Try saying the food and amount, like “70 g garlic sauce”.": "ما قدرت أحسبها. اكتب الأكل والكمية، مثل «صوص ثوم 70 جرام».",
 };
