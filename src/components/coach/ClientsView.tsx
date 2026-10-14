@@ -202,7 +202,7 @@ export function ClientsView({ tab }: { tab?: boolean }) {
               title={t('Accept')}
               style={{ flex: 1 }}
               onPress={async () => {
-                if (!(await coachRespond(x.id, true))) toast(t('They already joined another coach.'), { icon: 'info' });
+                if (!(await coachRespond(x.id, true))) toast(t(full ? 'All your spots are full. Add spots in Listing and packages first.' : 'They already joined another coach.'), { icon: 'info' });
                 load();
               }}
             />

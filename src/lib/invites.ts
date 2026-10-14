@@ -6,7 +6,8 @@ import { supabase } from './supabase';
 /** A free month of Pro for every 5 friends who join with your code (design: REF_GOAL). */
 export const REF_GOAL = 5;
 
-export type MyInvite = { code: string | null; count: number; months: number };
+/** `count`: friends who joined and have used Gymi on 2 days (they count toward free months); `waiting`: joined, not yet. */
+export type MyInvite = { code: string | null; count: number; waiting?: number; months: number };
 export type ClaimResult = { status: 'ok' | 'friends' | 'requested' | 'bad' | 'self' | 'auth' | 'failed'; name?: string | null; username?: string };
 
 /** Your personal code ("OMAR-7K2"), how many friends joined with it and the free months earned. */

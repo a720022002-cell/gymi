@@ -3647,4 +3647,7 @@ export const AR: Record<string, string> = {
   "−0.4 kg a week": "−0.4 كجم بالأسبوع",
   "−0.5 to 0.75 kg a week": "−0.5 إلى 0.75 كجم بالأسبوع",
   "−0.75 kg a week": "−0.75 كجم بالأسبوع",
+  "A friend counts once they’ve used Gymi on 2 different days.": "الصديق ينحسب لما يستخدم Gymi في يومين مختلفين.",
+  "{n} joined and will count once they use Gymi.": "{n} سجلوا وبينحسبون لما يستخدمون Gymi.",
+  "All your spots are full. Add spots in Listing and packages first.": "كل أماكنك مليانة. زِد الأماكن من «صفحتك وباقاتك» أول.",
 };

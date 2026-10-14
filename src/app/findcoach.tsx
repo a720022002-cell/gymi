@@ -175,7 +175,7 @@ export function CodeSheet({ open, onClose }: { open: boolean; onClose: () => voi
             toast(t('You’re connected with your coach'), { ai: true });
             return router.replace('/mycoach');
           }
-          setErr(t(r === 'has_coach' ? 'You already have a coach. End that first.' : r === 'self' ? 'That’s your own code.' : 'That code isn’t right or was already used.'));
+          setErr(t(r === 'has_coach' ? 'You already have a coach. End that first.' : r === 'full' ? 'This coach is full right now. Check back soon.' : r === 'self' ? 'That’s your own code.' : 'That code isn’t right or was already used.'));
         }}
       />
     </Sheet>

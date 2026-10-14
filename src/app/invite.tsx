@@ -90,8 +90,14 @@ export default function Invite() {
           ))}
         </Row>
         <Text variant="small" color="sec" style={{ marginTop: 12 }}>
-          {t('Every {n} friends who join with your code gives you 1 month of Gymi Premium free.', { n: REF_GOAL })}
+          {t('Every {n} friends who join with your code gives you 1 month of Gymi Premium free.', { n: REF_GOAL })}{' '}
+          {t('A friend counts once they’ve used Gymi on 2 different days.')}
         </Text>
+        {inv?.waiting ? (
+          <Text variant="small" color="sec" style={{ marginTop: 6 }}>
+            {t('{n} joined and will count once they use Gymi.', { n: inv.waiting })}
+          </Text>
+        ) : null}
         {earned ? (
           <Row gap={10} style={{ marginTop: 12, backgroundColor: c.inset, borderRadius: 14, padding: 12 }}>
             <Icon name="check" size={20} color={c.up} strokeWidth={2.6} />

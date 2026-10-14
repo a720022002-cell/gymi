@@ -1031,7 +1031,7 @@ function SettingsSheet({ st, uid, onDone }: { st: State; uid: string; onDone: ()
         {t('Usual cycle length (days)')}
       </Text>
       <Card style={{ marginTop: 8 }}>
-        <Stepper onMinus={() => setS({ ...s, cycle_len: Math.max(18, s.cycle_len - 1) })} onPlus={() => setS({ ...s, cycle_len: Math.min(45, s.cycle_len + 1) })} labels={[t('Less'), t('More')]}>
+        <Stepper onMinus={() => setS({ ...s, cycle_len: Math.max(18, s.cycle_len - 1) })} onPlus={() => setS({ ...s, cycle_len: Math.min(90, s.cycle_len + 1) })} labels={[t('Less'), t('More')]}>
           <Text num size={26}>
             {s.cycle_len}
           </Text>
