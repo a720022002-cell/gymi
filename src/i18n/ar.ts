@@ -3674,4 +3674,9 @@ export const AR: Record<string, string> = {
   "Vitamin C": "فيتامين سي",
   "added by you": "أضفته أنت",
   "µg": "مكجم",
+  "Edit meal": "عدّل الوجبة",
+  "Scan a barcode": "امسح باركود",
+  "These amounts are for one serving.": "هذي الكميات لحصة وحدة.",
+  "We couldn’t find this product. Add it with your own numbers.": "ما لقينا هالمنتج. أضفه بأرقامك.",
+  "Save changes": "احفظ التعديلات",
 };

@@ -1,5 +1,5 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import { View } from 'react-native';
 
@@ -10,6 +10,7 @@ import { Text } from '@/components/Text';
 import { Glass } from '@/components/Glass';
 import { Button, Card, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
+import { setPendingBarcode } from '@/lib/pending';
 import { useSettings } from '@/theme/settings';
 
 /** Phone apps: scan a food barcode with the camera, or type the numbers. */
@@ -20,11 +21,19 @@ export default function Barcode() {
   const [manual, setManual] = useState(false);
   const [torch, setTorch] = useState(false);
   const done = useRef(false);
+  // Opened to pick a product (a saved meal): hand the code back instead of opening the product.
+  const { pick } = useLocalSearchParams<{ pick?: string }>();
+  const go = (code: string) => {
+    if (pick) {
+      setPendingBarcode(code);
+      router.back();
+    } else router.replace({ pathname: '/product', params: { code } });
+  };
 
   const found = (code: string) => {
     if (done.current || !/^\d{8,14}$/.test(code)) return;
     done.current = true;
-    router.replace({ pathname: '/product', params: { code } });
+    go(code);
   };
 
   return (
@@ -58,7 +67,7 @@ export default function Barcode() {
         {t('Point at the barcode on the package. It scans by itself.')}
       </Text>
       <Button kind="glass" title={t('Enter the code by hand')} style={{ marginTop: 12 }} onPress={() => setManual(true)} />
-      <ManualCode open={manual} onClose={() => setManual(false)} onCode={(code) => router.replace({ pathname: '/product', params: { code } })} />
+      <ManualCode open={manual} onClose={() => setManual(false)} onCode={(code) => go(code)} />
     </Screen>
   );
 }

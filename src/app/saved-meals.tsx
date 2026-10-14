@@ -1,6 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Platform, Share, TextInput, View } from 'react-native';
 
 import { Field } from '@/components/Field';
@@ -14,6 +14,8 @@ import { type SavedMeal, useFood, useLogFood } from '@/lib/food';
 import { PickFood, per100 } from '@/components/food/PickFood';
 import { foodName } from '@/lib/foodsDb';
 import { fmt } from '@/lib/nutrition';
+import { takePendingBarcode } from '@/lib/pending';
+import { lookupProduct } from '@/lib/products';
 import { useSettings } from '@/theme/settings';
 
 type Ing = NonNullable<SavedMeal['ingredients']>[number] & { per: { k: number; p: number; c: number; f: number } };
@@ -25,14 +27,17 @@ export default function SavedMeals() {
   const food = useFood();
   const logFood = useLogFood();
   const [create, setCreate] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [codeErr, setCodeErr] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
 
   const opened = food.saved.find((m) => m.id === openId);
+  const editing = food.saved.find((m) => m.id === editId);
   if (create) return <CreateMeal onDone={() => setCreate(false)} />;
-  if (opened) return <MealDetail m={opened} onClose={() => setOpenId(null)} />;
+  if (editing) return <CreateMeal edit={editing} onDone={() => setEditId(null)} />;
+  if (opened) return <MealDetail m={opened} onClose={() => setOpenId(null)} onEdit={() => setEditId(opened.id)} />;
 
   const addCode = async () => {
     const v = code.trim().toUpperCase();
@@ -146,7 +151,7 @@ export default function SavedMeals() {
 }
 
 /** One saved meal: totals, its shareable code, log it, or remove it (design: savedmeal). */
-function MealDetail({ m, onClose }: { m: SavedMeal; onClose: () => void }) {
+function MealDetail({ m, onClose, onEdit }: { m: SavedMeal; onClose: () => void; onEdit: () => void }) {
   const { t } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
@@ -254,6 +259,7 @@ function MealDetail({ m, onClose }: { m: SavedMeal; onClose: () => void }) {
           </View>
         </Row>
       </Card>
+      <Button kind="soft" icon="edit" title={t('Edit meal')} color={c.text} style={{ marginTop: 8 }} onPress={onEdit} />
       <Button
         title={t('Log this meal')}
         style={{ marginTop: 8 }}
@@ -278,15 +284,45 @@ function MealDetail({ m, onClose }: { m: SavedMeal; onClose: () => void }) {
   );
 }
 
-function CreateMeal({ onDone }: { onDone: () => void }) {
+/** Ingredients of a saved meal, ready to edit (per 100 g from what was saved). A meal saved without a list is one item. */
+function toIngs(m: SavedMeal): Ing[] {
+  const list = m.ingredients?.filter((x) => x.g > 0) ?? [];
+  if (list.length) return list.map((x) => ({ ...x, per: { k: (x.k * 100) / x.g, p: (x.p * 100) / x.g, c: (x.c * 100) / x.g, f: (x.f * 100) / x.g } }));
+  return [{ n: m.name, g: 100, k: m.kcal, p: m.protein, c: m.carbs, f: m.fat, per: { k: m.kcal, p: m.protein, c: m.carbs, f: m.fat } }];
+}
+
+/** Make a meal, or change one you saved (`edit`). Ingredients come from the food list, a barcode, or your own numbers. */
+function CreateMeal({ onDone, edit }: { onDone: () => void; edit?: SavedMeal }) {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
   const food = useFood();
-  const [name, setName] = useState('');
-  const [items, setItems] = useState<Ing[]>([]);
+  const [name, setName] = useState(edit?.name ?? '');
+  const [items, setItems] = useState<Ing[]>(() => (edit ? toIngs(edit) : []));
   const [picking, setPicking] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [scanning, setScanning] = useState(false);
+
+  // Back from the barcode scanner: look the product up and add one serving of it.
+  useFocusEffect(
+    useCallback(() => {
+      const code = takePendingBarcode();
+      if (!code) return;
+      setScanning(true);
+      lookupProduct(code, lang)
+        .catch(() => null)
+        .then((p) => {
+          setScanning(false);
+          if (!p) {
+            toast(t('We couldn’t find this product. Add it with your own numbers.'), { icon: 'info' });
+            return setPicking(true);
+          }
+          const n = [p.name, p.brand && !p.name.includes(p.brand) ? p.brand : null].filter(Boolean).join(', ');
+          setItems((xs) => [...xs, { id: p.id, n, g: Math.round(p.size), k: 0, p: 0, c: 0, f: 0, per: { k: p.k, p: p.p, c: p.c, f: p.f } }]);
+          toast(t('Added {name}', { name: n }), { icon: 'check' });
+        });
+    }, [lang, t, toast]),
+  );
 
   const tot = items.reduce((a, x) => ({ k: a.k + (x.per.k * x.g) / 100, p: a.p + (x.per.p * x.g) / 100, c: a.c + (x.per.c * x.g) / 100, f: a.f + (x.per.f * x.g) / 100 }), { k: 0, p: 0, c: 0, f: 0 });
   const ok = name.trim() && items.some((x) => x.g > 0);
@@ -295,7 +331,7 @@ function CreateMeal({ onDone }: { onDone: () => void }) {
     if (!ok) return;
     setSaving(true);
     const list = items.filter((x) => x.g > 0);
-    const row = await food.saveMeal({
+    const meal = {
       name: name.trim(),
       items: list.map((x) => `${x.n} ${Math.round(x.g)} ${t('g')}`).join(', '),
       ingredients: list.map(({ id, n, g, per }) => ({ id, n, g, k: (per.k * g) / 100, p: (per.p * g) / 100, c: (per.c * g) / 100, f: (per.f * g) / 100 })),
@@ -303,7 +339,8 @@ function CreateMeal({ onDone }: { onDone: () => void }) {
       protein: Math.round(tot.p),
       carbs: Math.round(tot.c),
       fat: Math.round(tot.f),
-    });
+    };
+    const row = edit ? await food.updateMeal(edit.id, meal) : await food.saveMeal(meal);
     setSaving(false);
     if (!row) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
     toast(t('Saved {name}', { name: row.name }), { icon: 'bookmark' });
@@ -311,7 +348,7 @@ function CreateMeal({ onDone }: { onDone: () => void }) {
   };
 
   return (
-    <Screen title={t('Create a meal')} back onBack={onDone}>
+    <Screen title={t(edit ? 'Edit meal' : 'Create a meal')} back onBack={onDone}>
       <Text color="sec">{t('Search each ingredient, set how much, and the calories add up as you go.')}</Text>
       <Field label={t('Meal name')} value={name} onChangeText={setName} placeholder={t('My post-gym bowl')} maxLength={60} />
       <Label>{t('Ingredients')}</Label>
@@ -357,7 +394,19 @@ function CreateMeal({ onDone }: { onDone: () => void }) {
           ))}
         </View>
       ) : null}
-      <Button small kind="soft" icon="plus" title={t('Add an ingredient')} style={{ marginTop: 10, alignSelf: 'stretch' }} onPress={() => setPicking(true)} />
+      <Row gap={8} style={{ marginTop: 10 }}>
+        <View style={{ flex: 1 }}>
+          <Button small kind="soft" icon="plus" title={t('Add an ingredient')} style={{ alignSelf: 'stretch' }} onPress={() => setPicking(true)} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Button small kind="soft" icon="barcode" title={t('Scan a barcode')} loading={scanning} style={{ alignSelf: 'stretch' }} onPress={() => router.push({ pathname: '/barcode', params: { pick: '1' } })} />
+        </View>
+      </Row>
+      {edit?.servings && edit.servings > 1 ? (
+        <Text variant="xs" color="sec" style={{ marginTop: 8, marginHorizontal: 4 }}>
+          {t('These amounts are for one serving.')}
+        </Text>
+      ) : null}
 
       <Card style={{ marginTop: 16, alignItems: 'center' }}>
         <Text num size={34}>
@@ -383,7 +432,7 @@ function CreateMeal({ onDone }: { onDone: () => void }) {
           ))}
         </Row>
       </Card>
-      <Button title={t('Save meal')} disabled={!ok} loading={saving} style={{ marginTop: 8 }} onPress={save} />
+      <Button title={t(edit ? 'Save changes' : 'Save meal')} disabled={!ok} loading={saving} style={{ marginTop: 8 }} onPress={save} />
 
       <PickFood
         open={picking}

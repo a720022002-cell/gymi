@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { createElement, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { ManualCode } from '@/components/food/ManualCode';
 import { Text } from '@/components/Text';
 import { Button, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
+import { setPendingBarcode } from '@/lib/pending';
 import { reader, readBarcode, readBarcodeFile } from '@/lib/readBarcode';
 
 const NOT_READ = 'Couldn’t read the barcode. Get closer, keep it sharp and well lit, then try again.';
@@ -26,6 +27,14 @@ export default function Barcode() {
   const [msg, setMsg] = useState<string | null>(null);
   const [manual, setManual] = useState(false);
   const done = useRef(false);
+  // Opened to pick a product (a saved meal): hand the code back instead of opening the product.
+  const { pick } = useLocalSearchParams<{ pick?: string }>();
+  const go = (code: string) => {
+    if (pick) {
+      setPendingBarcode(code);
+      router.back();
+    } else router.replace({ pathname: '/product', params: { code } });
+  };
 
   const found = (code: string) => {
     if (done.current) return;
@@ -33,7 +42,7 @@ export default function Barcode() {
     try {
       navigator.vibrate?.(30);
     } catch {}
-    router.replace({ pathname: '/product', params: { code } });
+    go(code);
   };
 
   useEffect(() => {

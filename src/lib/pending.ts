@@ -8,3 +8,12 @@ export const takePendingPhoto = () => {
   pending = null;
   return p;
 };
+
+/** A barcode scanned for a screen that asked for one (like adding a product to a saved meal). */
+let pendingCode: string | null = null;
+export const setPendingBarcode = (c: string | null) => (pendingCode = c);
+export const takePendingBarcode = () => {
+  const c = pendingCode;
+  pendingCode = null;
+  return c;
+};

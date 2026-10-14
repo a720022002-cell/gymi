@@ -132,6 +132,8 @@ type Food = {
   restoreLog: (l: FoodLog) => Promise<void>;
   saved: SavedMeal[];
   saveMeal: (m: NewSavedMeal) => Promise<SavedMeal | null>;
+  /** Change a saved meal (name, ingredients, totals). Its code stays the same. */
+  updateMeal: (id: string, patch: Partial<NewSavedMeal>) => Promise<SavedMeal | null>;
   deleteMeal: (id: string) => Promise<void>;
   /** Copy someone's meal into your saved meals by its code. */
   addMealByCode: (code: string) => Promise<{ status: 'ok' | 'not_found' | 'exists' | 'failed'; meal?: SavedMeal }>;
@@ -446,6 +448,13 @@ export function FoodProvider({ children }: PropsWithChildren) {
     return { status: r.status === 'not_found' || r.status === 'exists' ? r.status : 'failed' };
   }, []);
 
+  const updateMeal = useCallback(async (id: string, patch: Partial<NewSavedMeal>) => {
+    const { id: _id, code: _c, from_code: _f, ...allowed } = patch as Partial<SavedMeal>;
+    const { data } = await supabase.from('saved_meals').update(allowed).eq('id', id).select('*').single();
+    if (data) setSaved((xs) => xs.map((x) => (x.id === id ? (data as SavedMeal) : x)));
+    return (data as SavedMeal) ?? null;
+  }, []);
+
   const deleteMeal = useCallback(async (id: string) => {
     setSaved((xs) => xs.filter((x) => x.id !== id));
     await supabase.from('saved_meals').delete().eq('id', id);
@@ -546,6 +555,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       restoreLog,
       saved,
       saveMeal,
+      updateMeal,
       deleteMeal,
       addMealByCode,
       moves,
@@ -568,7 +578,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       typeSeed,
       openTyping,
     }),
-    [day, setDay, isToday, loadedDay, balance, logOpen, setLogOpen, typeSeed, openTyping, coach, coachMeals, addMealByCode, ready, today, setupDone, plan, person, draft, savePlan, applyWeight, weightNote, clearWeightNote, preg, updatePlan, logs, eaten, target, dayGoal, coachTargets, kcalLeft, addLog, deleteLog, setLogMeal, updateLog, restoreLog, saved, saveMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, addCardio, deleteCardio, steps, setSteps, addWater],
+    [day, setDay, isToday, loadedDay, balance, logOpen, setLogOpen, typeSeed, openTyping, coach, coachMeals, addMealByCode, ready, today, setupDone, plan, person, draft, savePlan, applyWeight, weightNote, clearWeightNote, preg, updatePlan, logs, eaten, target, dayGoal, coachTargets, kcalLeft, addLog, deleteLog, setLogMeal, updateLog, restoreLog, saved, saveMeal, updateMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, addCardio, deleteCardio, steps, setSteps, addWater],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
