@@ -3,7 +3,7 @@ import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Modal, Pressable, useWindowDimensions } from 'react-native';
 
 import { useT } from '@/i18n';
-import { useFood } from '@/lib/food';
+import { OVER_KCAL, useFood } from '@/lib/food';
 import { fmt } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
 
@@ -15,8 +15,9 @@ const KEY = 'gymi.ringClosed';
 const COLORS = ['#3355FF', '#22C55E', '#F59E0B', '#EF4444', '#A855F7', '#06B6D4', '#FFFFFF'];
 const CHEERS = ['Ring closed!', 'Nailed it!', 'Goal hit!', 'Right on target!'];
 
-/** Close enough to the day's calories to count: 95% to 110% of the goal (plus cardio). */
-const hit = (eaten: number, max: number) => max > 0 && eaten >= max * 0.95 && eaten <= max * 1.1;
+/** Close enough to the day's calories to count: 95% of the goal (plus cardio) up to 10% or 100 kcal over, whichever is less.
+ * More than that opens the balance sheet instead. */
+const hit = (eaten: number, max: number) => max > 0 && eaten >= max * 0.95 && eaten < Math.min(max * 1.1, max + OVER_KCAL);
 
 /** A celebration with confetti the first time today's calories land on the goal (design: ring closed). Once a day. */
 export function RingClosed() {

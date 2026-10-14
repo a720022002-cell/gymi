@@ -581,6 +581,9 @@ export function useFood() {
 }
 
 /** Log food with an Undo toast; opens the balance sheet if this goes over today's calories. */
+/** This much over the day's calories opens the balance sheet (unless 10% over comes first). */
+export const OVER_KCAL = 100;
+
 export function useLogFood() {
   const food = useFood();
   return useCallback(
@@ -598,9 +601,9 @@ export function useLogFood() {
         setTimeout(() => showCaffeineAlert(caf), 900);
         return row;
       }
-      // Landing up to 10% over still counts as closing the ring (celebrated instead), so the balance sheet waits until it's more.
+      // A little over still counts as closing the ring (celebrated instead); from 100 kcal over (or 10%), offer to balance it.
       const max = food.dayGoal(food.day) + food.burned;
-      const wayOver = food.eaten.k + item.kcal > max * 1.1;
+      const wayOver = food.eaten.k + item.kcal >= Math.min(max * 1.1, max + OVER_KCAL);
       if (food.isToday && !wasOver && wayOver && food.kcalLeft - item.kcal < 0) setTimeout(() => food.openBalance('over'), 900);
       return row;
     },
