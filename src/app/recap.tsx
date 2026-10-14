@@ -447,7 +447,7 @@ function SlideBody(p: BodyProps) {
         <AiTag t={t} label="Gymi AI reading" />
         <H>{t('You hit {a} of {b} goals', { a: p.goals.filter((g) => g.ok).length, b: p.goals.length })}</H>
         <Goals t={t} goals={p.goals} />
-        {p.aiState !== 'ready' ? <Thinking t={t} failed={p.aiState === 'failed'} /> : (ai?.problems ?? []).map((n, j) => <Note key={j} icon={(['cal', 'food', 'moon'] as IconName[])[j % 3]} title={n.title} detail={n.detail} />)}
+        {p.aiState !== 'ready' ? <Thinking t={t} failed={p.aiState === 'failed'} /> : (ai?.problems ?? []).map((n, j) => <Note key={j} icon={(['cal', 'food', 'moon'] as const)[j % 3]} title={n.title} detail={n.detail} />)}
       </View>
     );
   if (p.k === 'tips')
@@ -456,7 +456,7 @@ function SlideBody(p: BodyProps) {
         <Eyebrow>{t(p.allHit ? 'Keep it going' : 'How to get there')}</Eyebrow>
         <AiTag t={t} label="Gymi AI suggestions" />
         <H>{t(p.allHit ? 'What could get you even better results' : 'What will help next week')}</H>
-        {p.aiState !== 'ready' ? <Thinking t={t} failed={p.aiState === 'failed'} /> : (ai?.tips ?? []).map((n, j) => <Note key={j} icon={(['dumbbell', 'food', 'up'] as IconName[])[j % 3]} title={n.title} detail={n.detail} />)}
+        {p.aiState !== 'ready' ? <Thinking t={t} failed={p.aiState === 'failed'} /> : (ai?.tips ?? []).map((n, j) => <Note key={j} icon={(['train', 'food', 'up'] as const)[j % 3]} title={n.title} detail={n.detail} />)}
       </View>
     );
   return <ApplySlide {...p} />;
