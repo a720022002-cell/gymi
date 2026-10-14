@@ -91,7 +91,8 @@ export default function MachineScreen() {
     setGroup(result.group ?? null);
     if (result.known && (result.id || result.alternatives?.length)) {
       const [hit, ...others] = await Promise.all([result.id ? getExercise(result.id) : null, ...(result.alternatives ?? []).map(getExercise)]);
-      setMatch(hit);
+      // A guess isn't picked for you: you choose from the look-alikes.
+      setMatch(result.confidence === 'low' ? null : hit);
       setAlts([hit, ...others].filter((e): e is DbExercise => !!e));
       if (!hit) setName('');
     } else if (result.known) {
@@ -139,7 +140,7 @@ export default function MachineScreen() {
   };
 
   // Not sure (or it picked nothing): the look-alikes are shown to choose from.
-  const unsure = !!found && ((alts.length > 1 && found.confidence !== 'high') || (alts.length > 0 && !found.id));
+  const unsure = !!found && alts.length > 0 && (!found.id || found.confidence === 'low' || (found.confidence !== 'high' && alts.length > 1));
 
   // A common exercise for the same muscles, so you know what this can replace (design: "Swaps for").
   const swapFor = (() => {
@@ -229,34 +230,36 @@ export default function MachineScreen() {
                   {t('Read on the machine: {x}', { x: found.label.trim().slice(0, 80) })}
                 </Text>
               ) : null}
-              <Card style={{ marginTop: 16 }}>
-                <Row style={{ justifyContent: 'space-between' }}>
-                  <Text variant="small" color="sec">
-                    {t('Works')}
-                  </Text>
-                  <Text variant="small" weight={700} style={{ flex: 1, textAlign: lang === 'ar' ? 'left' : 'right' }}>
-                    {match && match.id !== found.id ? muscleLabel(match.muscle as Muscle, lang, t) : (lang === 'ar' ? found.works_ar : found.works) || muscleLabel(found.group, lang, t)}
-                  </Text>
-                </Row>
-                <Row style={{ justifyContent: 'space-between', marginTop: 8 }}>
-                  <Text variant="small" color="sec">
-                    {t('Start with')}
-                  </Text>
-                  <Text variant="small" weight={700}>
-                    {t('{s} × {r} at a weight you could do 2 more times', { s: Math.round(found.sets || 3), r: /\d/.test(found.reps ?? '') ? found.reps! : '10–12' })}
-                  </Text>
-                </Row>
-                {swapFor ? (
-                  <Row style={{ justifyContent: 'space-between', marginTop: 8 }}>
+              {unsure && !match ? null : (
+                <Card style={{ marginTop: 16 }}>
+                  <Row style={{ justifyContent: 'space-between' }}>
                     <Text variant="small" color="sec">
-                      {t('Swaps for')}
+                      {t('Works')}
                     </Text>
-                    <Text variant="small" weight={700}>
-                      {swapFor}
+                    <Text variant="small" weight={700} style={{ flex: 1, textAlign: lang === 'ar' ? 'left' : 'right' }}>
+                      {match && match.id !== found.id ? muscleLabel(match.muscle as Muscle, lang, t) : (lang === 'ar' ? found.works_ar : found.works) || muscleLabel(found.group, lang, t)}
                     </Text>
                   </Row>
-                ) : null}
-              </Card>
+                  <Row style={{ justifyContent: 'space-between', marginTop: 8 }}>
+                    <Text variant="small" color="sec">
+                      {t('Start with')}
+                    </Text>
+                    <Text variant="small" weight={700}>
+                      {t('{s} × {r} at a weight you could do 2 more times', { s: Math.round(found.sets || 3), r: /\d/.test(found.reps ?? '') ? found.reps! : '10–12' })}
+                    </Text>
+                  </Row>
+                  {swapFor ? (
+                    <Row style={{ justifyContent: 'space-between', marginTop: 8 }}>
+                      <Text variant="small" color="sec">
+                        {t('Swaps for')}
+                      </Text>
+                      <Text variant="small" weight={700}>
+                        {swapFor}
+                      </Text>
+                    </Row>
+                  ) : null}
+                </Card>
+              )}
               {pickers}
               <Button title={live ? t('Add to this workout') : target ? t('Add to {w}', { w: t(target) }) : t('Add to log')} disabled={(!live && !target) || (unsure && !match)} style={{ marginTop: 16 }} onPress={addFound} />
               <Button kind="glass" icon="edit" title={t('Not right? Name it myself')} style={{ marginTop: 8 }} onPress={() => setOwn(true)} />

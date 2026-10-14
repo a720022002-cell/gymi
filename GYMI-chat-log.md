@@ -110,7 +110,7 @@ Passwords and keys are left out on purpose.
 - **Weekly recap (built):** a story about last week on the first open of a new week, with a celebration or "what got in the way", AI tips, and AI changes you pick and apply. Video: `docs/marketing/recap-demo.mp4`.
 - **Weight history:** tap the weight chart to see every weigh-in and fix or delete one.
 - **Coach:** answers in the language you write in; its suggested meal can be saved or logged.
-- **Unknown machine (more accurate):** the AI picks only from the app's own machine list (no made-up machines), checks body position and where the pads touch, and says how sure it is. When it isn't sure it shows up to 4 look-alikes to choose from. Tested on 14 photos: the right machine was the answer or one of the choices in 12, and every "sure" answer was right.
+- **Unknown machine (more accurate):** the AI picks only from the app's own machine list (no made-up machines) and judges by the machine's own parts (where the pads, rollers, handles and foot plate are), so it works on empty machines, which is how most people take the photo. It says how sure it is. When it isn't sure, nothing is pre-picked: you choose from up to 4 look-alikes. Tested on 12 empty-machine photos: 10 right, and the 2 misses (hard angles) said "not sure".
 
 ---
 

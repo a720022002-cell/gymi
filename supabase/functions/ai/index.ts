@@ -124,6 +124,36 @@ async function ask(task: string, system: string, msgs: Msg[], schema?: object) {
 // ---------------------------------------------------------------------------
 /** Realistic Saudi portions so estimates aren't too low. */
 const PORTIONS = `Use realistic Saudi/Gulf portions. Typical: 1 plate chicken kabsa about 750 kcal (45 g protein), lamb mandi plate about 900 kcal, chicken shawarma wrap about 520 kcal, falafel sandwich about 450 kcal, 1 cup cooked rice about 200 kcal, 1 Arabic bread about 170 kcal, 3 dates about 70 kcal, 1 cup laban about 120 kcal, 1 egg about 75 kcal, Big Mac about 550 kcal.`;
+/** Machine parts the AI can point out in a photo, and the machines a part gives away. */
+const PART_FITS: Record<string, string[]> = {
+  'roller in front of the seat at shin height': ['legext'],
+  'lying bench with a roller at the ankle end': ['legcurl'],
+  'roller behind the ankles with a pad on top of the thighs (seated)': ['Seated_Leg_Curl'],
+  'pad above a low seat pressing on top of the knees': ['seatedcalf'],
+  'two pads on swinging arms at knee height, one by each leg': ['abductor', 'adductor'],
+  'shoulder pads': ['hacksquat', 'calf'],
+  'big foot platform or sled': ['legpress', 'hacksquat'],
+  'barbell fixed in vertical rails': ['smith'],
+  'thigh hold-down pads under a high pulley': ['pulldown'],
+  'low pulley with a foot plate and a long seat': ['cablerow'],
+  'chest pad facing the seat': ['Reverse_Machine_Flyes', 'Leverage_Iso_Row', 'Leverage_High_Row'],
+  'two tall cable towers joined at the top': ['fly'],
+  'kneeling pad or step on a lever': ['Dip_Machine'],
+};
+const PARTS = [
+  ...Object.keys(PART_FITS),
+  'upright seat with a back pad',
+  'reclined back pad',
+  'handles at chest height in front',
+  'handles at or above shoulder height',
+  'arms with handles or elbow pads at shoulder height that swing in front',
+  'single cable tower',
+  'small toe footrest',
+  'weight stack',
+  'plate-loading horns',
+  'instruction placard',
+];
+
 /** Gym machines that are easy to mix up in a photo. */
 const LOOKALIKES = [
   ['legpress', 'hacksquat', 'smith'],
@@ -413,29 +443,27 @@ You get each person's level, the workout their own plan has on that day (or rest
       // Name a gym machine from a photo, picking only from the app's own list, so it never invents a machine.
       const catalog = (Array.isArray(b.catalog) ? b.catalog : []).slice(0, 400) as { id: string; n: string; m: string; mach?: string }[];
       const ids = new Set(catalog.map((c) => String(c.id)));
-      const system = `You identify gym machines and equipment from one photo for a workout app. Be careful and honest: a wrong answer is worse than "not sure". Machines often look alike; what tells them apart is HOW THE BODY IS PLACED and WHERE THE PADS TOUCH IT, not the frame or the colour.
+      const system = `You identify gym machines and equipment from one photo for a workout app. Most photos show an EMPTY machine, often from the side or the front, so judge by the machine's own parts. Be careful and honest: a wrong answer is worse than "not sure". Machines often look alike; what tells them apart is WHERE THE PADS, ROLLERS, HANDLES AND FOOT PLATES ARE compared with the seat, not the frame or the colour.
 Fill the fields in order, looking at the photo again for each one:
-1. "seen": one or two plain sentences of what is visible (seat, back pad, pads or rollers, handles, foot plate or footrest, sled or rails, weight stack, plates on a lever, cable and pulley). If a person is on it, say how they sit, lie or stand and what they hold.
-2. "label": any words printed on the machine or its instruction placard (exercise name, muscle picture); ignore brand names (Nautilus, Matrix, Hoist, Life Fitness...) and words on other machines or plates. Empty if none. An exercise name on the placard is the strongest clue: follow it.
-3. "position": the body position the machine puts you in. If a person sits with their back to the camera, facing into the machine, they face the pad.
-4. "pads": every place a pad or roller presses on the body (or would, on an empty machine).
-5. "hands" and "feet": what they do.
-6. "load": where the weight is.
-7. "id": choose ONLY from the "catalog" (id | name | main muscle | machine names); when two fit equally, prefer the one marked * (the usual name). Decide with these rules first:
-- Leg press: seated or lying back, the feet push a big platform or sled away; NOTHING rests on the shoulders.
-- Hack squat: you stand on a platform with your back on an angled pad and SHOULDER PADS on top of the shoulders; the back pad slides on rails.
-- Smith machine: a barbell fixed in vertical rails.
-- Leg extension: seated, a roller on the FRONT of the shins/ankles, knees straighten.
-- Leg curl: lying face down (or seated) with a roller on the BACK of the ankles/calves, knees bend. Seated leg curl has a pad on top of the thighs too.
-- Seated calf raise: seated, a pad pressing DOWN ON TOP OF THE THIGHS just above the knees, the balls of the feet on a small footrest, often plates on a lever; heels go up and down. Standing calf raise: shoulder pads, standing on a block on the toes.
-- Hip abductor/adductor: seated upright, the two legs on separate swinging arms, the thighs held apart in a V (wide). Abductor: pads on the OUTSIDE of the knees, legs push out. Hip adductor: pads on the INSIDE of the knees, legs squeeze in. Same machine shape: decide by which side of the knee the pads are on; if you can't see it, give both and confidence "low".
-- Chest press: seated, back pad, handles at chest height pushed FORWARD. Shoulder press: handles beside or above the shoulders pushed UP. Incline press: leaning back, pushed up and forward.
-- Pec deck: seated with the back on the pad, arms out to the sides on pads or handles, BROUGHT TOGETHER in front of the chest. Reverse pec deck (rear delt): sitting FACING the pad with the chest on it, arms pulled back and open. Same machine: decide by which way the person faces.
-- Lat pulldown: seated, thigh pads holding the legs, a bar or handles ABOVE the head pulled down. Seated cable row: feet on a plate, a handle pulled to the stomach. Machine row: chest pad, handles pulled back. T-bar row: standing bent over a bar fixed at one end.
-- Assisted pull-up/dip: a kneeling pad or step that moves, handles high and at hip height. Dip machine: seated, handles at the sides of the hips pushed down, the legs hang free together.
-- Cable station: one or two tall towers with pulleys you can slide up and down.
-8. "confidence": "high" only when the parts that set it apart from its look-alikes are clearly visible (or a placard names it); "medium" when it is very likely but a look-alike is possible; "low" when you are guessing. If it is not gym equipment, or the photo is too dark, blurry or cut off, known=false and id "".
-9. "alternatives": up to 3 other catalog ids it could be (the closest look-alikes), most likely first. Never repeat "id".
+1. "seen": one or two plain sentences of the machine's parts and where they sit: seat (flat or angled), back pad, rollers or pads and their height, handles (height, which way they would move), foot platform or footrest, sled or rails, weight stack, plate horns, cable and pulleys. If a person is on it, also say how they sit, lie or stand.
+2. "label": any words printed on the machine or its instruction placard (exercise name, muscle picture). Ignore brand names (Nautilus, Matrix, Hoist, Life Fitness, Technogym...) and words on other machines or on plates. Empty if none. An exercise name on the machine or placard is the strongest clue: follow it.
+3. "parts": every part from the list that you can actually see.
+4. "load": where the weight is.
+5. "id": choose ONLY from the "catalog" (id | name | main muscle | machine names); when two fit equally, prefer the one marked * (the usual name). Decide with these rules first:
+- Leg press: a big foot platform (or sled) in front of a reclined or seated back pad; NO shoulder pads. Often plate horns on the sled.
+- Hack squat: SHOULDER PADS above an angled back pad, a foot platform at the bottom; the back pad slides on rails.
+- Smith machine: a barbell fixed between two vertical rails, with hooks.
+- Leg extension: a seat with an upright back pad and a ROLLER PAD IN FRONT OF THE SEAT at shin/ankle height (often a second roller above it on the thighs).
+- Leg curl: a lying bench (face down) with a roller at the ankle end, or a seat with a roller at the BACK of the ankles plus a thigh pad on top.
+- Seated calf raise: a low seat, a PAD ABOVE THE SEAT that presses on top of the knees/thighs, a small toe footrest in front, usually plates on a lever. Standing calf raise: shoulder pads and a toe block.
+- Hip abductor/adductor: an upright seat with TWO PADS ON SWINGING ARMS at knee height, one beside each leg, often footrests. Abductor pads are on the outside of the knees, adductor on the inside; most machines do both by moving the pads. If you can't tell which, give both and confidence "low".
+- Chest press: upright seat and back pad, handles at chest height pushed FORWARD. Shoulder press: handles beside or above the shoulders pushed UP. Incline press: reclined back pad, handles pushed up and forward.
+- Pec deck / reverse pec deck: upright seat and back pad with two arms at shoulder height (handles or elbow pads) that swing around in front of you; it is usually the same machine. A chest pad you face (no back pad) means reverse pec deck.
+- Lat pulldown: a seat with KNEE/THIGH HOLD-DOWN PADS above it and a bar or handles on a cable from a high pulley above. Seated cable row: a long low seat, a FOOT PLATE, and a low pulley with a handle. Machine row: a chest pad in front of a seat with handles you pull back. T-bar row: a bar fixed at one end on the floor.
+- Assisted pull-up/dip: a kneeling pad or step on a lever, handles high (pull-up) and at hip height (dip).
+- Cable station: one tall tower with a pulley that slides up and down; crossover: two towers joined by a top bar.
+6. "confidence": "high" only when the parts that set it apart from its look-alikes are clearly visible (or the machine names itself); "medium" when it is very likely but a look-alike is possible; "low" when you are guessing. If it is not gym equipment, or the photo is too dark, blurry or cut off, known=false and id "".
+7. "alternatives": up to 3 other catalog ids it could be (the closest look-alikes), most likely first. Never repeat "id".
 "name" and "name_ar" are the machine's usual name (English, and Arabic as Saudi gym-goers say it); "works" and "works_ar" the main muscles. Suggest "sets" (3 or 4) and "reps" (like "10–12"). Never name a machine that is not in the catalog.`;
       const list = catalog.map((c) => `${c.id} | ${c.n} | ${c.m}${c.mach ? ` | ${c.mach}` : ''}`).join('\n').slice(0, 24000);
       const out = (await ask(task, system, [
@@ -444,9 +472,7 @@ Fill the fields in order, looking at the photo again for each one:
         type: 'object',
         properties: {
           seen: { type: 'string' }, label: { type: 'string' },
-          position: { type: 'string', enum: ['seated', 'seated facing the machine (chest to the pad, back to the camera)', 'seated with legs spread in a V', 'lying face down', 'lying face up', 'standing', 'leaning back', 'kneeling', 'bent over', 'unclear'] },
-          pads: { type: 'array', items: { type: 'string', enum: ['back', 'chest', 'top of shoulders', 'top of thighs', 'front of shins', 'back of ankles', 'outside of knees', 'inside of knees', 'upper arms', 'knees (kneeling pad)', 'none', 'unclear'] } },
-          hands: { type: 'string' }, feet: { type: 'string' },
+          parts: { type: 'array', items: { type: 'string', enum: PARTS } },
           load: { type: 'string', enum: ['weight stack', 'plates', 'cable', 'barbell', 'body weight', 'unclear'] },
           known: { type: 'boolean' }, id: { type: 'string' }, confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
           alternatives: { type: 'array', items: { type: 'string' } },
@@ -455,7 +481,7 @@ Fill the fields in order, looking at the photo again for each one:
           works: { type: 'string' }, works_ar: { type: 'string' }, equipment: { type: 'string', enum: ['Machine', 'Cable', 'Barbell', 'Dumbbell', 'Bodyweight', 'Free weight'] },
           sets: { type: 'number' }, reps: { type: 'string' },
         },
-        required: ['seen', 'label', 'position', 'pads', 'hands', 'feet', 'load', 'known', 'id', 'confidence', 'alternatives', 'name', 'group', 'equipment'],
+        required: ['seen', 'label', 'parts', 'load', 'known', 'id', 'confidence', 'alternatives', 'name', 'group', 'equipment'],
       })) as Record<string, unknown>;
       // An older app sends no list: answer by name, as before.
       if (!catalog.length) return { ...out, id: '', alternatives: [], search: out.name };
@@ -465,17 +491,8 @@ Fill the fields in order, looking at the photo again for each one:
       let confidence = id ? out.confidence : 'low';
       // What it saw points to some machines for sure (a roller on the shins is a leg extension). When its pick isn't one of
       // them, it isn't sure: those go first in the choices.
-      const pads = (Array.isArray(out.pads) ? out.pads : []).map(String);
-      const pos = String(out.position ?? '');
-      const fits = [
-        ...(pads.includes('outside of knees') ? ['abductor'] : []),
-        ...(pads.includes('inside of knees') ? ['adductor'] : []),
-        ...(pos.includes('in a V') ? ['abductor', 'adductor'] : []),
-        ...(pads.includes('front of shins') ? ['legext'] : []),
-        ...(pads.includes('back of ankles') ? ['legcurl', 'Seated_Leg_Curl'] : []),
-        ...(pads.includes('top of shoulders') ? ['hacksquat', 'calf', 'Narrow_Stance_Hack_Squats'] : []),
-        ...(pos.includes('facing the machine') ? ['Reverse_Machine_Flyes', 'Leverage_Iso_Row', 'Leverage_High_Row'] : []),
-      ].filter((x) => ids.has(x));
+      const parts = new Set((Array.isArray(out.parts) ? out.parts : []).map(String));
+      const fits = [...new Set(Object.entries(PART_FITS).filter(([k]) => parts.has(k)).flatMap(([, v]) => v))].filter((x) => ids.has(x));
       if (fits.length && !fits.includes(id)) {
         confidence = 'low';
         alternatives = [...new Set([...fits, ...alternatives])].filter((x) => x !== id);
