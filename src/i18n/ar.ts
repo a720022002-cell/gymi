@@ -3747,4 +3747,5 @@ export const AR: Record<string, string> = {
   "F {n} g": "دهون {n} جم",
   "Saved to your meals. Log it from Saved meals any time.": "انحفظت في وجباتك. تقدر تسجلها من الوجبات المحفوظة أي وقت.",
   "I ate it": "أكلتها",
+  "of {n}": "من {n}",
 };

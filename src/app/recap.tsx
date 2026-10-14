@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Easing, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
+import { Children, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, Easing, Pressable, ScrollView, type StyleProp, useWindowDimensions, View, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Circle, Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { Icon, type IconName } from '@/components/Icon';
 import { Text } from '@/components/Text';
@@ -18,7 +19,7 @@ import { useReportData, useReportStats } from '@/lib/report';
 import { useTrain } from '@/lib/train';
 
 // The story is always dark, like a story on any phone.
-const K = { bg: '#07080D', card: 'rgba(255,255,255,0.08)', line: 'rgba(255,255,255,0.12)', text: '#F5F6FA', sec: '#A3A8B8', cobalt: '#3355FF', up: '#22C55E', down: '#F05252', amber: '#F5B83D' };
+const K = { bg: '#07080D', card2: '#10131D', card: 'rgba(255,255,255,0.08)', line: 'rgba(255,255,255,0.12)', text: '#F5F6FA', sec: '#A3A8B8', cobalt: '#3355FF', up: '#22C55E', down: '#F05252', amber: '#F5B83D' };
 const DUR = 6500;
 type Slide = { key: string; tint: string; waits?: boolean };
 
@@ -137,8 +138,8 @@ export default function Recap() {
 
   return (
     <View style={{ flex: 1, backgroundColor: K.bg, paddingTop: insets.top + 8, paddingBottom: insets.bottom + 12 }}>
-      <View style={{ flex: 1, marginHorizontal: 10, borderRadius: 28, overflow: 'hidden', backgroundColor: cur.tint }}>
-        <View style={{ position: 'absolute', inset: 0, backgroundColor: K.bg, opacity: 0.55 }} />
+      <View style={{ flex: 1, marginHorizontal: 10, borderRadius: 28, overflow: 'hidden', backgroundColor: K.card2, borderWidth: 1, borderColor: K.line }}>
+        <Glow tint={cur.tint} />
         {/* Progress, one bar per slide. */}
         <View style={{ flexDirection: 'row', gap: 4, paddingHorizontal: 12, paddingTop: 12 }}>
           {slides.map((s, j) => (
@@ -350,27 +351,35 @@ function StoryButton({ title, onPress, kind = 'primary', loading }: { title: str
   );
 }
 
+/** Sunday-first weekday letters (S M T… or ح ن ث…). */
+const dayLetter = (j: number, lang: 'en' | 'ar') => new Intl.DateTimeFormat(lang === 'ar' ? 'ar' : 'en-US', { weekday: 'narrow' }).format(new Date(2026, 9, 4 + j, 12));
+
 function SlideBody(p: BodyProps) {
   const { t, stats: s, ai } = p;
   const pctChange = (a: number, b: number | undefined | null) => (b ? Math.round(((a - b) / b) * 100) : null);
   if (p.k === 'intro')
     return (
-      <View style={{ gap: 12, flex: 1, justifyContent: 'center' }} pointerEvents="none">
+      <Stack style={{ gap: 14 }} pointerEvents="none">
         <Eyebrow>{t('Your weekly recap')}</Eyebrow>
         <H big>{ai?.headline || t(p.allHit ? 'A strong week, {n} 💪' : 'Let’s look at your week, {n}', { n: p.name || t('champ') })}</H>
         <Text color={K.sec}>{t(p.allHit ? 'Here’s what you did last week.' : 'Here’s what happened last week, and what to change so next week goes better.')}</Text>
-      </View>
+      </Stack>
     );
   if (p.k === 'train') {
     const w = s.workouts;
     const vol = pctChange(s.volume, p.before?.volume);
     const missed = (p.days ?? []).filter((d) => d === 'miss').length;
     return (
-      <View style={{ gap: 14 }} pointerEvents="none">
+      <Stack style={{ gap: 14 }} pointerEvents="none">
         <Eyebrow>{t('Training')}</Eyebrow>
         <H>{w.planned ? (w.asPlanned >= w.planned ? t('You didn’t miss a single workout') : t('You trained {a} times out of {b}', { a: w.asPlanned, b: w.planned })) : t('{n} workouts this week', { n: w.done })}</H>
-        <Text num size={56} weight={700} color={K.text}>
-          {w.planned ? `${w.asPlanned}/${w.planned}` : String(w.done)}
+        <Text num size={64} weight={700} color={K.text} style={{ letterSpacing: -1.5 }}>
+          {String(w.planned ? w.asPlanned : w.done)}
+          {w.planned ? (
+            <Text size={22} weight={600} color={K.sec}>
+              {`  ${t('of {n}', { n: w.planned })}`}
+            </Text>
+          ) : null}
         </Text>
         {p.days ? (
           <Card>
@@ -383,7 +392,7 @@ function SlideBody(p: BodyProps) {
                     </Text>
                   </View>
                   <Text variant="xs" color={K.sec}>
-                    {t(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][j])}
+                    {dayLetter(j, p.lang)}
                   </Text>
                 </View>
               ))}
@@ -395,7 +404,7 @@ function SlideBody(p: BodyProps) {
           {s.liftUps[0] ? <RowKV k={t('Best lift up')} v={`${t(s.liftUps[0].name)} ${fx(s.liftUps[0].to)} ${t('kg')}`} tone="up" tag={`+${fx(s.liftUps[0].to - s.liftUps[0].from)} ${t('kg')}`} /> : null}
           {missed ? <RowKV k={t('Missed')} v={(p.days ?? []).map((d, j) => (d === 'miss' ? t(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][j]) : null)).filter(Boolean).join(t(', '))} tone="down" tag={t('{n} missed', { n: missed })} /> : null}
         </Card>
-      </View>
+      </Stack>
     );
   }
   if (p.k === 'food') {
@@ -403,7 +412,7 @@ function SlideBody(p: BodyProps) {
     const [ph, pn] = s.proteinDays;
     const [wh, wn] = s.waterDays;
     return (
-      <View style={{ gap: 14 }} pointerEvents="none">
+      <Stack style={{ gap: 14 }} pointerEvents="none">
         <Eyebrow>{t('Food')}</Eyebrow>
         <H>{t('On target {a} days out of {b}', { a: hit, b: n })}</H>
         <Card>
@@ -411,13 +420,13 @@ function SlideBody(p: BodyProps) {
           {pn ? <Meter label={t('Protein goal')} value={t('{a} of {b} days', { a: ph, b: pn })} pct={(ph / pn) * 100} /> : null}
           {wn ? <Meter label={t('Water goal')} value={t('{a} of {b} days', { a: wh, b: wn })} pct={(wh / wn) * 100} /> : null}
         </Card>
-      </View>
+      </Stack>
     );
   }
   if (p.k === 'body') {
     const g = p.goals.find((x) => x.key === 'weight');
     return (
-      <View style={{ gap: 14 }} pointerEvents="none">
+      <Stack style={{ gap: 14 }} pointerEvents="none">
         <Eyebrow>{t('Body and sleep')}</Eyebrow>
         <H>{s.weight ? (s.weight.change === 0 ? t('Your weight held steady') : t(s.weight.change > 0 ? 'Up {n} kg this week' : 'Down {n} kg this week', { n: fx(Math.abs(s.weight.change)) })) : t('Your sleep this week')}</H>
         <Card>
@@ -425,39 +434,39 @@ function SlideBody(p: BodyProps) {
           {s.sleepAvg != null ? <RowKV k={t('Average sleep')} v={`${fx(s.sleepAvg)} ${t('h')}`} tone={s.sleepAvg >= 7 ? 'up' : s.sleepAvg >= 6 ? 'amber' : 'down'} tag={t(s.sleepAvg >= 7 ? 'Great' : s.sleepAvg >= 6 ? 'Fair' : 'Low')} /> : null}
           {s.waistChange != null ? <RowKV k={t('Waist')} v={`${s.waistChange > 0 ? '+' : ''}${fx(s.waistChange)} ${t('cm')}`} /> : null}
         </Card>
-      </View>
+      </Stack>
     );
   }
   if (p.k === 'party')
     return (
-      <View style={{ gap: 14, flex: 1, justifyContent: 'center' }} pointerEvents="none">
+      <Stack style={{ gap: 14 }} pointerEvents="none">
         <Confetti />
         <Eyebrow>{t('The result')}</Eyebrow>
         <H big>{t('You hit {a} of {b} goals 🎉', { a: p.goals.length, b: p.goals.length })}</H>
-        <Goals t={t} goals={p.goals} />
+        <GoalRing hit={p.goals.filter((g) => g.ok).length} of={p.goals.length} />
         {(ai?.wins ?? []).map((w, j) => (
           <Note key={j} icon="check" title={w} />
         ))}
-      </View>
+      </Stack>
     );
   if (p.k === 'why')
     return (
-      <View style={{ gap: 14 }} pointerEvents="none">
+      <Stack style={{ gap: 14 }} pointerEvents="none">
         <Eyebrow>{t('What got in the way')}</Eyebrow>
         <AiTag t={t} label="Gymi AI reading" />
         <H>{t('You hit {a} of {b} goals', { a: p.goals.filter((g) => g.ok).length, b: p.goals.length })}</H>
         <Goals t={t} goals={p.goals} />
         {p.aiState !== 'ready' ? <Thinking t={t} failed={p.aiState === 'failed'} /> : (ai?.problems ?? []).map((n, j) => <Note key={j} icon={(['cal', 'food', 'moon'] as const)[j % 3]} title={n.title} detail={n.detail} />)}
-      </View>
+      </Stack>
     );
   if (p.k === 'tips')
     return (
-      <View style={{ gap: 14 }} pointerEvents="none">
+      <Stack style={{ gap: 14 }} pointerEvents="none">
         <Eyebrow>{t(p.allHit ? 'Keep it going' : 'How to get there')}</Eyebrow>
         <AiTag t={t} label="Gymi AI suggestions" />
         <H>{t(p.allHit ? 'What could get you even better results' : 'What will help next week')}</H>
         {p.aiState !== 'ready' ? <Thinking t={t} failed={p.aiState === 'failed'} /> : (ai?.tips ?? []).map((n, j) => <Note key={j} icon={(['train', 'food', 'up'] as const)[j % 3]} title={n.title} detail={n.detail} />)}
-      </View>
+      </Stack>
     );
   return <ApplySlide {...p} />;
 }
@@ -570,6 +579,68 @@ function Confetti() {
           }}
         />
       ))}
+    </View>
+  );
+}
+
+/** The slide's colour glowing down from the top (design: radial gradient, 120% wide and 70% tall, centred at the top). */
+function Glow({ tint }: { tint: string }) {
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  const { w, h } = size;
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} onLayout={(e) => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+      {w && h ? (
+        <Svg width={w} height={h}>
+          <Defs>
+            {/* A circle of radius 70% of the height, stretched sideways to 120% of the width. */}
+            <RadialGradient id="glow" gradientUnits="userSpaceOnUse" cx={w / 2} cy={0} r={0.7 * h} fx={w / 2} fy={0} gradientTransform={`translate(${w / 2} 0) scale(${(1.2 * w) / (0.7 * h)} 1) translate(${-w / 2} 0)`}>
+              <Stop offset="0" stopColor={tint} stopOpacity={1} />
+              <Stop offset="0.72" stopColor={K.card2} stopOpacity={1} />
+              <Stop offset="1" stopColor={K.card2} stopOpacity={1} />
+            </RadialGradient>
+          </Defs>
+          <Rect x={0} y={0} width={w} height={h} fill="url(#glow)" />
+        </Svg>
+      ) : null}
+    </View>
+  );
+}
+
+/** Goals hit as a ring (3/3 closes it). */
+function GoalRing({ hit, of }: { hit: number; of: number }) {
+  const r = 52;
+  const len = 2 * Math.PI * r;
+  return (
+    <View style={{ width: 150, height: 150, alignSelf: 'center', alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={150} height={150} viewBox="0 0 120 120" style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}>
+        <Circle cx={60} cy={60} r={r} stroke="rgba(255,255,255,0.12)" strokeWidth={12} fill="none" />
+        <Circle cx={60} cy={60} r={r} stroke={K.up} strokeWidth={12} fill="none" strokeLinecap="round" strokeDasharray={`${len}`} strokeDashoffset={len * (1 - (of ? hit / of : 0))} />
+      </Svg>
+      <Text num size={52} weight={700} color={K.text}>
+        {String(hit)}
+        <Text num size={20} weight={600} color={K.sec}>{`/${of}`}</Text>
+      </Text>
+    </View>
+  );
+}
+
+/** A slide's lines, rising in one after another (design: .slide.in > *). */
+function Stack({ style, pointerEvents, children }: { style?: StyleProp<ViewStyle>; pointerEvents?: 'none' | 'auto'; children: ReactNode }) {
+  const items = Children.toArray(children);
+  const [anims] = useState(() => items.map(() => new Animated.Value(0)));
+  useEffect(() => {
+    Animated.stagger(80, anims.map((a) => Animated.timing(a, { toValue: 1, duration: 550, easing: Easing.bezier(0.2, 0.8, 0.2, 1), useNativeDriver: true }))).start();
+  }, [anims]);
+  return (
+    <View style={style} pointerEvents={pointerEvents}>
+      {items.map((c, j) => {
+        const a = anims[j] ?? anims[anims.length - 1];
+        return (
+          <Animated.View key={j} style={a ? { opacity: a, transform: [{ translateY: a.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }] } : undefined}>
+            {c}
+          </Animated.View>
+        );
+      })}
     </View>
   );
 }
