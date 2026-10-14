@@ -38,6 +38,9 @@ export function Body() {
   );
 }
 
+const longDate = (d: string, lang: 'en' | 'ar') =>
+  new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric', year: d.slice(0, 4) === String(new Date().getFullYear()) ? undefined : 'numeric' }).format(new Date(`${d}T12:00:00`));
+
 function Weight() {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
@@ -46,6 +49,11 @@ function Weight() {
   const food = useFood();
   const health = useHealth();
   const [open, setOpen] = useState(false);
+  // Every weigh-in, newest first; tap one to fix or delete it.
+  const [history, setHistory] = useState(false);
+  const [editDay, setEditDay] = useState<string | null>(null);
+  const [ev, setEv] = useState(0);
+  const [busy, setBusy] = useState(false);
   const w = health.weights.slice(-30);
   const cur = w.at(-1);
   const a = weekAvg(health.weights, food.today);
@@ -68,7 +76,7 @@ function Weight() {
   }
   return (
     <View>
-      <Card>
+      <Card onPress={cur ? () => (setEditDay(null), setHistory(true)) : undefined}>
         {cur ? (
           <>
             <Row style={{ justifyContent: 'space-between', alignItems: 'flex-end' }}>
@@ -98,6 +106,11 @@ function Weight() {
             {w.length > 1 ? (
               <View style={{ marginTop: 16 }}>
                 <LineChart values={w.map((x) => x.value)} labels={labels} />
+                <Row gap={6} style={{ marginTop: 8, justifyContent: 'center' }}>
+                  <Text variant="xs" weight={700} color="link">
+                    {t('Tap to see every weigh-in and fix one')}
+                  </Text>
+                </Row>
               </View>
             ) : (
               <Text variant="small" color="sec" style={{ marginTop: 8 }}>
@@ -126,6 +139,79 @@ function Weight() {
           </Text>
         </Card>
       ) : null}
+      <Sheet open={history} onClose={() => (setHistory(false), setEditDay(null))}>
+        {editDay ? (
+          <View>
+            <Text variant="h2">{t('Fix this weigh-in')}</Text>
+            <Text color="sec" style={{ marginTop: 4 }}>
+              {longDate(editDay, lang)}
+            </Text>
+            <Card style={{ marginTop: 16, paddingVertical: 4 }}>
+              <WeightWheel value={ev} onChange={setEv} />
+            </Card>
+            <Button
+              title={t('Save')}
+              loading={busy}
+              style={{ marginTop: 8 }}
+              onPress={async () => {
+                setBusy(true);
+                const ok = await health.fixWeight(editDay, ev);
+                setBusy(false);
+                toast(ok ? t('Weight saved: {n} kg', { n: fx(ev) }) : t('Couldn’t save. Please try again.'), { icon: ok ? 'scale' : 'warn' });
+                if (ok) setEditDay(null);
+              }}
+            />
+            <Button
+              kind="ghost"
+              icon="trash"
+              title={t('Delete this weigh-in')}
+              color={c.down}
+              style={{ marginTop: 8 }}
+              onPress={async () => {
+                const day = editDay;
+                const old = health.weights.find((x) => x.day === day)?.value;
+                const ok = await health.fixWeight(day, null);
+                if (!ok) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+                setEditDay(null);
+                toast(t('Weigh-in deleted'), { icon: 'trash', undo: old != null ? () => health.fixWeight(day, old) : undefined });
+              }}
+            />
+            <Button kind="ghost" title={t('Back')} style={{ marginTop: 4 }} onPress={() => setEditDay(null)} />
+          </View>
+        ) : (
+          <View>
+            <Text variant="h2">{t('Every weigh-in')}</Text>
+            <Text variant="small" color="sec" style={{ marginTop: 4 }}>
+              {t('Tap one to fix it or delete it.')}
+            </Text>
+            <View style={{ marginTop: 12, backgroundColor: c.inset, borderRadius: 20, overflow: 'hidden' }}>
+              {[...health.weights].reverse().map((x, i, arr) => {
+                const prev = arr[i + 1];
+                const d = prev ? x.value - prev.value : null;
+                return (
+                  <Springy
+                    key={x.day}
+                    onPress={() => (setEv(x.value), setEditDay(x.day))}
+                    scaleTo={0.99}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 54, paddingHorizontal: 14, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
+                    <Text style={{ flex: 1 }}>{longDate(x.day, lang)}</Text>
+                    {d != null && Math.abs(d) >= 0.05 ? (
+                      <Text variant="small" weight={700} color={Math.abs(d) >= 3 ? 'down' : 'sec'} num>
+                        {`${d > 0 ? '+' : '−'}${fx(Math.abs(d))}`}
+                      </Text>
+                    ) : null}
+                    <Text num weight={700}>{`${fx(x.value)} ${t('kg')}`}</Text>
+                    <Icon name="edit" size={16} color={c.sec} />
+                  </Springy>
+                );
+              })}
+            </View>
+            <Text variant="xs" color="sec" style={{ marginTop: 8 }}>
+              {t('A jump of 3 kg or more from the day before is shown in red: it may be a typo.')}
+            </Text>
+          </View>
+        )}
+      </Sheet>
       <Sheet open={open} onClose={() => setOpen(false)}>
         <Text variant="h2">{t('Log weight')}</Text>
         <Card style={{ marginTop: 16, paddingVertical: 4 }}>{open ? <WeightWheel value={v} onChange={setV} /> : null}</Card>

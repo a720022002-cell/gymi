@@ -58,6 +58,8 @@ type Health = {
   logWeight: (kg: number, on?: string) => Promise<boolean>;
   /** Remove one day's weight (used by Undo in the coach chat). */
   deleteWeight: (day: string) => Promise<void>;
+  /** Correct or delete (null) one day's weigh-in. When it's your latest, targets and profile follow the corrected weight. */
+  fixWeight: (day: string, kg: number | null) => Promise<boolean>;
   saveMeasures: (vals: Partial<Record<MeasKind, number>>) => Promise<boolean>;
   photos: ProgressPhoto[];
   addPhoto: (p: Photo) => Promise<boolean>;
@@ -208,6 +210,32 @@ export function HealthProvider({ children }: PropsWithChildren) {
     await supabase.from('measurements').delete().eq('kind', 'weight').eq('day', day);
   }, []);
 
+  const fixWeight = useCallback(
+    async (day: string, kg: number | null) => {
+      const ws = measures.filter((m) => m.kind === 'weight');
+      const wasLatest = ws.at(-1)?.day === day;
+      if (kg == null) {
+        const { error } = await supabase.from('measurements').delete().eq('kind', 'weight').eq('day', day);
+        if (error) return false;
+        setMeasures((xs) => xs.filter((x) => !(x.kind === 'weight' && x.day === day)));
+      } else if (!(await putMeasures({ weight: kg }, day))) return false;
+      if (wasLatest) {
+        // Your latest weight changed: targets use this week's average of what's left, and your profile the newest one.
+        const left = ws.filter((m) => m.day !== day).map((m) => ({ day: m.day, value: m.value }));
+        if (kg != null) left.push({ day, value: kg });
+        left.sort((a, b) => a.day.localeCompare(b.day));
+        const latest = left.at(-1);
+        if (latest) {
+          const week = left.filter((m) => m.day >= addDays(latest.day, -6)).map((m) => m.value);
+          await updateProfile({ weight_kg: Math.round(latest.value * 10) / 10 }).catch(() => {});
+          await applyWeight(week.reduce((a, b) => a + b, 0) / week.length, latest.value).catch(() => false);
+        }
+      }
+      return true;
+    },
+    [measures, putMeasures, applyWeight, updateProfile],
+  );
+
   const addPhoto = useCallback(
     async (p: Photo) => {
       if (!userId) return false;
@@ -308,6 +336,7 @@ export function HealthProvider({ children }: PropsWithChildren) {
       weights,
       logWeight,
       deleteWeight,
+      fixWeight,
       saveMeasures: putMeasures,
       photos,
       addPhoto,
@@ -325,7 +354,7 @@ export function HealthProvider({ children }: PropsWithChildren) {
       checkinOpen,
       setCheckinOpen,
     }),
-    [checkinOpen, ready, checkins, todayCheckin, saveCheckin, measures, weights, logWeight, deleteWeight, putMeasures, photos, addPhoto, deletePhoto, photoUrls, supplements, saveSupplement, deleteSupplement, restoreSupplement, blood, addBlood, bloodFileUrl, deleteBlood, days],
+    [checkinOpen, ready, checkins, todayCheckin, saveCheckin, measures, weights, logWeight, deleteWeight, fixWeight, putMeasures, photos, addPhoto, deletePhoto, photoUrls, supplements, saveSupplement, deleteSupplement, restoreSupplement, blood, addBlood, bloodFileUrl, deleteBlood, days],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

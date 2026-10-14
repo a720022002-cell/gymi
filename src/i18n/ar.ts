@@ -3735,4 +3735,11 @@ export const AR: Record<string, string> = {
   "{n} missed": "{n} فاتت",
   "Gymi AI reading": "تحليل Gymi AI",
   "Gymi AI suggestions": "اقتراحات Gymi AI",
+  "Tap to see every weigh-in and fix one": "اضغط تشوف كل أوزانك وتعدّل أي واحد",
+  "Fix this weigh-in": "عدّل هذا الوزن",
+  "Delete this weigh-in": "احذف هذا الوزن",
+  "Weigh-in deleted": "انحذف الوزن",
+  "Every weigh-in": "كل أوزانك",
+  "Tap one to fix it or delete it.": "اضغط على أي واحد تعدّله أو تحذفه.",
+  "A jump of 3 kg or more from the day before is shown in red: it may be a typo.": "الفرق ٣ كجم أو أكثر عن اللي قبله يطلع بالأحمر: ممكن يكون غلط بالكتابة.",
 };
