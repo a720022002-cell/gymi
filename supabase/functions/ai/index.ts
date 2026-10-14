@@ -1,13 +1,10 @@
 // Gymi AI: the only place that talks to an AI model. The app sends a task; keys never leave the server.
 //
+// Every AI answer in the app comes from Claude Haiku 5.5 (through OpenRouter). No other model, no backup model.
 // Secrets (Supabase > Edge Functions > Secrets):
-//   OPENROUTER_API_KEY  (also read as "OpenRouter") the key for OpenRouter, which runs Claude Haiku
-// Model switch (optional secrets):
-//   AI_PROVIDER         'openrouter' (default) or 'gemini'
-//   OPENROUTER_MODEL    default 'anthropic/claude-haiku-5.5'
-//   OPENROUTER_FALLBACK used once when the main model fails or is busy, default 'qwen/qwen3-vl-235b-a22b-instruct'
-//   GEMINI_API_KEY, AI_MODEL, AI_MODEL_LITE  only used when AI_PROVIDER is 'gemini'
+//   OPENROUTER_API_KEY  (also read as "OpenRouter") the key for OpenRouter
 //   AI_DAILY_LIMIT      requests per person per day, default 80
+// (Only the admin's artwork tool, admin_image, uses an image model: Haiku can't draw.)
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -22,15 +19,11 @@ const env = (k: string, d = '') => Deno.env.get(k) ?? d;
 /** The OpenRouter key; also accepted under the name "OpenRouter". */
 /** The model Gymi uses: Claude Haiku (reads photos and PDFs, good Arabic, follows the JSON shape). */
 const HAIKU = 'anthropic/claude-haiku-5.5';
-/** Backup when Haiku fails or is busy: Qwen3-VL. */
-const QWEN = 'qwen/qwen3-vl-235b-a22b-instruct';
 /** Settings and results of one request. Each request has its own, so requests running at the same time never mix
  * (model, temperature, cost). */
 type Ctx = {
   lastDetail: string;
   lastModel: string;
-  /** Admins can test another model on any task (for comparing accuracy). */
-  modelOverride: string;
   /** Reading tasks (photos, labels, lab reports) answer the same way every time; the chat keeps some variety. */
   temperature: number | undefined;
   /** Tokens and cost of the last AI call, saved to ai_calls for the admin cost page. */
@@ -47,48 +40,13 @@ const openrouterKey = () => env('OPENROUTER_API_KEY') || env('OpenRouter') || en
 type Part = { text: string } | { image: string; mime: string } | { file: string; mime: string; name: string };
 type Msg = { role: 'user' | 'ai'; parts: Part[] };
 
-/** Which model each task uses (the model switch). Photos and plans get the stronger model. */
-const LITE_TASKS = new Set(['food_text']);
-
-async function gemini(model: string, system: string, msgs: Msg[], schema?: object) {
-  const key = env('GEMINI_API_KEY');
-  if (!key) throw new Error('ai_off');
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-    method: 'POST',
-    signal: AbortSignal.timeout(AI_TIMEOUT_MS),
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: system }] },
-      contents: msgs.map((m) => ({
-        role: m.role === 'ai' ? 'model' : 'user',
-        parts: m.parts.map((p) => ('text' in p ? { text: p.text } : { inline_data: { mime_type: p.mime, data: 'image' in p ? p.image : p.file } })),
-      })),
-      generationConfig: { temperature: 0.4, maxOutputTokens: MAX_TOKENS, responseMimeType: 'application/json', ...(schema ? { responseSchema: schema } : {}) },
-    }),
-  });
-  if (res.status === 429 || res.status >= 500) throw new Error('busy');
-  // Key refused (wrong key, or Google blocked the project): treat like "not set up" so the backup is tried.
-  if (res.status === 401 || res.status === 403) {
-    console.error(`gemini ${res.status}: ${(await res.text()).slice(0, 300)}`);
-    throw new Error('ai_off');
-  }
-  if (!res.ok) throw new Error(`gemini ${res.status}: ${(await res.text()).slice(0, 300)}`);
-  const data = await res.json();
-  cx().lastModel = model;
-  cx().lastUsage = { prompt: data?.usageMetadata?.promptTokenCount ?? 0, completion: data?.usageMetadata?.candidatesTokenCount ?? 0, cost: 0 };
-  const text = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('') ?? '';
-  return text;
-}
-
 async function openrouter(system: string, msgs: Msg[], schema?: object): Promise<string> {
-  const main = cx().modelOverride || env('OPENROUTER_MODEL', HAIKU);
   try {
-    return await openrouterCall(main, system, msgs, schema);
+    return await openrouterCall(HAIKU, system, msgs, schema);
   } catch (e) {
-    const backup = env('OPENROUTER_FALLBACK', QWEN);
-    // A bad key won't work on any model; an admin testing a model wants that model's error.
-    if ((e as Error).message === 'ai_off' || cx().modelOverride || backup === main) throw e;
-    return openrouterCall(backup, system, msgs, schema);
+    // Busy or a hiccup: Haiku once more (never another model). A bad key won't work again.
+    if ((e as Error).message === 'ai_off') throw e;
+    return openrouterCall(HAIKU, system, msgs, schema);
   }
 }
 
@@ -153,13 +111,7 @@ async function openrouterCall(model: string, system: string, msgs: Msg[], schema
 }
 
 async function ask(task: string, system: string, msgs: Msg[], schema?: object) {
-  const provider = env('AI_PROVIDER', 'openrouter');
-  const model = LITE_TASKS.has(task) ? env('AI_MODEL_LITE', 'gemini-3.5-flash-lite') : env('AI_MODEL', 'gemini-flash-latest');
-  const text = provider === 'gemini'
-    ? await gemini(model, system, msgs, schema).catch((e) => {
-        throw timedOut(e) ? new Error('busy') : e;
-      })
-    : await openrouter(system, msgs, schema);
+  const text = await openrouter(system, msgs, schema);
   // Take the JSON object out of the answer (some models add words or ``` around it).
   const t = text.trim();
   const a = t.indexOf('{');
@@ -527,14 +479,18 @@ Use only these numbers and say them plainly (for example "you trained 2 of 4 day
 - "wins": 1 to 3 real things that went well, even in a hard week.
 - "problems": only if not all goals were hit: up to 3 things that got in the way, each {"title","detail"}, found in the numbers (missed workout days and which weekdays, days far over or under calories, weekend vs weekdays, low protein, short sleep, low recovery). Otherwise [].
 - "tips": 2 or 3 practical tips to keep improving or to fix the problems, each {"title","detail"}, with local food ideas when about food (laban, eggs, chicken, dates…).
-- "suggest": up to 3 changes the app can apply, each ONE idea the person can pick:
+- "suggest": 3 changes the app can apply (fewer only if nothing else fits the numbers), each ONE idea the person can pick, and different kinds where it makes sense. Base them on everything you got: each day of the week ("days": calories, protein, water, training, sleep, recovery, energy, soreness), the plan and its training days, reminders, saved meals, goal, injuries. Kinds:
   training plan: {"type":"plan","title":"short line saying what changes and why","changes":[...]} with 1 or 2 changes from:
     {"op":"sets","workout":"<workout name or all>","delta":-1|1}, {"op":"reps","workout":"<name or all>","reps":"8–12"},
     {"op":"swap","workout":"<name>","from":"<exercise id from plan>","to":"<English exercise name from the exercise list>"},
     {"op":"remove","workout":"<name>","ex":"<exercise id>"}, {"op":"add","workout":"<name>","search":"<English exercise name from the list>","sets":3,"reps":"10–12"}, {"op":"deload"}.
     Use the exact workout names and exercise ids from "plan". Never anything that loads an injury.
-  food targets: {"type":"targets","title":"short reason","kcal":n,"protein":n,"water":ml} with only what changes (never when "coachManagesFood" is true). Change calories by at most 200 kcal.
-  If any goal was missed, give 1 to 3 suggestions that fit what went wrong, for example: workouts missed → shorter workouts ("sets" delta -1 on all, or "remove" the last exercise of the longest workout); low recovery or short sleep → "deload" or one set less; weight not moving the right way while calories were on target → change calories by 100 to 150 kcal; calories over on some days → keep the target, don't lower it (say so in a tip instead). If every goal was hit, give exactly 1 small step up (one more set for a muscle that gets less work, or a slightly heavier rep range). Only plan changes and food targets can be applied; everything else goes in "tips".`;
+  move a workout day: {"type":"move","title":"…","from":<weekday 0-6 of a training day, 0 = Sunday>,"to":<weekday 0-6 of a rest day>} (for workouts missed on the same weekday, like long work days).
+  food targets: {"type":"targets","title":"…","kcal":n,"protein":n,"water":ml} with only what changes (never when "coachManagesFood" is true). A cut never gets more calories, a bulk never less; at most 200 kcal change, only when weight moved the wrong way while calories were on target.
+  spread calories in the coming week: {"type":"balance","title":"…","kcal":100-300,"from":[weekdays],"to":[weekdays]} (take kcal from each "from" day, share it over the "to" days; for weekends that go over).
+  a reminder: {"type":"reminder","title":"…","kind":"sleep|workout|water|checkin|food","time":"HH:MM"} (bedtime for short sleep, a workout time for missed workouts, water for low water; skip one that is already on at that time in "reminders").
+  save a meal idea: {"type":"meal","title":"…","name":"short meal name in the reply language","kcal":n,"protein":n,"carbs":n,"fat":n} (a real, local meal that fixes a gap like low protein; not one already in "savedMeals").
+  If every goal was hit, the 3 suggestions are small steps up (one more set for a muscle that gets less work, a meal idea, a reminder that protects a habit). Everything that can't be applied goes in "tips".`;
       return ask(task, system, [{ role: 'user', parts: [{ text: JSON.stringify(b.data ?? {}).slice(0, 30000) }] }], {
         type: 'object',
         properties: {
@@ -571,7 +527,7 @@ Use only these numbers and say them plainly (for example "you trained 2 of 4 day
   }
 }
 
-Deno.serve((req) => requestCtx.run({ lastDetail: '', lastModel: '', modelOverride: '', temperature: undefined, lastUsage: { prompt: 0, completion: 0, cost: 0 } }, () => handle(req)));
+Deno.serve((req) => requestCtx.run({ lastDetail: '', lastModel: '', temperature: undefined, lastUsage: { prompt: 0, completion: 0, cost: 0 } }, () => handle(req)));
 
 async function handle(req: Request) {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -588,7 +544,7 @@ async function handle(req: Request) {
     if (typeof body.image === 'string' && body.image.length > 6_000_000) return json({ error: 'too_big' }, 413);
     if (typeof body.file === 'string' && body.file.length > 8_000_000) return json({ error: 'too_big' }, 413);
     if (Array.isArray(body.frames) && JSON.stringify(body.frames).length > 8_000_000) return json({ error: 'too_big' }, 413);
-    if (!env('GEMINI_API_KEY') && !openrouterKey()) return json({ error: 'ai_off' }, 503);
+    if (!openrouterKey()) return json({ error: 'ai_off' }, 503);
 
     const admin = createClient(url, env('SUPABASE_SERVICE_ROLE_KEY'));
     // Admin cost page: OpenRouter balance and total spend (doesn't count toward the daily limit).
@@ -601,7 +557,7 @@ async function handle(req: Request) {
         fetch('https://openrouter.ai/api/v1/credits', { headers: { Authorization: `Bearer ${key}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
         fetch('https://openrouter.ai/api/v1/key', { headers: { Authorization: `Bearer ${key}` } }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
       ]);
-      return json({ result: { connected: true, credits: c?.data?.total_credits ?? null, used: c?.data?.total_usage ?? null, key_usage: k?.data?.usage ?? null, key_limit: k?.data?.limit ?? null, model: env('OPENROUTER_MODEL', HAIKU) } });
+      return json({ result: { connected: true, credits: c?.data?.total_credits ?? null, used: c?.data?.total_usage ?? null, key_usage: k?.data?.usage ?? null, key_limit: k?.data?.limit ?? null, model: HAIKU } });
     }
     // Admin only: make an image (used to create app artwork). Logged with its cost like other AI calls.
     if (task === 'admin_image') {
@@ -635,12 +591,7 @@ async function handle(req: Request) {
 
     cx().lastModel = '';
     cx().lastDetail = '';
-    cx().modelOverride = '';
     cx().temperature = ['meal_photo', 'food_text', 'label_photo', 'blood', 'machine', 'plan', 'plan_review', 'recipe'].includes(task) ? 0 : undefined;
-    if (typeof body.model === 'string' && body.model) {
-      const { data: isAdmin } = await admin.from('admins').select('user_id').eq('user_id', u.user.id).maybeSingle();
-      if (isAdmin) cx().modelOverride = body.model.slice(0, 100);
-    }
     cx().lastUsage = { prompt: 0, completion: 0, cost: 0 };
     let result;
     try {

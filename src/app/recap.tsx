@@ -14,8 +14,10 @@ import { applyPlanChanges, applyTargets, changeLine } from '@/lib/coachPlan';
 import { useFood } from '@/lib/food';
 import { addDays, fmt } from '@/lib/nutrition';
 import { fx } from '@/lib/progress';
+import { balanceMoves, moveDay, remindersSummary, weekDays, withReminder } from '@/lib/recapApply';
 import { type Goal, markRecapSeen, recapDays, recapGoals, type RecapAI, recapRow, recapWeek, saveRecap, type Suggestion, writeRecap } from '@/lib/recap';
 import { useReportData, useReportStats } from '@/lib/report';
+import { loadPrefs, savePrefs } from '@/lib/reminders';
 import { useTrain } from '@/lib/train';
 
 // The story is always dark, like a story on any phone.
@@ -28,7 +30,8 @@ export default function Recap() {
   const { t, lang } = useT();
   const insets = useSafeAreaInsets();
   const toast = useToast();
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
+  const uid = session?.user.id;
   const food = useFood();
   const train = useTrain();
   const { start, end } = recapWeek(food.today);
@@ -67,13 +70,16 @@ export default function Recap() {
         targets: food.setupDone ? { kcal: Math.round(food.target.k), protein: Math.round(food.target.p), water: food.plan.water } : null,
         coachFood: !!food.coachTargets,
         lang,
+        days: data ? weekDays(start, data, days) : [],
+        reminders: uid ? remindersSummary(await loadPrefs(uid).catch(() => null)) : undefined,
+        savedMeals: food.saved.map((m) => m.name).slice(0, 30),
       }).catch(() => null);
       if (!out) return setAiState('failed');
       setAi(out);
       setAiState('ready');
       saveRecap(start, { ai: out, lang }).catch(() => {});
     })();
-  }, [stats, before, goals, plan, food, lang, start]);
+  }, [stats, before, goals, plan, food, lang, start, data, days, uid]);
 
   const slides: Slide[] = useMemo(() => {
     if (!stats) return [];
@@ -189,11 +195,20 @@ export default function Recap() {
                 const sug = ai?.suggest ?? [];
                 let planNext = plan;
                 let foodNext = food.plan;
+                const moves: { day: string; kcal: number }[] = [];
                 for (const j of picked) {
                   const s = sug[j];
                   if (s?.type === 'plan' && planNext) planNext = applyPlanChanges(planNext, s.changes, food.today);
                   if (s?.type === 'targets' && !food.coachTargets) foodNext = applyTargets(foodNext, s);
+                  if (s?.type === 'move' && planNext) planNext = moveDay(planNext, s.from, s.to, food.today);
+                  if (s?.type === 'balance') moves.push(...balanceMoves(s, food.today));
+                  if (s?.type === 'meal') await food.saveMeal({ name: s.name, items: null, ingredients: null, kcal: s.kcal, protein: s.protein, carbs: s.carbs, fat: s.fat });
+                  if (s?.type === 'reminder' && uid) {
+                    const prefs = await loadPrefs(uid);
+                    await savePrefs(uid, withReminder(prefs, s.kind, s.time));
+                  }
                 }
+                if (moves.length) await food.addMoves(moves);
                 // The plan just got its weekly check, so the automatic one waits a week.
                 if (planNext && planNext !== plan) train.updatePlan({ ...planNext, reviewedAt: food.today });
                 if (foodNext !== food.plan && !(await food.savePlan(foodNext))) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
@@ -216,6 +231,8 @@ export default function Recap() {
     </View>
   );
 }
+
+const REMINDER_NAME = { sleep: 'Bedtime', workout: 'Workouts', water: 'Water', checkin: 'Daily check-in', food: 'Meals and food' } as const;
 
 const rangeLabel = (a: string, b: string, lang: 'en' | 'ar') => {
   const f = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { month: 'short', day: 'numeric' });
@@ -454,7 +471,7 @@ function SlideBody(p: BodyProps) {
       <Stack style={{ gap: 14 }} pointerEvents="none">
         <Eyebrow>{t('What got in the way')}</Eyebrow>
         <AiTag t={t} label="Gymi AI reading" />
-        <H>{t('You hit {a} of {b} goals', { a: p.goals.filter((g) => g.ok).length, b: p.goals.length })}</H>
+        <H>{p.goals.length ? t('You hit {a} of {b} goals', { a: p.goals.filter((g) => g.ok).length, b: p.goals.length }) : t('Not enough was logged last week to score your goals')}</H>
         <Goals t={t} goals={p.goals} />
         {p.aiState !== 'ready' ? <Thinking t={t} failed={p.aiState === 'failed'} /> : (ai?.problems ?? []).map((n, j) => <Note key={j} icon={(['cal', 'food', 'moon'] as const)[j % 3]} title={n.title} detail={n.detail} />)}
       </Stack>
@@ -472,8 +489,9 @@ function SlideBody(p: BodyProps) {
 }
 
 function Goals({ t, goals }: { t: T; goals: Goal[] }) {
-  const label = { train: 'Workouts as planned', food: 'Calories on target', weight: 'Weight on plan' } as const;
-  const value = (g: Goal) => (g.key === 'weight' ? `${g.done} ${t('kg')}` : `${g.done}/${g.target}`);
+  const label = { train: 'Workouts as planned', food: 'Calories on target', protein: 'Protein goal', water: 'Water goal', sleep: 'Sleep, 7 h or more', weight: 'Weight on plan' } as const;
+  const value = (g: Goal) => (g.key === 'weight' ? `${g.done} ${t('kg')}` : g.key === 'sleep' ? `${g.done} ${t('h')}` : g.key === 'train' ? `${g.done}/${g.target}` : t('{a} of {b} days', { a: g.done, b: g.target }));
+  if (!goals.length) return null;
   return (
     <Card>
       {goals.map((g) => (
@@ -489,7 +507,22 @@ function ApplySlide(p: BodyProps) {
   const [picked, setPicked] = useState<number[]>(() => sug.map((_, j) => j));
   const [busy, setBusy] = useState(false);
   const done = p.applied != null;
-  const lines = (s: Suggestion) => (s.type === 'plan' ? s.changes.map((c) => changeLine(c, p.plan ?? null, p.lang, t)) : [s.kcal ? t('Calories: {n} kcal', { n: fmt(s.kcal) }) : null, s.protein ? t('Protein: {n} g', { n: s.protein }) : null, s.water ? t('Water: {n} ml', { n: fmt(s.water) }) : null].filter((x): x is string => !!x));
+  const day = (d: number) => new Intl.DateTimeFormat(p.lang === 'ar' ? 'ar' : 'en-US', { weekday: 'long' }).format(new Date(2026, 9, 4 + d, 12));
+  const lines = (s: Suggestion): string[] => {
+    if (s.type === 'plan') return s.changes.map((c) => changeLine(c, p.plan ?? null, p.lang, t));
+    if (s.type === 'targets') return [s.kcal ? t('Calories: {n} kcal', { n: fmt(s.kcal) }) : null, s.protein ? t('Protein: {n} g', { n: s.protein }) : null, s.water ? t('Water: {n} ml', { n: fmt(s.water) }) : null].filter((x): x is string => !!x);
+    if (s.type === 'move') return [t('{w}: {a} → {b}', { w: t(s.workout ?? p.plan?.week[s.from]?.w ?? ''), a: day(s.from), b: day(s.to) })];
+    if (s.type === 'reminder') return [t('Reminder: {x} at {time}', { x: t(REMINDER_NAME[s.kind]), time: s.time })];
+    if (s.type === 'meal') return [s.name, t('{k} kcal · {p} g protein', { k: fmt(s.kcal), p: s.protein })];
+    return [t('{n} kcal less on {a}, more on {b}', { n: s.kcal, a: s.from.map(day).join(t(', ')), b: s.to.map(day).join(t(', ')) })];
+  };
+  const KIND_TITLE = { plan: 'Training plan', targets: 'Food targets', move: 'Move a workout', reminder: 'Reminder', meal: 'Save a meal', balance: 'Balance your week' } as const;
+  // Suggestions that arrive after this slide opened start ticked too.
+  const [seenCount, setSeenCount] = useState(sug.length);
+  if (sug.length !== seenCount) {
+    setSeenCount(sug.length);
+    setPicked(sug.map((_, j) => j));
+  }
   return (
     <View style={{ gap: 14, flex: 1 }}>
       <Eyebrow>{t(sug.length ? 'Want me to apply them?' : 'See you next week')}</Eyebrow>
@@ -511,7 +544,7 @@ function ApplySlide(p: BodyProps) {
             </View>
             <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
               <Text weight={700} color={K.text}>
-                {s.title || t(s.type === 'plan' ? 'Training plan' : 'Food targets')}
+                {s.title || t(KIND_TITLE[s.type])}
               </Text>
               {lines(s).map((l, k) => (
                 <Text key={k} variant="small" color={K.sec}>

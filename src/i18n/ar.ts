@@ -3748,4 +3748,11 @@ export const AR: Record<string, string> = {
   "Saved to your meals. Log it from Saved meals any time.": "انحفظت في وجباتك. تقدر تسجلها من الوجبات المحفوظة أي وقت.",
   "I ate it": "أكلتها",
   "of {n}": "من {n}",
+  "Move a workout": "انقل تمرين",
+  "Save a meal": "احفظ وجبة",
+  "Balance your week": "وازن أسبوعك",
+  "Reminder: {x} at {time}": "تذكير: {x} الساعة {time}",
+  "{n} kcal less on {a}, more on {b}": "{n} سعرة أقل يوم {a}، وأكثر يوم {b}",
+  "Sleep, 7 h or more": "النوم، ٧ ساعات أو أكثر",
+  "Not enough was logged last week to score your goals": "ما انسجل كفاية الأسبوع اللي فات عشان نقيس أهدافك",
 };

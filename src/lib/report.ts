@@ -101,6 +101,7 @@ export function useReportStats(from: string, to: string, data: ReportData | null
     calDays: cw.parts.cal,
     sleepAvg: sleeps.length ? Math.round((sleeps.reduce((a, b) => a + b, 0) / sleeps.length) * 10) / 10 : null,
     shortNights: sleeps.filter((h) => h < 6.5).length,
+    sleepNights: sleeps.length,
     prs: prs.length,
     liftUps,
     commitment: cw.pct,
