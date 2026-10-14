@@ -50,8 +50,15 @@ export async function saveMsg(m: Omit<ChatMsg, 'id' | 'created_at'>): Promise<Ch
   return (data as ChatMsg) ?? null;
 }
 
-export const updateActions = (id: string, actions: ChatAction[]) => supabase.from('chat_messages').update({ actions }).eq('id', id);
-export const deleteChat = (chatId: string) => supabase.from('chat_messages').delete().eq('chat_id', chatId);
+// Awaited here: a Supabase query only runs once something waits for it, so a call without await would never save.
+export async function updateActions(id: string, actions: ChatAction[]) {
+  const { error } = await supabase.from('chat_messages').update({ actions }).eq('id', id);
+  return !error;
+}
+export async function deleteChat(chatId: string) {
+  const { error } = await supabase.from('chat_messages').delete().eq('chat_id', chatId);
+  return !error;
+}
 
 /** Put a deleted chat back (Undo). */
 export async function restoreChat(msgs: ChatMsg[]) {

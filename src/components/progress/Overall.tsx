@@ -9,6 +9,7 @@ import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { addDays, fmt } from '@/lib/nutrition';
 import { fx, shortDate, weeklyVolume } from '@/lib/progress';
+import { hasRecap, recapWeek } from '@/lib/recap';
 import { recLabel } from '@/lib/recovery';
 import { useTrain } from '@/lib/train';
 import { EX, weekdayOf } from '@/lib/training';
@@ -125,7 +126,10 @@ export function Overall({ go }: { go: (t: PTab, sub?: number) => void }) {
           </View>
         </Row>
       </Card>
-      <Button kind="soft" icon="play" title={t('Last week’s recap')} color={c.text} style={{ marginBottom: 12 }} onPress={() => router.push('/recap')} />
+      {/* Only once you've had a whole week in the app. */}
+      {hasRecap(session?.user.created_at, recapWeek(food.today).start) ? (
+        <Button kind="soft" icon="play" title={t('Last week’s recap')} color={c.text} style={{ marginBottom: 12 }} onPress={() => router.push('/recap')} />
+      ) : null}
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 2 }}>
         {tile('scale', t('Weight'), cur ? `${fx(cur)} ${t('kg')}` : '–', hasDw ? `${arrow(dw)} ${fx(Math.abs(dw))} ${t('kg')}` : t('Log your weight'), () => go('body'), goodW)}

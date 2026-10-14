@@ -18,7 +18,7 @@ import { WorkoutBell } from '@/components/train/WorkoutBell';
 import { Button, Card, Row, Springy, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
-import { fmt } from '@/lib/nutrition';
+import { addDays, fmt } from '@/lib/nutrition';
 import { useTrain } from '@/lib/train';
 import { DAYS } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
@@ -123,8 +123,10 @@ function WeekStrip() {
   return (
     <Row gap={4} style={{ justifyContent: 'space-between' }}>
       {DAYS.map((d, i) => {
-        const w = train.week[i]?.w;
         const done = train.doneIdx.has(i);
+        // A day off you set (a break) shows as off, not as a workout.
+        const off = !done && !!train.plan?.skipped[addDays(train.today, i - train.todayIdx)];
+        const w = off ? null : train.week[i]?.w;
         const isT = i === train.todayIdx;
         return (
           <View key={d} style={{ flex: 1, alignItems: 'center' }}>
@@ -141,7 +143,7 @@ function WeekStrip() {
               ) : null}
             </View>
             <Text variant="xs" color="sec" numberOfLines={1} style={{ marginTop: 4, height: 16 }}>
-              {w ? (w === 'Full body' ? t('Full') : t(w)) : t('Rest')}
+              {w ? (w === 'Full body' ? t('Full') : t(w)) : t(off ? 'Day off' : 'Rest')}
             </Text>
           </View>
         );

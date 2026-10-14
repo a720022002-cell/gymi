@@ -3764,4 +3764,7 @@ export const AR: Record<string, string> = {
   "Your week: {x}": "أسبوعك: {x}",
   "Reminder on: {x} at {time}": "التذكير شغّال: {x} الساعة {time}",
   "On a break until {day}": "راحة من التمرين لين {day}",
+  "Day off": "إجازة",
+  "Your first recap comes on {day}": "أول ملخص أسبوعي يجيك يوم {day}",
+  "It covers a whole week in Gymi, so keep logging this week.": "الملخص يغطي أسبوع كامل في Gymi، فكمّل تسجيل هالأسبوع.",
 };

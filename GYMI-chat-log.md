@@ -113,6 +113,7 @@ Passwords and keys are left out on purpose.
 - **Unknown machine (more accurate):** the AI picks only from the app's own machine list (no made-up machines) and judges by the machine's own parts (where the pads, rollers, handles and foot plate are), so it works on empty machines, which is how most people take the photo. It says how sure it is. When it isn't sure, nothing is pre-picked: you choose from up to 4 look-alikes. Tested on 12 empty-machine photos: 10 right, and the 2 misses (hard angles) said "not sure".
 - **Coach can do more:** besides logging and plan tweaks, it can now set a break (no workouts from one day to another), end a break, change which workout is on each weekday, and turn on a reminder at a time. Each comes as a card with Apply and Undo. It never says it can't, and never says something is done before you tap Apply. During a break, the Train page says "On a break until …", the next workout skips the break, and "You missed …" doesn't show.
 - **Coach chat:** the voice (mic) button is gone, and Return now adds a new line; the arrow sends.
+- **Fixes:** an applied coach card now stays applied after leaving the chat (the save never ran before; Undo on logged items had the same bug). Break days show as "Day off" in the week strip at the top of Train. The weekly recap only appears (and the Progress button only shows) once you've had a whole week in the app; before that it says when your first recap comes.
 
 ---
 

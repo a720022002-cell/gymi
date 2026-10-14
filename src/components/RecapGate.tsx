@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 
 import { useAuth } from '@/lib/auth';
 import { useFood } from '@/lib/food';
-import { recapRow, recapWeek } from '@/lib/recap';
+import { hasRecap, recapRow, recapWeek } from '@/lib/recap';
 import { supabase } from '@/lib/supabase';
 import { useTrain } from '@/lib/train';
 
@@ -20,8 +20,7 @@ export function RecapGate({ paused }: { paused?: boolean }) {
   useEffect(() => {
     if (!ready || checked === `${uid}:${start}`) return;
     checked = `${uid}:${start}`;
-    const joined = (session?.user.created_at ?? '').slice(0, 10);
-    if (!joined || joined > start) return;
+    if (!hasRecap(session?.user.created_at, start)) return;
     (async () => {
       if (await recapRow(start).catch(() => ({}))) return;
       const [w, f] = await Promise.all([

@@ -7,7 +7,7 @@ import Svg, { Circle, Defs, RadialGradient, Rect, Stop } from 'react-native-svg'
 import { Icon, type IconName } from '@/components/Icon';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
-import { Springy } from '@/components/ui';
+import { Button, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { applyPlanChanges, applyTargets, changeLine } from '@/lib/coachPlan';
@@ -15,7 +15,7 @@ import { useFood } from '@/lib/food';
 import { addDays, fmt } from '@/lib/nutrition';
 import { fx } from '@/lib/progress';
 import { balanceMoves, moveDay, remindersSummary, weekDays, withReminder } from '@/lib/recapApply';
-import { type Goal, markRecapSeen, REMINDER_NAME, recapDays, recapGoals, type RecapAI, recapRow, recapWeek, saveRecap, type Suggestion, writeRecap } from '@/lib/recap';
+import { firstRecapDay, type Goal, hasRecap, markRecapSeen, REMINDER_NAME, recapDays, recapGoals, type RecapAI, recapRow, recapWeek, saveRecap, type Suggestion, writeRecap } from '@/lib/recap';
 import { useReportData, useReportStats } from '@/lib/report';
 import { loadPrefs, savePrefs } from '@/lib/reminders';
 import { useTrain } from '@/lib/train';
@@ -49,8 +49,10 @@ export default function Recap() {
   const [aiState, setAiState] = useState<'loading' | 'ready' | 'failed'>('loading');
   const [applied, setApplied] = useState<number[] | null>(null);
   const asked = useRef(false);
+  // Joined during or after that week: no recap yet (it would be all zeros).
+  const tooNew = !!session && !hasRecap(session.user.created_at, start);
   useEffect(() => {
-    if (!stats || asked.current) return;
+    if (!stats || asked.current || tooNew) return;
     asked.current = true;
     (async () => {
       const row = await recapRow(start).catch(() => null);
@@ -79,7 +81,7 @@ export default function Recap() {
       setAiState('ready');
       saveRecap(start, { ai: out, lang }).catch(() => {});
     })();
-  }, [stats, before, goals, plan, food, lang, start, data, days, uid]);
+  }, [stats, tooNew, before, goals, plan, food, lang, start, data, days, uid]);
 
   const slides: Slide[] = useMemo(() => {
     if (!stats) return [];
@@ -135,6 +137,20 @@ export default function Recap() {
   };
 
   const name = (profile?.name ?? '').split(' ')[0];
+  if (tooNew && session) {
+    const first = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date(`${firstRecapDay(session.user.created_at)}T12:00:00`));
+    return (
+      <View style={{ flex: 1, backgroundColor: K.bg, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+        <Text variant="h2" center style={{ color: K.text }}>
+          {t('Your first recap comes on {day}', { day: first })}
+        </Text>
+        <Text center style={{ color: K.sec, marginTop: 8 }}>
+          {t('It covers a whole week in Gymi, so keep logging this week.')}
+        </Text>
+        <Button title={t('Close')} style={{ marginTop: 24, alignSelf: 'stretch' }} onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
+      </View>
+    );
+  }
   if (!stats || !cur)
     return (
       <View style={{ flex: 1, backgroundColor: K.bg, alignItems: 'center', justifyContent: 'center' }}>

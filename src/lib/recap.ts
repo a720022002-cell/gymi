@@ -33,6 +33,15 @@ export function recapWeek(today: string) {
   return { start, end: addDays(start, 6) };
 }
 
+/** A recap needs a whole week in the app: you joined on or before that week's Sunday. */
+export const hasRecap = (joinedAt: string | undefined, start: string) => {
+  const joined = (joinedAt ?? '').slice(0, 10);
+  return !!joined && joined <= start;
+};
+
+/** The Sunday your first recap is ready: the first Sunday after the week you joined. */
+export const firstRecapDay = (joinedAt: string) => addDays(weekStart(joinedAt.slice(0, 10)), 7);
+
 export type Goal = { key: 'train' | 'food' | 'protein' | 'water' | 'sleep' | 'weight'; ok: boolean; done: string; target: string };
 
 /**
