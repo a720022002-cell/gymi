@@ -1,0 +1,310 @@
+<title>Gymi Weekly Recap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap">
+<style>
+/* Layout: one phone-sized story card, centered; tap zones left/right, progress bars on top, a scenario switch under it. Dark by choice, like a story. */
+:root {
+  --night: #07080D;
+  --card: #10131D;
+  --ink: #F5F6FA;
+  --dim: #A3A8B8;
+  --cobalt: #3355FF;
+  --cobalt-soft: rgba(51, 85, 255, 0.18);
+  --up: #22C55E;
+  --down: #F05252;
+  --amber: #F5B83D;
+  --glass: rgba(255, 255, 255, 0.08);
+  --line: rgba(255, 255, 255, 0.12);
+  --display: "Sora", "Manrope", system-ui, sans-serif;
+  --body: "Manrope", system-ui, sans-serif;
+  --ar: "IBM Plex Sans Arabic", "Manrope", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--night); color: var(--ink); font-family: var(--body); padding-inline: 16px; padding-block: 14px; display: flex; flex-direction: column; align-items: center; gap: 12px; -webkit-tap-highlight-color: transparent; }
+body[dir="rtl"] { font-family: var(--ar); }
+.top { width: 100%; max-width: 420px; display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.seg { display: flex; background: var(--glass); border-radius: 999px; padding: 4px; gap: 4px; }
+.seg button { border: 0; background: transparent; color: var(--dim); font-family: inherit; font-weight: 600; font-size: 13px; line-height: 1; padding: 9px 12px; border-radius: 999px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--night); }
+.seg button:focus-visible, .btn:focus-visible { outline: 2px solid var(--cobalt); outline-offset: 2px; }
+.note { width: 100%; max-width: 420px; color: var(--dim); font-size: 12px; text-align: center; margin: 0; }
+
+.story { position: relative; width: 100%; max-width: 420px; flex: 1; min-height: 560px; max-height: 860px; border-radius: 28px; overflow: hidden; background: radial-gradient(120% 70% at 50% 0%, var(--bg1, #1b2a8a) 0%, var(--card) 72%); border: 1px solid var(--line); transition: background 0.6s ease; user-select: none; }
+.bars { position: absolute; top: 12px; inset-inline: 12px; display: flex; gap: 4px; z-index: 5; direction: ltr; }
+body[dir="rtl"] .bars { flex-direction: row-reverse; }
+.bar { flex: 1; height: 3px; border-radius: 3px; background: rgba(255,255,255,0.25); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--ink); }
+.head { position: absolute; top: 24px; inset-inline: 14px; display: flex; align-items: center; gap: 8px; z-index: 5; font-size: 13px; font-weight: 700; }
+.logo { width: 28px; height: 28px; border-radius: 9px; background: var(--cobalt); display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 14px; color: #fff; }
+.head span { color: var(--dim); font-weight: 500; }
+.zones { position: absolute; inset: 0; display: flex; z-index: 3; }
+.zones div { flex: 1; cursor: pointer; }
+.slide { position: absolute; inset: 0; padding: 78px 22px 26px; display: flex; flex-direction: column; gap: 14px; z-index: 4; pointer-events: none; }
+.slide .act { pointer-events: auto; }
+.slide.in > * { animation: rise 0.55s cubic-bezier(.2,.8,.2,1) both; }
+.slide.in > *:nth-child(2) { animation-delay: 0.08s; } .slide.in > *:nth-child(3) { animation-delay: 0.16s; } .slide.in > *:nth-child(4) { animation-delay: 0.24s; } .slide.in > *:nth-child(5) { animation-delay: 0.32s; } .slide.in > *:nth-child(6) { animation-delay: 0.4s; }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .slide.in > * { animation: none; } }
+
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); margin: 0; }
+body[dir="rtl"] .eyebrow { letter-spacing: 0; }
+h1 { font-family: var(--display); font-size: 34px; line-height: 1.12; margin: 0; text-wrap: balance; }
+body[dir="rtl"] h1 { font-family: var(--ar); font-weight: 700; line-height: 1.3; }
+h2 { font-family: var(--display); font-size: 26px; line-height: 1.2; margin: 0; text-wrap: balance; }
+body[dir="rtl"] h2 { font-family: var(--ar); font-weight: 700; line-height: 1.35; }
+p { margin: 0; line-height: 1.55; }
+.lead { color: var(--dim); font-size: 15px; }
+.num { font-family: var(--display); font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
+.big { font-size: 64px; font-weight: 800; line-height: 1; letter-spacing: -0.03em; }
+.big small { font-size: 22px; font-weight: 600; color: var(--dim); letter-spacing: 0; }
+.card { background: var(--glass); border: 1px solid var(--line); border-radius: 20px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.row > div { min-width: 0; }
+.k { color: var(--dim); font-size: 13px; }
+.v { font-weight: 700; font-size: 16px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.pill.up { background: rgba(34,197,94,0.16); color: var(--up); }
+.pill.down { background: rgba(240,82,82,0.16); color: var(--down); }
+.pill.amber { background: rgba(245,184,61,0.16); color: var(--amber); }
+.days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; direction: ltr; }
+body[dir="rtl"] .days { direction: rtl; }
+.day { display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 11px; color: var(--dim); }
+.dot { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; border: 2px solid var(--line); color: var(--ink); }
+.dot.ok { border-color: var(--up); }
+.dot.miss { border-color: var(--down); color: var(--down); }
+.dot.rest { border-style: dashed; color: var(--dim); }
+.meter { height: 8px; border-radius: 8px; background: rgba(255,255,255,0.1); overflow: hidden; }
+.meter i { display: block; height: 100%; border-radius: 8px; background: var(--cobalt); }
+.list { display: flex; flex-direction: column; gap: 10px; }
+.item { display: flex; gap: 12px; align-items: flex-start; background: var(--glass); border: 1px solid var(--line); border-radius: 18px; padding: 12px 14px; }
+.item .ic { width: 32px; height: 32px; border-radius: 10px; flex: none; display: grid; place-items: center; background: var(--cobalt-soft); color: #9fb0ff; }
+.item .ic svg { width: 18px; height: 18px; }
+.item b { display: block; font-size: 15px; margin-bottom: 2px; }
+.item p { color: var(--dim); font-size: 13px; }
+.item.check { cursor: pointer; }
+.item.check .box { width: 22px; height: 22px; border-radius: 7px; border: 2px solid var(--dim); flex: none; margin-top: 4px; display: grid; place-items: center; }
+.item.check[aria-checked="true"] { border-color: var(--cobalt); background: var(--cobalt-soft); }
+.item.check[aria-checked="true"] .box { background: var(--cobalt); border-color: var(--cobalt); }
+.item.check[aria-checked="true"] .box::after { content: "✓"; color: #fff; font-size: 14px; font-weight: 800; line-height: 1; font-family: var(--display); }
+.spacer { flex: 1; }
+.btn { border: 0; border-radius: 999px; padding: 15px 18px; font-family: inherit; font-weight: 700; font-size: 16px; line-height: 1.2; cursor: pointer; width: 100%; }
+.btn.primary { background: var(--ink); color: var(--night); }
+.btn.ghost { background: transparent; color: var(--dim); }
+.btn.done { background: var(--up); color: #04210f; }
+.ai { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #b9c4ff; }
+.ai svg { width: 14px; height: 14px; }
+canvas.confetti { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.ring { width: 150px; height: 150px; align-self: center; position: relative; }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring .c { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+.paused { position: absolute; bottom: 14px; inset-inline: 0; text-align: center; font-size: 12px; color: var(--dim); z-index: 6; }
+</style>
+
+<div class="top">
+  <div class="seg" role="group" aria-label="Scenario">
+    <button id="sc-good" aria-pressed="true"></button>
+    <button id="sc-bad" aria-pressed="false"></button>
+  </div>
+  <div class="seg" role="group" aria-label="Language">
+    <button id="lang-ar" aria-pressed="true">عربي</button>
+    <button id="lang-en" aria-pressed="false">English</button>
+  </div>
+</div>
+
+<div class="story" id="story" aria-live="polite">
+  <div class="bars" id="bars"></div>
+  <div class="head"><div class="logo">G</div><div><div id="h-title"></div><span id="h-sub"></span></div></div>
+  <canvas class="confetti" id="confetti"></canvas>
+  <div class="zones"><div id="z-prev" aria-label="Back"></div><div id="z-next" aria-label="Next"></div></div>
+  <div id="slides"></div>
+  <div class="paused" id="paused" hidden></div>
+</div>
+<p class="note" id="note"></p>
+
+<script>
+(function () {
+  const AI = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.6L18 9.5l-4.2 1.9L12 16l-1.8-4.6L6 9.5l4.2-1.9z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>';
+  const IC = {
+    dumbbell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg>',
+    food: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 11h16a8 8 0 0 1-16 0zM9 7c0-1.5 1-2 1-3M14 7c0-1.5 1-2 1-3"/></svg>',
+    moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg>',
+    cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg>',
+    up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 16l6-6 4 4 6-6M15 8h5v5"/></svg>',
+  };
+
+  // Example numbers only (a 80 kg man on a bulk, and the same man on a cut in a hard week).
+  const T = {
+    ar: {
+      good: 'حققت أهدافك', bad: 'ما حققتها', week: 'أسبوعك', range: '٦ – ١٢ أكتوبر',
+      note: 'مثال بأرقام تجريبية. اضغط يمين أو يسار تنتقل، واضغط مطوّل توقف.', paused: 'موقوف',
+      days: ['ح', 'ن', 'ث', 'ر', 'خ', 'ج', 'س'],
+      g: [
+        { k: 'intro', bg: '#1b2a8a', eyebrow: 'ملخص أسبوعك', h: 'أسبوع قوي يا عبدالله 💪', p: 'خلنا نشوف وش سويت من ٦ إلى ١٢ أكتوبر.' },
+        { k: 'train', bg: '#123a2a', eyebrow: 'التمارين', h: 'ما فوّت ولا تمرين', big: '4', of: 'من 4', dots: ['ok','rest','ok','rest','ok','ok','rest'],
+          rows: [['حجم التمرين', '18,400 كجم', 'up', '↑ 12%'], ['رقم قياسي جديد', 'بنش برس 85 كجم', 'up', '+5 كجم']] },
+        { k: 'food', bg: '#2a1f5c', eyebrow: 'الأكل', h: 'أكلك كان على الهدف ٦ أيام من ٧', meters: [['السعرات', '2,840 / 2,860', 99], ['البروتين', '152 / 160 جم', 95], ['الماء', '2.9 / 3.0 لتر', 96]] },
+        { k: 'body', bg: '#16304d', eyebrow: 'الجسم والنوم', h: 'زدت ٠٫٤ كجم، بالضبط زي خطة التضخيم', rows: [['الوزن', '80.2 ← 80.6 كجم', 'up', 'على الخطة'], ['متوسط النوم', '7.2 ساعة', 'up', 'ممتاز'], ['الاستشفاء', '78%', 'up', 'جاهز']] },
+        { k: 'party', bg: '#3a2a08', eyebrow: 'النتيجة', h: 'حققت ٣ من ٣ أهداف 🎉', p: 'تمارينك، سعراتك ووزنك كلها على الخطة. ستريك ١٢ يوم!' },
+        { k: 'tips', bg: '#1b2a8a', eyebrow: 'عشان تستمر وتتحسن', ai: 'اقتراحات Gymi AI', h: 'وش ممكن يعطيك نتائج أفضل',
+          items: [['dumbbell', 'رجولك أقل من باقي الجسم', 'حجم تمرين الرجل أقل ٢٠٪ من الجزء العلوي. زيادة جولة في السكوات واللّيق برس تقفل الفرق.'],
+                  ['food', 'البروتين يطيح يوم الجمعة', 'كان ١١٠ جم بس. كوب لبن وبيضتين مع الفطور يرجعونك فوق ١٥٠.'],
+                  ['up', 'البنش جاهز يزيد', 'آخر ٣ جلسات خلصت كل العدّات. جرب ٨٧٫٥ كجم الأسبوع الجاي.']] },
+        { k: 'apply', bg: '#101a55', eyebrow: 'أطبقها لك؟', ai: 'اقتراحات Gymi AI', h: 'أطبق هالتغييرات على جدولك؟',
+          items: [['dumbbell', '+1 جولة سكوات ولّيق برس', 'في يوم الرجل'], ['up', 'بنش برس 87.5 كجم', 'الهدف الجاي'], ['food', 'تذكير بروتين يوم الجمعة', 'الساعة ١ الظهر']],
+          yes: 'طبّقها على جدولي', no: 'مو الحين', done: 'انطبقت ✓ جدولك تحدّث' },
+      ],
+      b: [
+        { k: 'intro', bg: '#3a1c1c', eyebrow: 'ملخص أسبوعك', h: 'أسبوع صعب، يصير', p: 'خلنا نشوف وش صار من ٦ إلى ١٢ أكتوبر، ونعدّل عشان الأسبوع الجاي يكون أحسن.' },
+        { k: 'train', bg: '#3a1c1c', eyebrow: 'التمارين', h: 'تمرنت مرتين من ٤', big: '2', of: 'من 4', dots: ['ok','rest','miss','rest','miss','ok','rest'],
+          rows: [['فاتك', 'السحب (الثلاثاء)، الرجل (الخميس)', 'down', '2 فات'], ['حجم التمرين', '8,900 كجم', 'down', '↓ 41%']] },
+        { k: 'food', bg: '#33203f', eyebrow: 'الأكل', h: 'الويكند رفع السعرات', meters: [['السعرات', '2,480 / 2,100', 118], ['البروتين', '98 / 150 جم', 65], ['الماء', '1.9 / 3.0 لتر', 63]] },
+        { k: 'body', bg: '#2c2440', eyebrow: 'الجسم والنوم', h: 'زدت ١٫١ كجم وأنت في تنشيف', rows: [['الوزن', '82.0 ← 83.1 كجم', 'down', 'الهدف −0.5'], ['متوسط النوم', '5.8 ساعة', 'down', 'قليل'], ['الاستشفاء', '52%', 'amber', 'متوسط']] },
+        { k: 'why', bg: '#3a2a1a', eyebrow: 'وش اللي وقف قدامك', ai: 'تحليل Gymi AI', h: '٣ أشياء أثرت على أسبوعك',
+          items: [['cal', 'أيام الدوام الطويل', 'التمرينين اللي فاتوك كانوا الثلاثاء والخميس، أطول أيامك (سجلت أكلك بعد ٩ بالليل).'],
+                  ['food', 'أكل الويكند', 'الجمعة والسبت متوسط ٣٬٦٠٠ سعرة. هذا لحاله مسح عجز ٥ أيام.'],
+                  ['moon', 'نوم قليل', '٥٫٨ ساعة بالمتوسط. النوم القليل يزيد الجوع ويخلي التمرين أثقل.']] },
+        { k: 'fix', bg: '#101a55', eyebrow: 'الخطة للأسبوع الجاي', ai: 'اقتراحات Gymi AI', h: 'اختار اللي تبي أطبقه على جدولك',
+          check: [['cal', 'انقل الرجل للسبت والسحب للأحد', 'بدل أيام الدوام الطويل'], ['dumbbell', 'تمارين أقصر: ٤٥ دقيقة', 'نفس الجولات المهمة، أقل تمارين جانبية'], ['food', 'وازن الويكند من الحين', 'خذ ٢٠٠ سعرة من الأحد للخميس وحطها للجمعة والسبت'], ['moon', 'تذكير نوم ١١:٣٠', 'كل يوم ما عدا الويكند']],
+          yes: 'طبّق اللي اخترته', no: 'مو الحين', done: 'انطبقت ✓ جدولك تحدّث' },
+      ],
+    },
+    en: {
+      good: 'Goals hit', bad: 'Goals missed', week: 'Your week', range: 'Oct 6 – 12',
+      note: 'Example with sample numbers. Tap right or left to move, press and hold to pause.', paused: 'Paused',
+      days: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
+      g: [
+        { k: 'intro', bg: '#1b2a8a', eyebrow: 'Your weekly recap', h: 'A strong week, Abdullah 💪', p: 'Here’s what you did from October 6 to 12.' },
+        { k: 'train', bg: '#123a2a', eyebrow: 'Training', h: 'You didn’t miss a single workout', big: '4', of: 'of 4', dots: ['ok','rest','ok','rest','ok','ok','rest'],
+          rows: [['Training volume', '18,400 kg', 'up', '↑ 12%'], ['New record', 'Bench press 85 kg', 'up', '+5 kg']] },
+        { k: 'food', bg: '#2a1f5c', eyebrow: 'Food', h: 'On target 6 days out of 7', meters: [['Calories', '2,840 / 2,860', 99], ['Protein', '152 / 160 g', 95], ['Water', '2.9 / 3.0 L', 96]] },
+        { k: 'body', bg: '#16304d', eyebrow: 'Body and sleep', h: 'Up 0.4 kg, right on your bulk plan', rows: [['Weight', '80.2 → 80.6 kg', 'up', 'On plan'], ['Average sleep', '7.2 h', 'up', 'Great'], ['Recovery', '78%', 'up', 'Ready']] },
+        { k: 'party', bg: '#3a2a08', eyebrow: 'The result', h: 'You hit 3 of 3 goals 🎉', p: 'Training, calories and weight all on plan. 12-day streak!' },
+        { k: 'tips', bg: '#1b2a8a', eyebrow: 'Keep it going', ai: 'Gymi AI suggestions', h: 'What could get you even better results',
+          items: [['dumbbell', 'Legs get less work', 'Leg volume is 20% below your upper body. One more set of squats and leg press closes the gap.'],
+                  ['food', 'Protein drops on Fridays', 'Only 110 g. A cup of laban and 2 eggs at breakfast gets you back over 150.'],
+                  ['up', 'Bench is ready to go up', 'You finished every rep the last 3 sessions. Try 87.5 kg next week.']] },
+        { k: 'apply', bg: '#101a55', eyebrow: 'Want me to apply them?', ai: 'Gymi AI suggestions', h: 'Apply these changes to your plan?',
+          items: [['dumbbell', '+1 set of squats and leg press', 'On leg day'], ['up', 'Bench press 87.5 kg', 'Next target'], ['food', 'Friday protein reminder', 'At 1 PM']],
+          yes: 'Apply to my plan', no: 'Not now', done: 'Applied ✓ Your plan is updated' },
+      ],
+      b: [
+        { k: 'intro', bg: '#3a1c1c', eyebrow: 'Your weekly recap', h: 'A hard week. It happens.', p: 'Let’s see what happened from October 6 to 12, and adjust so next week goes better.' },
+        { k: 'train', bg: '#3a1c1c', eyebrow: 'Training', h: 'You trained 2 times out of 4', big: '2', of: 'of 4', dots: ['ok','rest','miss','rest','miss','ok','rest'],
+          rows: [['Missed', 'Pull (Tue), Legs (Thu)', 'down', '2 missed'], ['Training volume', '8,900 kg', 'down', '↓ 41%']] },
+        { k: 'food', bg: '#33203f', eyebrow: 'Food', h: 'The weekend pushed calories up', meters: [['Calories', '2,480 / 2,100', 118], ['Protein', '98 / 150 g', 65], ['Water', '1.9 / 3.0 L', 63]] },
+        { k: 'body', bg: '#2c2440', eyebrow: 'Body and sleep', h: 'Up 1.1 kg while cutting', rows: [['Weight', '82.0 → 83.1 kg', 'down', 'Goal −0.5'], ['Average sleep', '5.8 h', 'down', 'Low'], ['Recovery', '52%', 'amber', 'Fair']] },
+        { k: 'why', bg: '#3a2a1a', eyebrow: 'What got in the way', ai: 'Gymi AI reading', h: '3 things that shaped your week',
+          items: [['cal', 'Long work days', 'Both missed workouts were Tuesday and Thursday, your longest days (you logged food after 9 PM).'],
+                  ['food', 'Weekend eating', 'Friday and Saturday averaged 3,600 kcal. That alone wiped out 5 days of deficit.'],
+                  ['moon', 'Short sleep', '5.8 h on average. Little sleep makes you hungrier and training feel heavier.']] },
+        { k: 'fix', bg: '#101a55', eyebrow: 'Plan for next week', ai: 'Gymi AI suggestions', h: 'Pick what to apply to your plan',
+          check: [['cal', 'Move Legs to Saturday, Pull to Sunday', 'Instead of your long work days'], ['dumbbell', 'Shorter workouts: 45 min', 'Same key sets, fewer extras'], ['food', 'Balance the weekend ahead', 'Take 200 kcal from Sun–Thu and put it on Fri and Sat'], ['moon', 'Bedtime reminder 11:30 PM', 'Every weeknight']],
+          yes: 'Apply what I picked', no: 'Not now', done: 'Applied ✓ Your plan is updated' },
+      ],
+    },
+  };
+
+  let lang = 'ar', sc = 'g', i = 0, t0 = 0, held = false, elapsed = 0, raf = 0, applied = false;
+  const DUR = 6000;
+  const $ = (id) => document.getElementById(id);
+  const slides = () => T[lang][sc];
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const numify = (s) => esc(s).replace(/([\d][\d.,]*\s?(?:%|kg|g|L|h|kcal)?)/g, '<span class="num">$1</span>');
+
+  function render() {
+    const L = T[lang], s = slides()[i];
+    document.body.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = lang;
+    $('sc-good').textContent = L.good; $('sc-bad').textContent = L.bad;
+    $('h-title').textContent = L.week; $('h-sub').textContent = L.range;
+    $('note').textContent = L.note; $('paused').textContent = L.paused;
+    $('story').style.setProperty('--bg1', s.bg);
+    $('bars').innerHTML = slides().map((_, j) => `<div class="bar"><i style="width:${j < i ? 100 : 0}%"></i></div>`).join('');
+    let h = `<p class="eyebrow">${esc(s.eyebrow)}</p>`;
+    if (s.ai) h += `<div class="ai">${AI}${esc(s.ai)}</div>`;
+    h += s.k === 'intro' || s.k === 'party' ? `<h1>${esc(s.h)}</h1>` : `<h2>${esc(s.h)}</h2>`;
+    if (s.p) h += `<p class="lead">${esc(s.p)}</p>`;
+    if (s.k === 'party') h += `<div class="ring"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" stroke="rgba(255,255,255,.12)" stroke-width="12" fill="none"/><circle cx="60" cy="60" r="52" stroke="${'#22C55E'}" stroke-width="12" fill="none" stroke-linecap="round" stroke-dasharray="327" stroke-dashoffset="0"/></svg><div class="c"><div><div class="num big">3<small>/3</small></div></div></div></div>`;
+    if (s.big) h += `<div class="num big">${esc(s.big)} <small>${esc(s.of)}</small></div>`;
+    if (s.dots) h += `<div class="card"><div class="days">${s.dots.map((d, j) => `<div class="day"><div class="dot ${d}">${d === 'ok' ? '✓' : d === 'miss' ? '✕' : '–'}</div>${esc(L.days[j])}</div>`).join('')}</div></div>`;
+    if (s.rows) h += `<div class="card">${s.rows.map(([k, v, tone, tag]) => `<div class="row"><div><div class="k">${esc(k)}</div><div class="v">${numify(v)}</div></div><span class="pill ${tone}">${numify(tag)}</span></div>`).join('')}</div>`;
+    if (s.meters) h += `<div class="card">${s.meters.map(([k, v, pct]) => `<div><div class="row"><span class="k">${esc(k)}</span><span class="v">${numify(v)}</span></div><div class="meter"><i style="width:${Math.min(100, pct)}%;background:${pct > 110 ? 'var(--down)' : pct < 80 ? 'var(--amber)' : 'var(--up)'}"></i></div></div>`).join('')}</div>`;
+    if (s.items) h += `<div class="list">${s.items.map(([ic, b, p]) => `<div class="item"><div class="ic">${IC[ic]}</div><div><b>${esc(b)}</b><p>${numify(p)}</p></div></div>`).join('')}</div>`;
+    if (s.check) h += `<div class="list act" id="checks">${s.check.map(([ic, b, p], j) => `<div class="item check" role="checkbox" tabindex="0" aria-checked="${j < 3}" data-j="${j}"><div class="box"></div><div><b>${esc(b)}</b><p>${numify(p)}</p></div></div>`).join('')}</div>`;
+    if (s.yes) h += `<div class="spacer"></div><div class="act" style="display:flex;flex-direction:column;gap:6px"><button class="btn ${applied ? 'done' : 'primary'}" id="yes">${esc(applied ? s.done : s.yes)}</button>${applied ? '' : `<button class="btn ghost" id="no">${esc(s.no)}</button>`}</div>`;
+    const el = document.createElement('div');
+    el.className = 'slide in';
+    el.innerHTML = h;
+    $('slides').replaceChildren(el);
+    const yes = $('yes');
+    if (yes) yes.onclick = (e) => { e.stopPropagation(); applied = true; render(); burst(); };
+    const no = $('no');
+    if (no) no.onclick = (e) => { e.stopPropagation(); go(1); };
+    el.querySelectorAll('.item.check').forEach((c) => {
+      const flip = (e) => { e.stopPropagation(); c.setAttribute('aria-checked', c.getAttribute('aria-checked') === 'true' ? 'false' : 'true'); };
+      c.onclick = flip;
+      c.onkeydown = (e) => (e.key === ' ' || e.key === 'Enter') && flip(e);
+    });
+    if (s.k === 'party') burst();
+    elapsed = 0; t0 = performance.now();
+  }
+
+  // The last slide waits for an answer; the others move on by themselves.
+  function tick(now) {
+    const s = slides()[i];
+    if (!held && !s.yes) elapsed += now - t0;
+    t0 = now;
+    const bar = $('bars').children[i]?.firstChild;
+    if (bar) bar.style.width = (s.yes ? 100 : Math.min(100, (elapsed / DUR) * 100)) + '%';
+    if (!s.yes && elapsed >= DUR) go(1);
+    raf = requestAnimationFrame(tick);
+  }
+  function go(d) {
+    const n = i + d;
+    if (n < 0) { i = 0; render(); return; }
+    if (n >= slides().length) return;
+    i = n; render();
+  }
+
+  // Confetti for a goal hit (and when changes are applied).
+  const cv = $('confetti'), cx = cv.getContext('2d');
+  let bits = [], fx = 0;
+  function burst() {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const r = cv.getBoundingClientRect();
+    cv.width = r.width * devicePixelRatio; cv.height = r.height * devicePixelRatio;
+    const C = ['#3355FF', '#22C55E', '#F5B83D', '#F05252', '#FFFFFF', '#A78BFA'];
+    bits = Array.from({ length: 90 }, () => ({ x: cv.width * (0.3 + Math.random() * 0.4), y: cv.height * 0.35, vx: (Math.random() - 0.5) * 14 * devicePixelRatio, vy: (-6 - Math.random() * 9) * devicePixelRatio, s: (4 + Math.random() * 5) * devicePixelRatio, c: C[(Math.random() * C.length) | 0], r: Math.random() * 6 }));
+    cancelAnimationFrame(fx);
+    const step = () => {
+      cx.clearRect(0, 0, cv.width, cv.height);
+      bits.forEach((b) => { b.vy += 0.35 * devicePixelRatio; b.x += b.vx; b.y += b.vy; b.r += 0.2; cx.save(); cx.translate(b.x, b.y); cx.rotate(b.r); cx.fillStyle = b.c; cx.fillRect(-b.s / 2, -b.s / 4, b.s, b.s / 2); cx.restore(); });
+      bits = bits.filter((b) => b.y < cv.height + 20);
+      if (bits.length) fx = requestAnimationFrame(step); else cx.clearRect(0, 0, cv.width, cv.height);
+    };
+    step();
+  }
+
+  // The tap zones follow the reading direction (in Arabic, the left side moves forward).
+  $('z-next').onclick = () => go(1);
+  $('z-prev').onclick = () => go(-1);
+  const story = $('story');
+  story.addEventListener('pointerdown', () => { held = true; $('paused').hidden = false; });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach((e) => story.addEventListener(e, () => { held = false; $('paused').hidden = true; }));
+  document.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight') go(lang === 'ar' ? -1 : 1); if (e.key === 'ArrowLeft') go(lang === 'ar' ? 1 : -1); });
+  const pick = (k, v) => () => {
+    if (k === 'lang') lang = v; else { sc = v; applied = false; }
+    i = 0;
+    $('lang-ar').setAttribute('aria-pressed', lang === 'ar'); $('lang-en').setAttribute('aria-pressed', lang === 'en');
+    $('sc-good').setAttribute('aria-pressed', sc === 'g'); $('sc-bad').setAttribute('aria-pressed', sc === 'b');
+    render();
+  };
+  $('lang-ar').onclick = pick('lang', 'ar'); $('lang-en').onclick = pick('lang', 'en');
+  $('sc-good').onclick = pick('sc', 'g'); $('sc-bad').onclick = pick('sc', 'b');
+  render();
+  raf = requestAnimationFrame(tick);
+})();
+</script>

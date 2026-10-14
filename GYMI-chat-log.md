@@ -100,6 +100,15 @@ Passwords and keys are left out on purpose.
 - Inside a workout it now says **"I'll add it to this workout"** («بضيفه لهذا التمرين»).
 - Elsewhere it still says "your plan".
 
+### 9. Audit fixes and food features (October 13–14)
+- **All audit issues fixed** (urgent, important and small). See `docs/AUDIT-2026-10.md`.
+- **Connections:** Supabase key and OpenRouter key are Network secrets; Vercel is a claude.ai connector; the network allows the database address and the live site.
+- **Full nutrition facts** for every food and scanned product (saturated fat, cholesterol, sodium, fiber, sugars, vitamins, minerals, % daily value). Missing facts can be added; only you see them.
+- **Saved meals:** scan a barcode while building a meal, and edit saved meals.
+- **Food search:** "Recent" foods, and your own name for a scanned product (only you see it).
+- **Balance it** opens by itself from 100 kcal over, on a bulk or a cut.
+- **Weekly recap:** a sample to approve first: `docs/recap-sample.html`.
+
 ---
 
 ## Still waiting on you
