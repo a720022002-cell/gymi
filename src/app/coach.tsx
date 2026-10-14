@@ -242,8 +242,10 @@ export default function Coach() {
     const history = [...msgs, ...(mine ? [mine] : [])];
     if (mine) setAll((xs) => [...(xs ?? []), mine]);
     setThinking(true);
+    // Answer in the language you wrote in (Arabic letters → Arabic), whatever the app's language is.
+    const replyLang = /[\u0600-\u06FF]/.test(q) ? 'ar' : /[A-Za-z]/.test(q) ? 'en' : lang;
     const { result, error } = await askAI<{ reply: string; actions: ChatAction[]; suggest?: unknown; card?: unknown; memory?: string }>('chat', {
-      lang,
+      lang: replyLang,
       context: context(),
       memory,
       messages: history.map((m) => ({ role: m.role, text: m.text })),

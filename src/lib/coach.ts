@@ -22,7 +22,7 @@ export type PlanChange =
   | { op: 'light' };
 
 /** A small chart or card under a coach reply. Charts are drawn from your real data. */
-export type ChatCard = { type: 'weight' } | { type: 'calories' } | { type: 'sleep' } | { type: 'meal'; name: string; kcal: number; protein: number };
+export type ChatCard = { type: 'weight' } | { type: 'calories' } | { type: 'sleep' } | { type: 'meal'; name: string; kcal: number; protein: number; carbs?: number; fat?: number };
 
 export type ChatMsg = { id: string; chat_id: string; role: 'user' | 'ai'; text: string; actions: ChatAction[] | null; card?: ChatCard | null; created_at: string };
 
@@ -57,7 +57,10 @@ export function cleanCard(c: unknown): ChatCard | null {
   const x = c as Record<string, unknown> | null;
   if (!x || typeof x !== 'object') return null;
   if (x.type === 'weight' || x.type === 'calories' || x.type === 'sleep') return { type: x.type };
-  if (x.type === 'meal' && typeof x.name === 'string' && Number(x.kcal) > 0) return { type: 'meal', name: x.name.slice(0, 60), kcal: Math.round(Number(x.kcal)), protein: Math.round(Number(x.protein) || 0) };
+  if (x.type === 'meal' && typeof x.name === 'string' && Number(x.kcal) > 0) {
+    const g = (v: unknown, max: number) => Math.min(max, Math.max(0, Math.round(Number(v) || 0)));
+    return { type: 'meal', name: x.name.slice(0, 80), kcal: g(x.kcal, 4000), protein: g(x.protein, 300), carbs: g(x.carbs, 600), fat: g(x.fat, 300) };
+  }
   return null;
 }
 

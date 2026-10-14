@@ -3742,4 +3742,9 @@ export const AR: Record<string, string> = {
   "Every weigh-in": "كل أوزانك",
   "Tap one to fix it or delete it.": "اضغط على أي واحد تعدّله أو تحذفه.",
   "A jump of 3 kg or more from the day before is shown in red: it may be a typo.": "الفرق ٣ كجم أو أكثر عن اللي قبله يطلع بالأحمر: ممكن يكون غلط بالكتابة.",
+  "P {n} g": "بروتين {n} جم",
+  "C {n} g": "كارب {n} جم",
+  "F {n} g": "دهون {n} جم",
+  "Saved to your meals. Log it from Saved meals any time.": "انحفظت في وجباتك. تقدر تسجلها من الوجبات المحفوظة أي وقت.",
+  "I ate it": "أكلتها",
 };
