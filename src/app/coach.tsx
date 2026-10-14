@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Platform, ScrollView, TextInput, View } from 'react-native';
+import { ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Thinking } from '@/components/food/Thinking';
@@ -24,16 +24,18 @@ import { MEAS, useHealth } from '@/lib/health';
 import { addDays, fmt, GOALS } from '@/lib/nutrition';
 import { daysBetween } from '@/lib/report';
 import { fx, weekAvg } from '@/lib/progress';
-import { canListen, listen, stopListening } from '@/lib/speech';
 import { supabase } from '@/lib/supabase';
 import { useTrain } from '@/lib/train';
 import { useStreaks } from '@/lib/useProgress';
-import { CARDIO, cardioKcal, exInfo, type TrainPlan, weekStart } from '@/lib/training';
+import { REMINDER_NAME } from '@/lib/recap';
+import { remindersSummary, withReminder } from '@/lib/recapApply';
+import { loadPrefs, type Prefs, savePrefs } from '@/lib/reminders';
+import { CARDIO, cardioKcal, DAYS_LONG, effectiveWeek, exInfo, type TrainPlan, weekdayOf, weekStart } from '@/lib/training';
 import { applyPlanChanges, applyTargets, changeLine, prepareSuggestions } from '@/lib/coachPlan';
 import { useSettings } from '@/theme/settings';
 
-type Suggestion = Extract<ChatAction, { type: 'plan' } | { type: 'targets' }>;
-const isSuggestion = (a: ChatAction): a is Suggestion => a.type === 'plan' || a.type === 'targets';
+type Suggestion = Extract<ChatAction, { type: 'plan' } | { type: 'targets' } | { type: 'reminder' }>;
+const isSuggestion = (a: ChatAction): a is Suggestion => a.type === 'plan' || a.type === 'targets' || a.type === 'reminder';
 type Logged = Exclude<ChatAction, Suggestion>;
 
 const PROMPTS = ['I ate chicken and rice', 'I slept 7 hours', 'How’s my progress?', 'What should I eat for dinner?', 'I drank 500 ml of water', 'I walked 30 minutes'];
@@ -59,12 +61,13 @@ export default function Coach() {
   const [chatId, setChatId] = useState<string>(() => chat ?? newId());
   const [text, setText] = useState(ask ?? '');
   const [thinking, setThinking] = useState(false);
-  const [listening, setListening] = useState(false);
+  const [prefs, setPrefs] = useState<Prefs | null>(null);
   const scroll = useRef<ScrollView>(null);
 
   useEffect(() => {
     let live = true;
     loadMemory().then((m) => live && setMemory(m));
+    if (session) loadPrefs(session.user.id).then((p) => live && setPrefs(p)).catch(() => {});
     loadChats().then((m) => {
       if (!live) return;
       setAll(m);
@@ -77,7 +80,7 @@ export default function Coach() {
     return () => {
       live = false;
     };
-  }, [chat, ask]);
+  }, [chat, ask, session]);
 
   const msgs = (all ?? []).filter((m) => m.chat_id === chatId);
   const title = msgs.find((m) => m.role === 'user')?.text ?? t('New chat');
@@ -106,6 +109,7 @@ export default function Coach() {
       gender: profile?.gender ?? null,
       language: lang,
       today,
+      todayWeekday: DAYS_LONG[weekdayOf(today)],
       time: new Date().toTimeString().slice(0, 5),
       weightKg: health.weights.at(-1)?.value ?? food.plan.weight,
       weightWeeklyAverages: weekly,
@@ -158,6 +162,12 @@ export default function Coach() {
             injuries: train.plan.injuries,
             schedule: train.week.map((d, i) => `${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i]}: ${d.w ?? 'rest'}`),
             deloadThisWeek: train.plan.deload === weekStart(today),
+            // The next 2 weeks day by day, with days off you already set ("break").
+            next14Days: Array.from({ length: 14 }, (_, i) => {
+              const d = addDays(today, i);
+              const w = effectiveWeek(train.plan!, weekStart(d))[weekdayOf(d)]?.w ?? null;
+              return `${d} ${DAYS_LONG[weekdayOf(d)]}: ${w ? (train.plan!.skipped[d] ? `break (was ${w})` : w) : 'rest'}`;
+            }),
             workouts: Object.fromEntries(
               Object.entries(train.plan.workouts).map(([k, w]) => [k, w.ex.map((x) => ({ id: x.id, name: exInfo(x, 'en').name, sets: x.sets, reps: x.reps, bestKg: train.best[x.id] ?? null }))]),
             ),
@@ -177,6 +187,7 @@ export default function Coach() {
       bloodTests: health.blood.slice(0, 2).map((b) => ({ day: b.day, title: b.title, values: b.values.map((v) => `${v.name}: ${v.value} ${v.unit}${v.flag ? (v.flag > 0 ? ' (high)' : ' (low)') : ''}`) })),
       supplements: health.supplements.filter((x) => x.active).map((x) => `${x.name} ${x.dose}${x.unit} ${x.freq}`),
       coachManagesFood: !!food.coachTargets,
+      reminders: remindersSummary(prefs) ?? null,
     };
   };
 
@@ -255,7 +266,7 @@ export default function Coach() {
       return toast(t(aiErrorText(error ?? 'failed')), { icon: 'warn' });
     }
     const acts = await applyActions(Array.isArray(result.actions) ? result.actions : []);
-    const sugg = await prepareSuggestions(result.suggest, train.plan);
+    const sugg = await prepareSuggestions(result.suggest, train.plan, food.today);
     const all2 = [...acts, ...sugg];
     const card = cleanCard(result.card) ?? (all2.length ? null : guessCard(q));
     const ai = await saveMsg({ chat_id: chatId, role: 'ai', text: String(result.reply ?? '').slice(0, 4000), actions: all2.length ? all2 : null, card });
@@ -302,6 +313,14 @@ export default function Coach() {
       train.updatePlan(applyPlanChanges(train.plan, a.changes, food.today));
       setSuggestion(m, i, { ...a, state: 'applied', prev: train.plan });
       toast(t('Your plan is updated'), { ai: true });
+    } else if (a.type === 'reminder') {
+      if (!session) return;
+      const prev = await loadPrefs(session.user.id);
+      const next = withReminder(prev, a.kind, a.time);
+      await savePrefs(session.user.id, next);
+      setPrefs(next);
+      setSuggestion(m, i, { ...a, state: 'applied', prev });
+      toast(t('Reminder on: {x} at {time}', { x: t(REMINDER_NAME[a.kind]), time: a.time }), { icon: 'bell' });
     } else {
       if (food.coachTargets) return toast(t('Your coach sets your targets. Ask them to change it.'), { icon: 'info' });
       const prev = { kcal: food.plan.kcal, perKg: food.plan.perKg, carbG: food.plan.carbG, water: food.plan.water };
@@ -314,6 +333,10 @@ export default function Coach() {
   const undoSuggestion = async (m: ChatMsg, i: number, a: Suggestion) => {
     if (a.type === 'plan' && a.prev) train.updatePlan(a.prev as TrainPlan);
     if (a.type === 'targets' && a.prev) await food.savePlan({ ...food.plan, ...a.prev });
+    if (a.type === 'reminder' && a.prev && session) {
+      await savePrefs(session.user.id, a.prev);
+      setPrefs(a.prev);
+    }
     setSuggestion(m, i, { ...a, state: undefined, prev: undefined });
     toast(t('Changed back'), { icon: 'check' });
   };
@@ -321,14 +344,16 @@ export default function Coach() {
   const suggestionCard = (m: ChatMsg, a: Suggestion, i: number) => (
     <View key={i} style={{ marginTop: 10, backgroundColor: c.bg, borderRadius: 16, padding: 12, opacity: a.state === 'dismissed' ? 0.5 : 1 }}>
       <Row gap={8}>
-        <Icon name={a.type === 'plan' ? 'train' : 'food'} size={16} color={c.cobalt} />
+        <Icon name={a.type === 'plan' ? 'train' : a.type === 'reminder' ? 'bell' : 'food'} size={16} color={c.cobalt} />
         <Text variant="small" weight={700} style={{ flex: 1 }}>
-          {a.title || t(a.type === 'plan' ? 'Suggested change to your plan' : 'Suggested new targets')}
+          {a.title || t(a.type === 'plan' ? 'Suggested change to your plan' : a.type === 'reminder' ? 'Reminder' : 'Suggested new targets')}
         </Text>
       </Row>
       {(a.type === 'plan'
         ? a.changes.map((ch) => changeLine(ch, (a.prev as TrainPlan | undefined) ?? train.plan, lang, t))
-        : [a.kcal ? t('Calories: {n} kcal', { n: fmt(a.kcal) }) : null, a.protein ? t('Protein: {n} g', { n: a.protein }) : null, a.water ? t('Water: {n} ml', { n: fmt(a.water) }) : null].filter((x): x is string => !!x)
+        : a.type === 'reminder'
+          ? [t('Reminder: {x} at {time}', { x: t(REMINDER_NAME[a.kind]), time: a.time })]
+          : [a.kcal ? t('Calories: {n} kcal', { n: fmt(a.kcal) }) : null, a.protein ? t('Protein: {n} g', { n: a.protein }) : null, a.water ? t('Water: {n} ml', { n: fmt(a.water) }) : null].filter((x): x is string => !!x)
       ).map((line, j) => (
         <Text key={j} variant="small" color="sec" style={{ marginTop: 6 }}>
           {`• ${line}`}
@@ -362,16 +387,6 @@ export default function Coach() {
       )}
     </View>
   );
-
-  const mic = async () => {
-    if (listening) return stopListening();
-    if (!canListen()) return toast(Platform.OS === 'web' ? t('Voice isn’t available in this browser. Try Chrome or Safari.') : t('Voice isn’t available on this phone.'), { icon: 'info' });
-    setListening(true);
-    const said = await listen(lang);
-    setListening(false);
-    if (said) send(said);
-    else if (Platform.OS !== 'web') toast(t('I didn’t catch that. Check that Gymi can use the microphone.'), { icon: 'mic' });
-  };
 
   const actionLine = (a: Logged): [IconName, string] =>
     a.type === 'food'
@@ -483,20 +498,17 @@ export default function Coach() {
           </ScrollView>
         ) : null}
         <View style={{ paddingHorizontal: 16 }}>
-          <Glass ai style={{ borderRadius: 32, padding: 6, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Glass ai style={{ borderRadius: 28, padding: 6, flexDirection: 'row', alignItems: 'flex-end', gap: 6 }}>
+            {/* Return adds a new line; the arrow sends. The box grows up to about 5 lines. */}
             <TextInput
               value={text}
               onChangeText={setText}
-              onSubmitEditing={() => send(text)}
-              placeholder={t(listening ? 'Listening…' : 'Ask or log anything…')}
+              placeholder={t('Ask or log anything…')}
               placeholderTextColor={c.sec}
-              returnKeyType="send"
+              multiline
               maxLength={1000}
-              style={{ flex: 1, minWidth: 0, height: 44, paddingHorizontal: 12, fontSize: 16, color: c.text, fontFamily: fontFor(lang === 'ar' ? 'arabic' : 'manrope', 500), outlineStyle: 'none', textAlign: lang === 'ar' ? 'right' : 'left' } as object}
+              style={{ flex: 1, minWidth: 0, minHeight: 44, maxHeight: 132, paddingHorizontal: 12, paddingTop: 11, paddingBottom: 11, fontSize: 16, lineHeight: 22, color: c.text, fontFamily: fontFor(lang === 'ar' ? 'arabic' : 'manrope', 500), outlineStyle: 'none', textAlign: lang === 'ar' ? 'right' : 'left', textAlignVertical: 'top' } as object}
             />
-            <Springy onPress={mic} accessibilityLabel={t('Talk')} style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: listening ? c.down : 'rgba(51,85,255,0.14)' }}>
-              <Icon name="mic" size={20} color={listening ? '#FFFFFF' : c.cobalt} />
-            </Springy>
             <Springy onPress={() => send(text)} disabled={thinking} accessibilityLabel={t('Send')} style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: c.cobalt }}>
               <Icon name="up" size={20} color="#FFFFFF" strokeWidth={2.4} />
             </Springy>

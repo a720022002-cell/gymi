@@ -1,4 +1,6 @@
 import { supabase } from './supabase';
+import type { ReminderKind } from './recap';
+import type { Prefs } from './reminders';
 import type { PlanEx } from './training';
 
 export type ChatAction =
@@ -9,7 +11,8 @@ export type ChatAction =
   | { type: 'weight'; kg: number; prev?: number | null; day?: string; undone?: boolean }
   // Suggestions: nothing changes until you tap Apply (Undo puts the old plan back).
   | { type: 'plan'; title: string; changes: PlanChange[]; state?: 'applied' | 'dismissed'; prev?: unknown }
-  | { type: 'targets'; title: string; kcal?: number; protein?: number; water?: number; state?: 'applied' | 'dismissed'; prev?: { kcal: number; perKg: number; carbG: number | null; water: number } };
+  | { type: 'targets'; title: string; kcal?: number; protein?: number; water?: number; state?: 'applied' | 'dismissed'; prev?: { kcal: number; perKg: number; carbG: number | null; water: number } }
+  | { type: 'reminder'; title: string; kind: ReminderKind; time: string; state?: 'applied' | 'dismissed'; prev?: Prefs };
 
 /** One change to the training plan. Workout is a workout name from the plan, or "all". Exercises are plan ids; new ones come from a search. */
 export type PlanChange =
@@ -19,7 +22,11 @@ export type PlanChange =
   | { op: 'remove'; workout: string; ex: string }
   | { op: 'add'; workout: string; search: string; sets: number; reps: string; toEx?: PlanEx }
   | { op: 'deload' }
-  | { op: 'light' };
+  | { op: 'light' }
+  // No workouts on these days (a break), training again from today, or which workout is on each weekday (Sunday first).
+  | { op: 'rest'; from: string; to: string }
+  | { op: 'resume' }
+  | { op: 'days'; week: (string | null)[] };
 
 /** A small chart or card under a coach reply. Charts are drawn from your real data. */
 export type ChatCard = { type: 'weight' } | { type: 'calories' } | { type: 'sleep' } | { type: 'meal'; name: string; kcal: number; protein: number; carbs?: number; fat?: number };

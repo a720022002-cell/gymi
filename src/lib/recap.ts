@@ -17,7 +17,9 @@ export type Suggestion =
   | { type: 'meal'; title: string; name: string; kcal: number; protein: number; carbs: number; fat: number }
   | { type: 'balance'; title: string; kcal: number; from: number[]; to: number[] };
 export type ReminderKind = 'sleep' | 'workout' | 'water' | 'checkin' | 'food';
-const REMINDER_KINDS: ReminderKind[] = ['sleep', 'workout', 'water', 'checkin', 'food'];
+export const REMINDER_KINDS: ReminderKind[] = ['sleep', 'workout', 'water', 'checkin', 'food'];
+/** Each reminder's name, as on the Notifications screen. */
+export const REMINDER_NAME = { sleep: 'Bedtime', workout: 'Workouts', water: 'Water', checkin: 'Daily check-in', food: 'Meals and food' } as const;
 /** At most this many suggestions are shown. */
 export const MAX_SUGGESTIONS = 3;
 export type RecapNote = { title: string; detail: string };

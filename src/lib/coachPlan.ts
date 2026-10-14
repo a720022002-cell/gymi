@@ -1,10 +1,14 @@
 // Suggestions from the AI coach that change your plan: checked and made concrete here, applied only when you tap Apply.
 import type { ChatAction, PlanChange } from './coach';
 import { searchExercises, toPlanEx } from './exercisesDb';
-import type { FoodPlan } from './nutrition';
-import { EX, exInfo, type TrainPlan, weekStart } from './training';
+import { addDays, type FoodPlan } from './nutrition';
+import { REMINDER_KINDS } from './recap';
+import { DAYS_LONG, EX, exInfo, type TrainPlan, weekOrder, weekStart } from './training';
 
-type Suggestion = Extract<ChatAction, { type: 'plan' } | { type: 'targets' }>;
+type Suggestion = Extract<ChatAction, { type: 'plan' } | { type: 'targets' } | { type: 'reminder' }>;
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+/** A break is at most 4 weeks. */
+const MAX_REST = 28;
 
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : Number(v));
 const str = (v: unknown, n = 80) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
@@ -26,7 +30,7 @@ export function injuriesStrained(e: { id: string; name_en?: string }, injuries: 
 }
 
 /** Keep only suggestions that make sense for this plan, and look up the exercises they name. */
-export async function prepareSuggestions(raw: unknown, plan: TrainPlan | null): Promise<Suggestion[]> {
+export async function prepareSuggestions(raw: unknown, plan: TrainPlan | null, today?: string): Promise<Suggestion[]> {
   if (!Array.isArray(raw)) return [];
   const out: Suggestion[] = [];
   const names = plan ? Object.keys(plan.workouts) : [];
@@ -44,11 +48,32 @@ export async function prepareSuggestions(raw: unknown, plan: TrainPlan | null): 
       if (t.kcal || t.protein || t.water) out.push(t);
       continue;
     }
+    if (x?.type === 'reminder') {
+      const kind = REMINDER_KINDS.find((k) => k === x.kind);
+      const time = str(x.time, 5);
+      if (kind && /^([01]\d|2[0-3]):[0-5]\d$/.test(time)) out.push({ type: 'reminder', title, kind, time });
+      continue;
+    }
     if (x?.type !== 'plan' || !plan || !Array.isArray(x.changes)) continue;
     const changes: PlanChange[] = [];
     for (const c of x.changes.slice(0, 8) as Record<string, unknown>[]) {
       const workout = str(c?.workout, 40) || 'all';
-      if (c?.op === 'deload') changes.push({ op: 'deload' });
+      if (c?.op === 'rest') {
+        // Today or later, at most 4 weeks.
+        let from = str(c.from, 10);
+        let to = str(c.to, 10) || from;
+        if (!DATE.test(from) || !DATE.test(to)) continue;
+        if (today && from < today) from = today;
+        if (to < from) continue;
+        if (to > addDays(from, MAX_REST - 1)) to = addDays(from, MAX_REST - 1);
+        changes.push({ op: 'rest', from, to });
+      } else if (c?.op === 'resume') changes.push({ op: 'resume' });
+      else if (c?.op === 'days' && Array.isArray(c.week) && c.week.length === 7) {
+        // Each weekday is a workout from the plan or a rest day, and every workout stays in the week.
+        const week = (c.week as unknown[]).map((w) => (typeof w === 'string' && names.includes(w) ? w : null));
+        if (!week.some(Boolean) || plan.week.every((d, i) => (d.w ?? null) === week[i])) continue;
+        changes.push({ op: 'days', week });
+      } else if (c?.op === 'deload') changes.push({ op: 'deload' });
       else if (c?.op === 'light') changes.push({ op: 'light' });
       else if (c?.op === 'sets' && okWorkout(workout) && [-2, -1, 1, 2].includes(Math.round(num(c.delta)))) changes.push({ op: 'sets', workout, delta: Math.round(num(c.delta)) });
       else if (c?.op === 'reps' && okWorkout(workout) && REPS.test(str(c.reps, 9))) changes.push({ op: 'reps', workout, reps: str(c.reps, 9).replace('-', '–').replace(/\s/g, '') });
@@ -77,6 +102,10 @@ export function applyPlanChanges(plan: TrainPlan, changes: PlanChange[], today: 
   let deload = plan.deload;
   let light = plan.light;
   let lightAsked = plan.lightAsked;
+  let skipped = plan.skipped;
+  let week = plan.week;
+  let override = plan.override;
+  let weekSince = plan.weekSince;
   const each = (w: string, fn: (ex: TrainPlan['workouts'][string]['ex']) => TrainPlan['workouts'][string]['ex']) => {
     for (const k of w === 'all' ? Object.keys(workouts) : [w]) if (workouts[k]) workouts[k].ex = fn(workouts[k].ex);
   };
@@ -84,7 +113,16 @@ export function applyPlanChanges(plan: TrainPlan, changes: PlanChange[], today: 
   const unsafe = (c: PlanChange) => (c.op === 'swap' || c.op === 'add') && !!c.toEx && strainsInjury({ id: c.toEx.id, name_en: c.toEx.n }, plan.injuries ?? []);
   for (const c of changes) {
     if (unsafe(c)) continue;
-    if (c.op === 'deload') deload = weekStart(today);
+    if (c.op === 'rest') {
+      skipped = { ...skipped };
+      for (let d = c.from < today ? today : c.from; d <= c.to; d = addDays(d, 1)) skipped[d] = true;
+    } else if (c.op === 'resume') skipped = Object.fromEntries(Object.entries(skipped).filter(([d]) => d < today));
+    else if (c.op === 'days') {
+      // For good, from this week on (this week's own moves are dropped).
+      week = week.map((d, i) => ({ ...d, w: c.week[i] ?? null }));
+      override = undefined;
+      weekSince = today;
+    } else if (c.op === 'deload') deload = weekStart(today);
     else if (c.op === 'light') {
       light = today;
       lightAsked = today;
@@ -95,7 +133,7 @@ export function applyPlanChanges(plan: TrainPlan, changes: PlanChange[], today: 
     else if (c.op === 'swap' && c.toEx) each(c.workout, (ex) => ex.map((y) => (y.id === c.from ? { ...c.toEx!, sets: y.sets, reps: y.reps } : y)));
     else if (c.op === 'add' && c.toEx) each(c.workout, (ex) => [...ex, { ...c.toEx!, sets: c.sets, reps: c.reps }]);
   }
-  return { ...plan, workouts, deload, light, lightAsked };
+  return { ...plan, workouts, deload, light, lightAsked, skipped, week, override, weekSince, days: week.filter((d) => d.w).length, queue: weekOrder(week) };
 }
 
 /** The food plan with new calorie, protein or water goals. */
@@ -118,6 +156,19 @@ export function changeLine(c: PlanChange, plan: TrainPlan | null, lang: 'en' | '
     }
     return exInfo({ id }, lang).name;
   };
+  if (c.op === 'rest') {
+    const f = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const d = (x: string) => f.format(new Date(`${x}T12:00:00`));
+    return c.from === c.to ? t('No workout on {a}', { a: d(c.from) }) : t('No workouts from {a} to {b}', { a: d(c.from), b: d(c.to) });
+  }
+  if (c.op === 'resume') return t('Workouts back on from today');
+  if (c.op === 'days')
+    return t('Your week: {x}', {
+      x: c.week
+        .map((w, i) => (w ? `${t(DAYS_LONG[i])} ${t(w)}` : null))
+        .filter(Boolean)
+        .join(' · '),
+    });
   if (c.op === 'deload') return t('This week: lighter weights and fewer sets (deload)');
   if (c.op === 'light') return t('Today: one set less and about 10% less weight');
   if (c.op === 'sets')

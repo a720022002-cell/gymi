@@ -15,7 +15,7 @@ import { useFood } from '@/lib/food';
 import { addDays, fmt } from '@/lib/nutrition';
 import { fx } from '@/lib/progress';
 import { balanceMoves, moveDay, remindersSummary, weekDays, withReminder } from '@/lib/recapApply';
-import { type Goal, markRecapSeen, recapDays, recapGoals, type RecapAI, recapRow, recapWeek, saveRecap, type Suggestion, writeRecap } from '@/lib/recap';
+import { type Goal, markRecapSeen, REMINDER_NAME, recapDays, recapGoals, type RecapAI, recapRow, recapWeek, saveRecap, type Suggestion, writeRecap } from '@/lib/recap';
 import { useReportData, useReportStats } from '@/lib/report';
 import { loadPrefs, savePrefs } from '@/lib/reminders';
 import { useTrain } from '@/lib/train';
@@ -231,8 +231,6 @@ export default function Recap() {
     </View>
   );
 }
-
-const REMINDER_NAME = { sleep: 'Bedtime', workout: 'Workouts', water: 'Water', checkin: 'Daily check-in', food: 'Meals and food' } as const;
 
 const rangeLabel = (a: string, b: string, lang: 'en' | 'ar') => {
   const f = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { month: 'short', day: 'numeric' });

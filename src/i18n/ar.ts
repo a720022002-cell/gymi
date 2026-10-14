@@ -3758,4 +3758,10 @@ export const AR: Record<string, string> = {
   "Not sure. Is it one of these?": "مو متأكد. هل هو واحد من هذي؟",
   "Pick the one you see": "اختر الجهاز اللي قدامك",
   "Read on the machine: {x}": "مكتوب على الجهاز: {x}",
+  "No workout on {a}": "ما فيه تمرين يوم {a}",
+  "No workouts from {a} to {b}": "ما فيه تمارين من {a} إلى {b}",
+  "Workouts back on from today": "التمارين ترجع من اليوم",
+  "Your week: {x}": "أسبوعك: {x}",
+  "Reminder on: {x} at {time}": "التذكير شغّال: {x} الساعة {time}",
+  "On a break until {day}": "راحة من التمرين لين {day}",
 };

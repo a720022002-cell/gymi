@@ -7,7 +7,7 @@ import { CY_PLAN } from '@/lib/cycle';
 import { useCycleToday } from '@/lib/cyclePhase';
 import { addDays, fmt, localDay } from '@/lib/nutrition';
 import { useTrain } from '@/lib/train';
-import { applyShift, buildWorkout, DAYS_LONG, exInfo, shiftPlan, weekStart, workoutTitle } from '@/lib/training';
+import { applyShift, buildWorkout, DAYS_LONG, effectiveWeek, exInfo, shiftPlan, weekdayOf, weekStart, workoutTitle } from '@/lib/training';
 import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
@@ -98,13 +98,25 @@ export function StaleSessionChoice({ onDone }: { onDone?: () => void }) {
 
 /** Next planned workout after today, like "Pull on Thursday". */
 export function useNextWorkout() {
-  const { t } = useT();
-  const { week, todayIdx } = useTrain();
-  for (let i = 1; i <= 7; i++) {
-    const d = (todayIdx + i) % 7;
-    if (week[d]?.w) return t('{w} on {day}', { w: t(week[d].w as string), day: t(DAYS_LONG[d]) });
+  const { t, lang } = useT();
+  const { plan, week, todayIdx, today } = useTrain();
+  // Days off (a break) are passed over; after a week the date is shown too.
+  for (let i = 1; i <= 35; i++) {
+    const date = addDays(today, i);
+    const wd = (todayIdx + i) % 7;
+    const w = plan ? effectiveWeek(plan, weekStart(date))[wd]?.w : week[wd]?.w;
+    if (!w || plan?.skipped[date]) continue;
+    const day = i < 7 ? t(DAYS_LONG[wd]) : new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date(`${date}T12:00:00`));
+    return t('{w} on {day}', { w: t(w), day });
   }
   return t('none planned');
+}
+
+/** The last day of a break that started today or earlier (days off in a row), or null when only today is off. */
+function breakEnd(skipped: Record<string, true>, today: string) {
+  let d = today;
+  while (skipped[addDays(d, 1)]) d = addDays(d, 1);
+  return d === today ? null : d;
 }
 
 /** "You missed Legs on Sunday" with Move it / Skip it (design: missedCard). */
@@ -115,7 +127,8 @@ export function MissedCard() {
   const train = useTrain();
   const p = train.plan;
   // Coach plans and plans in order have no fixed days to miss.
-  if (!p || !train.setupDone || train.coach || p.type === 'order') return null;
+  // Nothing to catch up on during a break either.
+  if (!p || !train.setupDone || train.coach || p.type === 'order' || p.skipped[train.today]) return null;
   let m: { day: number; w: string; sh: NonNullable<ReturnType<typeof shiftPlan>> } | null = null;
   for (let i = train.todayIdx - 1; i >= 0; i--) {
     const w = train.week[i]?.w;
@@ -260,6 +273,7 @@ export function WorkoutCard() {
       </Card>
     );
 
+  const breakOn = today.skipped ? breakEnd(train.plan!.skipped, train.today) : null;
   if (today.skipped)
     return (
       <Card>
@@ -267,7 +281,11 @@ export function WorkoutCard() {
           {t('{w} day', { w: t(today.name) })}
         </Text>
         <Text variant="h2" style={{ marginTop: 4 }}>
-          {t('Skipped today')}
+          {breakOn
+            ? t('On a break until {day}', {
+                day: breakOn <= addDays(train.today, 6) ? t(DAYS_LONG[weekdayOf(breakOn)]) : new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { month: 'short', day: 'numeric' }).format(new Date(`${breakOn}T12:00:00`)),
+              })
+            : t('Skipped today')}
         </Text>
         <Text variant="small" color="sec" style={{ marginTop: 4 }}>
           {t('Rest up. Next: {x}.', { x: next })}
