@@ -3755,4 +3755,7 @@ export const AR: Record<string, string> = {
   "{n} kcal less on {a}, more on {b}": "{n} سعرة أقل يوم {a}، وأكثر يوم {b}",
   "Sleep, 7 h or more": "النوم، ٧ ساعات أو أكثر",
   "Not enough was logged last week to score your goals": "ما انسجل كفاية الأسبوع اللي فات عشان نقيس أهدافك",
+  "Not sure. Is it one of these?": "مو متأكد. هل هو واحد من هذي؟",
+  "Pick the one you see": "اختر الجهاز اللي قدامك",
+  "Read on the machine: {x}": "مكتوب على الجهاز: {x}",
 };

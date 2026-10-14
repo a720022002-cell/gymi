@@ -37,3 +37,19 @@ export function toPlanEx(e: DbExercise, sets = 3): PlanEx {
   if (EX[e.id]) return { id: e.id, sets, reps };
   return { id: e.id, sets, reps, n: e.name_en, ar: e.name_ar, m: e.muscle, t: e.equipment, time: e.timed };
 }
+
+export type MachineEntry = Pick<DbExercise, 'id' | 'name_en' | 'name_ar' | 'muscle' | 'equipment' | 'machines' | 'rank'>;
+let machines: MachineEntry[] | null = null;
+
+/** Every machine and cable exercise, plus the common bar ones (Smith machine and the like): what a gym photo is matched against. */
+export async function machineCatalog(): Promise<MachineEntry[]> {
+  if (machines) return machines;
+  const { data } = await supabase
+    .from('exercises')
+    .select('id,name_en,name_ar,muscle,equipment,machines,rank')
+    .or('equipment.in.(Machine,Cable),and(rank.eq.0,equipment.in.(Barbell,Free weight,Other))')
+    .order('rank')
+    .limit(400);
+  if (data?.length) machines = data as MachineEntry[];
+  return (data as MachineEntry[] | null) ?? [];
+}

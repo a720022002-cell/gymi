@@ -12,13 +12,31 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Row } from '@/components/ui';
 import { useT } from '@/i18n';
 import { type AiError, aiErrorText, askAI } from '@/lib/ai';
-import { type DbExercise, dbExName, searchExercises, toPlanEx } from '@/lib/exercisesDb';
+import { type DbExercise, dbExName, getExercise, machineCatalog, searchExercises, toPlanEx } from '@/lib/exercisesDb';
 import { type Photo, takePhoto } from '@/lib/photo';
 import { useTrain } from '@/lib/train';
 import { DAYS_LONG, type Equipment, EX, type Muscle, muscleGroup, muscleLabel, MUSCLES_FINE, type PlanEx, topReps, workoutMinutes } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
 
-type Found = { known: boolean; name: string; name_ar?: string; group: Muscle; works?: string; works_ar?: string; equipment: Equipment; sets?: number; reps?: string; search?: string };
+type Found = {
+  known: boolean;
+  name: string;
+  name_ar?: string;
+  group: Muscle;
+  works?: string;
+  works_ar?: string;
+  equipment: Equipment;
+  sets?: number;
+  reps?: string;
+  search?: string;
+  /** What the AI saw, and any words on the machine. */
+  seen?: string;
+  label?: string;
+  /** The exercise from our list it picked, how sure it is, and the look-alikes it could be. */
+  id?: string;
+  confidence?: 'high' | 'medium' | 'low';
+  alternatives?: string[];
+};
 
 /** Unknown machine: take a photo, the AI names it, you add it to a workout (design: machinecam). */
 export default function MachineScreen() {
@@ -33,6 +51,8 @@ export default function MachineScreen() {
   const [err, setErr] = useState<AiError | null>(null);
   const [found, setFound] = useState<Found | null>(null);
   const [match, setMatch] = useState<DbExercise | null>(null);
+  // Look-alikes to pick from when the AI isn't sure.
+  const [alts, setAlts] = useState<DbExercise[]>([]);
   const [own, setOwn] = useState(false);
   const [name, setName] = useState('');
   const [group, setGroup] = useState<Muscle | null>(null);
@@ -40,7 +60,9 @@ export default function MachineScreen() {
   const [sec, setSec] = useState<string[]>([]);
   const [tried, setTried] = useState(false);
   const workouts = Object.keys(train.plan?.workouts ?? {});
-  const [target, setTarget] = useState<string | null>(train.todayName ?? workouts[0] ?? null);
+  // Today's workout (or the first) until you pick one; the plan may load after the screen opens.
+  const [picked, setTarget] = useState<string | null>(null);
+  const target = picked && workouts.includes(picked) ? picked : (train.todayName ?? workouts[0] ?? null);
 
   const snap = async (camera: boolean) => {
     const p = await takePhoto(camera);
@@ -50,8 +72,16 @@ export default function MachineScreen() {
     setErr(null);
     setFound(null);
     setMatch(null);
+    setAlts([]);
     setOwn(false);
-    const { result, error } = await askAI<Found>('machine', { lang, image: p.base64, mime: p.mime });
+    // The AI picks only from our own machine list, so it can't make up a machine.
+    const catalog = (await machineCatalog()).map((e) => ({
+      id: e.id,
+      n: `${e.rank === 0 ? '* ' : ''}${e.name_en}`,
+      m: e.muscle,
+      mach: e.machines?.map((x) => x[0]).join(', ') || undefined,
+    }));
+    const { result, error } = await askAI<Found>('machine', { lang, image: p.base64, mime: p.mime, catalog });
     if (error || !result) {
       setBusy(false);
       return setErr(error ?? 'failed');
@@ -59,8 +89,13 @@ export default function MachineScreen() {
     setFound(result);
     setName(result.known ? result.name : '');
     setGroup(result.group ?? null);
-    if (result.known) {
-      // Use the matching exercise from our list when there is one (pictures and steps come with it).
+    if (result.known && (result.id || result.alternatives?.length)) {
+      const [hit, ...others] = await Promise.all([result.id ? getExercise(result.id) : null, ...(result.alternatives ?? []).map(getExercise)]);
+      setMatch(hit);
+      setAlts([hit, ...others].filter((e): e is DbExercise => !!e));
+      if (!hit) setName('');
+    } else if (result.known) {
+      // An older server answers by name: find it in our list.
       const list = await searchExercises(result.search || result.name, null, null, 5);
       const words = (result.search || result.name).toLowerCase().split(/\s+/).filter((w) => w.length > 2);
       const hit = list.find((e) => words.every((w) => e.name_en.toLowerCase().includes(w))) ?? list.find((e) => e.rank === 0) ?? null;
@@ -102,6 +137,9 @@ export default function MachineScreen() {
     const id = `custom:${nm.toLowerCase().replace(/[^a-z0-9؀-ۿ]+/g, '-')}`;
     add({ id, sets: Math.round(found?.sets || 3), reps, n: nm, ar: ar ?? (lang === 'ar' ? nm : null), m: g, t: found?.equipment ?? 'Machine', ...(fine ? { pri: fine.pri, sec: fine.sec } : {}) }, nm);
   };
+
+  // Not sure (or it picked nothing): the look-alikes are shown to choose from.
+  const unsure = !!found && ((alts.length > 1 && found.confidence !== 'high') || (alts.length > 0 && !found.id));
 
   // A common exercise for the same muscles, so you know what this can replace (design: "Swaps for").
   const swapFor = (() => {
@@ -174,18 +212,30 @@ export default function MachineScreen() {
                 <Mark size={28} color={c.cobalt} stroke={6} />
                 <View style={{ flex: 1 }}>
                   <Text variant="small" weight={700} color="sec">
-                    {t('I think this is a')}
+                    {t(unsure ? 'Not sure. Is it one of these?' : 'I think this is a')}
                   </Text>
-                  <Text variant="h2">{match ? dbExName(match, lang) : lang === 'ar' && found.name_ar ? found.name_ar : found.name}</Text>
+                  <Text variant="h2">{match ? dbExName(match, lang) : unsure ? t('Pick the one you see') : lang === 'ar' && found.name_ar ? found.name_ar : found.name}</Text>
                 </View>
               </Row>
+              {unsure ? (
+                <Row gap={8} style={{ flexWrap: 'wrap', marginTop: 12 }}>
+                  {alts.map((e) => (
+                    <Chip key={e.id} title={dbExName(e, lang)} on={match?.id === e.id} onPress={() => setMatch(e)} />
+                  ))}
+                </Row>
+              ) : null}
+              {found.label?.trim() ? (
+                <Text variant="small" color="sec" style={{ marginTop: 10 }}>
+                  {t('Read on the machine: {x}', { x: found.label.trim().slice(0, 80) })}
+                </Text>
+              ) : null}
               <Card style={{ marginTop: 16 }}>
                 <Row style={{ justifyContent: 'space-between' }}>
                   <Text variant="small" color="sec">
                     {t('Works')}
                   </Text>
                   <Text variant="small" weight={700} style={{ flex: 1, textAlign: lang === 'ar' ? 'left' : 'right' }}>
-                    {(lang === 'ar' ? found.works_ar : found.works) || muscleLabel(found.group, lang, t)}
+                    {match && match.id !== found.id ? muscleLabel(match.muscle as Muscle, lang, t) : (lang === 'ar' ? found.works_ar : found.works) || muscleLabel(found.group, lang, t)}
                   </Text>
                 </Row>
                 <Row style={{ justifyContent: 'space-between', marginTop: 8 }}>
@@ -208,7 +258,7 @@ export default function MachineScreen() {
                 ) : null}
               </Card>
               {pickers}
-              <Button title={live ? t('Add to this workout') : target ? t('Add to {w}', { w: t(target) }) : t('Add to log')} disabled={!live && !target} style={{ marginTop: 16 }} onPress={addFound} />
+              <Button title={live ? t('Add to this workout') : target ? t('Add to {w}', { w: t(target) }) : t('Add to log')} disabled={(!live && !target) || (unsure && !match)} style={{ marginTop: 16 }} onPress={addFound} />
               <Button kind="glass" icon="edit" title={t('Not right? Name it myself')} style={{ marginTop: 8 }} onPress={() => setOwn(true)} />
               <Button kind="ghost" title={t('Take another photo')} style={{ marginTop: 4 }} onPress={() => snap(true)} />
             </View>

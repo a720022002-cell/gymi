@@ -124,6 +124,17 @@ async function ask(task: string, system: string, msgs: Msg[], schema?: object) {
 // ---------------------------------------------------------------------------
 /** Realistic Saudi portions so estimates aren't too low. */
 const PORTIONS = `Use realistic Saudi/Gulf portions. Typical: 1 plate chicken kabsa about 750 kcal (45 g protein), lamb mandi plate about 900 kcal, chicken shawarma wrap about 520 kcal, falafel sandwich about 450 kcal, 1 cup cooked rice about 200 kcal, 1 Arabic bread about 170 kcal, 3 dates about 70 kcal, 1 cup laban about 120 kcal, 1 egg about 75 kcal, Big Mac about 550 kcal.`;
+/** Gym machines that are easy to mix up in a photo. */
+const LOOKALIKES = [
+  ['legpress', 'hacksquat', 'smith'],
+  ['abductor', 'adductor'],
+  ['legext', 'legcurl', 'Seated_Leg_Curl'],
+  ['pecdeck', 'Reverse_Machine_Flyes', 'chestpress'],
+  ['chestpress', 'shoulder', 'Leverage_Incline_Chest_Press'],
+  ['pulldown', 'cablerow', 'Leverage_High_Row'],
+  ['seatedcalf', 'calf', 'legext'],
+];
+
 const LANG = (l: string) => (l === 'ar' ? 'Reply in simple Saudi/Gulf Arabic. Write every word in Arabic letters, food and dish names too (لبن, not laban); only brand names may stay in English.' : 'Reply in simple, friendly English.');
 const FOOD_ITEM = {
   type: 'object',
@@ -398,19 +409,85 @@ You get each person's level, the workout their own plan has on that day (or rest
         required: ['title', 'exercises', 'people'],
       });
     }
-    case 'machine':
-      return ask(task, `You recognize gym machines and equipment from a photo. "name" is the common English gym name; "name_ar" is the same name in Arabic as Saudi gym-goers say it; "works" lists the main muscles in English and "works_ar" in Arabic. Suggest "sets" (3 or 4) and "reps" (like "10–12") for a normal gym-goer. "search" is 1 to 3 English words to find it in an exercise list. If it is not gym equipment, set known=false.`, [
-        { role: 'user', parts: [img(), { text: 'What gym machine or exercise is this?' }] },
+    case 'machine': {
+      // Name a gym machine from a photo, picking only from the app's own list, so it never invents a machine.
+      const catalog = (Array.isArray(b.catalog) ? b.catalog : []).slice(0, 400) as { id: string; n: string; m: string; mach?: string }[];
+      const ids = new Set(catalog.map((c) => String(c.id)));
+      const system = `You identify gym machines and equipment from one photo for a workout app. Be careful and honest: a wrong answer is worse than "not sure". Machines often look alike; what tells them apart is HOW THE BODY IS PLACED and WHERE THE PADS TOUCH IT, not the frame or the colour.
+Fill the fields in order, looking at the photo again for each one:
+1. "seen": one or two plain sentences of what is visible (seat, back pad, pads or rollers, handles, foot plate or footrest, sled or rails, weight stack, plates on a lever, cable and pulley). If a person is on it, say how they sit, lie or stand and what they hold.
+2. "label": any words printed on the machine or its instruction placard (exercise name, muscle picture); ignore brand names (Nautilus, Matrix, Hoist, Life Fitness...) and words on other machines or plates. Empty if none. An exercise name on the placard is the strongest clue: follow it.
+3. "position": the body position the machine puts you in. If a person sits with their back to the camera, facing into the machine, they face the pad.
+4. "pads": every place a pad or roller presses on the body (or would, on an empty machine).
+5. "hands" and "feet": what they do.
+6. "load": where the weight is.
+7. "id": choose ONLY from the "catalog" (id | name | main muscle | machine names); when two fit equally, prefer the one marked * (the usual name). Decide with these rules first:
+- Leg press: seated or lying back, the feet push a big platform or sled away; NOTHING rests on the shoulders.
+- Hack squat: you stand on a platform with your back on an angled pad and SHOULDER PADS on top of the shoulders; the back pad slides on rails.
+- Smith machine: a barbell fixed in vertical rails.
+- Leg extension: seated, a roller on the FRONT of the shins/ankles, knees straighten.
+- Leg curl: lying face down (or seated) with a roller on the BACK of the ankles/calves, knees bend. Seated leg curl has a pad on top of the thighs too.
+- Seated calf raise: seated, a pad pressing DOWN ON TOP OF THE THIGHS just above the knees, the balls of the feet on a small footrest, often plates on a lever; heels go up and down. Standing calf raise: shoulder pads, standing on a block on the toes.
+- Hip abductor/adductor: seated upright, the two legs on separate swinging arms, the thighs held apart in a V (wide). Abductor: pads on the OUTSIDE of the knees, legs push out. Hip adductor: pads on the INSIDE of the knees, legs squeeze in. Same machine shape: decide by which side of the knee the pads are on; if you can't see it, give both and confidence "low".
+- Chest press: seated, back pad, handles at chest height pushed FORWARD. Shoulder press: handles beside or above the shoulders pushed UP. Incline press: leaning back, pushed up and forward.
+- Pec deck: seated with the back on the pad, arms out to the sides on pads or handles, BROUGHT TOGETHER in front of the chest. Reverse pec deck (rear delt): sitting FACING the pad with the chest on it, arms pulled back and open. Same machine: decide by which way the person faces.
+- Lat pulldown: seated, thigh pads holding the legs, a bar or handles ABOVE the head pulled down. Seated cable row: feet on a plate, a handle pulled to the stomach. Machine row: chest pad, handles pulled back. T-bar row: standing bent over a bar fixed at one end.
+- Assisted pull-up/dip: a kneeling pad or step that moves, handles high and at hip height. Dip machine: seated, handles at the sides of the hips pushed down, the legs hang free together.
+- Cable station: one or two tall towers with pulleys you can slide up and down.
+8. "confidence": "high" only when the parts that set it apart from its look-alikes are clearly visible (or a placard names it); "medium" when it is very likely but a look-alike is possible; "low" when you are guessing. If it is not gym equipment, or the photo is too dark, blurry or cut off, known=false and id "".
+9. "alternatives": up to 3 other catalog ids it could be (the closest look-alikes), most likely first. Never repeat "id".
+"name" and "name_ar" are the machine's usual name (English, and Arabic as Saudi gym-goers say it); "works" and "works_ar" the main muscles. Suggest "sets" (3 or 4) and "reps" (like "10–12"). Never name a machine that is not in the catalog.`;
+      const list = catalog.map((c) => `${c.id} | ${c.n} | ${c.m}${c.mach ? ` | ${c.mach}` : ''}`).join('\n').slice(0, 24000);
+      const out = (await ask(task, system, [
+        { role: 'user', parts: [img(), { text: `What gym machine is this?\n\ncatalog:\n${list}` }] },
       ], {
         type: 'object',
         properties: {
-          known: { type: 'boolean' }, name: { type: 'string' }, name_ar: { type: 'string' },
+          seen: { type: 'string' }, label: { type: 'string' },
+          position: { type: 'string', enum: ['seated', 'seated facing the machine (chest to the pad, back to the camera)', 'seated with legs spread in a V', 'lying face down', 'lying face up', 'standing', 'leaning back', 'kneeling', 'bent over', 'unclear'] },
+          pads: { type: 'array', items: { type: 'string', enum: ['back', 'chest', 'top of shoulders', 'top of thighs', 'front of shins', 'back of ankles', 'outside of knees', 'inside of knees', 'upper arms', 'knees (kneeling pad)', 'none', 'unclear'] } },
+          hands: { type: 'string' }, feet: { type: 'string' },
+          load: { type: 'string', enum: ['weight stack', 'plates', 'cable', 'barbell', 'body weight', 'unclear'] },
+          known: { type: 'boolean' }, id: { type: 'string' }, confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
+          alternatives: { type: 'array', items: { type: 'string' } },
+          name: { type: 'string' }, name_ar: { type: 'string' },
           group: { type: 'string', enum: ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core'] },
           works: { type: 'string' }, works_ar: { type: 'string' }, equipment: { type: 'string', enum: ['Machine', 'Cable', 'Barbell', 'Dumbbell', 'Bodyweight', 'Free weight'] },
-          sets: { type: 'number' }, reps: { type: 'string' }, search: { type: 'string' },
+          sets: { type: 'number' }, reps: { type: 'string' },
         },
-        required: ['known', 'name', 'group', 'equipment'],
-      });
+        required: ['seen', 'label', 'position', 'pads', 'hands', 'feet', 'load', 'known', 'id', 'confidence', 'alternatives', 'name', 'group', 'equipment'],
+      })) as Record<string, unknown>;
+      // An older app sends no list: answer by name, as before.
+      if (!catalog.length) return { ...out, id: '', alternatives: [], search: out.name };
+      // Only ids from the list survive; an answer outside it counts as "not sure".
+      const id = ids.has(String(out.id ?? '')) ? String(out.id) : '';
+      let alternatives = (Array.isArray(out.alternatives) ? out.alternatives : []).map(String).filter((x) => ids.has(x) && x !== id);
+      let confidence = id ? out.confidence : 'low';
+      // What it saw points to some machines for sure (a roller on the shins is a leg extension). When its pick isn't one of
+      // them, it isn't sure: those go first in the choices.
+      const pads = (Array.isArray(out.pads) ? out.pads : []).map(String);
+      const pos = String(out.position ?? '');
+      const fits = [
+        ...(pads.includes('outside of knees') ? ['abductor'] : []),
+        ...(pads.includes('inside of knees') ? ['adductor'] : []),
+        ...(pos.includes('in a V') ? ['abductor', 'adductor'] : []),
+        ...(pads.includes('front of shins') ? ['legext'] : []),
+        ...(pads.includes('back of ankles') ? ['legcurl', 'Seated_Leg_Curl'] : []),
+        ...(pads.includes('top of shoulders') ? ['hacksquat', 'calf', 'Narrow_Stance_Hack_Squats'] : []),
+        ...(pos.includes('facing the machine') ? ['Reverse_Machine_Flyes', 'Leverage_Iso_Row', 'Leverage_High_Row'] : []),
+      ].filter((x) => ids.has(x));
+      if (fits.length && !fits.includes(id)) {
+        confidence = 'low';
+        alternatives = [...new Set([...fits, ...alternatives])].filter((x) => x !== id);
+      }
+      // Not sure: its closest look-alikes are always among the choices.
+      if (confidence !== 'high') {
+        const twins = LOOKALIKES.filter((g) => g.includes(id)).flat().filter((x) => x !== id && ids.has(x));
+        alternatives = [...new Set([...(fits.length ? fits : []), ...twins, ...alternatives])].filter((x) => x !== id);
+      }
+      alternatives = alternatives.slice(0, 3);
+      return { ...out, id, alternatives, confidence, known: !!out.known && (!!id || alternatives.length > 0) };
+    }
     case 'plan': {
       const system = `You are an experienced strength coach. Build a weekly gym plan as JSON. Use ONLY exercise ids from the list given.
 Rules:
