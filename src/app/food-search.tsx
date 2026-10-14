@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,6 +12,7 @@ import { Button, Card, Chip, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
 import { type DbFood, foodName, foodSource, listRestaurants, type Restaurant, searchFoods, servingLabel } from '@/lib/foodsDb';
+import { myNames, type RecentFood, recentFoods } from '@/lib/nutrients';
 import { fmt } from '@/lib/nutrition';
 import { canListen, listen, stopListening } from '@/lib/speech';
 import { useSettings } from '@/theme/settings';
@@ -36,6 +38,30 @@ export default function FoodSearch() {
   const [listening, setListening] = useState(false);
   const food = useFood();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  // What you logged lately, and the names you gave foods (only you see them). Fresh each time you come back.
+  const [recent, setRecent] = useState<RecentFood[]>([]);
+  const [names, setNames] = useState<Record<string, string>>({});
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true;
+      Promise.all([recentFoods(20), myNames()]).then(([r, n]) => {
+        if (!alive) return;
+        setRecent(r);
+        setNames(n);
+      });
+      return () => {
+        alive = false;
+      };
+    }, []),
+  );
+  const nameOf = (r: RecentFood) => names[r.key] ?? (r.food ? foodName(r.food, lang) : r.logName);
+  const ql = q.trim().toLowerCase();
+  // Empty box: your recent foods. Typing: the recent ones that match (your own names too) come first.
+  const mine = (ql ? recent.filter((r) => nameOf(r).toLowerCase().includes(ql) || (r.food && foodName(r.food, 'en').toLowerCase().includes(ql)) || r.logName.toLowerCase().includes(ql)) : recent).filter(
+    (r) => !cat || r.food?.category === cat || (cat === 'product' && !r.food),
+  );
+  const shownMine = mine.slice(0, ql ? 5 : 8);
+  const openRecent = (r: RecentFood) => (r.food ? setPicked(r.food) : r.barcode ? router.push({ pathname: '/product', params: { code: r.barcode } }) : null);
   useEffect(() => {
     let alive = true;
     listRestaurants().then((r) => alive && setRestaurants(r));
@@ -83,6 +109,45 @@ export default function FoodSearch() {
           </ScrollView>
         ) : null}
         <View style={{ marginTop: 12, paddingBottom: 90 }}>
+          {shownMine.length ? (
+            <>
+              <Text variant="small" weight={700} color="sec" style={{ marginBottom: 8, marginHorizontal: 4 }}>
+                {t(ql ? 'Yours' : 'Recent')}
+              </Text>
+              <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden', marginBottom: 16 }}>
+                {shownMine.map((r, i) => (
+                  <Springy key={r.key} onPress={() => openRecent(r)} scaleTo={0.99} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 56, paddingVertical: 10, paddingHorizontal: 16, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
+                    <Icon name={r.food ? 'clock' : 'barcode'} size={18} color={c.sec} />
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text weight={700} numberOfLines={2}>
+                        {nameOf(r)}
+                      </Text>
+                      {r.food ? (
+                        <Text variant="small" color="sec" numberOfLines={1}>
+                          {[foodSource(r.food, lang), servingLabel(r.food, lang)].filter(Boolean).join(t(', '))}
+                        </Text>
+                      ) : null}
+                    </View>
+                    {r.food ? (
+                      <>
+                        <Text num>{fmt((r.food.kcal_100 * r.food.serving_g) / 100)}</Text>
+                        <Text variant="small" color="sec">
+                          {t('kcal')}
+                        </Text>
+                      </>
+                    ) : (
+                      <Icon name="chev" size={16} color={c.sec} />
+                    )}
+                  </Springy>
+                ))}
+              </View>
+              {!ql ? (
+                <Text variant="small" weight={700} color="sec" style={{ marginBottom: 8, marginHorizontal: 4 }}>
+                  {t('All foods')}
+                </Text>
+              ) : null}
+            </>
+          ) : null}
           {loading && !results.length ? (
             <ActivityIndicator color={c.cobalt} style={{ marginTop: 30 }} />
           ) : results.length ? (
@@ -91,7 +156,7 @@ export default function FoodSearch() {
                 <Springy key={f.id} onPress={() => setPicked(f)} scaleTo={0.99} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 60, paddingVertical: 10, paddingHorizontal: 16, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text weight={700} numberOfLines={2}>
-                      {foodName(f, lang)}
+                      {names[f.id] ?? foodName(f, lang)}
                     </Text>
                     <Text variant="small" color="sec" numberOfLines={1}>
                       {[foodSource(f, lang), servingLabel(f, lang)].filter(Boolean).join(t(', '))}
@@ -147,7 +212,7 @@ export default function FoodSearch() {
         </Glass>
       </View>
 
-      <PortionSheet food={picked} onClose={() => setPicked(null)} />
+      <PortionSheet food={picked} name={picked ? names[picked.id] : undefined} onClose={() => setPicked(null)} />
     </View>
   );
 }

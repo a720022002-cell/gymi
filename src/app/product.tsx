@@ -11,14 +11,14 @@ import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { fontFor, Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
-import { Button, Card, Chip, Row, Segmented } from '@/components/ui';
+import { Button, Card, Chip, Row, Segmented, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useLogFood } from '@/lib/food';
 import { aiErrorText, askAI } from '@/lib/ai';
 import { lookupProduct, type Product } from '@/lib/products';
 import { takePhoto } from '@/lib/photo';
 import { supabase } from '@/lib/supabase';
-import { EXTRA_KEYS, extraFacts, type Facts, FACTS, factsKey, offFactsFor, withMine } from '@/lib/nutrients';
+import { EXTRA_KEYS, extraFacts, type Facts, FACTS, factsKey, myNameFor, offFactsFor, setMyName, withMine } from '@/lib/nutrients';
 import { fmt } from '@/lib/nutrition';
 import { addedSugarHigh } from '@/lib/sugar';
 import { useSettings } from '@/theme/settings';
@@ -69,6 +69,27 @@ function Found({ x, code, onFix }: { x: Product; code: string; onFix: () => void
   const { t } = useT();
   const key = factsKey(x.id, code);
   const [mine, setMine] = useMyFacts(key);
+  // Your own name for it (only you see it): shown here, in your log and in Recent in search.
+  const [own, setOwn] = useState<{ key: string; n: string | null } | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  useEffect(() => {
+    if (!key) return;
+    let alive = true;
+    myNameFor(key).then((n) => alive && setOwn({ key, n }));
+    return () => {
+      alive = false;
+    };
+  }, [key]);
+  const ownName = own?.key === key ? own.n : null;
+  const shownName = ownName ?? x.name;
+  const saveName = async () => {
+    if (!key || renaming == null) return;
+    const n = renaming.trim() && renaming.trim() !== x.name ? renaming.trim() : null;
+    if (!(await setMyName(key, n))) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+    setOwn({ key, n });
+    setRenaming(null);
+    toast(t(n ? 'Renamed. Only you see this name.' : 'Back to the product’s name.'), { icon: 'check' });
+  };
   const { colors: c } = useSettings();
   const toast = useToast();
   const logFood = useLogFood();
@@ -82,7 +103,7 @@ function Found({ x, code, onFix }: { x: Product; code: string; onFix: () => void
 
   const add = async () => {
     if (!(grams > 0)) return;
-    const name = um === 'serving' ? (sv === 1 ? x.name : `${x.name} ×${sv}`) : `${x.name}, ${Math.round(grams)} ${t(x.unit)}`;
+    const name = um === 'serving' ? (sv === 1 ? shownName : `${shownName} ×${sv}`) : `${shownName}, ${Math.round(grams)} ${t(x.unit)}`;
     const row = await logFood({ name, kcal: x.k * m, protein: x.p * m, carbs: x.c * m, fat: x.f * m, sugar_high: addedSugarHigh(name, sugar), fat_high: x.f >= 17.5, barcode: code, food_id: x.id ?? null }, toast, t);
     if (row) router.back();
   };
@@ -95,13 +116,30 @@ function Found({ x, code, onFix }: { x: Product; code: string; onFix: () => void
         </View>
         <View style={{ flex: 1 }}>
           <Text variant="h3" numberOfLines={2}>
-            {x.name}
+            {shownName}
           </Text>
           <Text variant="small" color="sec" numberOfLines={1}>
-            {[x.brand, t('1 serving = {n} {u}', { n: x.size, u: t(x.unit) })].filter(Boolean).join(', ')}
+            {[ownName ? x.name : x.brand, t('1 serving = {n} {u}', { n: x.size, u: t(x.unit) })].filter(Boolean).join(', ')}
           </Text>
         </View>
+        {key && renaming == null ? (
+          <Springy onPress={() => setRenaming(shownName)} accessibilityLabel={t('Rename')} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="edit" size={18} color={c.text} />
+          </Springy>
+        ) : null}
       </Card>
+      {renaming != null ? (
+        <Card>
+          <Field label={t('Your name for it')} value={renaming} onChangeText={setRenaming} maxLength={120} autoFocus />
+          <Text variant="xs" color="sec" style={{ marginTop: 6 }}>
+            {t('Only you see this name. It shows in your log and in Recent when you search.')}
+          </Text>
+          <Row gap={8} style={{ marginTop: 12 }}>
+            <Button kind="glass" title={t('Cancel')} style={{ flex: 1 }} onPress={() => setRenaming(null)} />
+            <Button title={t('Save')} style={{ flex: 1 }} onPress={saveName} />
+          </Row>
+        </Card>
+      ) : null}
       {sugar >= 10 ? (
         <Row style={{ justifyContent: 'center', marginTop: 4 }}>
           <WarnChip label={t('High sugar: {n} g', { n: Math.round(sugar) })} />

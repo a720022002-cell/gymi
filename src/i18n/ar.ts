@@ -3679,4 +3679,12 @@ export const AR: Record<string, string> = {
   "These amounts are for one serving.": "هذي الكميات لحصة وحدة.",
   "We couldn’t find this product. Add it with your own numbers.": "ما لقينا هالمنتج. أضفه بأرقامك.",
   "Save changes": "احفظ التعديلات",
+  "All foods": "كل الأصناف",
+  "Only you see this name. It shows in your log and in Recent when you search.": "هذا الاسم تشوفه أنت بس. يطلع في سجلك وفي «الأخيرة» لما تبحث.",
+  "Rename": "غيّر الاسم",
+  "Your name for it": "اسمك له",
+  "Renamed. Only you see this name.": "تغيّر الاسم. أنت بس تشوفه.",
+  "Back to the product’s name.": "رجع لاسم المنتج.",
+  "Yours": "أصنافك",
+  "Recent": "الأخيرة",
 };

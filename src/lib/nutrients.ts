@@ -123,3 +123,39 @@ export function fmtFact(v: number, unit: string) {
   const r = v < 10 ? Math.round(v * 10) / 10 : Math.round(v);
   return String(r);
 }
+
+/** Names you gave foods or scanned products (only you see them), by factsKey. */
+export async function myNames(): Promise<Record<string, string>> {
+  const { data } = await supabase.from('food_facts_mine').select('food_key,name').not('name', 'is', null);
+  return Object.fromEntries(((data as { food_key: string; name: string }[] | null) ?? []).map((r) => [r.food_key, r.name]));
+}
+
+/** Give a food your own name, or remove it (null). */
+export async function setMyName(key: string, name: string | null) {
+  const n = name?.trim().slice(0, 120) || null;
+  const { error } = await supabase.from('food_facts_mine').upsert({ food_key: key, name: n, updated_at: new Date().toISOString() }, { onConflict: 'user_id,food_key' });
+  return !error;
+}
+
+/** A food you logged lately: from the food list (`food`), or a scanned product only known by its barcode. */
+export type RecentFood = { key: string; food: DbFood | null; barcode: string | null; logName: string; lastAt: string };
+
+export async function recentFoods(limit = 20): Promise<RecentFood[]> {
+  const { data } = await supabase.rpc('my_recent_foods', { p_limit: limit });
+  return ((data as { food_key: string; food_id: string | null; barcode: string | null; log_name: string; last_at: string; food: DbFood | null }[] | null) ?? []).map((r) => ({
+    key: r.food_key,
+    food: r.food
+      ? { ...r.food, serving_g: +r.food.serving_g, kcal_100: +r.food.kcal_100, protein_100: +r.food.protein_100, carbs_100: +r.food.carbs_100, fat_100: +r.food.fat_100, sugar_100: r.food.sugar_100 == null ? null : +r.food.sugar_100 }
+      : null,
+    barcode: r.barcode,
+    // A logged name looks like "Laban, 250 ml" or "Laban ×2": keep just the food.
+    logName: r.log_name.replace(/,\s*[\d.]+\s*(g|ml|جم|مل)\s*$/i, '').replace(/\s*×[\d.]+\s*$/, ''),
+    lastAt: r.last_at,
+  }));
+}
+
+/** Your own name for one food, if you gave it one. */
+export async function myNameFor(key: string): Promise<string | null> {
+  const { data } = await supabase.from('food_facts_mine').select('name').eq('food_key', key).maybeSingle();
+  return (data as { name: string | null } | null)?.name ?? null;
+}

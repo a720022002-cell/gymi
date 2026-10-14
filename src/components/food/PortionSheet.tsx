@@ -18,7 +18,8 @@ import { WarnChip } from './Chips';
 import { NutritionFacts, useMyFacts } from './NutritionFacts';
 
 /** Set how much you ate, then log it (design: SH.portion). Dishes show each part's grams. */
-export function PortionSheet({ food: f, onClose, onLogged }: { food: DbFood | null; onClose: () => void; onLogged?: () => void }) {
+/** `name`: your own name for this food (only you see it), used instead of the food list's. */
+export function PortionSheet({ food: f, name: myName, onClose, onLogged }: { food: DbFood | null; name?: string; onClose: () => void; onLogged?: () => void }) {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
@@ -84,7 +85,7 @@ export function PortionSheet({ food: f, onClose, onLogged }: { food: DbFood | nu
 
   const add = async () => {
     if (tot.g <= 0) return;
-    const nm = foodName(f, lang);
+    const nm = myName ?? foodName(f, lang);
     const name = parts
       ? `${nm} (${parts.filter((x) => x.g > 0).map((x) => `${partName(x).toLowerCase()} ${Math.round(x.g)} ${t('g')}`).join(', ')})`
       : `${nm}, ${Math.round(g)} ${t(f.unit)}`;
@@ -97,7 +98,7 @@ export function PortionSheet({ food: f, onClose, onLogged }: { food: DbFood | nu
 
   return (
     <Sheet open={!!f} onClose={onClose}>
-      <Text variant="h2">{foodName(f, lang)}</Text>
+      <Text variant="h2">{myName ?? foodName(f, lang)}</Text>
       <Text variant="small" color="sec">
         {[f.restaurant, t(parts ? 'Set the grams of each part to match your plate' : 'Set how much you ate')].filter(Boolean).join(', ')}
       </Text>
