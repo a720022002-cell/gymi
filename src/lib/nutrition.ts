@@ -1,4 +1,5 @@
 // Calorie math, copied from the design file (docs/index.html: bmr, calcPlan, targets).
+import { type AllergenKey, allergensIn } from './allergies';
 import { addMin, fastTimes } from './prayer';
 import { MEAL_WEIGHT, type Recipe, RECIPES } from './recipes';
 
@@ -54,6 +55,9 @@ export type FoodPlan = {
   mode?: 'beginner' | 'advanced';
   /** Day the weight plateau suggestion was dismissed or applied (hidden for 2 weeks after). */
   plateauDay?: string;
+  /** Food allergies (keys from ALLERGENS) and any others in your own words: kept out of suggested meals. */
+  allergies?: string[];
+  allergyNote?: string;
 };
 
 /** A recipe in the plan. gen = made by the AI from the ingredients you have. */
@@ -212,7 +216,8 @@ export const mealChoices = (meals: { n: string }[]) => [...new Set(['Breakfast',
 /** The time of a date as HH:MM. */
 export const hhmmOf = (d = new Date()) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
-export type PlannedMeal = Meal & { key: string; r: CustomRecipe; k: number; p: number; c: number; f: number };
+/** `contains`: your allergens in this meal, only when there was no safe recipe to pick (shown as a warning). */
+export type PlannedMeal = Meal & { key: string; r: CustomRecipe; k: number; p: number; c: number; f: number; contains?: AllergenKey[] };
 
 /** Today's suggested meals, sized to the daily calories. */
 export function planMeals(f: FoodPlan, day?: string): PlannedMeal[] {
@@ -222,14 +227,24 @@ export function planMeals(f: FoodPlan, day?: string): PlannedMeal[] {
   const kcal = targets(f).k;
   const ws = meals.map((m) => MEAL_WEIGHT[m.type ?? m.n] ?? 0.13);
   const tot = ws.reduce((a, b) => a + b, 0) || 1;
+  // Recipes already on today's plan: another one is picked when there's a choice, so meals don't repeat.
+  const used = new Set<string>();
   return meals.map((m, i) => {
     const type = m.type ?? m.n;
     const key = `${ram ? 'r' : ''}${type}${i}`;
+    // Recipes without your allergens: this meal's for your goal, then any for this meal, then another meal's.
+    const safe = (list: Recipe[]) => list.filter((x) => !allergensIn([x.n, ...x.ing.map((g) => g[0])], f.allergies).length);
     const all = RECIPES[type] ?? RECIPES.Snack;
-    const pool = all.filter((x) => x.tag === tag).length ? all.filter((x) => x.tag === tag) : all;
-    const r = f.custom?.[key] ?? pool[(f.picks?.[key] ?? 0) % pool.length];
+    const mine = all.filter((x) => x.tag === tag);
+    const others = Object.entries(RECIPES).filter(([k]) => k !== type && k !== 'Iftar' && k !== 'Suhoor').flatMap(([, v]) => v);
+    const pool = [safe(mine), safe(all), safe(others), mine.length ? mine : all].find((p) => p.length)!;
+    const start = f.picks?.[key] ?? 0;
+    const fresh = Array.from({ length: pool.length }, (_, j) => pool[(start + j) % pool.length]).find((x) => !used.has(x.n));
+    const r = f.custom?.[key] ?? fresh ?? pool[start % pool.length];
+    used.add(r.n);
+    const contains = allergensIn([r.n, ...r.ing.map((g) => g[0])], f.allergies);
     const k = Math.round((kcal * ws[i]) / tot / 10) * 10;
-    return { ...m, key, r, k, p: Math.round((k * r.m[0]) / 4), c: Math.round((k * r.m[1]) / 4), f: Math.round((k * r.m[2]) / 9) };
+    return { ...m, key, r, k, p: Math.round((k * r.m[0]) / 4), c: Math.round((k * r.m[1]) / 4), f: Math.round((k * r.m[2]) / 9), ...(contains.length ? { contains } : {}) };
   });
 }
 

@@ -1,5 +1,6 @@
 // The weekly recap: a story about last week (Sunday to Saturday), shown on the first open of a new week.
 import { askAI } from './ai';
+import { allergensIn, allergiesText } from './allergies';
 import type { ChatAction } from './coach';
 import { prepareSuggestions } from './coachPlan';
 import { addDays } from './nutrition';
@@ -107,6 +108,9 @@ export async function writeRecap(
     /** Which reminders are on, and when. */
     reminders?: Record<string, unknown>;
     savedMeals?: string[];
+    /** Food allergies: meal ideas never contain them. */
+    allergies?: string[];
+    allergyNote?: string;
   },
 ): Promise<RecapAI | null> {
   const p = x.plan;
@@ -124,6 +128,7 @@ export async function writeRecap(
     days: x.days ?? [],
     reminders: x.reminders ?? null,
     savedMeals: x.savedMeals ?? [],
+    foodAllergies: allergiesText(x.allergies, x.allergyNote) || 'none',
     level: p?.level ?? null,
     injuries: p?.injuries ?? [],
     exercises: p && !p.coach ? Object.values(EX).filter((e) => !(e.stress ?? []).some((s) => p.injuries.includes(s))).map((e) => ({ id: e.id, name: e.en, muscle: e.m })) : [],
@@ -175,7 +180,7 @@ export async function writeRecap(
     } else if (r.type === 'meal') {
       const name = str(r.name, 80);
       const g = (v: unknown, max: number) => Math.min(max, Math.max(0, Math.round(num(v) || 0)));
-      if (!name || !(num(r.kcal) > 0) || (x.savedMeals ?? []).includes(name)) continue;
+      if (!name || !(num(r.kcal) > 0) || (x.savedMeals ?? []).includes(name) || allergensIn([name, title], x.allergies).length) continue;
       suggest.push({ type: 'meal', title, name, kcal: g(r.kcal, 2500), protein: g(r.protein, 200), carbs: g(r.carbs, 400), fat: g(r.fat, 200) });
     } else if (r.type === 'balance') {
       const kcal = Math.round(num(r.kcal) / 10) * 10;

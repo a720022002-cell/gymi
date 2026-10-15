@@ -27,6 +27,7 @@ import { fx, weekAvg } from '@/lib/progress';
 import { supabase } from '@/lib/supabase';
 import { useTrain } from '@/lib/train';
 import { useStreaks } from '@/lib/useProgress';
+import { allergensIn, allergiesText } from '@/lib/allergies';
 import { REMINDER_NAME } from '@/lib/recap';
 import { remindersSummary, withReminder } from '@/lib/recapApply';
 import { loadPrefs, type Prefs, savePrefs } from '@/lib/reminders';
@@ -187,6 +188,7 @@ export default function Coach() {
       bloodTests: health.blood.slice(0, 2).map((b) => ({ day: b.day, title: b.title, values: b.values.map((v) => `${v.name}: ${v.value} ${v.unit}${v.flag ? (v.flag > 0 ? ' (high)' : ' (low)') : ''}`) })),
       supplements: health.supplements.filter((x) => x.active).map((x) => `${x.name} ${x.dose}${x.unit} ${x.freq}`),
       coachManagesFood: !!food.coachTargets,
+      foodAllergies: allergiesText(food.plan.allergies, food.plan.allergyNote) || 'none',
       reminders: remindersSummary(prefs) ?? null,
     };
   };
@@ -268,7 +270,10 @@ export default function Coach() {
     const acts = await applyActions(Array.isArray(result.actions) ? result.actions : []);
     const sugg = await prepareSuggestions(result.suggest, train.plan, food.today);
     const all2 = [...acts, ...sugg];
-    const card = cleanCard(result.card) ?? (all2.length ? null : guessCard(q));
+    // A suggested meal with one of your allergens is never shown.
+    const aiCard = cleanCard(result.card);
+    const safeCard = aiCard?.type === 'meal' && allergensIn([aiCard.name], food.plan.allergies).length ? null : aiCard;
+    const card = safeCard ?? (all2.length ? null : guessCard(q));
     const ai = await saveMsg({ chat_id: chatId, role: 'ai', text: String(result.reply ?? '').slice(0, 4000), actions: all2.length ? all2 : null, card });
     // The coach keeps a short memory of lasting things you told it.
     if (typeof result.memory === 'string' && result.memory.trim() && result.memory.trim() !== memory && session) {

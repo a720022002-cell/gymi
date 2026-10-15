@@ -115,6 +115,7 @@ Passwords and keys are left out on purpose.
 - **Coach chat:** the voice (mic) button is gone, and Return now adds a new line; the arrow sends.
 - **Fixes:** an applied coach card now stays applied after leaving the chat (the save never ran before; Undo on logged items had the same bug). Break days show as "Day off" in the week strip at the top of Train. The weekly recap only appears (and the Progress button only shows) once you've had a whole week in the app; before that it says when your first recap comes.
 - **Add an ingredient:** type what you added ("70 g garlic sauce") and tap "Add with AI": only that is worked out and added, the photo isn't looked at again. You can also scan a barcode from the same sheet (meal photo and saved meals).
+- **Food allergies:** asked once in the food setup (step 5 of 6; people who set up before see a one-time card on Food). Pick from peanuts, tree nuts, dairy, eggs, wheat/gluten, fish, shellfish, sesame, soy, plus others in your own words. Change them any time in You → Food allergies. The meal plan only picks recipes without them (and no dish twice a day), and shows a warning if no safe recipe exists. The coach, the weekly recap and recipes from your ingredients get them too, and a coach meal card with an allergen is dropped.
 
 ---
 

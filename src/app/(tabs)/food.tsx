@@ -5,6 +5,7 @@ import { View } from 'react-native';
 import { Glass } from '@/components/Glass';
 import { Icon, type IconName } from '@/components/Icon';
 import { OkChip, Tag, WarnChip } from '@/components/food/Chips';
+import { ALLERGENS } from '@/lib/allergies';
 import { MacroBars } from '@/components/food/MacroBars';
 import { MealMenu } from '@/components/food/MealMenu';
 import { ReminderBell } from '@/components/food/ReminderBell';
@@ -272,6 +273,23 @@ function FoodHome() {
         />
       </View>
 
+      {/* Asked once (set up before allergies were asked): the answer, even "none", keeps it from coming back. */}
+      {food.setupDone && !coach && food.plan.allergies === undefined ? (
+        <Card style={{ marginTop: 16 }}>
+          <Text weight={700}>{t('Any food allergies?')}</Text>
+          <Text variant="small" color="sec" style={{ marginTop: 4 }}>
+            {t('Pick all that apply. Your meal plan and the AI will leave them out.')}
+          </Text>
+          <Row gap={8} style={{ marginTop: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Button small title={t('Add allergies')} style={{ alignSelf: 'stretch' }} onPress={() => router.push('/allergies')} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button small kind="soft" title={t('No allergies')} style={{ alignSelf: 'stretch' }} onPress={() => food.updatePlan({ allergies: [] })} />
+            </View>
+          </Row>
+        </Card>
+      ) : null}
       {tab === 'logged' ? (
         <View>
           <Text variant="small" weight={700} color="sec" style={{ marginTop: 16, marginBottom: 10, marginHorizontal: 4 }}>
@@ -421,6 +439,11 @@ function FoodHome() {
                 <Text variant="h3" style={{ marginTop: 8 }}>
                   {t(m.r.n)}
                 </Text>
+                {m.contains ? (
+                  <View style={{ marginTop: 6, alignSelf: 'flex-start' }}>
+                    <WarnChip label={t('Contains {x}. Change this meal.', { x: m.contains.map((k) => t(ALLERGENS.find((a) => a.key === k)?.en ?? k)).join(t(', ')) })} />
+                  </View>
+                ) : null}
                 <Row gap={14} style={{ marginTop: 8 }}>
                   <Text variant="small" num>{`${fmt(m.k)} ${t('kcal')}`}</Text>
                   <Text variant="small" color="sec" num>{`${t('P')} ${m.p}${t('g')}`}</Text>

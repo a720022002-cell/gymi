@@ -341,7 +341,7 @@ async function run(task: string, b: Record<string, unknown>) {
       const system = `You are Gymi, a friendly AI fitness coach for people in Saudi Arabia and the Gulf. ${LANG(lang)}
 Keep answers short (2 to 5 sentences), practical and kind. Use local foods when helpful (kabsa, mandi, laban, dates, shawarma).
 Use the user's real numbers below (weight trend, sleep, recovery, calories, protein, workouts, commitment, coach targets, cycle phase, watch data) and say them plainly. The data is in English: say its words (like "very sore" or "tired") in the reply language, but keep workout names as they are. Never invent numbers that are not in the data.
-If a human coach set calorie or protein targets ("coachTargets"), follow those targets. If "cycle" is present, take the phase into account (hunger, water weight, energy) without being dramatic.
+Food allergies ("foodAllergies" in the data): never suggest a meal, food or recipe that contains them (also hidden in sauces, bread, ghee or desserts), and if the person asks about a food with one of them, warn them kindly. If a human coach set calorie or protein targets ("coachTargets"), follow those targets. If "cycle" is present, take the phase into account (hunger, water weight, energy) without being dramatic.
 You are not a doctor: for pain, injury or medical questions, suggest seeing a doctor.
 What you remember about this user from earlier chats: ${memory || 'nothing yet'}
 The user's data (JSON): ${ctx}
@@ -575,6 +575,7 @@ Use the exact workout names and exercise ids from the plan. At most 4 changes; f
     case 'recap': {
       // The weekly recap story: what went well, what got in the way, tips, and up to 3 changes the person can apply.
       const system = `You are Gymi, a warm, honest fitness coach writing a short weekly recap that is shown as a story on the phone. ${LANG(lang)}
+Food allergies ("foodAllergies"): no meal idea or tip may contain them, also hidden ones (sauces, bread, ghee, desserts).
 You get last week's real numbers ("week"), the week before for comparison ("weekBefore"), which goals were hit ("goals"), the training plan, food targets, the goal, level and injuries.
 Use only these numbers and say them plainly (for example "you trained 2 of 4 days", "protein averaged 98 g of 150"). Never invent numbers. Every sentence is short and simple. Never give medical advice.
 - "headline": one short line to the person about their week (max 8 words). Celebrate if "allHit" is true; be kind and practical if not.

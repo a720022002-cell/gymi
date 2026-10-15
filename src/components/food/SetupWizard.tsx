@@ -14,6 +14,7 @@ import { Screen } from '../Screen';
 import { fontFor, Text } from '../Text';
 import { useToast } from '../Toast';
 import { Button, Card, ErrorText, Label, Option, ProgDots, Row, Springy, Toggle } from '../ui';
+import { AllergyPicker } from './AllergyPicker';
 import { BodyFigure } from './BodyFigure';
 import { Stepper } from './Stepper';
 import { Thinking } from './Thinking';
@@ -21,7 +22,7 @@ import { TimeField } from './TimeField';
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** First time in Food: weight and activity, goal, body fat, work day, notes. */
+/** First time in Food: weight and activity, goal, body fat, work day, allergies, notes. */
 export function SetupWizard({ inTab }: { inTab?: boolean }) {
   const { t } = useT();
   const { colors: c } = useSettings();
@@ -76,9 +77,9 @@ export function SetupWizard({ inTab }: { inTab?: boolean }) {
 
   const header = (
     <View>
-      <ProgDots step={step} total={5} />
+      <ProgDots step={step} total={6} />
       <Text variant="small" weight={700} color="sec">
-        {t('Step {n} of {total}', { n: step + 1, total: 5 })}
+        {t('Step {n} of {total}', { n: step + 1, total: 6 })}
       </Text>
     </View>
   );
@@ -283,6 +284,27 @@ export function SetupWizard({ inTab }: { inTab?: boolean }) {
       ) : null}
 
       {step === 4 ? (
+        <View>
+          <Text variant="h1" style={{ marginTop: 4 }}>
+            {t('Any food allergies?')}
+          </Text>
+          <Text color="sec" style={{ marginTop: 6 }}>
+            {t('Pick all that apply. Your meal plan and the AI will leave them out.')}
+          </Text>
+          <AllergyPicker keys={f.allergies ?? []} note={f.allergyNote ?? ''} onChange={(allergies, allergyNote) => set({ allergies, allergyNote })} />
+          <Button
+            title={t('Next')}
+            style={{ marginTop: 24 }}
+            onPress={() => {
+              // Answered (even "none"), so it isn't asked again.
+              if (!f.allergies) set({ allergies: [] });
+              next();
+            }}
+          />
+        </View>
+      ) : null}
+
+      {step === 5 ? (
         <View>
           <Text variant="h1" style={{ marginTop: 4 }}>
             {t('Anything else about your day?')}

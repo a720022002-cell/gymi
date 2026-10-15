@@ -155,6 +155,13 @@ export default function You() {
       <Label>{t('Settings')}</Label>
       <List>
         <Item icon="globe" title={t('Language')} value={s.lang === 'ar' ? 'العربية' : 'English'} onPress={() => router.push('/language')} chevron />
+        <Item
+          icon="food"
+          title={t('Food allergies')}
+          value={food.plan.allergies?.length || food.plan.allergyNote ? String((food.plan.allergies?.length ?? 0) + (food.plan.allergyNote ? 1 : 0)) : t('None')}
+          onPress={() => router.push('/allergies')}
+          chevron
+        />
         {RAMADAN_SWITCH ? (
           <Item
             icon="moon"

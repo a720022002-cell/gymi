@@ -4,6 +4,7 @@ import { TextInput, View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { askAI } from '@/lib/ai';
+import { allergiesText } from '@/lib/allergies';
 import { useFood } from '@/lib/food';
 import { type CustomRecipe, type PlannedMeal } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
@@ -84,10 +85,11 @@ export function IngredientsSheet({ meal, onClose }: { meal: PlannedMeal | null; 
       .map((s) => s.trim())
       .filter(Boolean)
       .slice(0, 8);
+    const allergy = allergiesText(food.plan.allergies, food.plan.allergyNote);
     // No recipe task on the server yet: food_text returns ingredients with grams and macros, sized by the request.
     const r = await askAI<Result>('food_text', {
       lang,
-      text: `One home-cooked ${meal.n.toLowerCase()} recipe of about ${meal.k} kcal total, using only: ${words.join(', ')} (plus a little oil and spices). The title is the dish name. List each ingredient with raw grams for one serving.`,
+      text: `One home-cooked ${meal.n.toLowerCase()} recipe of about ${meal.k} kcal total, using only: ${words.join(', ')} (plus a little oil and spices). The title is the dish name. List each ingredient with raw grams for one serving.${allergy ? ` The person is allergic to: ${allergy}. Use nothing that contains these, not even oil, butter, ghee or a sauce with them.` : ''}`,
     });
     let recipe: CustomRecipe;
     const items = (r.result?.items ?? []).filter((x) => x.kcal > 0 && x.grams > 0);

@@ -75,6 +75,8 @@ export default function Recap() {
         days: data ? weekDays(start, data, days) : [],
         reminders: uid ? remindersSummary(await loadPrefs(uid).catch(() => null)) : undefined,
         savedMeals: food.saved.map((m) => m.name).slice(0, 30),
+        allergies: food.plan.allergies,
+        allergyNote: food.plan.allergyNote,
       }).catch(() => null);
       if (!out) return setAiState('failed');
       setAi(out);
