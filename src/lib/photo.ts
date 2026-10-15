@@ -37,6 +37,7 @@ export function takePhoto(camera: boolean): Promise<Photo | null> {
     const finish = (v: Photo | null) => {
       if (done) return;
       done = true;
+      input.remove();
       resolve(v);
     };
     input.onchange = async () => {
@@ -44,7 +45,11 @@ export function takePhoto(camera: boolean): Promise<Photo | null> {
       finish(f ? await shrink(f) : null);
     };
     // Closing the picker without a photo sends "cancel", so the button that opened it doesn't wait forever.
-    input.addEventListener('cancel', () => finish(null));
+    // Some phones send "cancel" just before the photo arrives, so it only counts if no photo came in.
+    input.addEventListener('cancel', () => setTimeout(() => !input.files?.length && finish(null), 1500));
+    // Kept on the page (hidden) until it answers: Safari can drop the photo of a picker that isn't on the page.
+    input.style.display = 'none';
+    document.body.appendChild(input);
     input.click();
   });
 }
