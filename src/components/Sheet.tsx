@@ -3,12 +3,14 @@ import { Animated, Modal, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useSettings } from '@/theme/settings';
+import { useT } from '@/i18n';
 
 import { Glass } from './Glass';
 
 /** Glass bottom sheet that springs up (design: .sheet). Tap outside to close. */
 export function Sheet({ open, onClose, children }: PropsWithChildren<{ open: boolean; onClose: () => void }>) {
   const { colors: c } = useSettings();
+  const { t } = useT();
   const insets = useSafeAreaInsets();
   const a = useState(() => new Animated.Value(0))[0];
   const [mounted, setMounted] = useState(open);
@@ -27,7 +29,7 @@ export function Sheet({ open, onClose, children }: PropsWithChildren<{ open: boo
   return (
     <Modal transparent visible animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <Animated.View style={{ flex: 1, opacity: a }}>
-        <Pressable style={{ flex: 1, backgroundColor: c.scrim }} onPress={onClose} accessibilityLabel="Close" />
+        <Pressable style={{ flex: 1, backgroundColor: c.scrim }} onPress={onClose} accessibilityLabel={t('Close')} />
       </Animated.View>
       <Animated.View
         style={{

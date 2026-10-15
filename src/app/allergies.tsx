@@ -1,4 +1,3 @@
-import { router } from 'expo-router';
 import { useState } from 'react';
 
 import { AllergyPicker } from '@/components/food/AllergyPicker';
@@ -8,6 +7,7 @@ import { useToast } from '@/components/Toast';
 import { Button } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
+import { goBack } from '@/lib/nav';
 
 /** Your food allergies: suggested meals and the AI leave them out. */
 export default function Allergies() {
@@ -33,7 +33,7 @@ export default function Allergies() {
         onPress={async () => {
           if (!(await food.savePlan({ ...food.plan, allergies: keys, allergyNote: note.trim() }))) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
           toast(t('Saved'), { icon: 'check' });
-          router.back();
+          goBack();
         }}
       />
     </Screen>

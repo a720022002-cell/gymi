@@ -11,6 +11,7 @@ import { Button, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { setPendingBarcode } from '@/lib/pending';
 import { reader, readBarcode, readBarcodeFile } from '@/lib/readBarcode';
+import { goBack } from '@/lib/nav';
 
 const NOT_READ = 'Couldn’t read the barcode. Get closer, keep it sharp and well lit, then try again.';
 
@@ -32,7 +33,7 @@ export default function Barcode() {
   const go = (code: string) => {
     if (pick) {
       setPendingBarcode(code);
-      router.back();
+      goBack();
     } else router.replace({ pathname: '/product', params: { code } });
   };
 
@@ -111,7 +112,7 @@ export default function Barcode() {
       </View>
 
       <View style={{ position: 'absolute', top: Math.max(10, insets.top) + 4, left: 14, right: 14, flexDirection: 'row', justifyContent: 'space-between' }}>
-        <Springy onPress={() => router.back()} scaleTo={1.08} accessibilityLabel={t('Close')}>
+        <Springy onPress={() => goBack()} scaleTo={1.08} accessibilityLabel={t('Close')}>
           <Glass style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}>
             <Icon name="close" size={20} color="#FFFFFF" strokeWidth={2.2} />
           </Glass>

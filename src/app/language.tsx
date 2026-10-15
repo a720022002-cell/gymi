@@ -7,6 +7,7 @@ import { Button, Option } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { type Lang, useSettings } from '@/theme/settings';
+import { goBack } from '@/lib/nav';
 
 /** Choose English or Arabic. Arabic flips the whole layout right to left. */
 export default function Language() {
@@ -38,7 +39,7 @@ export default function Language() {
       <View style={{ marginTop: 24 }}>
         <Button
           title={t(duringSignup ? 'Continue' : 'Done')}
-          onPress={() => (duringSignup ? router.push('/account-type') : router.back())}
+          onPress={() => (duringSignup ? router.push('/account-type') : goBack())}
         />
       </View>
     </Screen>

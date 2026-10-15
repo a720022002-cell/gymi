@@ -19,6 +19,7 @@ import { type Session, type SessionEx, useTrain } from '@/lib/train';
 import { exInfo, type PlanEx, rangeText, topReps } from '@/lib/training';
 import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
+import { goBack } from '@/lib/nav';
 
 const REST = 90;
 const digits = (v: string, dec: boolean) =>
@@ -573,7 +574,7 @@ export default function Active() {
             setConfirm(false);
             setRest(null);
             train.setSession(null);
-            router.back();
+            goBack();
           }}
         />
       </Sheet>

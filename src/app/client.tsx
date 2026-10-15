@@ -17,6 +17,7 @@ import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, NavButton, Row, Segmented } from '@/components/ui';
 import { useT } from '@/i18n';
+import { weekdayLetter } from '@/lib/dates';
 import { useAuth } from '@/lib/auth';
 import {
   ageOf,
@@ -44,6 +45,7 @@ import { fmt, fmtTime, GOALS } from '@/lib/nutrition';
 import { fx, shortDate } from '@/lib/progress';
 import { exInfo } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
+import { goBack } from '@/lib/nav';
 
 type Tab = 'o' | 'f' | 't' | 'h';
 type Data = { link: string; s: ClientSummary | null; l: ClientLink | null; note: string; progs: Program[]; meals: MealPlan[]; rank: RankRow[]; now: number };
@@ -109,7 +111,7 @@ export default function ClientScreen() {
           onPress={async () => {
             await endCoaching(l.id);
             toast(t('Invite cancelled'), { icon: 'trash' });
-            router.back();
+            goBack();
           }}
         />
         <InvitePlans link={l} progs={data.progs} meals={data.meals} onChange={load} />
@@ -278,7 +280,7 @@ export default function ClientScreen() {
     const p = s.today.reduce((a, x) => a + Number(x.protein), 0);
     const byDay = new Map(s.food.map((x) => [x.day, Number(x.kcal)]));
     const days = [6, 5, 4, 3, 2, 1, 0].map((b) => dayKey(now, b));
-    const labels = days.map((x, i) => (i === 6 ? t('Today') : t(['S', 'M', 'T', 'W', 'T', 'F', 'S'][new Date(`${x}T12:00:00`).getDay()])));
+    const labels = days.map((x, i) => (i === 6 ? t('Today') : weekdayLetter(new Date(`${x}T12:00:00`).getDay(), lang)));
     return (
       <>
         <Card>
@@ -556,7 +558,7 @@ export default function ClientScreen() {
             await endCoaching(link);
             setEnd(false);
             toast(t('Spot freed'), { icon: 'check' });
-            router.back();
+            goBack();
           }}
         />
         <Button kind="ghost" title={t('Cancel')} style={{ marginTop: 8 }} onPress={() => setEnd(false)} />

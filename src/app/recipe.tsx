@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 import Svg, { Circle, Ellipse, Rect } from 'react-native-svg';
@@ -16,6 +16,7 @@ import { changeMeal, fmt, planMeals, scaleIngredients } from '@/lib/nutrition';
 import { inGrams, ingKcal } from '@/lib/recipes';
 import { subOptions } from '@/lib/subs';
 import { useSettings } from '@/theme/settings';
+import { goBack } from '@/lib/nav';
 
 export default function RecipeScreen() {
   const { t } = useT();
@@ -157,7 +158,7 @@ export default function RecipeScreen() {
           style={{ marginTop: 16 }}
           onPress={async () => {
             await logFood({ name: t(r.n), kcal: meal.k, protein: meal.p, carbs: meal.c, fat: meal.f, meal: meal.n, plan_key: meal.key }, toast, t);
-            router.back();
+            goBack();
           }}
         />
       ) : null}

@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 
@@ -19,6 +19,7 @@ import { fmt } from '@/lib/nutrition';
 import { shortDate } from '@/lib/progress';
 import { CH_PCT, CH_UNIT, challengeBoard, challengeInfo, type ChallengeInfo, type ChallengeRow, challengeTitle, daysLeft, leaveChallenge, nudgeChallenge, setChallengeGoal } from '@/lib/social';
 import { useSettings } from '@/theme/settings';
+import { goBack } from '@/lib/nav';
 
 type Data = { id: string; info: ChallengeInfo | null; board: ChallengeRow[] };
 
@@ -158,7 +159,7 @@ export default function ChallengeScreen() {
         onPress={async () => {
           if (me) await leaveChallenge(ch.id, me);
           toast(t('You left the challenge'), { icon: 'trophy' });
-          router.back();
+          goBack();
         }}
       />
       <Sheet open={goalOpen} onClose={() => setGoalOpen(false)}>

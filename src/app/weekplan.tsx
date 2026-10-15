@@ -18,6 +18,7 @@ import { useTrain } from '@/lib/train';
 import { goalWord } from '@/components/train/PlanReviewCard';
 import { DAYS, DAYS_LONG, type Day, onceNote, splitRepeats } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
+import { goBack } from '@/lib/nav';
 
 const ROW = 64;
 const GAP = 8;
@@ -201,7 +202,7 @@ export default function WeekPlan() {
           </Text>
         ) : null}
       </Card>
-      <Button title={t('Save plan')} style={{ marginTop: 12 }} onPress={() => (fresh ? router.replace('/train') : router.back())} />
+      <Button title={t('Save plan')} style={{ marginTop: 12 }} onPress={() => (fresh ? router.replace('/train') : goBack())} />
       <DaySheet d={open} onClose={() => setOpen(null)} />
     </Screen>
   );

@@ -16,6 +16,7 @@ import { type Facts, factsKey, factsOf, offFactsFor, withMine } from '@/lib/nutr
 import { fmt, hhmmOf, mealAt, mealChoices, planMeals, scaleIngredients } from '@/lib/nutrition';
 import { inGrams } from '@/lib/recipes';
 import { useSettings } from '@/theme/settings';
+import { goBack } from '@/lib/nav';
 
 /** One thing you logged today: its numbers, and the ingredients when it came from your plan or the food list. */
 export default function LoggedScreen() {
@@ -221,7 +222,7 @@ export default function LoggedScreen() {
           const removed = await food.deleteLog(log.id);
           if (!removed) return;
           toast(t('Removed {name}', { name: removed.name }), { icon: 'trash', undo: () => food.restoreLog(removed) });
-          router.back();
+          goBack();
         }}
       />
     </Screen>

@@ -1,5 +1,5 @@
 import * as Clipboard from 'expo-clipboard';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Platform, Share, View } from 'react-native';
 
 import { Glass } from '@/components/Glass';
@@ -52,14 +52,21 @@ export default function Shopping() {
   const from = locked ? lock.from : food.today;
   const days = locked ? daysBetween(lock.from, lock.to) : [1, 7, 30][shop.scope];
   // One row per ingredient: counted ones (2 slices, half a lemon) become grams, so they add up with the rest.
-  const agg: Record<string, Record<string, number>> = {};
-  for (let i = 0; i < days; i++)
-    planMeals(food.plan, addDays(from, i), food.dayGoal(addDays(from, i))).forEach((m) =>
-      scaleIngredients(m.r, m.k).forEach(([n, a, u]) => {
-        const [v, unit] = inGrams(n, a, u);
-        (agg[n] ??= {})[unit] = (agg[n][unit] ?? 0) + v;
-      }),
-    );
+  // Worked out once per plan and period (up to 30 days of meals), not again on every tap or keystroke.
+  const { plan: fp, dayGoal } = food;
+  const agg = useMemo(() => {
+    const out: Record<string, Record<string, number>> = {};
+    for (let i = 0; i < days; i++)
+      planMeals(fp, addDays(from, i), dayGoal(addDays(from, i))).forEach((m) =>
+        scaleIngredients(m.r, m.k).forEach(([n, a, u]) => {
+          const [v, unit] = inGrams(n, a, u);
+          (out[n] ??= {})[unit] = (out[n][unit] ?? 0) + v;
+        }),
+      );
+    return out;
+    // Only meals matter here: ticking an item changes `shop` inside the plan, which doesn't change the list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fp.meals, fp.picks, fp.custom, fp.aiRecipes, fp.allergies, fp.goal, fp.kcal, fp.perKg, fp.carbG, fp.fatG, fp.ramadan, from, days, dayGoal]);
   const amount = (u: Record<string, number>) => {
     if (u.g) return u.g >= 1000 ? `${(u.g / 1000).toFixed(1)} ${t('kg')}` : `${Math.round(u.g)} ${t('g')}`;
     if (u.ml) return u.ml >= 1000 ? `${(u.ml / 1000).toFixed(1)} ${t('L')}` : `${Math.round(u.ml)} ${t('ml')}`;

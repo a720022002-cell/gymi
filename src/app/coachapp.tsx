@@ -16,6 +16,7 @@ import { type Application, certUrl, myApplication, withdrawApplication } from '@
 import { useCoachMode } from '@/lib/coachMode';
 import { shortDate } from '@/lib/progress';
 import { useSettings } from '@/theme/settings';
+import { goBack } from '@/lib/nav';
 
 /** Coach application status (design: coachapp). */
 export default function CoachApplication() {
@@ -190,7 +191,7 @@ export default function CoachApplication() {
             await withdrawApplication();
             await refreshProfile().catch(() => null);
             toast(t('Application withdrawn'), { icon: 'info' });
-            router.back();
+            goBack();
           }}
         />
         <Button kind="glass" title={t('Keep it')} style={{ marginTop: 8 }} onPress={() => setConfirm(false)} />

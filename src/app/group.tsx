@@ -19,6 +19,7 @@ import { addGroupMember, type BoardRow, displayName, groupBoard, groupFeed, leav
 import { supabase } from '@/lib/supabase';
 import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
+import { goBack } from '@/lib/nav';
 
 type Post = { id: string; user_id: string; name: string | null; text: string; created_at: string };
 
@@ -187,7 +188,7 @@ export default function GroupScreen() {
             setLeaving(false);
             if (!ok) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
             toast(t('You left the group'), { icon: 'users' });
-            router.back();
+            goBack();
           }}
         />
         <Button kind="ghost" title={t('Cancel')} style={{ marginTop: 8 }} onPress={() => setLeaving(false)} />

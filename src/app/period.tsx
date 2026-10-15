@@ -17,6 +17,7 @@ import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Label, NavButton, Option, Row, Segmented, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
+import { weekdayLetter } from '@/lib/dates';
 import { useAuth } from '@/lib/auth';
 import {
   addPastPeriod,
@@ -481,8 +482,9 @@ function CalendarTab({ st, reload }: { st: State; reload: () => void }) {
         return (
           <Card key={first.toISOString()}>
             <Text weight={700}>{new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { month: 'long', year: 'numeric' }).format(first)}</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8, direction: 'ltr' } as object}>
-              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((x, i) => (
+            {/* Sunday first, in reading order (right to left in Arabic). */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 }}>
+              {[0, 1, 2, 3, 4, 5, 6].map((j) => weekdayLetter(j, lang)).map((x, i) => (
                 <View key={`h${i}`} style={{ width: `${100 / 7}%`, alignItems: 'center', paddingVertical: 4 }}>
                   <Text variant="xs" weight={700} color="sec">
                     {x}

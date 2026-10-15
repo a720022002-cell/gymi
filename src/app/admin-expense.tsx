@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { TextInput, View } from 'react-native';
 
@@ -15,6 +15,7 @@ import { deleteExpense, equalShares, EXPENSE_CATEGORIES, type Expense, listExpen
 import { useAuth } from '@/lib/auth';
 import { localDay } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
+import { goBack } from '@/lib/nav';
 
 type Draft = Omit<Expense, 'id' | 'created_by' | 'shares'> & { id?: string; people: string[]; custom: Record<string, string>; settled: Record<string, boolean>; amountText: string };
 
@@ -105,7 +106,7 @@ export default function AdminExpense() {
     setBusy(false);
     if (!ok) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
     toast(t('Purchase saved'), { icon: 'check' });
-    router.back();
+    goBack();
   };
 
   return (
@@ -229,7 +230,7 @@ export default function AdminExpense() {
             setConfirm(false);
             if (d.id && (await deleteExpense(d.id))) {
               toast(t('Purchase deleted'), { icon: 'trash' });
-              router.back();
+              goBack();
             } else toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
           }}
         />

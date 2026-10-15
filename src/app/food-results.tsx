@@ -19,6 +19,7 @@ import { type FoodPlan, fmt, fmtTime, GOALS, isMinor, kcalFloor, nextMealId, RAM
 import { CITIES, DEFAULT_CITY, fastTimes } from '@/lib/prayer';
 import { fx } from '@/lib/progress';
 import { useSettings } from '@/theme/settings';
+import { goBack } from '@/lib/nav';
 
 const inRange = (v: number) => v >= 1.6 - 1e-9 && v <= 2.2 + 1e-9;
 
@@ -79,7 +80,7 @@ export default function FoodResults() {
       back
       onBack={() => {
         food.setDraft(null);
-        router.back();
+        goBack();
       }}>
       <Segmented
         value={tab}

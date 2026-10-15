@@ -14,6 +14,7 @@ import { toLatinDigits } from '@/lib/latinDigits';
 import { useTrain } from '@/lib/train';
 import { copyName, DAYS_LONG, exInfo, type PlanEx, type TrainPlan, workoutMinutes } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
+import { goBack } from '@/lib/nav';
 
 /** Edit a workout: name, exercises, sets and reps (design: dayedit). */
 export default function DayEdit() {
@@ -179,7 +180,7 @@ export default function DayEdit() {
         title={t('Done')}
         style={{ marginTop: 12 }}
         onPress={() => {
-          router.back();
+          goBack();
           toast(t('{w} saved', { w: t(w) }), { icon: 'check' });
         }}
       />

@@ -1,5 +1,4 @@
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
@@ -19,6 +18,7 @@ import { takePendingPhoto } from '@/lib/pending';
 import type { Photo } from '@/lib/photo';
 import { addedSugarHigh } from '@/lib/sugar';
 import { useSettings } from '@/theme/settings';
+import { goBack } from '@/lib/nav';
 
 type Label = { name?: string; unit?: 'g' | 'ml'; serving?: number; kcal_100: number; protein_100: number; carbs_100: number; fat_100: number; sugar_100?: number; readable: boolean };
 const num = (s: string) => +s.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[,٫]/g, '.') || 0;
@@ -49,7 +49,7 @@ export default function LabelResult() {
 
   useEffect(() => {
     if (!photo) {
-      router.back();
+      goBack();
       return;
     }
     const id = setTimeout(fetchLabel, 0);
@@ -71,7 +71,7 @@ export default function LabelResult() {
       toast,
       t,
     );
-    if (row) router.back();
+    if (row) goBack();
   };
 
   return (

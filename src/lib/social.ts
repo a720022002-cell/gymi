@@ -47,6 +47,12 @@ export async function myFriends() {
   return (await rpc<FriendRow[]>('my_friends')).data ?? [];
 }
 
+/** Your friends, or null when they couldn't be loaded (no connection), so screens can say so instead of "no friends". */
+export async function myFriendsOrNull() {
+  const { data, error } = await rpc<FriendRow[]>('my_friends');
+  return error ? null : (data ?? []);
+}
+
 export async function findUser(username: string) {
   const { data } = await rpc<Found[]>('find_user', { p_username: username });
   return data?.[0] ?? null;
@@ -69,6 +75,12 @@ export async function removeFriendship(friendshipId: string) {
 
 export async function friendProfile(id: string) {
   return (await rpc<FriendProfile>('friend_profile', { p_id: id })).data;
+}
+
+/** A friend's profile; `failed` when it couldn't be loaded (no connection), not because you aren't friends. */
+export async function friendProfileChecked(id: string) {
+  const { data, error } = await rpc<FriendProfile>('friend_profile', { p_id: id });
+  return { v: data, failed: !!error };
 }
 
 export async function getShare(userId: string): Promise<Share> {

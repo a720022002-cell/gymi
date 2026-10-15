@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { TextInput, View } from 'react-native';
 
@@ -17,6 +17,7 @@ import { assignOne, deleteMealPlan, listMealPlans, type MealPlan, type PlanIng, 
 import { foodName } from '@/lib/foodsDb';
 import { fmt } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
+import { goBack } from '@/lib/nav';
 
 const NEW: MealPlan = {
   id: '',
@@ -146,7 +147,7 @@ export default function MealEdit() {
           // Made from a client's page or an invite: give it to them right away.
           if (assign && !p.id) await assignOne(assign, 'meal', r.id);
           toast(t('Meal plan saved. Clients on it see the changes.'), { icon: 'check' });
-          router.back();
+          goBack();
         }}
       />
       {p.id ? (
@@ -159,7 +160,7 @@ export default function MealEdit() {
           onPress={async () => {
             await deleteMealPlan(p.id);
             toast(t('Meal plan deleted'), { icon: 'trash' });
-            router.back();
+            goBack();
           }}
         />
       ) : null}

@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Animated, Easing, View } from 'react-native';
 
@@ -15,6 +15,7 @@ import { type DbExercise, dbExName, getExercise, toPlanEx } from '@/lib/exercise
 import { useTrain } from '@/lib/train';
 import { exMuscle, muscleLabel, workoutMinutes } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
+import { goBack } from '@/lib/nav';
 
 const LEVEL: Record<string, string> = { beginner: 'Beginner', intermediate: 'Intermediate', expert: 'Expert' };
 
@@ -168,7 +169,7 @@ export default function ExerciseScreen() {
           onPress={addToToday}
         />
       ) : null}
-      <Button kind="ghost" title={t('Back')} style={{ marginTop: 8 }} onPress={() => router.back()} />
+      <Button kind="ghost" title={t('Back')} style={{ marginTop: 8 }} onPress={() => goBack()} />
       <Text variant="xs" color="sec" center style={{ marginTop: 8 }}>
         {t('Pictures and steps: Free Exercise DB (public domain).')}
       </Text>

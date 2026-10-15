@@ -17,6 +17,7 @@ import { type Photo, takePhoto } from '@/lib/photo';
 import { useTrain } from '@/lib/train';
 import { DAYS_LONG, type Equipment, EX, type Muscle, muscleGroup, muscleLabel, MUSCLES_FINE, type PlanEx, topReps, workoutMinutes } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
+import { goBack } from '@/lib/nav';
 
 type Found = {
   known: boolean;
@@ -112,7 +113,7 @@ export default function MachineScreen() {
       const { sets, ...rest } = pe;
       train.setSession({ ...s, ex: [...s.ex, { ...rest, tip: false, sets: Array.from({ length: Math.max(1, sets) }, () => ({ w: '', r: '', done: false, lw: 0, lr: topReps(pe.reps) })) }] });
       toast(t('{x} added to this workout', { x: label }), { ai: true });
-      return router.back();
+      return goBack();
     }
     const p = train.plan;
     if (!p || !target) return;
@@ -121,7 +122,7 @@ export default function MachineScreen() {
     const ex = [...W.ex, pe];
     train.updatePlan({ workouts: { ...p.workouts, [target]: { ...W, ex, min: workoutMinutes(ex) } } });
     toast(t('{x} added to {w}', { x: label, w: t(target) }), { ai: true });
-    router.back();
+    goBack();
   };
 
   const addFound = () => {

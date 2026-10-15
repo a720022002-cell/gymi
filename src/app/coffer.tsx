@@ -15,6 +15,7 @@ import { useAuth } from '@/lib/auth';
 import { type CoachProfile, coachList, EMPTY_COACH, fromPrice, getCoachProfile, INCLUDES, normalizePackages, type Package, saveCoachProfile } from '@/lib/coaching';
 import { fmt } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
+import { goBack } from '@/lib/nav';
 
 /** Listing, spots and packages: what members see and pick in Find a coach (design: coffer). */
 export default function CoachOffer() {
@@ -196,7 +197,7 @@ export default function CoachOffer() {
           onPress={async () => {
             if (await save()) {
               toast(t('Listing saved'), { icon: 'check' });
-              router.back();
+              goBack();
             }
           }}
         />

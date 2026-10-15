@@ -9,6 +9,7 @@ import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
+import { weekdayLetter } from '@/lib/dates';
 import { useAuth } from '@/lib/auth';
 import { applyPlanChanges, applyTargets, changeLine } from '@/lib/coachPlan';
 import { useFood } from '@/lib/food';
@@ -19,6 +20,7 @@ import { firstRecapDay, type Goal, hasRecap, markRecapSeen, REMINDER_NAME, recap
 import { useReportData, useReportStats } from '@/lib/report';
 import { loadPrefs, savePrefs } from '@/lib/reminders';
 import { useTrain } from '@/lib/train';
+import { goBack } from '@/lib/nav';
 
 // The story is always dark, like a story on any phone.
 const K = { bg: '#07080D', card2: '#10131D', card: 'rgba(255,255,255,0.08)', line: 'rgba(255,255,255,0.12)', text: '#F5F6FA', sec: '#A3A8B8', cobalt: '#3355FF', up: '#22C55E', down: '#F05252', amber: '#F5B83D' };
@@ -150,7 +152,7 @@ export default function Recap() {
         <Text center style={{ color: K.sec, marginTop: 8 }}>
           {t('It covers a whole week in Gymi, so keep logging this week.')}
         </Text>
-        <Button title={t('Close')} style={{ marginTop: 24, alignSelf: 'stretch' }} onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
+        <Button title={t('Close')} style={{ marginTop: 24, alignSelf: 'stretch' }} onPress={() => (goBack())} />
       </View>
     );
   }
@@ -397,7 +399,7 @@ function StoryButton({ title, onPress, kind = 'primary', loading }: { title: str
 }
 
 /** Sunday-first weekday letters (S M T… or ح ن ث…). */
-const dayLetter = (j: number, lang: 'en' | 'ar') => new Intl.DateTimeFormat(lang === 'ar' ? 'ar' : 'en-US', { weekday: 'narrow' }).format(new Date(2026, 9, 4 + j, 12));
+const dayLetter = weekdayLetter;
 
 function SlideBody(p: BodyProps) {
   const { t, stats: s, ai } = p;

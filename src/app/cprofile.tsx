@@ -13,6 +13,7 @@ import { Button, Chip, Label, Row, Segmented } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { type CoachProfile, EMPTY_COACH, getCoachProfile, saveCoachProfile, SPECIALTIES } from '@/lib/coaching';
+import { goBack } from '@/lib/nav';
 
 /** Coach profile members see in Find a coach (design: cprofile). */
 export default function CoachProfileScreen() {
@@ -90,7 +91,7 @@ export default function CoachProfileScreen() {
           const ok = await saveCoachProfile(uid, { ...v, socials: cleanSocials(v.socials), hours: v.coach_type === 'Online' ? [] : (v.hours ?? []).filter((h) => h.days.length) });
           setBusy(false);
           toast(ok ? t('Coach profile saved') : t('Couldn’t save. Please try again.'), { icon: ok ? 'check' : 'warn' });
-          if (ok) router.back();
+          if (ok) goBack();
         }}
       />
     </Screen>

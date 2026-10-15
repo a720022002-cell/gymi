@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { type GestureResponderEvent, View } from 'react-native';
 
 import { useSettings } from '@/theme/settings';
+import { useT } from '@/i18n';
 
 import { Text } from '../Text';
 
@@ -11,6 +12,7 @@ const MAX = 3.5;
 /** Protein g/kg slider with the common 1.6–2.2 range marked; snaps near the edges of the range. */
 export function ProteinSlider({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const { colors: c, isRTL } = useSettings();
+  const { t } = useT();
   const [w, setW] = useState(0);
   const left = useRef(0);
   const pos = (v: number) => ((v - MIN) / (MAX - MIN)) * w;
@@ -36,7 +38,7 @@ export function ProteinSlider({ value, onChange }: { value: number; onChange: (v
         }}
         onResponderMove={move}
         accessibilityRole="adjustable"
-        accessibilityLabel="Protein grams per kg"
+        accessibilityLabel={t('Protein grams per kg')}
         accessibilityValue={{ min: MIN, max: MAX, now: value }}
         style={{ height: 44, justifyContent: 'center' }}>
         <View style={{ height: 6, borderRadius: 3, backgroundColor: c.track }} />

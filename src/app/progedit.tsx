@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { TextInput, View } from 'react-native';
 
@@ -14,6 +14,7 @@ import { assignOne, deleteProgram, listPrograms, type Program, saveProgram } fro
 import { toPlanEx } from '@/lib/exercisesDb';
 import { exInfo } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
+import { goBack } from '@/lib/nav';
 
 const NEW: Program = { id: '', name: '', days: [{ name: 'Day 1', ex: [] }] };
 
@@ -100,7 +101,7 @@ export default function ProgramEdit() {
           // Made from a client's page or an invite: give it to them right away.
           if (assign && !p.id) await assignOne(assign, 'program', r.id);
           toast(t('Program saved. Clients on it see the changes.'), { icon: 'check' });
-          router.back();
+          goBack();
         }}
       />
       {p.id ? (
@@ -113,7 +114,7 @@ export default function ProgramEdit() {
           onPress={async () => {
             await deleteProgram(p.id);
             toast(t('Program deleted'), { icon: 'trash' });
-            router.back();
+            goBack();
           }}
         />
       ) : null}

@@ -1,7 +1,8 @@
-import { type PropsWithChildren, type ReactNode, useEffect, useState } from 'react';
+import { type PropsWithChildren, type ReactNode, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  type GestureResponderEvent,
   Pressable,
   type PressableProps,
   type StyleProp,
@@ -25,9 +26,25 @@ export function Springy({
   scaleTo = 0.97,
   style,
   disabled,
+  onPress,
   ...rest
-}: PressableProps & { scaleTo?: number; style?: StyleProp<ViewStyle>; children?: ReactNode }) {
+}: Omit<PressableProps, 'onPress'> & { onPress?: ((e: GestureResponderEvent) => unknown) | null; scaleTo?: number; style?: StyleProp<ViewStyle>; children?: ReactNode }) {
   const s = useState(() => new Animated.Value(1))[0];
+  // While what a tap started is still running (saving, sending), more taps are ignored: no doubles.
+  const running = useRef(false);
+  const press = onPress
+    ? (e: GestureResponderEvent) => {
+        if (running.current) return;
+        const r = onPress(e);
+        if (r && typeof (r as Promise<unknown>).then === 'function') {
+          running.current = true;
+          (r as Promise<unknown>).then(
+            () => (running.current = false),
+            () => (running.current = false),
+          );
+        }
+      }
+    : undefined;
   // Layout props must sit on the outer Pressable, or flex: 1 / margins don't apply.
   const flat = (StyleSheet.flatten(style) ?? {}) as ViewStyle;
   const outer: ViewStyle = {};
@@ -53,6 +70,7 @@ export function Springy({
       onPressOut={() => to(1)}
       accessibilityRole="button"
       style={outer}
+      onPress={press}
       {...rest}>
       <Animated.View style={[inner, { transform: [{ scale: s }] }, disabled && { opacity: 0.4 }]}>
         {children}
@@ -75,7 +93,8 @@ export function Button({
   color,
 }: {
   title: string;
-  onPress?: () => void;
+  /** May return a promise: the button shows it's working and ignores taps until it's done. */
+  onPress?: () => unknown;
   kind?: ButtonKind;
   small?: boolean;
   icon?: IconName;
@@ -85,6 +104,17 @@ export function Button({
   color?: string;
 }) {
   const { colors: c } = useSettings();
+  const [working, setWorking] = useState(false);
+  const run = onPress
+    ? () => {
+        const r = onPress();
+        if (r && typeof (r as Promise<unknown>).then === 'function') {
+          setWorking(true);
+          return (r as Promise<unknown>).finally(() => setWorking(false));
+        }
+      }
+    : undefined;
+  loading = loading || working;
   const h = small ? size.buttonSm : size.button;
   // A small button still fills its space when asked to (alignSelf: 'stretch').
   const fill = (StyleSheet.flatten(style) as ViewStyle | undefined)?.alignSelf === 'stretch';
@@ -117,7 +147,7 @@ export function Button({
   );
   return (
     <Springy
-      onPress={onPress}
+      onPress={run}
       disabled={disabled || loading}
       scaleTo={kind === 'glass' ? 1.04 : 0.97}
       style={[small ? { alignSelf: 'flex-start' } : null, style]}>

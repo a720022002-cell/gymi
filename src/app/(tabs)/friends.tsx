@@ -32,7 +32,7 @@ import {
   type FriendRow,
   type Group,
   myChallenges,
-  myFriends,
+  myFriendsOrNull,
   myGroups,
   myGroupSessions,
   removeFriendship,
@@ -56,13 +56,21 @@ export default function Friends() {
   const [adding, setAdding] = useState(false);
   const [live, setLive] = useState<Awaited<ReturnType<typeof myGroupSessions>>>([]);
 
+  // No connection: say so with a retry, instead of an empty "add friends" page.
+  const [offline, setOffline] = useState(false);
   const load = useCallback(async () => {
-    const [f, g, c, a, ls] = await Promise.all([myFriends(), myGroups(), myChallenges(), feed(), myGroupSessions()]);
-    setLive(ls);
-    setFriends(f);
-    setGroups(g);
-    setChallenges(c);
-    setItems(a);
+    try {
+      const [f, g, c, a, ls] = await Promise.all([myFriendsOrNull(), myGroups(), myChallenges(), feed(), myGroupSessions()]);
+      if (!f) return setOffline(true);
+      setOffline(false);
+      setLive(ls);
+      setFriends(f);
+      setGroups(g);
+      setChallenges(c);
+      setItems(a);
+    } catch {
+      setOffline(true);
+    }
   }, []);
 
   useFocusEffect(
@@ -73,6 +81,12 @@ export default function Friends() {
 
   return (
     <Screen title={t('Gym Bros')} large tabs right={<NavButton icon="userplus" label={t('Add a friend')} onPress={() => setAdding(true)} />}>
+      {offline ? (
+        <Card style={{ alignItems: 'center', paddingVertical: 20 }}>
+          <Text center>{t('You’re offline. Check your connection and try again.')}</Text>
+          <Button small kind="soft" title={t('Try again')} style={{ marginTop: 12, alignSelf: 'center' }} onPress={load} />
+        </Card>
+      ) : null}
       {live.map((x) => (
         <Card key={x.id} onPress={() => router.push({ pathname: '/groupactive', params: { id: x.id } })} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: c.gAi }}>
           <Icon name="users" size={22} color={c.cobalt} />

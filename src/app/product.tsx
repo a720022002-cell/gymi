@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, TextInput, View } from 'react-native';
 
@@ -22,6 +22,7 @@ import { EXTRA_KEYS, extraFacts, type Facts, FACTS, factsKey, myNameFor, offFact
 import { fmt } from '@/lib/nutrition';
 import { addedSugarHigh } from '@/lib/sugar';
 import { useSettings } from '@/theme/settings';
+import { goBack } from '@/lib/nav';
 
 export default function ProductScreen() {
   const { t, lang } = useT();
@@ -105,7 +106,7 @@ function Found({ x, code, onFix }: { x: Product; code: string; onFix: () => void
     if (!(grams > 0)) return;
     const name = um === 'serving' ? (sv === 1 ? shownName : `${shownName} ×${sv}`) : `${shownName}, ${Math.round(grams)} ${t(x.unit)}`;
     const row = await logFood({ name, kcal: x.k * m, protein: x.p * m, carbs: x.c * m, fat: x.f * m, sugar_high: addedSugarHigh(name, sugar), fat_high: x.f >= 17.5, barcode: code, food_id: x.id ?? null }, toast, t);
-    if (row) router.back();
+    if (row) goBack();
   };
 
   return (
@@ -302,7 +303,7 @@ function Manual({ code, offline, init }: { code?: string; offline: boolean; init
       t,
     );
     setBusy(false);
-    if (row) router.back();
+    if (row) goBack();
   };
 
   const field = (k: keyof typeof v, label: string, unitLabel: string, optional?: boolean) => (

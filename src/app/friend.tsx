@@ -17,10 +17,11 @@ import { useT } from '@/i18n';
 import { MEAS_INFO } from '@/lib/health';
 import { fmt } from '@/lib/nutrition';
 import { fx, shortDate } from '@/lib/progress';
-import { displayName, type FriendProfile, friendPhotoUrls, friendProfile, friendShowcase, myFriends, removeFriendship, type Showcase } from '@/lib/social';
+import { displayName, type FriendProfile, friendPhotoUrls, friendProfileChecked, friendShowcase, myFriends, removeFriendship, type Showcase } from '@/lib/social';
 import { useWeight } from '@/lib/units';
 import { BadgeIcon } from '@/components/progress/Streaks';
 import { useSettings } from '@/theme/settings';
+import { goBack } from '@/lib/nav';
 
 /** A friend's profile: only what they chose to share (design: friend). */
 export default function FriendScreen() {
@@ -29,13 +30,15 @@ export default function FriendScreen() {
   const { colors: c } = useSettings();
   const toast = useToast();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [p, setP] = useState<{ id: string; v: FriendProfile | null; sc: Showcase | null; urls: (string | null)[] } | null>(null);
+  const [p, setP] = useState<{ id: string; v: FriendProfile | null; sc: Showcase | null; urls: (string | null)[]; failed?: boolean } | null>(null);
+  const [retry, setRetry] = useState(0);
   const [confirm, setConfirm] = useState(false);
 
   useEffect(() => {
     let alive = true;
     (async () => {
-      const [v, sc] = await Promise.all([friendProfile(id), friendShowcase(id)]);
+      const [{ v, failed }, sc] = await Promise.all([friendProfileChecked(id), friendShowcase(id)]);
+      if (failed) return alive && setP({ id, v: null, sc: null, urls: [], failed: true });
       // Progress photos only come back when your friend shares them.
       const urls = v?.share.photos && v.photos?.length ? await friendPhotoUrls(v.photos.map((x) => x.path)) : [];
       if (alive) setP({ id, v, sc, urls });
@@ -43,9 +46,18 @@ export default function FriendScreen() {
     return () => {
       alive = false;
     };
-  }, [id]);
+  }, [id, retry]);
 
   const f = p?.id === id ? p.v : undefined;
+  if (p?.id === id && p.failed)
+    return (
+      <Screen title={t('Gym Bros')} back>
+        <Card style={{ alignItems: 'center', paddingVertical: 20 }}>
+          <Text center>{t('You’re offline. Check your connection and try again.')}</Text>
+          <Button small kind="soft" title={t('Try again')} style={{ marginTop: 12, alignSelf: 'center' }} onPress={() => setRetry((n) => n + 1)} />
+        </Card>
+      </Screen>
+    );
   if (f === undefined)
     return (
       <Screen title="" back>
@@ -229,7 +241,7 @@ export default function FriendScreen() {
             if (row) await removeFriendship(row.friendship_id);
             setConfirm(false);
             toast(t('{n} removed', { n: name }), { icon: 'users' });
-            router.back();
+            goBack();
           }}
         />
         <Button kind="ghost" title={t('Cancel')} style={{ marginTop: 8 }} onPress={() => setConfirm(false)} />

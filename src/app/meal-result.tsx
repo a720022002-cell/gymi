@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { TextInput, View } from 'react-native';
 
@@ -22,6 +22,7 @@ import { takePendingPhoto } from '@/lib/pending';
 import { type Photo, takePhoto } from '@/lib/photo';
 import { naturalSugar } from '@/lib/sugar';
 import { useSettings } from '@/theme/settings';
+import { goBack } from '@/lib/nav';
 
 type Item = { name: string; grams: number; kcal: number; protein: number; carbs: number; fat: number };
 type Result = { title: string; items: Item[]; sugar_high?: boolean; fat_high?: boolean; note?: string; alternatives?: string[]; confidence?: 'high' | 'medium' | 'low' };
@@ -98,7 +99,7 @@ export default function MealResult() {
 
   useEffect(() => {
     if (!photo && !text) {
-      router.back();
+      goBack();
       return;
     }
     fetchResult();
@@ -131,7 +132,7 @@ export default function MealResult() {
     if (!rows.length || tot.k <= 0) return;
     const name = title.trim() || rows.map((x) => x.name).join(t(', '));
     const row = await logFood({ name: name.slice(0, 200), parts: rows.map((x) => x.name), kcal: tot.k, protein: tot.p, carbs: tot.c, fat: tot.f, meal, sugar_high: sugarHigh, fat_high: fatHigh }, toast, t);
-    if (row) router.back();
+    if (row) goBack();
   };
 
   return (

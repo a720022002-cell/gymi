@@ -12,6 +12,7 @@ import { Button, Card, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { setPendingBarcode } from '@/lib/pending';
 import { useSettings } from '@/theme/settings';
+import { goBack } from '@/lib/nav';
 
 /** Phone apps: scan a food barcode with the camera, or type the numbers. */
 export default function Barcode() {
@@ -26,7 +27,7 @@ export default function Barcode() {
   const go = (code: string) => {
     if (pick) {
       setPendingBarcode(code);
-      router.back();
+      goBack();
     } else router.replace({ pathname: '/product', params: { code } });
   };
 
