@@ -47,9 +47,14 @@ export type History = { workouts: Pick<WorkoutLog, 'day' | 'started_at' | 'prs'>
 
 type Train = {
   ready: boolean;
+  /** The plan couldn't be loaded; `reload` tries again. */
+  loadError: boolean;
+  reload: () => void;
   setupDone: boolean;
   plan: TrainPlan | null;
   savePlan: (p: TrainPlan, setupDone?: boolean) => Promise<boolean>;
+  /** Change the newest plan (for changes worked out over time, like the weekly AI check) and save it. */
+  changePlan: (fn: (p: TrainPlan) => TrainPlan) => Promise<boolean>;
   updatePlan: (patch: Partial<TrainPlan>) => void;
   today: string;
   todayIdx: number;
@@ -93,12 +98,17 @@ type Train = {
 
 const Ctx = createContext<Train | null>(null);
 const SESSION_KEY = 'gymi.session.v1';
+/** Your plan, kept on this phone for when there's no connection. */
+const PLAN_KEY = (uid: string) => `gymi.trainplan.v1.${uid}`;
 
 export function TrainProvider({ children }: PropsWithChildren) {
   const { session: auth, profile } = useAuth();
   const userId = auth?.user.id;
   const [today, setToday] = useState(localDay());
   const [readyFor, setReadyFor] = useState<string | null>(null);
+  // The plan couldn't load (no connection) and isn't on this phone: the Train tab shows a retry, never setup.
+  const [loadError, setLoadError] = useState(false);
+  const [loadTry, setLoadTry] = useState(0);
   const ready = !!userId && readyFor === userId;
   const [setupDone, setSetupDone] = useState(false);
   const [plan, setPlan] = useState<TrainPlan | null>(null);
@@ -136,12 +146,23 @@ export function TrainProvider({ children }: PropsWithChildren) {
         supabase.from('recovery_logs').select('day,tools').eq('day', localDay()).maybeSingle(),
       ]);
       if (!alive) return;
-      const raw = p.data?.plan as TrainPlan | undefined;
+      let row = p.data as { plan?: TrainPlan; setup_done?: boolean } | null;
+      if (p.error) {
+        const kept = await AsyncStorage.getItem(PLAN_KEY(userId)).catch(() => null);
+        if (!alive) return;
+        if (!kept) {
+          setLoadError(true);
+          return setReadyFor(userId);
+        }
+        row = JSON.parse(kept);
+      }
+      setLoadError(false);
+      const raw = row?.plan as TrainPlan | undefined;
       // "In order" plans were removed: every plan now uses fixed days.
       const loaded = raw?.week ? { ...rangePlan(raw), type: 'fixed' as const, skipped: raw.skipped ?? {}, dismiss: raw.dismiss ?? {}, machines: raw.machines ?? {} } : null;
       planRef.current = loaded;
       setPlan(loaded);
-      setSetupDone(!!p.data?.setup_done && !!raw?.week);
+      setSetupDone(!!row?.setup_done && !!raw?.week);
       setRec({ day: localDay(), tools: (r.data?.tools as string[] | undefined) ?? [] });
       setLogs(((l.data as WorkoutLog[]) ?? []).map((x) => ({ ...x, volume: +x.volume })));
       try {
@@ -154,7 +175,12 @@ export function TrainProvider({ children }: PropsWithChildren) {
     return () => {
       alive = false;
     };
-  }, [userId]);
+  }, [userId, loadTry]);
+
+  // Keep the newest plan on this phone too.
+  useEffect(() => {
+    if (userId && plan && readyFor === userId) AsyncStorage.setItem(PLAN_KEY(userId), JSON.stringify({ plan, setup_done: setupDone })).catch(() => {});
+  }, [userId, plan, setupDone, readyFor]);
 
   // Your whole history, a few small rows. Loads after the screen is ready; until then the last 120 days are used.
   useEffect(() => {
@@ -183,7 +209,12 @@ export function TrainProvider({ children }: PropsWithChildren) {
     return () => {
       alive = false;
     };
-  }, [userId]);
+  }, [userId, loadTry]);
+
+  // Keep the newest plan on this phone too.
+  useEffect(() => {
+    if (userId && plan && readyFor === userId) AsyncStorage.setItem(PLAN_KEY(userId), JSON.stringify({ plan, setup_done: setupDone })).catch(() => {});
+  }, [userId, plan, setupDone, readyFor]);
 
   // Your coach's program is your plan. It updates when the coach changes it.
   const syncCoach = useCallback(async () => {
@@ -220,6 +251,7 @@ export function TrainProvider({ children }: PropsWithChildren) {
       level: cur?.level,
       coach: { id: prog.id, updated_at: prog.updated_at },
     };
+    clearTimeout(saveTimer.current);
     planRef.current = next;
     setPlan(next);
     setSetupDone(true);
@@ -252,6 +284,8 @@ export function TrainProvider({ children }: PropsWithChildren) {
   const savePlan = useCallback(
     async (plan: TrainPlan, done?: boolean) => {
       if (!userId) return false;
+      // A small change waiting to be saved would write an older plan over this one.
+      clearTimeout(saveTimer.current);
       // Reps are always a range ("8–10"), whoever made the plan.
       const p = rangePlan(plan);
       setPlan(p);
@@ -263,6 +297,8 @@ export function TrainProvider({ children }: PropsWithChildren) {
     [userId],
   );
 
+  const changePlan = useCallback(async (fn: (p: TrainPlan) => TrainPlan) => (planRef.current ? savePlan(fn(planRef.current)) : false), [savePlan]);
+
   const updatePlan = useCallback(
     (patch: Partial<TrainPlan>) => {
       if (!planRef.current) return;
@@ -270,8 +306,9 @@ export function TrainProvider({ children }: PropsWithChildren) {
       planRef.current = next;
       setPlan(next);
       clearTimeout(saveTimer.current);
+      // Saved a moment later (changes in a row go out once), always the newest plan.
       saveTimer.current = setTimeout(() => {
-        if (userId) supabase.from('train_plans').upsert({ user_id: userId, plan: next }).then(() => {});
+        if (userId && planRef.current) supabase.from('train_plans').upsert({ user_id: userId, plan: planRef.current }).then(() => {});
       }, 500);
     },
     [userId],
@@ -477,8 +514,8 @@ export function TrainProvider({ children }: PropsWithChildren) {
   );
 
   const value = useMemo<Train>(
-    () => ({ ready, setupDone, plan, savePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, best, top, session, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, recTools, setRecTools, addLog }),
-    [ready, setupDone, plan, savePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, best, top, session, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, recTools, setRecTools, addLog],
+    () => ({ ready, loadError, reload: () => setLoadTry((n) => n + 1), setupDone, plan, savePlan, changePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, best, top, session, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, recTools, setRecTools, addLog }),
+    [ready, loadError, setupDone, plan, savePlan, changePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, best, top, session, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, recTools, setRecTools, addLog],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

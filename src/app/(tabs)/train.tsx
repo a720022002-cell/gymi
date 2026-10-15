@@ -36,6 +36,20 @@ export default function Train() {
         <ActivityIndicator color={c.cobalt} style={{ marginTop: 40 }} />
       </Screen>
     );
+  if (train.loadError)
+    return (
+      <Screen title={t('Train')} large tabs>
+        <Card style={{ alignItems: 'center', paddingVertical: 24 }}>
+          <Text variant="h3" center>
+            {t('Can’t load your plan')}
+          </Text>
+          <Text color="sec" center style={{ marginTop: 6 }}>
+            {t('You’re offline. Check your connection and try again.')}
+          </Text>
+          <Button title={t('Try again')} style={{ marginTop: 14, alignSelf: 'stretch' }} onPress={train.reload} />
+        </Card>
+      </Screen>
+    );
   if (!train.setupDone || redo) return <TrainSetup inTab onDone={() => setRedo(false)} onCancel={redo ? () => setRedo(false) : undefined} />;
 
   return (

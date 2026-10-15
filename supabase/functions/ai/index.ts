@@ -28,6 +28,8 @@ type Ctx = {
   temperature: number | undefined;
   /** Tokens and cost of the last AI call, saved to ai_calls for the admin cost page. */
   lastUsage: { prompt: number; completion: number; cost: number };
+  /** OpenRouter answered (or may have, on a timeout), so the call may be paid: a failure then isn't refunded. */
+  billed: boolean;
 };
 const requestCtx = new AsyncLocalStorage<Ctx>();
 const cx = () => requestCtx.getStore()!;
@@ -88,6 +90,7 @@ async function openrouterCall(model: string, system: string, msgs: Msg[], schema
   } catch (e) {
     // No answer in time: treat like a busy model (the backup is tried once).
     if (timedOut(e)) {
+      cx().billed = true;
       cx().lastDetail = `openrouter timeout after ${AI_TIMEOUT_MS / 1000} s`;
       throw new Error('busy');
     }
@@ -100,6 +103,7 @@ async function openrouterCall(model: string, system: string, msgs: Msg[], schema
     return openrouterCall(model, system, msgs, schema, false);
   }
   if (!res.ok) throw new Error(res.status === 429 ? 'busy' : cx().lastDetail);
+  cx().billed = true;
   const data = await res.json();
   cx().lastModel = data?.model ?? '';
   cx().lastUsage = { prompt: data?.usage?.prompt_tokens ?? 0, completion: data?.usage?.completion_tokens ?? 0, cost: Number(data?.usage?.cost ?? 0) || 0 };
@@ -331,6 +335,19 @@ async function planCacheKey(b: Record<string, unknown>) {
   return [...new Uint8Array(h)].map((x) => x.toString(16).padStart(2, '0')).join('');
 }
 /** Only a complete, safe plan is kept: every asked-for workout has exercises, every exercise is from the list, none loads an injury. */
+/** Is the request body the right shape for its task? (Checked before the daily limit, so a broken request costs nothing.) */
+function goodBody(task: string, b: Record<string, unknown>) {
+  const str = (v: unknown) => v === undefined || typeof v === 'string';
+  const arr = (v: unknown, max: number) => v === undefined || (Array.isArray(v) && v.length <= max);
+  if (!str(b.image) || !str(b.file) || !str(b.mime) || !arr(b.frames, 8)) return false;
+  if (JSON.stringify(b).length > 9_000_000) return false;
+  if (task === 'plan') return Array.isArray(b.workouts) && b.workouts.length <= 7 && b.workouts.every((w) => typeof w === 'string') && arr(b.exercises, 500) && arr(b.injuries, 10);
+  if (task === 'chat') return Array.isArray(b.messages) && arr(b.messages, 200);
+  if (task === 'recipes') return arr(b.avoid, 60);
+  if (task === 'machine') return arr(b.catalog, 400);
+  return true;
+}
+
 function goodPlan(result: unknown, b: Record<string, unknown>) {
   const r = result as { workouts?: { name?: string; ex?: { id?: string }[] }[] } | null;
   const list = new Map(((b.exercises as PlanEx[]) ?? []).map((e) => [e.id, e]));
@@ -677,7 +694,7 @@ Use only these numbers and say them plainly (for example "you trained 2 of 4 day
   }
 }
 
-Deno.serve((req) => requestCtx.run({ lastDetail: '', lastModel: '', temperature: undefined, lastUsage: { prompt: 0, completion: 0, cost: 0 } }, () => handle(req)));
+Deno.serve((req) => requestCtx.run({ lastDetail: '', lastModel: '', temperature: undefined, lastUsage: { prompt: 0, completion: 0, cost: 0 }, billed: false }, () => handle(req)));
 
 async function handle(req: Request) {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -691,6 +708,8 @@ async function handle(req: Request) {
 
     const body = await req.json();
     const task = String(body.task ?? '');
+    // Wrong shapes are turned away before they use up a request (and before any paid AI call).
+    if (!goodBody(task, body)) return json({ error: 'bad_request' }, 400);
     if (typeof body.image === 'string' && body.image.length > 6_000_000) return json({ error: 'too_big' }, 413);
     if (typeof body.file === 'string' && body.file.length > 8_000_000) return json({ error: 'too_big' }, 413);
     if (Array.isArray(body.frames) && JSON.stringify(body.frames).length > 8_000_000) return json({ error: 'too_big' }, 413);
@@ -737,7 +756,8 @@ async function handle(req: Request) {
       if (hit?.result) return json({ result: hit.result, cached: true });
     }
     const { data: ok } = await admin.rpc('ai_take', { p_user: u.user.id, p_limit: Number(env('AI_DAILY_LIMIT', '80')) });
-    if (ok === false) return json({ error: 'limit' }, 429);
+    // Only a clear yes lets the request through (an error checking the limit doesn't).
+    if (ok !== true) return json({ error: 'limit' }, 429);
 
     cx().lastModel = '';
     cx().lastDetail = '';
@@ -748,8 +768,8 @@ async function handle(req: Request) {
       result = await run(task, body);
       if (planKey && result && goodPlan(result, body)) await admin.from('ai_plan_cache').upsert({ key: planKey, result });
     } catch (e) {
-      // A failed request doesn't use up one of today's AI requests.
-      await admin.rpc('ai_refund', { p_user: u.user.id }).then(() => {}, () => {});
+      // A failed request doesn't use up one of today's AI requests, unless the AI already answered (it was paid for).
+      if (!cx().billed) await admin.rpc('ai_refund', { p_user: u.user.id }).then(() => {}, () => {});
       await log(false, (e as Error).message === 'busy' || (e as Error).message === 'ai_off' ? `${(e as Error).message}: ${cx().lastDetail}` : (e as Error).message);
       throw e;
     }

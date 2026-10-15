@@ -270,8 +270,9 @@ export async function deleteAllCycle(uid: string) {
 // ---------------------------------------------------------------------------
 // Partner sharing and insights
 // ---------------------------------------------------------------------------
-export type PartnerShare = { phase: boolean; period: boolean; fertile: boolean; mood?: boolean; sym?: boolean };
-export const DEFAULT_PARTNER_SHARE: PartnerShare = { phase: true, period: true, fertile: false, mood: false, sym: false };
+/** `preg`: that you're pregnant or just gave birth (off unless you turn it on). */
+export type PartnerShare = { phase: boolean; period: boolean; fertile: boolean; mood?: boolean; sym?: boolean; preg?: boolean };
+export const DEFAULT_PARTNER_SHARE: PartnerShare = { phase: true, period: true, fertile: false, mood: false, sym: false, preg: false };
 export type Partner = { partner_id: string; share: PartnerShare };
 export async function getPartner(): Promise<Partner | null> {
   const { data } = await supabase.from('cycle_partner').select('partner_id,share').maybeSingle();
@@ -292,7 +293,9 @@ export function partnerSummary(now: ReturnType<typeof cycleNow>, share: PartnerS
     ...(share.mood && todayLog?.Mood?.length ? { mood: todayLog.Mood.join(', '), logDay: today } : {}),
     ...(share.sym && todayLog?.Symptoms?.length ? { symptoms: todayLog.Symptoms.join(', '), logDay: today } : {}),
   };
-  if (!now || mode === 'preg' || mode === 'post') return { mode, ...extra };
+  // Pregnancy or after birth: shared only if you chose to (otherwise nothing about your cycle is shared).
+  if (mode === 'preg' || mode === 'post') return share.preg ? { mode, ...extra } : { ...extra };
+  if (!now) return { mode, ...extra };
   return {
     mode,
     ...extra,

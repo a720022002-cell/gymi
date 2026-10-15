@@ -21,7 +21,7 @@ export function ReferralClaim() {
       .then(async (ref) => {
         if (!ref) return;
         const r = await claimInvite(ref);
-        if (r.status === 'failed') return; // offline: try again next time
+        if (r.status === 'failed' || r.status === 'slow') return; // offline or too many tries: try again next time
         await AsyncStorage.removeItem(REF_KEY);
         if (r.status === 'ok' || r.status === 'friends') toast(t('You and {n} are now Gym Bros', { n: r.name || r.username || '' }), { icon: 'users' });
         else if (r.status === 'requested') toast(t('Friend request sent to @{u}', { u: r.username ?? '' }), { icon: 'users' });

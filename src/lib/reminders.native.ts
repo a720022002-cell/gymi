@@ -43,6 +43,11 @@ export async function scheduleReminders(list: Reminder[], ask = false): Promise<
   return 'ok';
 }
 
+/** Signing out: every notification Gymi scheduled on this phone stops (the next person here mustn't get yours). */
+export async function cancelAllReminders() {
+  await Notifications.cancelAllScheduledNotificationsAsync().catch(() => {});
+}
+
 /** Open the right screen when a reminder is tapped. */
 export function listenReminderTaps(go: (route: string) => void) {
   const sub = Notifications.addNotificationResponseReceivedListener((r) => {

@@ -1154,6 +1154,7 @@ function SettingsSheet({ st, uid, onDone }: { st: State; uid: string; onDone: ()
                     ['fertile', 'Fertile window'],
                     ['mood', 'Mood'],
                     ['sym', 'Symptoms'],
+                    ['preg', 'Pregnancy'],
                   ] as const
                 ).map(([k, l]) => (
                   <Chip key={k} title={t(l)} on={!!partner.share[k]} onPress={() => setPartner({ ...partner, share: { ...partner.share, [k]: !partner.share[k] } })} />

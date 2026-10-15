@@ -8,9 +8,10 @@ export const REF_GOAL = 5;
 
 /** `count`: friends who joined and have used Gymi on 2 days (they count toward free months); `waiting`: joined, not yet. */
 export type MyInvite = { code: string | null; count: number; waiting?: number; months: number };
-export type ClaimResult = { status: 'ok' | 'friends' | 'requested' | 'bad' | 'self' | 'auth' | 'failed'; name?: string | null; username?: string };
+/** 'slow': too many wrong codes in the last hour (they're limited, so codes can't be guessed). */
+export type ClaimResult = { status: 'ok' | 'friends' | 'requested' | 'bad' | 'self' | 'auth' | 'failed' | 'slow'; name?: string | null; username?: string };
 
-/** Your personal code ("OMAR-7K2"), how many friends joined with it and the free months earned. */
+/** Your personal code ("OMAR-7K2QXP"), how many friends joined with it and the free months earned. */
 export async function myInvite(): Promise<MyInvite> {
   const { data } = await supabase.rpc('my_invite');
   return (data as MyInvite | null) ?? { code: null, count: 0, months: 0 };

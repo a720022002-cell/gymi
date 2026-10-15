@@ -25,8 +25,8 @@ export function usePlanReview() {
   const due = train.ready && reviewDue(train.plan, train.logs, train.today);
   useEffect(() => {
     if (!due || !train.plan) return;
-    runReview(train.plan, train.logs, health.checkins, train.today, goalWord(food.plan.goal), lang).then((next) => {
-      if (next) train.savePlan(next);
+    runReview(train.plan, train.logs, health.checkins, train.today, goalWord(food.plan.goal), lang).then((change) => {
+      if (change) train.changePlan(change);
     });
     // Once when it becomes due; the plan changes after it runs.
     // eslint-disable-next-line react-hooks/exhaustive-deps

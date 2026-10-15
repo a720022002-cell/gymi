@@ -1,5 +1,6 @@
 // The weekly plan check: the AI reads how your last weeks went and changes the plan only where the results say so.
 import { askAI } from './ai';
+import type { PlanChange } from './coach';
 import { applyPlanChanges, prepareSuggestions } from './coachPlan';
 import type { Checkin } from './health';
 import { addDays } from './nutrition';
@@ -55,7 +56,14 @@ function reviewData(plan: TrainPlan, logs: WorkoutLog[], checkins: Checkin[], to
 let running = false;
 
 /** Run the check and apply what it changes. Returns the updated plan (with the review to show), or null if it didn't run. */
-export async function runReview(plan: TrainPlan, logs: WorkoutLog[], checkins: Checkin[], today: string, goal: string, lang: 'en' | 'ar'): Promise<TrainPlan | null> {
+/** What the weekly check may change (Undo puts these back). */
+const REVIEW_OPS: PlanChange['op'][] = ['sets', 'reps', 'swap', 'remove', 'add', 'deload', 'light'];
+
+/**
+ * The weekly AI check. It takes a while, so it hands back how to change the plan, and that change is made on the newest
+ * plan when it's saved (anything you changed meanwhile stays). Only training changes, never your days or breaks.
+ */
+export async function runReview(plan: TrainPlan, logs: WorkoutLog[], checkins: Checkin[], today: string, goal: string, lang: 'en' | 'ar'): Promise<((cur: TrainPlan) => TrainPlan) | null> {
   if (running) return null;
   running = true;
   try {
@@ -63,9 +71,11 @@ export async function runReview(plan: TrainPlan, logs: WorkoutLog[], checkins: C
     if (!result) return null;
     const summary = String(result.summary ?? '').slice(0, 400);
     const [sug] = await prepareSuggestions([{ type: 'plan', title: summary, changes: (result.changes ?? []).slice(0, 4) }], plan);
-    const changes = sug?.type === 'plan' ? sug.changes : [];
-    const next = changes.length ? applyPlanChanges(plan, changes, today) : plan;
-    return { ...next, reviewedAt: today, review: { at: today, summary, changes, prev: { workouts: plan.workouts, deload: plan.deload, light: plan.light } } };
+    const changes = (sug?.type === 'plan' ? sug.changes : []).filter((c) => REVIEW_OPS.includes(c.op));
+    return (cur) => {
+      const next = changes.length ? applyPlanChanges(cur, changes, today) : cur;
+      return { ...next, reviewedAt: today, review: { at: today, summary, changes, prev: { workouts: cur.workouts, deload: cur.deload, light: cur.light } } };
+    };
   } finally {
     running = false;
   }

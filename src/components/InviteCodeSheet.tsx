@@ -47,6 +47,10 @@ export function InviteCodeSheet({ open, onDone, cancel }: { open: boolean; onDon
       setBusy(false);
       return setErr(t('That’s your own code.'));
     }
+    if (f.status === 'slow') {
+      setBusy(false);
+      return setErr(t('Too many tries. Wait an hour and try again.'));
+    }
     const r = await redeemCode(code);
     setBusy(false);
     if (r === 'ok') {
@@ -57,6 +61,7 @@ export function InviteCodeSheet({ open, onDone, cancel }: { open: boolean; onDon
     if (r === 'has_coach') return setErr(t('You already have a coach. End that first.'));
     if (r === 'full') return setErr(t('This coach is full right now. Check back soon.'));
     if (r === 'self') return setErr(t('That’s your own code.'));
+    if (r === 'slow') return setErr(t('Too many tries. Wait an hour and try again.'));
     setErr(t(f.status === 'failed' && r === 'failed' ? 'You’re offline. Check your connection and try again.' : 'That code doesn’t match. Check it with the person who sent it.'));
   };
 

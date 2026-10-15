@@ -1,17 +1,45 @@
 import { Redirect } from 'expo-router';
+import { useState } from 'react';
 import { View } from 'react-native';
 
 import { Mark } from '@/components/Icon';
 import { Text } from '@/components/Text';
+import { Button } from '@/components/ui';
+import { useT } from '@/i18n';
 import { profileComplete, useAuth } from '@/lib/auth';
 import { useSettings } from '@/theme/settings';
 
 /** Decides where to start: Welcome, finish sign-up, or Home. */
 export default function Start() {
-  const { configured, loading, session, profile, profileReady } = useAuth();
+  const { configured, loading, session, profile, profileReady, profileError, refreshProfile } = useAuth();
   const { colors } = useSettings();
+  const { t } = useT();
+  const [trying, setTrying] = useState(false);
 
   if (!configured) return <NotConfigured />;
+  // Signed in, but your profile couldn't load (no connection) and isn't on this phone yet.
+  if (session && !profileReady && profileError)
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 }}>
+        <Mark size={44} />
+        <Text variant="h2" center>
+          {t('Can’t connect')}
+        </Text>
+        <Text color="sec" center>
+          {t('You’re offline. Check your connection and try again.')}
+        </Text>
+        <Button
+          title={t('Try again')}
+          loading={trying}
+          style={{ alignSelf: 'stretch', marginTop: 8 }}
+          onPress={async () => {
+            setTrying(true);
+            await refreshProfile();
+            setTrying(false);
+          }}
+        />
+      </View>
+    );
   if (loading || !profileReady) {
     return <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' }}><Mark size={44} /></View>;
   }

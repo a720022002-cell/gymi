@@ -1,10 +1,14 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Session } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { setAvatarUrl } from './avatars';
+import { cancelAllReminders } from './reminders';
 import { EMAIL_CODES, siteUrl } from './config';
 import { friendlyAuthError, supabase, supabaseConfigured } from './supabase';
+
+/** Your profile, kept on this phone for when there's no connection. */
+const PROFILE_KEY = (uid: string) => `gymi.profile.v1.${uid}`;
 
 // Opened from a "Reset password" email link? Then the new-password screen doesn't ask for the old one.
 // Read before Supabase clears the link from the address.
@@ -75,6 +79,8 @@ type Auth = {
   profile: Profile | null;
   /** True once we've tried to load the profile for the current session. */
   profileReady: boolean;
+  /** The profile couldn't be loaded (no connection) and there's no copy on this phone: show a retry. */
+  profileError: boolean;
   refreshProfile: () => Promise<Profile | null>;
   signUp: (a: {
     email: string;
@@ -116,14 +122,31 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(supabaseConfigured);
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState(false);
 
   const loadProfile = useCallback(async (userId: string | undefined) => {
     if (!userId) {
       setProfile(null);
       return null;
     }
-    const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
-    if (data) setAvatarUrl([userId, (data as Profile).username], (data as Profile).avatar_url ?? null);
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+    if (error) {
+      // No connection: use the copy kept on this phone, so you aren't sent to sign up again.
+      const kept = await AsyncStorage.getItem(PROFILE_KEY(userId)).catch(() => null);
+      const p = kept ? (JSON.parse(kept) as Profile) : null;
+      if (!p) {
+        setProfileError(true);
+        return null;
+      }
+      setProfile(p);
+      setLoadedFor(userId);
+      return p;
+    }
+    setProfileError(false);
+    if (data) {
+      setAvatarUrl([userId, (data as Profile).username], (data as Profile).avatar_url ?? null);
+      AsyncStorage.setItem(PROFILE_KEY(userId), JSON.stringify(data)).catch(() => {});
+    }
     setProfile((data as Profile) ?? null);
     setLoadedFor(userId);
     return (data as Profile) ?? null;
@@ -160,6 +183,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       session,
       profile,
       profileReady: !session || loadedFor === session.user.id,
+      profileError,
       refreshProfile: () => loadProfile(session?.user.id),
 
       async signUp({ email, password, username, name, phone, accountType, language }) {
@@ -289,11 +313,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
       },
 
       async logOut() {
+        // Your reminders and the copies kept for offline use stay with you, not on this phone.
+        const uid = session?.user.id;
+        await cancelAllReminders();
+        if (uid) await AsyncStorage.multiRemove([PROFILE_KEY(uid), `gymi.trainplan.v1.${uid}`]).catch(() => {});
         await supabase.auth.signOut();
         setProfile(null);
       },
     }),
-    [loading, session, profile, loadedFor, loadProfile],
+    [loading, session, profile, loadedFor, profileError, loadProfile],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

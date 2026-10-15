@@ -182,10 +182,10 @@ export default function WeekPlan() {
           style={{ marginTop: 10 }}
           onPress={async () => {
             setChecking(true);
-            const next = await runReview(plan, train.logs, health.checkins, train.today, goalWord(food.plan.goal), lang);
+            const change = await runReview(plan, train.logs, health.checkins, train.today, goalWord(food.plan.goal), lang);
             setChecking(false);
-            if (!next) return toast(t('Couldn’t check the plan. Please try again.'), { icon: 'warn' });
-            await train.savePlan(next);
+            if (!change) return toast(t('Couldn’t check the plan. Please try again.'), { icon: 'warn' });
+            await train.changePlan(change);
             router.replace('/train');
           }}
         />

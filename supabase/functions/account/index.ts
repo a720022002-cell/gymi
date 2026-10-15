@@ -22,24 +22,38 @@ Deno.serve(async (req) => {
     if (body.action !== 'delete' || body.confirm !== 'DELETE') return json({ error: 'confirm' }, 400);
     const id = u.user.id;
     // Files live in storage under the user's folder in each bucket (photos, health files, certificates, avatar).
+    // Every file must be gone before the account is: otherwise health files would stay behind with no owner.
     for (const bucket of ['progress', 'health-files', 'coach-certs', 'avatars']) {
       const paths: string[] = [];
       const walk = async (dir: string, depth: number) => {
-        const { data } = await admin.storage.from(bucket).list(dir, { limit: 1000 });
-        for (const f of data ?? []) {
-          // Folders have no id; go one level deeper for them.
-          if (f.id) paths.push(`${dir}/${f.name}`);
-          else if (depth < 3) await walk(`${dir}/${f.name}`, depth + 1);
+        // A page at a time, so folders with more than 1000 files are cleared too.
+        for (let offset = 0; ; offset += 1000) {
+          const { data, error } = await admin.storage.from(bucket).list(dir, { limit: 1000, offset });
+          if (error) throw new Error(`list ${bucket}: ${error.message}`);
+          for (const f of data ?? []) {
+            // Folders have no id; go one level deeper for them.
+            if (f.id) paths.push(`${dir}/${f.name}`);
+            else if (depth < 3) await walk(`${dir}/${f.name}`, depth + 1);
+          }
+          if (!data || data.length < 1000) break;
         }
       };
       await walk(id, 0);
-      if (paths.length) await admin.storage.from(bucket).remove(paths);
+      for (let i = 0; i < paths.length; i += 100) {
+        const { error } = await admin.storage.from(bucket).remove(paths.slice(i, i + 100));
+        if (error) throw new Error(`remove ${bucket}: ${error.message}`);
+      }
     }
     // Deleting the user removes every row linked to them (on delete cascade).
     const { error } = await admin.auth.admin.deleteUser(id);
-    if (error) return json({ error: 'failed', detail: error.message }, 500);
+    if (error) {
+      console.error(error.message);
+      return json({ error: 'failed' }, 500);
+    }
     return json({ ok: true });
   } catch (e) {
-    return json({ error: 'failed', detail: String(e).slice(0, 200) }, 500);
+    // The account stays (some files may already be gone), so the person can try again.
+    console.error(String(e));
+    return json({ error: 'failed' }, 500);
   }
 });

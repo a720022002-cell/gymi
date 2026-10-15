@@ -3908,4 +3908,7 @@ export const AR: Record<string, string> = {
   "Unlocked. Your meals can change again.": "انفك القفل. وجباتك ممكن تتغير من جديد.",
   "You’re shopping for your meals until {day}. New recipes change your meals and your shopping list.": "أنت تتسوق لوجباتك لين {day}. الوصفات الجديدة بتغيّر وجباتك وقائمة المشتريات.",
   "Make anyway": "سوّها على كل حال",
+  "Too many tries. Wait an hour and try again.": "محاولات كثيرة. انتظر ساعة وجرّب مرة ثانية.",
+  "Can’t connect": "ما قدرنا نتصل",
+  "Can’t load your plan": "ما قدرنا نجيب خطتك",
 };

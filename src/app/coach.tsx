@@ -17,6 +17,7 @@ import { aiErrorText, askAI } from '@/lib/ai';
 import { useAuth } from '@/lib/auth';
 import { useRecovery } from '@/components/train/RecoveryCard';
 import { type ChatAction, type ChatMsg, cleanCard, groupChats, guessCard, loadChats, loadMemory, newId, saveMemory, saveMsg, updateActions } from '@/lib/coach';
+import { isAnon } from '@/lib/cycle';
 import { useCycleToday } from '@/lib/cyclePhase';
 import { useDevices } from '@/lib/devices';
 import { useFood } from '@/lib/food';
@@ -54,7 +55,20 @@ export default function Coach() {
   const health = useHealth();
   const streaks = useStreaks();
   const { r: rec } = useRecovery();
-  const cycle = useCycleToday();
+  const cycleToday = useCycleToday();
+  // Cycle data kept only on this phone (private mode) is never sent to the AI.
+  const [cyclePrivate, setCyclePrivate] = useState(true);
+  useEffect(() => {
+    if (!session || !cycleToday) return;
+    let live = true;
+    isAnon(session.user.id)
+      .then((a) => live && setCyclePrivate(a))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [session, cycleToday]);
+  const cycle = cyclePrivate ? null : cycleToday;
   const devices = useDevices(session?.user.id);
   const [memory, setMemory] = useState('');
   const { chat, ask } = useLocalSearchParams<{ chat?: string; ask?: string }>();
