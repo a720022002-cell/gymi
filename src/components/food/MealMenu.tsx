@@ -4,7 +4,7 @@ import { View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { useFood, useLogFood } from '@/lib/food';
-import { fmt, type PlannedMeal, planMeals } from '@/lib/nutrition';
+import { changeMeal, fmt, type PlannedMeal, withMealIds } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
 
 import { Icon, type IconName } from '../Icon';
@@ -32,20 +32,11 @@ export function MealMenu({ meal, logged, onClose }: { meal: PlannedMeal | null; 
     );
 
   const swap = () => {
-    const custom = { ...(food.plan.custom ?? {}) };
-    delete custom[meal.key];
-    const before = food.plan.picks;
-    // The next recipe that's different from this one (today's other meals are skipped, so one step may land on the same).
-    const at = (step: number) => {
-      const picks = { ...(food.plan.picks ?? {}), [meal.key]: (food.plan.picks?.[meal.key] ?? 0) + step };
-      return { picks, n: planMeals({ ...food.plan, picks, custom }, food.day).find((x) => x.key === meal.key) };
-    };
-    let next = at(1);
-    for (let step = 2; step <= 12 && next.n?.r.n === meal.r.n; step++) next = at(step);
-    const { picks, n } = next;
+    const before = { picks: food.plan.picks, custom: food.plan.custom };
+    const { picks, custom, meal: n } = changeMeal(food.plan, meal.key, food.day, food.dayGoal(food.day));
     food.updatePlan({ picks, custom });
     onClose();
-    toast(t('Changed to {name}. Same calories.', { name: n ? t(n.r.n) : '' }), { ai: true, undo: () => food.updatePlan({ picks: before }) });
+    toast(t('Changed to {name}. Same calories.', { name: n ? t(n.r.n) : '' }), { ai: true, undo: () => food.updatePlan(before) });
   };
 
   const actions: [IconName, string, () => void][] = [
@@ -105,7 +96,7 @@ export function MealMenu({ meal, logged, onClose }: { meal: PlannedMeal | null; 
                 const i = food.plan.meals.findIndex((x) => x.n === meal.n && x.t === meal.t);
                 if (i < 0) return;
                 const before = food.plan.meals;
-                food.updatePlan({ meals: food.plan.meals.filter((_, j) => j !== i) });
+                food.updatePlan({ meals: withMealIds(food.plan.meals).filter((_, j) => j !== i) });
                 onClose();
                 toast(t('{meal} removed', { meal: t(meal.n) }), { icon: 'trash', undo: () => food.updatePlan({ meals: before }) });
               }}

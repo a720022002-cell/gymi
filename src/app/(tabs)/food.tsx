@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import { Glass } from '@/components/Glass';
@@ -103,18 +103,19 @@ function FoodHome() {
     } else if (manual) toast(t('Couldn’t make new recipes. Please try again.'), { icon: 'warn' });
   };
   // Tried once for each goal, allergies, meals and language (so new allergies get new recipes right away).
-  const wantKey = `${recipesKey(plan)}|${lang}`;
+  const wantKey = `${recipesKey(plan)}|${lang}|${plan.meals.map((m) => m.type ?? m.n).join('+')}`;
   useEffect(() => {
-    if (!ready || recipesTried === wantKey || !needsRecipes(plan, lang, food.today)) return;
+    // While recipes are being made, wait: this runs again when that's done (so a change made meanwhile isn't missed).
+    if (!ready || making || recipesTried === wantKey || !needsRecipes(plan, lang, food.today)) return;
     recipesTried = wantKey;
     setTimeout(() => freshRecipes(false), 0);
     // Runs when what the recipes are made for changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, wantKey]);
+  }, [ready, wantKey, making]);
   const coachLogged = (n: string) => food.logs.some((l) => l.name.startsWith(`${n} (`) && l.meal === n);
   const left = food.kcalLeft;
   const goal = food.dayGoal(food.day);
-  const meals = planMeals(food.plan, food.day);
+  const meals = useMemo(() => planMeals(food.plan, food.day, goal), [food.plan, food.day, goal]);
   const loggedKeys = new Set(food.logs.map((l) => l.plan_key).filter(Boolean));
 
   const upcoming = [1, 2, 3, 4].map((n) => addDays(food.today, n)).filter((d) => food.moves.some((m) => m.day === d));
@@ -123,7 +124,7 @@ function FoodHome() {
     return new Intl.DateTimeFormat(lang === 'ar' ? 'ar' : 'en-US', { weekday: 'short' }).format(new Date(y, m - 1, dd));
   };
   // Logged food grouped by meal; food logged without a meal goes by the time it was logged.
-  const planned = planMeals(food.plan, food.day);
+  const planned = meals;
   const mealOf = (x: (typeof food.logs)[number]) => x.meal || mealAt(planned, hhmmOf(new Date(x.created_at)));
   // Meals in the order you ate them (logs come oldest first).
   const order = [...new Set(food.logs.map(mealOf))];
@@ -473,6 +474,19 @@ function FoodHome() {
             color={c.text}
             onPress={() => freshRecipes(true)}
           />
+          {/* The suggested meals' protein, when it's well short of the day's target (recipes have their own mix). */}
+          {meals.length && food.target.p - meals.reduce((a, m) => a + m.p, 0) >= 15 ? (
+            <Card style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
+              <Icon name="info" size={18} color={c.cobalt} />
+              <Text variant="small" style={{ flex: 1 }}>
+                {t('These meals give about {a} g protein of your {b} g. Add {n} g more: a protein snack, or a bigger portion of chicken, meat or fish.', {
+                  a: Math.round(meals.reduce((x, m) => x + m.p, 0)),
+                  b: Math.round(food.target.p),
+                  n: Math.round(food.target.p - meals.reduce((x, m) => x + m.p, 0)),
+                })}
+              </Text>
+            </Card>
+          ) : null}
           {meals.map((m) => {
             const logged = loggedKeys.has(m.key);
             return (

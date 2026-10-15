@@ -12,8 +12,8 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useFood, useLogFood } from '@/lib/food';
-import { fmt, planMeals, scaleIngredients } from '@/lib/nutrition';
-import { inGrams } from '@/lib/recipes';
+import { changeMeal, fmt, planMeals, scaleIngredients } from '@/lib/nutrition';
+import { inGrams, ingKcal } from '@/lib/recipes';
 import { subOptions } from '@/lib/subs';
 import { useSettings } from '@/theme/settings';
 
@@ -23,8 +23,10 @@ export default function RecipeScreen() {
   const toast = useToast();
   const food = useFood();
   const logFood = useLogFood();
-  const { key } = useLocalSearchParams<{ key: string }>();
-  const meal = planMeals(food.plan, food.day).find((m) => m.key === key);
+  // `day`: the day it was planned for (from a logged meal), else the day you're looking at.
+  const { key, day: dayParam } = useLocalSearchParams<{ key: string; day?: string }>();
+  const day = dayParam ?? food.day;
+  const meal = planMeals(food.plan, day, food.dayGoal(day)).find((m) => m.key === key);
   const [subFor, setSubFor] = useState<number | null>(null);
 
   if (!meal)
@@ -45,11 +47,20 @@ export default function RecipeScreen() {
     let newIng = r.ing.map((x) => [...x] as typeof x);
     let newSubbed = [...subbed];
     let label: string;
+    let kAdj = r.kAdj ?? 1;
     if (j < 0) {
+      // The rest gets bigger to make up the calories, up to 1.5 times; past that the meal is simply smaller.
+      const gone = ingKcal(base[0], base[1], base[2]);
       newIng.splice(i, 1);
-      newIng = newIng.map(([n, a, u]) => [n, u === 'g' || u === 'ml' ? a * 1.12 : a, u]);
+      const rest = newIng.reduce((a, [n, v, u]) => a + ingKcal(n, v, u), 0);
+      const grow = rest > 0 ? Math.min(1.5, (rest + gone) / rest) : 1;
+      newIng = newIng.map(([n, a, u]) => [n, u === 'g' || u === 'ml' ? a * grow : u === 'pinch' ? a : Math.round(a * grow * 2) / 2, u]);
+      if (rest + gone > 0) kAdj *= (rest * grow) / (rest + gone);
       newSubbed = newSubbed.filter((x) => x !== i).map((x) => (x > i ? x - 1 : x));
-      label = t('Left out {x}. The rest is a bit bigger.', { x: old });
+      label =
+        kAdj < 0.97
+          ? t('Left out {x}. The rest is bigger, and this meal is now about {n} kcal.', { x: old, n: Math.round((meal.k / (r.kAdj ?? 1)) * kAdj / 10) * 10 })
+          : t('Left out {x}. The rest is a bit bigger.', { x: old });
     } else {
       const o = subOptions(base[0], base[1], base[2])[j];
       newIng[i] = o;
@@ -57,7 +68,7 @@ export default function RecipeScreen() {
       label = t('Swapped {a} for {b}. Calories stay about the same.', { a: old, b: t(o[0]).toLowerCase() });
     }
     const before = food.plan.custom;
-    food.updatePlan({ custom: { ...(food.plan.custom ?? {}), [meal.key]: { ...r, ing: newIng, subbed: newSubbed } } });
+    food.updatePlan({ custom: { ...(food.plan.custom ?? {}), [meal.key]: { ...r, ing: newIng, subbed: newSubbed, kAdj } } });
     setSubFor(null);
     toast(label, { ai: true, undo: () => food.updatePlan({ custom: before }) });
   };
@@ -156,11 +167,10 @@ export default function RecipeScreen() {
         title={t('Change meal')}
         style={{ marginTop: 8 }}
         onPress={() => {
-          const picks = { ...(food.plan.picks ?? {}), [meal.key]: (food.plan.picks?.[meal.key] ?? 0) + 1 };
-          const custom = { ...(food.plan.custom ?? {}) };
-          delete custom[meal.key];
+          const before = { picks: food.plan.picks, custom: food.plan.custom };
+          const { picks, custom, meal: n } = changeMeal(food.plan, meal.key, day, food.dayGoal(day));
           food.updatePlan({ picks, custom });
-          toast(t('Changed meal. Same calories.'), { ai: true });
+          toast(t('Changed to {name}. Same calories.', { name: n ? t(n.r.n) : '' }), { ai: true, undo: () => food.updatePlan(before) });
         }}
       />
 
@@ -193,7 +203,7 @@ export default function RecipeScreen() {
                 <View style={{ flex: 1 }}>
                   <Text weight={700}>{t('Leave it out')}</Text>
                   <Text variant="xs" color="sec">
-                    {t('I’ll add a bit more of the rest to keep the calories')}
+                    {t('I’ll add more of the rest to keep the calories when I can')}
                   </Text>
                 </View>
               </Springy>

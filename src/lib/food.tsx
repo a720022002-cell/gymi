@@ -220,6 +220,8 @@ export function FoodProvider({ children }: PropsWithChildren) {
     personRef.current = person;
   }, [plan, logs, person]);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // A small change is waiting to be saved (the plan on screen is newer than the server's).
+  const savePending = useRef(false);
   // The last weigh-in applyWeight already looked at (so loading doesn't redo it with a single day's weight).
   const weighedRef = useRef<number | null>(null);
 
@@ -292,6 +294,8 @@ export function FoodProvider({ children }: PropsWithChildren) {
           if (stale) setWeightNote(loaded.weight);
         }
       }
+      // A small change still waiting to be saved is newer than what the server has: keep it.
+      if (savePending.current) loaded = planRef.current;
       setPlan(RAMADAN_SWITCH ? loaded : { ...loaded, ramadan: false });
       setSetupDone(!!p.data?.setup_done);
       setLogs((l.data as FoodLog[]) ?? []);
@@ -326,6 +330,12 @@ export function FoodProvider({ children }: PropsWithChildren) {
   const savePlan = useCallback(
     async (p: FoodPlan, done?: boolean) => {
       if (!userId) return false;
+      // A small change waiting to be saved would write an older plan over this one.
+      clearTimeout(saveTimer.current);
+      savePending.current = false;
+      // Plans saved from a screen started from a copy (setup, My targets): recipes the AI made meanwhile stay.
+      const cur = planRef.current;
+      if (cur?.aiRecipes && (!p.aiRecipes || p.aiRecipes.at < cur.aiRecipes.at)) p = { ...p, aiRecipes: cur.aiRecipes };
       setPlan(p);
       planRef.current = p;
       if (done !== undefined) setSetupDone(done);
@@ -358,8 +368,11 @@ export function FoodProvider({ children }: PropsWithChildren) {
       planRef.current = next;
       setPlan(next);
       clearTimeout(saveTimer.current);
+      savePending.current = true;
+      // Changes in a row go out once, a moment later, always the newest plan.
       saveTimer.current = setTimeout(() => {
-        if (userId) supabase.from('food_plans').upsert({ user_id: userId, plan: next }).then(() => {});
+        savePending.current = false;
+        if (userId) supabase.from('food_plans').upsert({ user_id: userId, plan: planRef.current }).then(() => {});
       }, 600);
     },
     [userId],

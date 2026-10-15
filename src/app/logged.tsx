@@ -60,7 +60,9 @@ export default function LoggedScreen() {
       </Screen>
     );
 
-  const meal = log.plan_key ? planMeals(food.plan, log.day).find((m) => m.key === log.plan_key) : undefined;
+  // The plan's meal for that slot, only while it's still the dish you logged (you may have changed the meal since).
+  const slot = log.plan_key ? planMeals(food.plan, log.day, food.dayGoal(log.day)).find((m) => m.key === log.plan_key) : undefined;
+  const meal = slot && (log.name === t(slot.r.n) || log.name === slot.r.n) ? slot : undefined;
   const ing = meal ? scaleIngredients(meal.r, meal.k) : [];
   const f = dbFood?.id === foodId ? dbFood.f : null;
   const planned = planMeals(food.plan);
@@ -92,7 +94,7 @@ export default function LoggedScreen() {
         {[t(curMeal), time].join(', ')}
       </Text>
       <Text variant="h1" style={{ marginTop: 4 }}>
-        {meal ? t(meal.r.n) : log.name}
+        {log.name}
       </Text>
       {f && foodSource(f, lang) ? (
         <Text color="sec" style={{ marginTop: 2 }}>
@@ -183,7 +185,7 @@ export default function LoggedScreen() {
               </Row>
             ))}
           </View>
-          <Button kind="soft" title={t('See the recipe')} style={{ marginTop: 12 }} color={c.text} onPress={() => router.push({ pathname: '/recipe', params: { key: meal.key } })} />
+          <Button kind="soft" title={t('See the recipe')} style={{ marginTop: 12 }} color={c.text} onPress={() => router.push({ pathname: '/recipe', params: { key: meal.key, day: log.day } })} />
         </>
       ) : f ? (
         <>

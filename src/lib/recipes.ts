@@ -10,6 +10,8 @@ export type Recipe = {
   steps: string[];
   /** Ingredient positions the user swapped. */
   subbed?: number[];
+  /** Calories compared with the meal's share, after leaving an ingredient out (1 = unchanged). */
+  kAdj?: number;
 };
 
 export const RECIPES: Record<string, Recipe[]> = {
@@ -847,4 +849,27 @@ export function inGrams(n: string, a: number, u: string): [number, string] {
   if (u === 'g' || u === 'ml' || !UNIT_G[u]) return [a, u];
   const v = a * (NAME_G[n] ?? UNIT_G[u]);
   return [v < 20 ? Math.max(1, Math.round(v)) : Math.round(v / 5) * 5, LIQUID.has(n) ? 'ml' : 'g'];
+}
+
+/** Rough calories per 100 g (or ml) by kind of ingredient, to keep a meal's calories when one is left out. */
+const KCAL_100: [RegExp, number][] = [
+  [/egg white|بياض/i, 52],
+  [/oil|ghee|butter|زيت|سمن|زبدة/i, 850],
+  [/nut|almond|walnut|cashew|pistachio|peanut|tahini|لوز|جوز|كاجو|فستق|طحينة/i, 590],
+  [/honey|sugar|date|عسل|سكر|تمر/i, 300],
+  [/rice|oat|pasta|bulgur|vermicelli|lentil|wheat|harees|rice cake|freekeh|رز|أرز|شوفان|برغل|عدس|شعيرية|هريس/i, 350],
+  [/bread|toast|tortilla|bun|pita|sambousek|خبز|توست/i, 270],
+  [/cheese|labneh|hummus|avocado|جبن|لبنة|حمص|أفوكادو/i, 170],
+  [/whey|protein/i, 380],
+  [/beef|lamb|mince|kofta|thigh|salmon|لحم|سلمون/i, 190],
+  [/chicken|fish|hamour|tuna|shrimp|turkey|egg|دجاج|سمك|هامور|تونة|ربيان|بيض/i, 140],
+  [/potato|sweet potato|banana|foul|bean|بطاطس|بطاطا|موز|فول/i, 90],
+  [/milk|laban|yogurt|حليب|لبن|زبادي/i, 60],
+];
+/** About how many calories an ingredient amount has (0 for a pinch of spice). */
+export function ingKcal(n: string, a: number, u: string) {
+  const [g, unit] = inGrams(n, a, u);
+  if (unit !== 'g' && unit !== 'ml') return 0;
+  const per = KCAL_100.find(([re]) => re.test(n))?.[1] ?? 30;
+  return (g * per) / 100;
 }

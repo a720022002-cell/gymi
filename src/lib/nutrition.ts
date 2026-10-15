@@ -22,7 +22,8 @@ const ACT_FACTOR = [1.25, 1.4, 1.55, 1.75];
 // Ramadan mode is hidden outside Ramadan. Set to true when Ramadan comes to show it again.
 export const RAMADAN_SWITCH = false;
 
-export type Meal = { n: string; t: string; type?: string };
+/** `id`: stays the same when other meals are removed, so picks, swapped recipes and logs stay with the right meal. */
+export type Meal = { n: string; t: string; type?: string; id?: number };
 export type Work = { s: string; e: string };
 
 export type FoodPlan = {
@@ -49,7 +50,7 @@ export type FoodPlan = {
   /** Recipes changed by swapping an ingredient (or made from your ingredients), per meal slot. */
   custom?: Record<string, CustomRecipe>;
   /** `lock`: you started buying a week's or a month's list, so meals (and the list) stay the same from `from` to `to`. */
-  shop?: { checked: Record<string, boolean>; extra: { n: string; q: string; cat: string }[]; hidden: string[]; scope: number; lock?: { from: string; to: string; scope: number } };
+  shop?: { checked: Record<string, boolean>; extra: { n: string; q: string; cat: string }[]; hidden: string[]; scope: number; lock?: { from: string; to: string; scope: number }; checkedFor?: string };
   ramadan?: boolean;
   /** City for iftar and suhoor times (Ramadan mode). Riyadh when not set. */
   city?: string;
@@ -122,11 +123,20 @@ export const suggestWater = (f: Pick<FoodPlan, 'weight' | 'activity' | 'sun'>) =
 export function calcPlan(plan: FoodPlan, person: Person): FoodPlan {
   // Safety net: under 18 always means maintain.
   const f = isMinor(person) && plan.goal !== 2 ? { ...plan, goal: 2 } : plan;
-  const start = f.noWork ? '09:00' : f.work[0]?.s ?? '09:00';
-  const end = f.noWork ? '17:00' : f.work[f.work.length - 1]?.e ?? '17:00';
-  const [sh, sm] = start.split(':').map(Number);
-  const [eh] = end.split(':').map(Number);
-  const lunch = Math.round((sh + eh) / 2);
+  // Meal times from the work day, in minutes. Rotating shifts use the first shift (they change every week); a night
+  // shift ends the next morning, so it runs past midnight. Every time is rounded to a quarter hour.
+  const shifts = f.noWork || !f.work.length ? [{ s: '09:00', e: '17:00' }] : f.rotate ? [f.work[0]] : f.work;
+  const toMin = (x: string) => {
+    const [h, m] = x.split(':').map(Number);
+    return (h || 0) * 60 + (m || 0);
+  };
+  const s0 = toMin(shifts[0].s);
+  let e0 = toMin(shifts[shifts.length - 1].e);
+  if (e0 <= s0) e0 += 1440;
+  const at = (min: number) => {
+    const q = (((Math.round(min / 15) * 15) % 1440) + 1440) % 1440;
+    return hhmm(Math.floor(q / 60), q % 60);
+  };
   return {
     ...f,
     kcal: suggestKcal(f, person),
@@ -134,13 +144,14 @@ export function calcPlan(plan: FoodPlan, person: Person): FoodPlan {
     carbG: null,
     fatG: null,
     water: suggestWater(f),
+    // Before work, halfway through, after work, then dinner 3.5 hours after work (the workout fits between).
     meals: [
-      { n: 'Breakfast', t: hhmm(sh - 1, sm === 0 ? 15 : 0) },
-      { n: 'Lunch', t: hhmm(lunch, 30) },
-      { n: 'Pre-workout', t: hhmm(eh, 30) },
-      { n: 'Dinner', t: hhmm(eh + 3, 30) },
+      { n: 'Breakfast', t: at(s0 - 45) },
+      { n: 'Lunch', t: at((s0 + e0) / 2) },
+      { n: 'Pre-workout', t: at(e0 + 30) },
+      { n: 'Dinner', t: at(e0 + 210) },
     ],
-    workoutTime: hhmm(eh + 1, 30),
+    workoutTime: at(e0 + 90),
     intensity: f.goal >= 3 ? 'Moderate, keep volume high' : 'Moderate to hard',
     picks: {},
     custom: {},
@@ -220,6 +231,28 @@ export const mealChoices = (meals: { n: string }[]) => [...new Set(['Breakfast',
 /** The time of a date as HH:MM. */
 export const hhmmOf = (d = new Date()) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
+/**
+ * "Change meal": the next recipe for this meal that's a different dish (other meals that day are skipped, so one step
+ * can land on the same one), with any swapped-ingredient version of it dropped. Undo puts `picks` and `custom` back.
+ */
+export function changeMeal(f: FoodPlan, key: string, day: string, dayKcal: number) {
+  const custom = { ...(f.custom ?? {}) };
+  delete custom[key];
+  const cur = planMeals(f, day, dayKcal).find((x) => x.key === key);
+  const at = (step: number) => {
+    const picks = { ...(f.picks ?? {}), [key]: (f.picks?.[key] ?? 0) + step };
+    return { picks, custom, meal: planMeals({ ...f, picks, custom }, day, dayKcal).find((x) => x.key === key) };
+  };
+  let next = at(1);
+  for (let step = 2; step <= 12 && next.meal?.r.n === cur?.r.n; step++) next = at(step);
+  return next;
+}
+
+/** Give every meal its own id (its place in the list, for meals from before ids), before meals are removed, moved or added. */
+export const withMealIds = (meals: Meal[]): Meal[] => meals.map((m, i) => (m.id == null ? { ...m, id: i } : m));
+/** The id for a new meal. */
+export const nextMealId = (meals: Meal[]) => withMealIds(meals).reduce((a, m) => Math.max(a, (m.id ?? 0) + 1), 0);
+
 /** `contains`: your allergens in this meal, only when there was no safe recipe to pick (shown as a warning). */
 export type PlannedMeal = Meal & { key: string; r: CustomRecipe; k: number; p: number; c: number; f: number; contains?: AllergenKey[] };
 
@@ -227,33 +260,42 @@ export type PlannedMeal = Meal & { key: string; r: CustomRecipe; k: number; p: n
  * A day's suggested meals, sized to the daily calories. Your own AI recipes come first, then the built-in ones; the
  * dish changes from day to day (and with "Change meal"), and the same dish isn't used twice in a day.
  */
-export function planMeals(f: FoodPlan, day?: string): PlannedMeal[] {
+export function planMeals(f: FoodPlan, day?: string, dayKcal?: number): PlannedMeal[] {
   const date = day ?? localDay(new Date());
   const dayNo = Math.floor(Date.parse(`${date}T12:00:00Z`) / 86400000) || 0;
   const ram = RAMADAN_SWITCH && !!f.ramadan;
   const meals = ram ? ramadanMeals(f.city, day) : f.meals;
   const tag = f.goal <= 1 ? 'Bulk' : 'Cut';
-  const kcal = targets(f).k;
+  // The day's real goal when known (pregnancy, calories moved between days), else the plan's.
+  const kcal = dayKcal ?? targets(f).k;
   const ws = meals.map((m) => MEAL_WEIGHT[m.type ?? m.n] ?? 0.13);
   const tot = ws.reduce((a, b) => a + b, 0) || 1;
   // Recipes already on today's plan: another one is picked when there's a choice, so meals don't repeat.
   const used = new Set<string>();
   return meals.map((m, i) => {
     const type = m.type ?? m.n;
-    const key = `${ram ? 'r' : ''}${type}${i}`;
-    // Recipes without your allergens: this meal's for your goal, then any for this meal, then another meal's.
+    const key = `${ram ? 'r' : ''}${type}${m.id ?? i}`;
+    // Recipes without your allergens: this meal's for your goal; when that's fewer than 3, any for this meal too,
+    // then other meals' (so there's always a choice and "Change meal" changes something).
     const safe = (list: Recipe[]) => list.filter((x) => !allergensIn([x.n, ...x.ing.map((g) => g[0])], f.allergies).length);
     const ai = ram ? [] : (f.aiRecipes?.list ?? []).filter((x) => x.type === type);
     const all = [...ai, ...(RECIPES[type] ?? RECIPES.Snack)];
     const mine = all.filter((x) => x.tag === tag);
-    const others = Object.entries(RECIPES).filter(([k]) => k !== type && k !== 'Iftar' && k !== 'Suhoor').flatMap(([, v]) => v);
-    const pool = [safe(mine), safe(all), safe(others), mine.length ? mine : all].find((p) => p.length)!;
+    // Borrowing from other meals: full meals for a main meal, snacks for a snack.
+    const light = (k: string) => k === 'Snack' || k === 'Pre-workout';
+    const others = Object.entries(RECIPES)
+      .filter(([k]) => k !== type && k !== 'Iftar' && k !== 'Suhoor' && light(k) === light(type))
+      .flatMap(([, v]) => v);
+    const grow = (a: Recipe[], b: Recipe[]) => (a.length >= 3 ? a : [...a, ...b.filter((x) => !a.includes(x))]);
+    const okMine = safe(mine);
+    const safeAll = grow(grow(okMine, safe(all)), safe(others));
+    const pool = safeAll.length ? safeAll : mine.length ? mine : all;
     const start = (f.picks?.[key] ?? 0) + dayNo;
     const fresh = Array.from({ length: pool.length }, (_, j) => pool[(start + j) % pool.length]).find((x) => !used.has(x.n));
     const r = f.custom?.[key] ?? fresh ?? pool[start % pool.length];
     used.add(r.n);
     const contains = allergensIn([r.n, ...r.ing.map((g) => g[0])], f.allergies);
-    const k = Math.round((kcal * ws[i]) / tot / 10) * 10;
+    const k = Math.round(((kcal * ws[i]) / tot) * (r.kAdj ?? 1) / 10) * 10;
     return { ...m, key, r, k, p: Math.round((k * r.m[0]) / 4), c: Math.round((k * r.m[1]) / 4), f: Math.round((k * r.m[2]) / 9), ...(contains.length ? { contains } : {}) };
   });
 }

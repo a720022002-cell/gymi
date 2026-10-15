@@ -15,6 +15,7 @@ import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
 import { shoppingLock } from '@/lib/aiRecipes';
 import { addDays, type FoodPlan, planMeals, scaleIngredients } from '@/lib/nutrition';
+import { inGrams } from '@/lib/recipes';
 import { daysBetween } from '@/lib/report';
 import { useSettings } from '@/theme/settings';
 
@@ -50,29 +51,39 @@ export default function Shopping() {
   const locked = !!lock && lock.scope === shop.scope;
   const from = locked ? lock.from : food.today;
   const days = locked ? daysBetween(lock.from, lock.to) : [1, 7, 30][shop.scope];
-  const agg: Record<string, number> = {};
+  // One row per ingredient: counted ones (2 slices, half a lemon) become grams, so they add up with the rest.
+  const agg: Record<string, Record<string, number>> = {};
   for (let i = 0; i < days; i++)
-    planMeals(food.plan, addDays(from, i)).forEach((m) =>
+    planMeals(food.plan, addDays(from, i), food.dayGoal(addDays(from, i))).forEach((m) =>
       scaleIngredients(m.r, m.k).forEach(([n, a, u]) => {
-        agg[`${n}|${u}`] = (agg[`${n}|${u}`] ?? 0) + a;
+        const [v, unit] = inGrams(n, a, u);
+        (agg[n] ??= {})[unit] = (agg[n][unit] ?? 0) + v;
       }),
     );
+  const amount = (u: Record<string, number>) => {
+    if (u.g) return u.g >= 1000 ? `${(u.g / 1000).toFixed(1)} ${t('kg')}` : `${Math.round(u.g)} ${t('g')}`;
+    if (u.ml) return u.ml >= 1000 ? `${(u.ml / 1000).toFixed(1)} ${t('L')}` : `${Math.round(u.ml)} ${t('ml')}`;
+    const [unit, v] = Object.entries(u).find(([k]) => k !== 'pinch') ?? [];
+    return unit ? `${Math.ceil(v ?? 0)} ${t(unit)}` : '';
+  };
   const cats: Record<string, [string, string, boolean][]> = {};
   const hidden: [string, string][] = [];
-  Object.entries(agg).forEach(([k, v]) => {
-    const [n, u] = k.split('|');
-    const q = u === 'g' && v >= 1000 ? `${(v / 1000).toFixed(1)} ${t('kg')}` : u === 'ml' && v >= 1000 ? `${(v / 1000).toFixed(1)} ${t('L')}` : u === 'g' || u === 'ml' ? `${Math.round(v)} ${t(u)}` : `${Math.ceil(v)} ${t(u)}`;
+  Object.entries(agg).forEach(([n, u]) => {
+    const q = amount(u);
     if (shop.hidden.includes(n)) return hidden.push([n, q]);
     (cats[category(n)] ??= []).push([n, q, false]);
   });
   shop.extra.forEach((e) => (cats[e.cat] ??= []).push([e.n, e.q, true]));
   const all = Object.values(cats).flat();
-  const done = all.filter(([n]) => shop.checked[n]).length;
+  // Ticks belong to one list (this lock, or today's): a new week or month starts with none.
+  const period = locked ? `${lock.scope}:${lock.from}` : `${shop.scope}:${food.today}`;
+  const checked = shop.checkedFor === period ? shop.checked : {};
+  const done = all.filter(([n]) => checked[n]).length;
   const scopeName = [t('today'), t('this week'), t('this month')][shop.scope];
   const text = () =>
     `${t('Gymi shopping list ({x})', { x: scopeName })}\n` +
     CATS.filter((k) => cats[k])
-      .map((k) => `\n${t(k)}\n` + cats[k].map(([n, q]) => `${shop.checked[n] ? '✓' : '-'} ${t(n)}${q ? `: ${q}` : ''}`).join('\n'))
+      .map((k) => `\n${t(k)}\n` + cats[k].map(([n, q]) => `${checked[n] ? '✓' : '-'} ${t(n)}${q ? `: ${q}` : ''}`).join('\n'))
       .join('\n');
 
   return (
@@ -141,7 +152,7 @@ export default function Shopping() {
           <Icon name="lock" size={18} color={c.cobalt} />
           <View style={{ flex: 1 }}>
             <Text variant="small" weight={700}>
-              {t('Your meals stay the same until {day}, so they match what you buy.', { day: dayLabel(lock.to) })}
+              {t('This list is kept until {day}, and new AI recipes wait until then. Changing a meal yourself changes the list.', { day: dayLabel(lock.to) })}
             </Text>
             <Springy
               onPress={() => {
@@ -173,7 +184,7 @@ export default function Shopping() {
           </Text>
           <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden' }}>
             {cats[k].map(([n, q, extra], i) => {
-              const on = !!shop.checked[n];
+              const on = !!checked[n];
               return (
                 <Springy
                   key={n}
@@ -190,11 +201,17 @@ export default function Shopping() {
                         undo: () => food.updatePlan({ shop: { ...shop, ...(food.plan.shop ?? {}), ...before } }),
                       });
                     } else
+                    {
+                      // First thing bought from a week's or month's list: it's kept on those days until the last one.
+                      const startLock = !on && shop.scope > 0 && !lock;
+                      const nextLock = startLock ? { from: food.today, to: addDays(food.today, [1, 7, 30][shop.scope] - 1), scope: shop.scope } : undefined;
+                      const nextPeriod = nextLock ? `${nextLock.scope}:${nextLock.from}` : period;
                       save({
-                        checked: { ...shop.checked, [n]: !on },
-                        // First thing bought from a week's or month's list: meals stay the same until its last day.
-                        ...(!on && shop.scope > 0 && !lock ? { lock: { from: food.today, to: addDays(food.today, [1, 7, 30][shop.scope] - 1), scope: shop.scope } } : {}),
+                        checked: { ...(nextPeriod === period ? checked : {}), [n]: !on },
+                        checkedFor: nextPeriod,
+                        ...(nextLock ? { lock: nextLock } : {}),
                       });
+                    }
                   }}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 52, paddingHorizontal: 16, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
                   {edit ? (

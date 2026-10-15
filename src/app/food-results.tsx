@@ -15,7 +15,7 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Row, Segmented, Springy, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
-import { type FoodPlan, fmt, fmtTime, GOALS, isMinor, kcalFloor, RAMADAN_SWITCH, suggestWater, targets, withPregnancy } from '@/lib/nutrition';
+import { type FoodPlan, fmt, fmtTime, GOALS, isMinor, kcalFloor, nextMealId, RAMADAN_SWITCH, suggestWater, targets, withMealIds, withPregnancy } from '@/lib/nutrition';
 import { CITIES, DEFAULT_CITY, fastTimes } from '@/lib/prayer';
 import { fx } from '@/lib/progress';
 import { useSettings } from '@/theme/settings';
@@ -322,7 +322,8 @@ function Schedule({ f, set }: { f: FoodPlan; set: (p: Partial<FoodPlan>) => void
   const { t, lang } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
-  const sortMeals = (meals: FoodPlan['meals']) => [...meals].sort((a, b) => a.t.localeCompare(b.t));
+  // Ids first, so moving a meal in time keeps its picks, swapped recipe and logs.
+  const sortMeals = (meals: FoodPlan['meals']) => withMealIds(meals).sort((a, b) => a.t.localeCompare(b.t));
 
   const setWorkout = (v: string) => {
     const pre = f.meals.findIndex((m) => (m.type ?? m.n) === 'Pre-workout');
@@ -413,7 +414,7 @@ function Schedule({ f, set }: { f: FoodPlan; set: (p: Partial<FoodPlan>) => void
               {f.meals.length > 2 ? (
                 <Springy
                   onPress={() => {
-                    set({ meals: f.meals.filter((_, j) => j !== i) });
+                    set({ meals: withMealIds(f.meals).filter((_, j) => j !== i) });
                     toast(t('{meal} removed', { meal: t(m.n) }), {
                       icon: 'trash',
                     });
@@ -437,8 +438,9 @@ function Schedule({ f, set }: { f: FoodPlan; set: (p: Partial<FoodPlan>) => void
               const n = f.meals.length === 4 ? 'Snack' : `Meal ${f.meals.length + 1}`;
               set({
                 meals: [
-                  ...f.meals,
+                  ...withMealIds(f.meals),
                   {
+                    id: nextMealId(f.meals),
                     n,
                     t: `${String(Math.min(23, last[0] + 2)).padStart(2, '0')}:00`,
                   },
