@@ -41,14 +41,13 @@ export default function Shopping() {
   const save = (patch: Partial<Shop>) => food.updatePlan({ shop: { ...shop, ...patch } });
 
   // Add up every ingredient in the plan for the chosen time.
-  // Meals change from day to day, so a week adds up the next 7 days (a month is about 4.3 of those weeks).
-  const days = shop.scope === 0 ? 1 : 7;
-  const mult = shop.scope === 2 ? 30 / 7 : 1;
+  // Meals change from day to day, so each day's own meals are added up: today, the next 7 days, or the next 30.
+  const days = [1, 7, 30][shop.scope];
   const agg: Record<string, number> = {};
   for (let i = 0; i < days; i++)
     planMeals(food.plan, addDays(food.today, i)).forEach((m) =>
       scaleIngredients(m.r, m.k).forEach(([n, a, u]) => {
-        agg[`${n}|${u}`] = (agg[`${n}|${u}`] ?? 0) + a * mult;
+        agg[`${n}|${u}`] = (agg[`${n}|${u}`] ?? 0) + a;
       }),
     );
   const cats: Record<string, [string, string, boolean][]> = {};
