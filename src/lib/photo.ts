@@ -33,10 +33,18 @@ export function takePhoto(camera: boolean): Promise<Photo | null> {
     input.type = 'file';
     input.accept = 'image/*';
     if (camera) input.setAttribute('capture', 'environment');
+    let done = false;
+    const finish = (v: Photo | null) => {
+      if (done) return;
+      done = true;
+      resolve(v);
+    };
     input.onchange = async () => {
       const f = input.files?.[0];
-      resolve(f ? await shrink(f) : null);
+      finish(f ? await shrink(f) : null);
     };
+    // Closing the picker without a photo sends "cancel", so the button that opened it doesn't wait forever.
+    input.addEventListener('cancel', () => finish(null));
     input.click();
   });
 }
