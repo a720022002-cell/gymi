@@ -13,16 +13,16 @@ import { useToast } from '@/components/Toast';
 import { Button, Chip, Label, Row, Segmented, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
-import { type FoodPlan, planMeals, scaleIngredients } from '@/lib/nutrition';
+import { addDays, type FoodPlan, planMeals, scaleIngredients } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
 
 const CATS = ['Protein', 'Dairy', 'Carbs and grains', 'Fruit and vegetables', 'Pantry', 'Other'];
 
 function category(n: string) {
-  if (/chicken|beef|fish|salmon|egg|whey|patty|mince|hamour|tuna|thigh|lamb/i.test(n)) return 'Protein';
-  if (/rice|oat|bread|toast|bun|potato|bulgur|dates|lentil|pasta|harees|sambousek/i.test(n)) return 'Carbs and grains';
-  if (/yogurt|labneh|milk|laban|cheese|cottage/i.test(n)) return 'Dairy';
-  if (/salad|tomato|cucumber|onion|pepper|bean|banana|apple|berr|lemon|lettuce|pickle|fattoush|spinach|veggies|greens/i.test(n)) return 'Fruit and vegetables';
+  if (/chicken|beef|fish|salmon|egg|whey|patty|mince|hamour|tuna|thigh|lamb|shrimp|prawn|kofta|kebab|turkey|دجاج|لحم|سمك|سلمون|بيض|تونة|هامور|ربيان|روبيان|كفتة|ديك رومي/i.test(n)) return 'Protein';
+  if (/rice|oat|bread|toast|bun|potato|bulgur|dates|lentil|pasta|harees|sambousek|vermicelli|tortilla|wheat|chickpea|foul|quinoa|couscous|freekeh|رز|أرز|ارز|شوفان|خبز|توست|بطاطس|بطاطا|برغل|تمر|عدس|مكرونة|معكرونة|هريس|شعيرية|تورتيلا|حمص|فول|كينوا|كسكس|فريكة/i.test(n)) return 'Carbs and grains';
+  if (/yogurt|labneh|milk|laban|cheese|cottage|زبادي|لبنة|حليب|لبن|جبن/i.test(n)) return 'Dairy';
+  if (/salad|tomato|cucumber|onion|pepper|bean|banana|apple|berr|lemon|lettuce|pickle|fattoush|spinach|veggies|greens|vegetable|carrot|avocado|orange|zucchini|parsley|garlic|ginger|سلطة|طماطم|خيار|بصل|فلفل|فاصوليا|موز|تفاح|ليمون|خس|سبانخ|خضار|جزر|أفوكادو|برتقال|كوسة|بقدونس|ثوم|زنجبيل/i.test(n)) return 'Fruit and vegetables';
   return 'Pantry';
 }
 
@@ -41,13 +41,16 @@ export default function Shopping() {
   const save = (patch: Partial<Shop>) => food.updatePlan({ shop: { ...shop, ...patch } });
 
   // Add up every ingredient in the plan for the chosen time.
-  const mult = [1, 7, 30][shop.scope];
+  // Meals change from day to day, so a week adds up the next 7 days (a month is about 4.3 of those weeks).
+  const days = shop.scope === 0 ? 1 : 7;
+  const mult = shop.scope === 2 ? 30 / 7 : 1;
   const agg: Record<string, number> = {};
-  planMeals(food.plan).forEach((m) =>
-    scaleIngredients(m.r, m.k).forEach(([n, a, u]) => {
-      agg[`${n}|${u}`] = (agg[`${n}|${u}`] ?? 0) + a * mult;
-    }),
-  );
+  for (let i = 0; i < days; i++)
+    planMeals(food.plan, addDays(food.today, i)).forEach((m) =>
+      scaleIngredients(m.r, m.k).forEach(([n, a, u]) => {
+        agg[`${n}|${u}`] = (agg[`${n}|${u}`] ?? 0) + a * mult;
+      }),
+    );
   const cats: Record<string, [string, string, boolean][]> = {};
   const hidden: [string, string][] = [];
   Object.entries(agg).forEach(([k, v]) => {

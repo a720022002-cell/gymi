@@ -38,7 +38,7 @@ export function MealMenu({ meal, logged, onClose }: { meal: PlannedMeal | null; 
     // The next recipe that's different from this one (today's other meals are skipped, so one step may land on the same).
     const at = (step: number) => {
       const picks = { ...(food.plan.picks ?? {}), [meal.key]: (food.plan.picks?.[meal.key] ?? 0) + step };
-      return { picks, n: planMeals({ ...food.plan, picks, custom }).find((x) => x.key === meal.key) };
+      return { picks, n: planMeals({ ...food.plan, picks, custom }, food.day).find((x) => x.key === meal.key) };
     };
     let next = at(1);
     for (let step = 2; step <= 12 && next.n?.r.n === meal.r.n; step++) next = at(step);

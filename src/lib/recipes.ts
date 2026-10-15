@@ -80,6 +80,96 @@ export const RECIPES: Record<string, Recipe[]> = {
       ],
       steps: ['Warm the foul with lemon and cumin.', 'Boil or fry the eggs.', 'Serve with the bread.'],
     },
+    {
+      n: 'Shakshuka with Arabic bread',
+      m: [0.24, 0.4, 0.36],
+      tag: 'Cut',
+      min: 15,
+      ing: [
+        ['Eggs', 3.5, 'large'],
+        ['Tomato and pepper', 275, 'g'],
+        ['Onion', 65, 'g'],
+        ['Olive oil', 10, 'ml'],
+        ['Arabic bread', 1, 'small'],
+      ],
+      steps: [
+        'Soften the onion and pepper in the oil.',
+        'Add the tomato and cook 5 minutes.',
+        'Crack in the eggs, cover and cook until set.',
+        'Serve with the bread.',
+      ],
+    },
+    {
+      n: 'Balaleet with an omelette',
+      m: [0.2, 0.55, 0.25],
+      tag: 'Bulk',
+      min: 20,
+      ing: [
+        ['Vermicelli', 85, 'g'],
+        ['Sugar', 10, 'g'],
+        ['Cardamom and saffron', 1, 'pinch'],
+        ['Eggs', 2.5, 'large'],
+        ['Butter', 10, 'g'],
+      ],
+      steps: [
+        'Boil the vermicelli 3 minutes and drain.',
+        'Stir in the sugar, cardamom and saffron with the butter.',
+        'Make a thin omelette and lay it on top.',
+      ],
+    },
+    {
+      n: 'Chicken and avocado wrap',
+      m: [0.32, 0.4, 0.28],
+      tag: 'Cut',
+      min: 10,
+      ing: [
+        ['Chicken breast', 150, 'g'],
+        ['Whole wheat tortilla', 1, 'piece'],
+        ['Avocado', 60, 'g'],
+        ['Lettuce and tomato', 100, 'g'],
+        ['Lemon', 1, 'half'],
+      ],
+      steps: [
+        'Grill the chicken with salt and paprika.',
+        'Mash the avocado with lemon.',
+        'Fill the wrap and roll it.',
+      ],
+    },
+    {
+      n: 'Potatoes, eggs and labneh plate',
+      m: [0.22, 0.46, 0.32],
+      tag: 'Bulk',
+      min: 20,
+      ing: [
+        ['Potatoes', 295, 'g'],
+        ['Eggs', 2.5, 'large'],
+        ['Labneh', 60, 'g'],
+        ['Olive oil', 10, 'ml'],
+        ['Cucumber and tomato', 140, 'g'],
+      ],
+      steps: [
+        'Cube the potatoes and roast or pan-fry in the oil.',
+        'Fry or boil the eggs.',
+        'Serve with labneh and salad.',
+      ],
+    },
+    {
+      n: 'Chicken, rice and veg breakfast bowl',
+      m: [0.34, 0.46, 0.2],
+      tag: 'Cut',
+      min: 15,
+      ing: [
+        ['Chicken breast', 150, 'g'],
+        ['Basmati rice (raw)', 60, 'g'],
+        ['Mixed vegetables', 150, 'g'],
+        ['Olive oil', 10, 'ml'],
+      ],
+      steps: [
+        'Cook the rice.',
+        'Cook the chicken and vegetables in the oil with spices.',
+        'Serve together.',
+      ],
+    },
   ],
   Lunch: [
     {
@@ -156,6 +246,95 @@ export const RECIPES: Record<string, Recipe[]> = {
         'Add soy sauce and serve over the rice.',
       ],
     },
+    {
+      n: 'Chicken mandi with salad',
+      m: [0.3, 0.48, 0.22],
+      tag: 'Bulk',
+      min: 60,
+      ing: [
+        ['Chicken thigh', 155, 'g'],
+        ['Basmati rice (raw)', 80, 'g'],
+        ['Mandi spice mix', 1, 'tbsp'],
+        ['Onion', 45, 'g'],
+        ['Mixed salad', 115, 'g'],
+      ],
+      steps: [
+        'Rub the chicken with the spices and roast until golden.',
+        'Cook the rice with onion and the same spices.',
+        'Serve the chicken on the rice with salad.',
+      ],
+    },
+    {
+      n: 'Saleeg with grilled chicken',
+      m: [0.3, 0.46, 0.24],
+      tag: 'Bulk',
+      min: 45,
+      ing: [
+        ['Chicken breast', 145, 'g'],
+        ['Short-grain rice (raw)', 65, 'g'],
+        ['Chicken stock', 320, 'ml'],
+        ['Milk', 120, 'ml'],
+        ['Butter', 5, 'g'],
+      ],
+      steps: [
+        'Cook the rice in the stock until soft.',
+        'Add the milk and stir until creamy.',
+        'Top with butter and the grilled chicken.',
+      ],
+    },
+    {
+      n: 'Lentil soup and chicken',
+      m: [0.34, 0.46, 0.2],
+      tag: 'Cut',
+      min: 35,
+      ing: [
+        ['Red lentils (raw)', 70, 'g'],
+        ['Chicken breast', 140, 'g'],
+        ['Onion and carrot', 120, 'g'],
+        ['Cumin', 1, 'pinch'],
+        ['Olive oil', 10, 'ml'],
+      ],
+      steps: [
+        'Soften the onion and carrot in the oil.',
+        'Add the lentils, cumin and water. Cook 20 minutes and blend.',
+        'Serve with the grilled chicken.',
+      ],
+    },
+    {
+      n: 'Beef kofta, bulgur and salad',
+      m: [0.3, 0.42, 0.28],
+      tag: 'Bulk',
+      min: 30,
+      ing: [
+        ['Lean beef mince', 170, 'g'],
+        ['Bulgur (raw)', 75, 'g'],
+        ['Parsley and onion', 55, 'g'],
+        ['Mixed salad', 160, 'g'],
+      ],
+      steps: [
+        'Mix the beef with parsley, onion and spices; shape into kofta.',
+        'Grill 8 to 10 minutes.',
+        'Cook the bulgur and serve with salad.',
+      ],
+    },
+    {
+      n: 'Shrimp machboos, lighter',
+      m: [0.32, 0.5, 0.18],
+      tag: 'Cut',
+      min: 40,
+      ing: [
+        ['Shrimp', 200, 'g'],
+        ['Basmati rice (raw)', 80, 'g'],
+        ['Onion and tomato', 150, 'g'],
+        ['Machboos spice mix', 1, 'tbsp'],
+        ['Olive oil', 10, 'ml'],
+      ],
+      steps: [
+        'Brown the onion in the oil, add tomato and spices.',
+        'Add the rice and water; cook covered 20 minutes.',
+        'Stir in the shrimp for the last 5 minutes.',
+      ],
+    },
   ],
   'Pre-workout': [
     {
@@ -206,6 +385,48 @@ export const RECIPES: Record<string, Recipe[]> = {
         ['Peanut butter', 15, 'g'],
       ],
       steps: ['Toast the bread.', 'Spread peanut butter and add sliced banana.'],
+    },
+    {
+      n: 'Banana and dates',
+      m: [0.05, 0.9, 0.05],
+      tag: 'Cut',
+      min: 1,
+      ing: [
+        ['Banana', 3.5, 'medium'],
+        ['Dates', 10.5, 'pieces'],
+      ],
+      steps: [
+        'Eat 45 to 60 minutes before training.',
+      ],
+    },
+    {
+      n: 'Rice cakes with honey and banana',
+      m: [0.06, 0.86, 0.08],
+      tag: 'Bulk',
+      min: 3,
+      ing: [
+        ['Rice cakes', 7, 'pieces'],
+        ['Honey', 35, 'g'],
+        ['Banana', 2.5, 'medium'],
+      ],
+      steps: [
+        'Spread the honey on the rice cakes.',
+        'Top with banana slices.',
+      ],
+    },
+    {
+      n: 'Chicken and rice small bowl',
+      m: [0.34, 0.56, 0.1],
+      tag: 'Bulk',
+      min: 15,
+      ing: [
+        ['Chicken breast', 155, 'g'],
+        ['Basmati rice (raw)', 95, 'g'],
+      ],
+      steps: [
+        'Cook the rice and the chicken.',
+        'Eat 1 to 2 hours before training.',
+      ],
     },
   ],
   Dinner: [
@@ -269,6 +490,94 @@ export const RECIPES: Record<string, Recipe[]> = {
       ],
       steps: ['Grill the patty 4 minutes per side.', 'Toast the bun.', 'Build the burger with vegetables and cheese.'],
     },
+    {
+      n: 'Chicken tikka with vegetables',
+      m: [0.42, 0.28, 0.3],
+      tag: 'Cut',
+      min: 25,
+      ing: [
+        ['Chicken breast', 190, 'g'],
+        ['Tikka spice mix', 1, 'tbsp'],
+        ['Peppers and onion', 145, 'g'],
+        ['Olive oil', 10, 'ml'],
+        ['Arabic bread', 1, 'small'],
+      ],
+      steps: [
+        'Coat the chicken with the spices and a little oil.',
+        'Grill with the peppers and onion.',
+        'Serve with the bread.',
+      ],
+    },
+    {
+      n: 'Tuna and potato salad',
+      m: [0.34, 0.38, 0.28],
+      tag: 'Cut',
+      min: 15,
+      ing: [
+        ['Tuna in water', 195, 'g'],
+        ['Potatoes', 260, 'g'],
+        ['Cucumber, tomato and onion', 195, 'g'],
+        ['Olive oil', 15, 'ml'],
+        ['Lemon', 1.5, 'half'],
+      ],
+      steps: [
+        'Boil the potatoes and cube them.',
+        'Mix with the tuna and vegetables.',
+        'Dress with olive oil and lemon.',
+      ],
+    },
+    {
+      n: 'Lamb kebab plate',
+      m: [0.32, 0.36, 0.32],
+      tag: 'Bulk',
+      min: 25,
+      ing: [
+        ['Lean lamb mince', 120, 'g'],
+        ['Arabic bread', 0.5, 'medium'],
+        ['Grilled tomato and onion', 105, 'g'],
+        ['Tahini sauce', 15, 'g'],
+      ],
+      steps: [
+        'Shape the mince on skewers with salt and spices.',
+        'Grill 8 minutes, turning once.',
+        'Serve with bread, grilled vegetables and tahini.',
+      ],
+    },
+    {
+      n: 'Chicken and vegetable stir-fry with rice',
+      m: [0.34, 0.46, 0.2],
+      tag: 'Cut',
+      min: 20,
+      ing: [
+        ['Chicken breast', 145, 'g'],
+        ['Mixed vegetables', 170, 'g'],
+        ['Basmati rice (raw)', 60, 'g'],
+        ['Garlic and ginger', 1, 'tbsp'],
+        ['Olive oil', 10, 'ml'],
+      ],
+      steps: [
+        'Cook the rice.',
+        'Stir-fry the chicken in the oil, then add the vegetables, garlic and ginger.',
+        'Serve over the rice.',
+      ],
+    },
+    {
+      n: 'Beef and sweet potato bowl',
+      m: [0.3, 0.42, 0.28],
+      tag: 'Bulk',
+      min: 30,
+      ing: [
+        ['Lean beef strips', 175, 'g'],
+        ['Sweet potato', 225, 'g'],
+        ['Green beans', 125, 'g'],
+        ['Olive oil', 10, 'ml'],
+      ],
+      steps: [
+        'Roast the sweet potato cubes 20 minutes.',
+        'Sear the beef and beans in the oil.',
+        'Serve together.',
+      ],
+    },
   ],
   Snack: [
     {
@@ -318,6 +627,65 @@ export const RECIPES: Record<string, Recipe[]> = {
       ],
       steps: ['Top the cottage cheese with berries.'],
     },
+    {
+      n: 'Dates and almonds',
+      m: [0.08, 0.6, 0.32],
+      tag: 'Bulk',
+      min: 1,
+      ing: [
+        ['Dates', 11.5, 'pieces'],
+        ['Almonds', 60, 'g'],
+      ],
+      steps: [
+        'Eat slowly with water or coffee.',
+      ],
+    },
+    {
+      n: 'Hummus with carrot and cucumber',
+      m: [0.16, 0.46, 0.38],
+      tag: 'Cut',
+      min: 5,
+      ing: [
+        ['Hummus', 155, 'g'],
+        ['Carrot and cucumber sticks', 305, 'g'],
+        ['Arabic bread', 1.5, 'small'],
+      ],
+      steps: [
+        'Cut the vegetables into sticks.',
+        'Dip into the hummus.',
+      ],
+    },
+    {
+      n: 'Boiled eggs and an orange',
+      m: [0.3, 0.36, 0.34],
+      tag: 'Cut',
+      min: 10,
+      ing: [
+        ['Eggs', 5.5, 'large'],
+        ['Orange', 2.5, 'medium'],
+        ['Cucumber', 265, 'g'],
+      ],
+      steps: [
+        'Boil the eggs 9 minutes.',
+        'Eat with the orange and cucumber.',
+      ],
+    },
+    {
+      n: 'Chicken and lettuce wraps',
+      m: [0.5, 0.2, 0.3],
+      tag: 'Cut',
+      min: 10,
+      ing: [
+        ['Chicken breast', 265, 'g'],
+        ['Lettuce leaves', 13.5, 'pieces'],
+        ['Tomato and cucumber', 225, 'g'],
+        ['Olive oil', 10, 'ml'],
+      ],
+      steps: [
+        'Grill and slice the chicken.',
+        'Wrap it in the lettuce with the vegetables.',
+      ],
+    },
   ],
   Iftar: [
     {
@@ -350,6 +718,22 @@ export const RECIPES: Record<string, Recipe[]> = {
         'Finish with fattoush. Pray, then have your main meal later.',
       ],
     },
+    {
+      n: 'Dates, lentil soup and grilled chicken',
+      m: [0.32, 0.48, 0.2],
+      tag: 'Cut',
+      min: 35,
+      ing: [
+        ['Dates', 3.5, 'pieces'],
+        ['Red lentils (raw)', 60, 'g'],
+        ['Chicken breast', 175, 'g'],
+        ['Mixed salad', 175, 'g'],
+      ],
+      steps: [
+        'Break your fast with the dates and water.',
+        'Have the soup, then the chicken with salad.',
+      ],
+    },
   ],
   'Main meal': [
     {
@@ -377,6 +761,23 @@ export const RECIPES: Record<string, Recipe[]> = {
         ['Laban', 250, 'ml'],
       ],
       steps: ['Cook the kabsa as usual with less oil.', 'Serve with a big salad and laban.'],
+    },
+    {
+      n: 'Harees with chicken',
+      m: [0.3, 0.5, 0.2],
+      tag: 'Bulk',
+      min: 90,
+      ing: [
+        ['Harees wheat (raw)', 80, 'g'],
+        ['Chicken breast', 160, 'g'],
+        ['Ghee', 5, 'g'],
+        ['Cinnamon', 1, 'pinch'],
+      ],
+      steps: [
+        'Cook the wheat and chicken in water on low until very soft.',
+        'Beat until smooth.',
+        'Top with ghee and cinnamon.',
+      ],
     },
   ],
   Suhoor: [
@@ -406,6 +807,22 @@ export const RECIPES: Record<string, Recipe[]> = {
       ],
       steps: ['Cook the oats.', 'Boil the eggs.', 'Drink the laban slowly. Slow carbs keep you full longer.'],
     },
+    {
+      n: 'Foul, Arabic bread and cucumber',
+      m: [0.22, 0.58, 0.2],
+      tag: 'Cut',
+      min: 10,
+      ing: [
+        ['Foul medames', 265, 'g'],
+        ['Arabic bread', 1.5, 'small'],
+        ['Cucumber and tomato', 200, 'g'],
+        ['Olive oil', 5, 'ml'],
+      ],
+      steps: [
+        'Warm the foul with cumin and lemon.',
+        'Serve with bread and vegetables.',
+      ],
+    },
   ],
 };
 
@@ -422,7 +839,7 @@ export const MEAL_WEIGHT: Record<string, number> = {
 
 /** Grams for one of each counted unit, so recipes show weights instead of "1 medium". */
 const UNIT_G: Record<string, number> = { medium: 150, large: 50, small: 60, slice: 30, slices: 30, piece: 10, pieces: 10, scoop: 30, bun: 60, half: 40, tbsp: 15 };
-const NAME_G: Record<string, number> = { Banana: 120, Apple: 180, Dates: 8, 'Baked sambousek': 30, 'Rice cakes': 9, 'Light cheese slice': 20, 'Kabsa spice mix': 7 };
+const NAME_G: Record<string, number> = { Banana: 120, Apple: 180, Dates: 8, 'Baked sambousek': 30, 'Rice cakes': 9, 'Light cheese slice': 20, 'Kabsa spice mix': 7, Orange: 150, 'Whole wheat tortilla': 60, 'Lettuce leaves': 10 };
 const LIQUID = new Set(['Soy sauce']);
 
 /** An ingredient amount in grams (or ml for liquids). Units with no weight, like a pinch, stay as they are. */

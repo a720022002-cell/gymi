@@ -60,7 +60,7 @@ export default function LoggedScreen() {
       </Screen>
     );
 
-  const meal = log.plan_key ? planMeals(food.plan).find((m) => m.key === log.plan_key) : undefined;
+  const meal = log.plan_key ? planMeals(food.plan, log.day).find((m) => m.key === log.plan_key) : undefined;
   const ing = meal ? scaleIngredients(meal.r, meal.k) : [];
   const f = dbFood?.id === foodId ? dbFood.f : null;
   const planned = planMeals(food.plan);

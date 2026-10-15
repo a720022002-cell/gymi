@@ -5,6 +5,7 @@ import { View } from 'react-native';
 import { Glass } from '@/components/Glass';
 import { Icon, type IconName } from '@/components/Icon';
 import { OkChip, Tag, WarnChip } from '@/components/food/Chips';
+import { makeRecipes, needsRecipes, recipesKey } from '@/lib/aiRecipes';
 import { ALLERGENS } from '@/lib/allergies';
 import { MacroBars } from '@/components/food/MacroBars';
 import { MealMenu } from '@/components/food/MealMenu';
@@ -34,6 +35,10 @@ function plateau(weights: Measure[], today: string) {
   if (a == null || b == null || c == null) return false;
   return Math.max(a, b, c) - Math.min(a, b, c) <= 0.3;
 }
+
+/** AI recipes are being made, and what they were last tried for while the app is open (so a failure doesn't repeat). */
+let recipesBusy = false;
+let recipesTried = '';
 
 export default function Food() {
   const { t } = useT();
@@ -74,10 +79,35 @@ function FoodHome() {
     toast(t('Your targets were updated for your new weight.'), { icon: 'scale' });
     clearWeightNote();
   }, [weightNote, clearWeightNote, toast, t]);
+  // Your own AI recipes: made in the background when missing or 2 weeks old (once per open of the app), or on demand.
+  const [making, setMaking] = useState(false);
+  const plan = food.plan;
+  const ready = food.setupDone && !coach;
+  const freshRecipes = async (manual: boolean) => {
+    if (recipesBusy) return;
+    recipesBusy = true;
+    setMaking(true);
+    const r = await makeRecipes(plan, lang, food.today).catch(() => null);
+    recipesBusy = false;
+    setMaking(false);
+    if (r) {
+      food.updatePlan({ aiRecipes: r });
+      if (manual) toast(t('{n} new recipes made for you', { n: r.list.length }), { ai: true });
+    } else if (manual) toast(t('Couldn’t make new recipes. Please try again.'), { icon: 'warn' });
+  };
+  // Tried once for each goal, allergies, meals and language (so new allergies get new recipes right away).
+  const wantKey = `${recipesKey(plan)}|${lang}`;
+  useEffect(() => {
+    if (!ready || recipesTried === wantKey || !needsRecipes(plan, lang, food.today)) return;
+    recipesTried = wantKey;
+    setTimeout(() => freshRecipes(false), 0);
+    // Runs when what the recipes are made for changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, wantKey]);
   const coachLogged = (n: string) => food.logs.some((l) => l.name.startsWith(`${n} (`) && l.meal === n);
   const left = food.kcalLeft;
   const goal = food.dayGoal(food.day);
-  const meals = planMeals(food.plan);
+  const meals = planMeals(food.plan, food.day);
   const loggedKeys = new Set(food.logs.map((l) => l.plan_key).filter(Boolean));
 
   const upcoming = [1, 2, 3, 4].map((n) => addDays(food.today, n)).filter((d) => food.moves.some((m) => m.day === d));
@@ -86,7 +116,7 @@ function FoodHome() {
     return new Intl.DateTimeFormat(lang === 'ar' ? 'ar' : 'en-US', { weekday: 'short' }).format(new Date(y, m - 1, dd));
   };
   // Logged food grouped by meal; food logged without a meal goes by the time it was logged.
-  const planned = planMeals(food.plan);
+  const planned = planMeals(food.plan, food.day);
   const mealOf = (x: (typeof food.logs)[number]) => x.meal || mealAt(planned, hhmmOf(new Date(x.created_at)));
   // Meals in the order you ate them (logs come oldest first).
   const order = [...new Set(food.logs.map(mealOf))];
@@ -426,6 +456,16 @@ function FoodHome() {
               </Text>
             </Springy>
           </Row>
+          <Button
+            small
+            kind="soft"
+            icon="sparkle"
+            loading={making}
+            title={t(making ? 'Making recipes for you…' : 'New recipe ideas')}
+            style={{ marginBottom: 10 }}
+            color={c.text}
+            onPress={() => freshRecipes(true)}
+          />
           {meals.map((m) => {
             const logged = loggedKeys.has(m.key);
             return (

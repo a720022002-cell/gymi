@@ -69,7 +69,7 @@ async function openrouterCall(model: string, system: string, msgs: Msg[], schema
       ...(msgs.some((m) => m.parts.some((p) => 'file' in p)) ? { plugins: [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }] } : {}),
       // The rules go in their own system message, so they stay rules however long the chat gets.
       messages: [
-        { role: 'system', content: `${system}\nAnswer with one JSON object only, no other text.${schema ? `\nIt must follow this JSON schema: ${JSON.stringify(schema)}` : ''}` },
+        { role: 'system', content: `${system}\nAnswer with one JSON object only, no other text. Inside text values never use the " character (write « » instead).${schema ? `\nIt must follow this JSON schema: ${JSON.stringify(schema)}` : ''}` },
         ...msgs.map((m) => ({
         role: m.role === 'ai' ? 'assistant' : 'user',
         content: [
@@ -111,12 +111,26 @@ async function openrouterCall(model: string, system: string, msgs: Msg[], schema
 }
 
 async function ask(task: string, system: string, msgs: Msg[], schema?: object) {
-  const text = await openrouter(system, msgs, schema);
   // Take the JSON object out of the answer (some models add words or ``` around it).
-  const t = text.trim();
-  const a = t.indexOf('{');
-  const b = t.lastIndexOf('}');
-  return JSON.parse(a >= 0 && b > a ? t.slice(a, b + 1) : t);
+  const parse = (text: string) => {
+    const t = text.trim();
+    const a = t.indexOf('{');
+    const b = t.lastIndexOf('}');
+    const raw = a >= 0 && b > a ? t.slice(a, b + 1) : t;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      // Common slips: a fraction as a number (1/2) and a comma before a closing bracket.
+      return JSON.parse(raw.replace(/:\s*(\d+)\s*\/\s*(\d+)(?=\s*[,}\]])/g, (_, x, y) => `: ${Math.round((+x / +y) * 100) / 100}`).replace(/,\s*([}\]])/g, '$1'));
+    }
+  };
+  try {
+    return parse(await openrouter(system, msgs, schema));
+  } catch (e) {
+    // A broken JSON answer (a stray quote in long text): ask once more.
+    if (!(e instanceof SyntaxError)) throw e;
+    return parse(await openrouter(system, msgs, schema));
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -512,6 +526,39 @@ Fill the fields in order, looking at the photo again for each one:
       }
       alternatives = alternatives.slice(0, 3);
       return { ...out, id, alternatives, confidence, known: !!out.known && (!!id || alternatives.length > 0) };
+    }
+    case 'recipes': {
+      // A few home recipes for one meal of the day, made for this person: their goal, allergies and the cuisines picked
+      // for them (so two people rarely get the same plan). Amounts are for a 600 kcal portion; the app scales them.
+      const n = Math.min(5, Math.max(1, Number(b.count) || 4));
+      const system = `You write simple, healthy home recipes for a fitness app used in Saudi Arabia and the Gulf. ${LANG(lang)}
+Write ${n} different recipes for this meal: "${String(b.meal ?? 'Lunch').slice(0, 30)}". Goal: ${String(b.goal ?? 'maintain').slice(0, 20)} (cut = high protein, lighter; bulk = more carbs and calories; maintain = balanced).
+Cuisines to draw ideas from this time: ${String(b.cuisines ?? 'Saudi, Levantine').slice(0, 120)}; every recipe a different dish with a different main protein or base, never the same dish in two versions.
+${/snack|pre-workout/i.test(String(b.meal ?? '')) ? 'This is a snack: quick and light (5 to 10 minutes, no full plate of rice), like fruit with nuts or yogurt, a small wrap, eggs, hummus with vegetables, or a shake.' : ''} Use ingredients sold in Gulf supermarkets. Mix proteins (chicken, beef, lamb, fish, eggs, legumes, dairy) unless the allergies rule them out.
+${b.allergies ? `ALLERGIES: the person is allergic to ${String(b.allergies).slice(0, 300)}. Never use these or anything made from them (sauces, bread, ghee, butter, desserts, spreads).` : ''}
+${Array.isArray(b.avoid) && b.avoid.length ? `Don't repeat these dishes: ${(b.avoid as unknown[]).map(String).slice(0, 30).join('; ').slice(0, 1500)}.` : ''}
+Each recipe: "n" a short dish name; "tag" "Cut" (lighter, higher protein) or "Bulk"; "min" minutes to make; "m" the share of calories from protein, carbs and fat in whole percents (they add up to 100; real numbers for these ingredients); "ing" 2 to 7 ingredients (amount a plain number like 0.5, never 1/2) for ONE portion of about 600 kcal in total (raw weights; units only g, ml, large, medium, small, slice, piece, tbsp, tsp, pinch); "steps" 2 to 4 short steps.
+Names, ingredients and steps in the reply language.`;
+      const out = (await ask(task, system, [{ role: 'user', parts: [{ text: `${n} recipes for ${String(b.meal ?? 'Lunch')}.` }] }], {
+        type: 'object',
+        properties: {
+          recipes: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                n: { type: 'string' }, tag: { type: 'string', enum: ['Cut', 'Bulk'] }, min: { type: 'number' },
+                m: { type: 'object', properties: { p: { type: 'number' }, c: { type: 'number' }, f: { type: 'number' } }, required: ['p', 'c', 'f'] },
+                ing: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, amount: { type: 'number' }, unit: { type: 'string' } }, required: ['name', 'amount', 'unit'] } },
+                steps: { type: 'array', items: { type: 'string' } },
+              },
+              required: ['n', 'tag', 'min', 'm', 'ing', 'steps'],
+            },
+          },
+        },
+        required: ['recipes'],
+      })) as { recipes?: unknown[] };
+      return { recipes: (Array.isArray(out.recipes) ? out.recipes : []).slice(0, n) };
     }
     case 'plan': {
       const system = `You are an experienced strength coach. Build a weekly gym plan as JSON. Use ONLY exercise ids from the list given.

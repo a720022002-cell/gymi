@@ -1,4 +1,5 @@
 // Calorie math, copied from the design file (docs/index.html: bmr, calcPlan, targets).
+import type { AiRecipes } from './aiRecipes';
 import { type AllergenKey, allergensIn } from './allergies';
 import { addMin, fastTimes } from './prayer';
 import { MEAL_WEIGHT, type Recipe, RECIPES } from './recipes';
@@ -58,6 +59,8 @@ export type FoodPlan = {
   /** Food allergies (keys from ALLERGENS) and any others in your own words: kept out of suggested meals. */
   allergies?: string[];
   allergyNote?: string;
+  /** Recipes the AI wrote for you (mixed into the meal plan, so it isn't the same as everyone else's). */
+  aiRecipes?: AiRecipes;
 };
 
 /** A recipe in the plan. gen = made by the AI from the ingredients you have. */
@@ -219,8 +222,13 @@ export const hhmmOf = (d = new Date()) => `${String(d.getHours()).padStart(2, '0
 /** `contains`: your allergens in this meal, only when there was no safe recipe to pick (shown as a warning). */
 export type PlannedMeal = Meal & { key: string; r: CustomRecipe; k: number; p: number; c: number; f: number; contains?: AllergenKey[] };
 
-/** Today's suggested meals, sized to the daily calories. */
+/**
+ * A day's suggested meals, sized to the daily calories. Your own AI recipes come first, then the built-in ones; the
+ * dish changes from day to day (and with "Change meal"), and the same dish isn't used twice in a day.
+ */
 export function planMeals(f: FoodPlan, day?: string): PlannedMeal[] {
+  const date = day ?? localDay(new Date());
+  const dayNo = Math.floor(Date.parse(`${date}T12:00:00Z`) / 86400000) || 0;
   const ram = RAMADAN_SWITCH && !!f.ramadan;
   const meals = ram ? ramadanMeals(f.city, day) : f.meals;
   const tag = f.goal <= 1 ? 'Bulk' : 'Cut';
@@ -234,11 +242,12 @@ export function planMeals(f: FoodPlan, day?: string): PlannedMeal[] {
     const key = `${ram ? 'r' : ''}${type}${i}`;
     // Recipes without your allergens: this meal's for your goal, then any for this meal, then another meal's.
     const safe = (list: Recipe[]) => list.filter((x) => !allergensIn([x.n, ...x.ing.map((g) => g[0])], f.allergies).length);
-    const all = RECIPES[type] ?? RECIPES.Snack;
+    const ai = ram ? [] : (f.aiRecipes?.list ?? []).filter((x) => x.type === type);
+    const all = [...ai, ...(RECIPES[type] ?? RECIPES.Snack)];
     const mine = all.filter((x) => x.tag === tag);
     const others = Object.entries(RECIPES).filter(([k]) => k !== type && k !== 'Iftar' && k !== 'Suhoor').flatMap(([, v]) => v);
     const pool = [safe(mine), safe(all), safe(others), mine.length ? mine : all].find((p) => p.length)!;
-    const start = f.picks?.[key] ?? 0;
+    const start = (f.picks?.[key] ?? 0) + dayNo;
     const fresh = Array.from({ length: pool.length }, (_, j) => pool[(start + j) % pool.length]).find((x) => !used.has(x.n));
     const r = f.custom?.[key] ?? fresh ?? pool[start % pool.length];
     used.add(r.n);

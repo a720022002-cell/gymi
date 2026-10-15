@@ -24,7 +24,7 @@ export default function RecipeScreen() {
   const food = useFood();
   const logFood = useLogFood();
   const { key } = useLocalSearchParams<{ key: string }>();
-  const meal = planMeals(food.plan).find((m) => m.key === key);
+  const meal = planMeals(food.plan, food.day).find((m) => m.key === key);
   const [subFor, setSubFor] = useState<number | null>(null);
 
   if (!meal)
