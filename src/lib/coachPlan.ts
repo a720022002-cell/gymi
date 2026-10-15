@@ -69,8 +69,13 @@ export async function prepareSuggestions(raw: unknown, plan: TrainPlan | null, t
         changes.push({ op: 'rest', from, to });
       } else if (c?.op === 'resume') changes.push({ op: 'resume' });
       else if (c?.op === 'days' && Array.isArray(c.week) && c.week.length === 7) {
-        // Each weekday is a workout from the plan or a rest day, and every workout stays in the week.
-        const week = (c.week as unknown[]).map((w) => (typeof w === 'string' && names.includes(w) ? w : null));
+        // Each weekday is a workout from the plan or a rest day (null), and every workout of the week stays in it.
+        // A name that isn't in the plan (misspelled, translated) means the whole change is left out, not a rest day.
+        const raw = c.week as unknown[];
+        if (raw.some((w) => w != null && !(typeof w === 'string' && names.includes(w)))) continue;
+        const week = raw.map((w) => (typeof w === 'string' ? w : null));
+        const before = new Set(plan.week.map((d) => d.w).filter(Boolean));
+        if (![...before].every((w) => week.includes(w as string))) continue;
         if (!week.some(Boolean) || plan.week.every((d, i) => (d.w ?? null) === week[i])) continue;
         changes.push({ op: 'days', week });
       } else if (c?.op === 'deload') changes.push({ op: 'deload' });
@@ -118,6 +123,8 @@ export function applyPlanChanges(plan: TrainPlan, changes: PlanChange[], today: 
       for (let d = c.from < today ? today : c.from; d <= c.to; d = addDays(d, 1)) skipped[d] = true;
     } else if (c.op === 'resume') skipped = Object.fromEntries(Object.entries(skipped).filter(([d]) => d < today));
     else if (c.op === 'days') {
+      // Checked again (an old suggestion may name workouts that are gone now): left out then.
+      if (c.week.some((w) => w != null && !workouts[w])) continue;
       // For good, from this week on (this week's own moves are dropped).
       week = week.map((d, i) => ({ ...d, w: c.week[i] ?? null }));
       override = undefined;

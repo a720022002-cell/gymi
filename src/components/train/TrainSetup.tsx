@@ -51,7 +51,11 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
     const workouts: TrainPlan['workouts'] = {};
     for (const w of result.workouts ?? []) {
       const name = String(w.name ?? '').trim().slice(0, 20);
-      const ex = (w.ex ?? []).filter((x) => EX[x.id]).map((x) => ({ id: x.id, sets: Math.min(8, Math.max(1, Math.round(+x.sets || 3))), reps: String(x.reps || '8–12').slice(0, 7) }));
+      // Only exercises from our list, each once, and never one that loads an injury you picked (the AI can slip).
+      const seen = new Set<string>();
+      const ex = (w.ex ?? [])
+        .filter((x) => EX[x.id] && !(EX[x.id].stress ?? []).some((s) => injuries.includes(s)) && !seen.has(x.id) && !!seen.add(x.id))
+        .map((x) => ({ id: x.id, sets: Math.min(8, Math.max(1, Math.round(+x.sets || 3))), reps: String(x.reps || '8–12').slice(0, 7) }));
       if (name && ex.length) workouts[name] = { ex, focus: String(w.focus ?? '').slice(0, 60), min: workoutMinutes(ex) };
     }
     // The days are set here too: one workout per training day, spread with rest days, the same every time.

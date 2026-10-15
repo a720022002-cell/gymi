@@ -30,7 +30,12 @@ type Ctx = {
   lastUsage: { prompt: number; completion: number; cost: number };
   /** OpenRouter answered (or may have, on a timeout), so the call may be paid: a failure then isn't refunded. */
   billed: boolean;
+  /** When this request must be answered by (all tries together stay under the server's 150 s limit). */
+  deadline: number;
 };
+/** Time for all tries of one request together. */
+const REQUEST_BUDGET_MS = 110_000;
+const timeLeft = () => cx().deadline - Date.now();
 const requestCtx = new AsyncLocalStorage<Ctx>();
 const cx = () => requestCtx.getStore()!;
 /** One AI call may take at most this long, and answer at most this many tokens. */
@@ -46,20 +51,25 @@ async function openrouter(system: string, msgs: Msg[], schema?: object): Promise
   try {
     return await openrouterCall(HAIKU, system, msgs, schema);
   } catch (e) {
-    // Busy or a hiccup: Haiku once more (never another model). A bad key won't work again.
-    if ((e as Error).message === 'ai_off') throw e;
+    // Only a busy model, a timeout, an empty answer or a server error is tried once more (Haiku again, never another
+    // model), and only with time left. A bad key or a bad request won't work on a second try.
+    if (!retryable(e) || timeLeft() < 15_000) throw e;
+    await new Promise((r) => setTimeout(r, 1500));
     return openrouterCall(HAIKU, system, msgs, schema);
   }
 }
+const retryable = (e: unknown) => (e as Error).message === 'busy' || /^openrouter 5\d\d/.test((e as Error).message);
 
-async function openrouterCall(model: string, system: string, msgs: Msg[], schema?: object, retry = true): Promise<string> {
+async function openrouterCall(model: string, system: string, msgs: Msg[], schema?: object): Promise<string> {
   const key = openrouterKey();
   if (!key) throw new Error('ai_off');
+  const wait = Math.min(AI_TIMEOUT_MS, timeLeft());
+  if (wait < 5_000) throw new Error('busy');
   let res: Response;
   try {
     res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
-    signal: AbortSignal.timeout(AI_TIMEOUT_MS),
+    signal: AbortSignal.timeout(wait),
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
     body: JSON.stringify({
       model,
@@ -98,20 +108,49 @@ async function openrouterCall(model: string, system: string, msgs: Msg[], schema
   }
   if (!res.ok) cx().lastDetail = `openrouter ${res.status}: ${(await res.text()).slice(0, 200)}`;
   if (res.status === 401 || res.status === 403) throw new Error('ai_off');
-  if (res.status === 429 && retry) {
-    await new Promise((r) => setTimeout(r, 1500));
-    return openrouterCall(model, system, msgs, schema, false);
-  }
   if (!res.ok) throw new Error(res.status === 429 ? 'busy' : cx().lastDetail);
   cx().billed = true;
   const data = await res.json();
   cx().lastModel = data?.model ?? '';
   cx().lastUsage = { prompt: data?.usage?.prompt_tokens ?? 0, completion: data?.usage?.completion_tokens ?? 0, cost: Number(data?.usage?.cost ?? 0) || 0 };
   const content = String(data?.choices?.[0]?.message?.content ?? '').slice(0, 200_000);
-  // An empty answer happens on busy free models: try once more.
-  if (!String(content).trim() && retry) return openrouterCall(model, system, msgs, schema, false);
+  // An empty answer: treated like a busy model (tried once more above).
   if (!String(content).trim()) throw new Error('busy');
   return content;
+}
+
+/**
+ * Fix the usual slips in an AI's JSON, outside text values only (text like "3/4 cup" stays as it is): a fraction as a
+ * number (1/2 → 0.5) and a comma before a closing bracket.
+ */
+function repairJson(raw: string) {
+  let out = '';
+  let inStr = false;
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i];
+    if (inStr) {
+      out += ch;
+      if (ch === '\\') out += raw[++i] ?? '';
+      else if (ch === '"') inStr = false;
+      continue;
+    }
+    if (ch === '"') {
+      inStr = true;
+      out += ch;
+      continue;
+    }
+    // A fraction where a number is expected.
+    const frac = /^(\d+)\s*\/\s*(\d+)/.exec(raw.slice(i));
+    if (frac && /[:\[,]\s*$/.test(out) && +frac[2] > 0) {
+      out += String(Math.round((+frac[1] / +frac[2]) * 100) / 100);
+      i += frac[0].length - 1;
+      continue;
+    }
+    // A comma right before } or ].
+    if (ch === ',' && /^\s*[}\]]/.test(raw.slice(i + 1))) continue;
+    out += ch;
+  }
+  return out;
 }
 
 async function ask(task: string, system: string, msgs: Msg[], schema?: object) {
@@ -124,15 +163,14 @@ async function ask(task: string, system: string, msgs: Msg[], schema?: object) {
     try {
       return JSON.parse(raw);
     } catch {
-      // Common slips: a fraction as a number (1/2) and a comma before a closing bracket.
-      return JSON.parse(raw.replace(/:\s*(\d+)\s*\/\s*(\d+)(?=\s*[,}\]])/g, (_, x, y) => `: ${Math.round((+x / +y) * 100) / 100}`).replace(/,\s*([}\]])/g, '$1'));
+      return JSON.parse(repairJson(raw));
     }
   };
   try {
     return parse(await openrouter(system, msgs, schema));
   } catch (e) {
-    // A broken JSON answer (a stray quote in long text): ask once more.
-    if (!(e instanceof SyntaxError)) throw e;
+    // A broken JSON answer (a stray quote in long text): ask once more, if there's time.
+    if (!(e instanceof SyntaxError) || timeLeft() < 20_000) throw e;
     return parse(await openrouter(system, msgs, schema));
   }
 }
@@ -694,7 +732,7 @@ Use only these numbers and say them plainly (for example "you trained 2 of 4 day
   }
 }
 
-Deno.serve((req) => requestCtx.run({ lastDetail: '', lastModel: '', temperature: undefined, lastUsage: { prompt: 0, completion: 0, cost: 0 }, billed: false }, () => handle(req)));
+Deno.serve((req) => requestCtx.run({ lastDetail: '', lastModel: '', temperature: undefined, lastUsage: { prompt: 0, completion: 0, cost: 0 }, billed: false, deadline: Date.now() + REQUEST_BUDGET_MS }, () => handle(req)));
 
 async function handle(req: Request) {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });

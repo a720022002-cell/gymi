@@ -106,6 +106,12 @@ export default function Coach() {
 
   /** Everything the coach should know: today, the last week, trends, targets, cycle and watch data. */
   const context = () => {
+    const c = fullContext();
+    // What must never be cut (the server keeps the first 20,000 characters) goes first.
+    const { foodAllergies, coachManagesFood, coachTargets, ...rest } = c;
+    return { foodAllergies, coachManagesFood, coachTargets, ...rest };
+  };
+  const fullContext = () => {
     const today = food.today;
     const week = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6));
     const ci = new Map(health.checkins.map((x) => [x.day, x]));
@@ -199,7 +205,15 @@ export default function Coach() {
           return [k, m ? { value: m.value, day: m.day } : null];
         }).filter(([, v]) => v),
       ),
-      bloodTests: health.blood.slice(0, 2).map((b) => ({ day: b.day, title: b.title, values: b.values.map((v) => `${v.name}: ${v.value} ${v.unit}${v.flag ? (v.flag > 0 ? ' (high)' : ' (low)') : ''}`) })),
+      // The latest 2 lab reports, at most 20 values each, the high and low ones first.
+      bloodTests: health.blood.slice(0, 2).map((b) => ({
+        day: b.day,
+        title: b.title,
+        values: [...b.values]
+          .sort((x, y) => Number(!!y.flag) - Number(!!x.flag))
+          .slice(0, 20)
+          .map((v) => `${v.name}: ${v.value} ${v.unit}${v.flag ? (v.flag > 0 ? ' (high)' : ' (low)') : ''}`),
+      })),
       supplements: health.supplements.filter((x) => x.active).map((x) => `${x.name} ${x.dose}${x.unit} ${x.freq}`),
       coachManagesFood: !!food.coachTargets,
       foodAllergies: allergiesText(food.plan.allergies, food.plan.allergyNote) || 'none',
@@ -261,41 +275,49 @@ export default function Coach() {
     return done;
   };
 
+  // Set before anything is awaited, so a double tap (or a prompt chip and Send) sends once.
+  const sending = useRef(false);
   const send = async (raw: string) => {
     const q = raw.trim();
-    if (!q || thinking) return;
+    if (!q || thinking || sending.current) return;
+    sending.current = true;
     setText('');
-    const mine = await saveMsg({ chat_id: chatId, role: 'user', text: q.slice(0, 2000), actions: null });
-    const history = [...msgs, ...(mine ? [mine] : [])];
-    if (mine) setAll((xs) => [...(xs ?? []), mine]);
     setThinking(true);
-    // Answer in the language you wrote in (Arabic letters → Arabic), whatever the app's language is.
-    const replyLang = /[\u0600-\u06FF]/.test(q) ? 'ar' : /[A-Za-z]/.test(q) ? 'en' : lang;
-    const { result, error } = await askAI<{ reply: string; actions: ChatAction[]; suggest?: unknown; card?: unknown; memory?: string }>('chat', {
-      lang: replyLang,
-      context: context(),
-      memory,
-      messages: history.map((m) => ({ role: m.role, text: m.text })),
-    });
-    if (error || !result) {
+    try {
+      const mine = await saveMsg({ chat_id: chatId, role: 'user', text: q.slice(0, 2000), actions: null });
+      if (mine) setAll((xs) => [...(xs ?? []), mine]);
+      // Your question always goes to the AI, even if saving it failed.
+      const history = [...msgs.map((m) => ({ role: m.role, text: m.text })), { role: 'user' as const, text: q.slice(0, 2000) }];
+      // Answer in the language you wrote in (Arabic letters → Arabic), whatever the app's language is.
+      const replyLang = /[\u0600-\u06FF]/.test(q) ? 'ar' : /[A-Za-z]/.test(q) ? 'en' : lang;
+      const { result, error } = await askAI<{ reply: string; actions: ChatAction[]; suggest?: unknown; card?: unknown; memory?: string }>('chat', {
+        lang: replyLang,
+        context: context(),
+        memory,
+        messages: history,
+      });
+      if (error || !result) return toast(t(aiErrorText(error ?? 'failed')), { icon: 'warn' });
+      const acts = await applyActions(Array.isArray(result.actions) ? result.actions : []);
+      const sugg = await prepareSuggestions(result.suggest, train.plan, food.today);
+      const all2 = [...acts, ...sugg];
+      // A suggested meal with one of your allergens is never shown.
+      const aiCard = cleanCard(result.card);
+      const safeCard = aiCard?.type === 'meal' && allergensIn([aiCard.name], food.plan.allergies).length ? null : aiCard;
+      const card = safeCard ?? (all2.length ? null : guessCard(q));
+      const ai = await saveMsg({ chat_id: chatId, role: 'ai', text: String(result.reply ?? '').slice(0, 4000), actions: all2.length ? all2 : null, card });
+      // The coach keeps a short memory of lasting things you told it.
+      if (typeof result.memory === 'string' && result.memory.trim() && result.memory.trim() !== memory && session) {
+        setMemory(result.memory.trim().slice(0, 1500));
+        saveMemory(session.user.id, result.memory);
+      }
+      if (ai) setAll((xs) => [...(xs ?? []), ai]);
+    } catch {
+      toast(t(aiErrorText('failed')), { icon: 'warn' });
+    } finally {
+      // Whatever happened, "Thinking…" never stays stuck.
+      sending.current = false;
       setThinking(false);
-      return toast(t(aiErrorText(error ?? 'failed')), { icon: 'warn' });
     }
-    const acts = await applyActions(Array.isArray(result.actions) ? result.actions : []);
-    const sugg = await prepareSuggestions(result.suggest, train.plan, food.today);
-    const all2 = [...acts, ...sugg];
-    // A suggested meal with one of your allergens is never shown.
-    const aiCard = cleanCard(result.card);
-    const safeCard = aiCard?.type === 'meal' && allergensIn([aiCard.name], food.plan.allergies).length ? null : aiCard;
-    const card = safeCard ?? (all2.length ? null : guessCard(q));
-    const ai = await saveMsg({ chat_id: chatId, role: 'ai', text: String(result.reply ?? '').slice(0, 4000), actions: all2.length ? all2 : null, card });
-    // The coach keeps a short memory of lasting things you told it.
-    if (typeof result.memory === 'string' && result.memory.trim() && result.memory.trim() !== memory && session) {
-      setMemory(result.memory.trim().slice(0, 1500));
-      saveMemory(session.user.id, result.memory);
-    }
-    setThinking(false);
-    if (ai) setAll((xs) => [...(xs ?? []), ai]);
   };
 
   const undo = async (m: ChatMsg, i: number) => {
