@@ -48,6 +48,7 @@ export default function Recap() {
   const [ai, setAi] = useState<RecapAI | null>(null);
   const [aiState, setAiState] = useState<'loading' | 'ready' | 'failed'>('loading');
   const [applied, setApplied] = useState<number[] | null>(null);
+  const applying = useRef(false);
   const asked = useRef(false);
   // Joined during or after that week: no recap yet (it would be all zeros).
   const tooNew = !!session && !hasRecap(session.user.created_at, start);
@@ -89,7 +90,7 @@ export default function Recap() {
     if (!stats) return [];
     const s: Slide[] = [{ key: 'intro', tint: allHit ? '#1b2a8a' : '#2b2140' }];
     if (plan || stats.workouts.done) s.push({ key: 'train', tint: allHit ? '#123a2a' : '#2a1d3a' });
-    if (food.setupDone && stats.calDays[1]) s.push({ key: 'food', tint: '#2a1f5c' });
+    if (food.setupDone && stats.logged.cal[1]) s.push({ key: 'food', tint: '#2a1f5c' });
     if (stats.weight || stats.sleepAvg != null) s.push({ key: 'body', tint: '#16304d' });
     s.push(allHit ? { key: 'party', tint: '#3a2a08' } : { key: 'why', tint: '#3a2a1a' });
     s.push({ key: 'tips', tint: '#1b2a8a' });
@@ -210,29 +211,40 @@ export default function Recap() {
               applied={applied}
               plan={plan}
               onApply={async (picked) => {
-                const sug = ai?.suggest ?? [];
-                let planNext = plan;
-                let foodNext = food.plan;
-                const moves: { day: string; kcal: number }[] = [];
-                for (const j of picked) {
-                  const s = sug[j];
-                  if (s?.type === 'plan' && planNext) planNext = applyPlanChanges(planNext, s.changes, food.today);
-                  if (s?.type === 'targets' && !food.coachTargets) foodNext = applyTargets(foodNext, s);
-                  if (s?.type === 'move' && planNext) planNext = moveDay(planNext, s.from, s.to, food.today);
-                  if (s?.type === 'balance') moves.push(...balanceMoves(s, food.today));
-                  if (s?.type === 'meal') await food.saveMeal({ name: s.name, items: null, ingredients: null, kcal: s.kcal, protein: s.protein, carbs: s.carbs, fat: s.fat });
-                  if (s?.type === 'reminder' && uid) {
-                    const prefs = await loadPrefs(uid);
-                    await savePrefs(uid, withReminder(prefs, s.kind, s.time));
+                // Once only: a second tap waits, and applied suggestions are never applied again.
+                if (applying.current || applied) return;
+                applying.current = true;
+                try {
+                  const sug = ai?.suggest ?? [];
+                  let planNext = plan;
+                  let foodNext = food.plan;
+                  const moves: { day: string; kcal: number }[] = [];
+                  for (const j of picked) {
+                    const s = sug[j];
+                    if (s?.type === 'plan' && planNext) planNext = applyPlanChanges(planNext, s.changes, food.today);
+                    if (s?.type === 'targets' && !food.coachTargets) foodNext = applyTargets(foodNext, s);
+                    if (s?.type === 'move' && planNext) planNext = moveDay(planNext, s.from, s.to, food.today);
+                    if (s?.type === 'balance') moves.push(...balanceMoves(s, food.today));
                   }
+                  // The food targets first: if they can't be saved, nothing else is applied (so trying again is safe).
+                  if (foodNext !== food.plan && !(await food.savePlan(foodNext))) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+                  setApplied(picked);
+                  saveRecap(start, { applied: picked }).catch(() => {});
+                  // The plan just got its weekly check, so the automatic one waits a week.
+                  if (planNext && planNext !== plan) train.updatePlan({ ...planNext, reviewedAt: food.today });
+                  if (moves.length) await food.addMoves(moves);
+                  for (const j of picked) {
+                    const s = sug[j];
+                    if (s?.type === 'meal') await food.saveMeal({ name: s.name, items: null, ingredients: null, kcal: s.kcal, protein: s.protein, carbs: s.carbs, fat: s.fat });
+                    if (s?.type === 'reminder' && uid) {
+                      const prefs = await loadPrefs(uid);
+                      await savePrefs(uid, withReminder(prefs, s.kind, s.time));
+                    }
+                  }
+                  toast(t(picked.length ? 'Your plan is updated' : 'Nothing changed'), { ai: true });
+                } finally {
+                  applying.current = false;
                 }
-                if (moves.length) await food.addMoves(moves);
-                // The plan just got its weekly check, so the automatic one waits a week.
-                if (planNext && planNext !== plan) train.updatePlan({ ...planNext, reviewedAt: food.today });
-                if (foodNext !== food.plan && !(await food.savePlan(foodNext))) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
-                setApplied(picked);
-                saveRecap(start, { applied: picked }).catch(() => {});
-                toast(t(picked.length ? 'Your plan is updated' : 'Nothing changed'), { ai: true });
               }}
               onDone={close}
             />
@@ -441,9 +453,10 @@ function SlideBody(p: BodyProps) {
     );
   }
   if (p.k === 'food') {
-    const [hit, n] = s.calDays;
-    const [ph, pn] = s.proteinDays;
-    const [wh, wn] = s.waterDays;
+    // Out of the days you logged food (and water).
+    const [hit, n] = s.logged.cal;
+    const [ph, pn] = s.logged.prot;
+    const [wh, wn] = s.logged.water;
     return (
       <Stack style={{ gap: 14 }} pointerEvents="none">
         <Eyebrow>{t('Food')}</Eyebrow>

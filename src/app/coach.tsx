@@ -332,8 +332,8 @@ export default function Coach() {
     // Undo the day it was logged on, even if that was yesterday.
     if (a.type === 'sleep') await health.saveCheckin({ sleep_h: a.prev ?? null }, a.day ?? food.today);
     if (a.type === 'weight') {
-      if (a.prev != null) await health.logWeight(a.prev, a.day ?? food.today);
-      else await health.deleteWeight(a.day ?? food.today);
+      // Back to the weight from before (or none), with your profile weight and targets following it.
+      if (!(await health.fixWeight(a.day ?? food.today, a.prev ?? null))) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
     }
     const next = (m.actions ?? []).map((x, j) => (j === i ? { ...x, undone: true } : x));
     setAll((xs) => (xs ?? []).map((x) => (x.id === m.id ? { ...x, actions: next } : x)));

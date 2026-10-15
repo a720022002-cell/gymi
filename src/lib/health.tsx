@@ -3,6 +3,7 @@ import { createContext, type PropsWithChildren, useCallback, useContext, useEffe
 import { useAuth } from './auth';
 import { useFood } from './food';
 import { addDays } from './nutrition';
+import { adjustScore } from './recovery';
 import type { Photo } from './photo';
 import { selectAll, supabase } from './supabase';
 
@@ -169,6 +170,9 @@ export function HealthProvider({ children }: PropsWithChildren) {
       if (!userId) return false;
       const prev = checkins.find((x) => x.day === on);
       const row: Checkin = { day: on, sleep_h: null, sleep_q: null, bed: null, wake: null, energy: null, sore: null, score: null, ...prev, ...patch };
+      // Sleep, soreness or energy changed after the score was worked out: the score follows.
+      if (prev?.score != null && patch.score === undefined && (row.sleep_h !== prev.sleep_h || row.sore !== prev.sore || row.energy !== prev.energy))
+        row.score = adjustScore(prev.score, prev, row);
       setCheckins((xs) => [...xs.filter((x) => x.day !== on), row].sort((a, b) => a.day.localeCompare(b.day)));
       const { error } = await supabase.from('checkins').upsert({ user_id: userId, ...row, updated_at: new Date().toISOString() });
       return !error;

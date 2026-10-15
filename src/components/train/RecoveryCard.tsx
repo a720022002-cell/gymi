@@ -34,7 +34,8 @@ export function useRecovery() {
     logs: train.logs,
     // From the day totals, so looking at another day on the Food page doesn't change it.
     protein: food.setupDone ? { eaten: days[train.today]?.p ?? 0, yesterday: days[addDays(train.today, -1)]?.p ?? null, target: food.target.p } : null,
-    water: { ml: food.water, goal: food.plan.water || 2800 },
+    // Today's water, even when the Food page is showing another day.
+    water: { ml: food.isToday ? food.water : (days[food.today]?.w ?? 0), goal: food.plan.water || 2800 },
     tools: train.recTools,
   };
   return { input, r: recovery(input) };

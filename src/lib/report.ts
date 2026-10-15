@@ -71,6 +71,22 @@ export function useReportStats(from: string, to: string, data: ReportData | null
   const cw = commitWindow(x, from, to, first);
   const n = daysBetween(from, to);
   const foodDays = Object.values(data.days).filter((d) => d.k > 0);
+  // Goals counted over the days you logged that thing (a day you didn't log food isn't a missed calorie goal).
+  // Today counts only once it's met (the day isn't over).
+  const logged = { cal: [0, 0] as [number, number], prot: [0, 0] as [number, number], water: [0, 0] as [number, number] };
+  const count = (k: keyof typeof logged, met: boolean, d: string) => {
+    if (d === food.today && !met) return;
+    logged[k][1]++;
+    if (met) logged[k][0]++;
+  };
+  for (let d = from; d <= to; d = addDays(d, 1)) {
+    const v = data.days[d];
+    if (v && v.k > 0 && food.setupDone) {
+      count('cal', Math.abs(v.k - food.target.k) <= food.target.k * 0.1, d);
+      count('prot', v.p >= food.target.p * 0.9, d);
+    }
+    if (v && v.w > 0) count('water', v.w >= (food.plan.water || 2800), d);
+  }
   const sleeps = data.checkins.filter((c) => c.sleep_h != null).map((c) => c.sleep_h as number);
   const w = data.weights;
   const prs = data.logs.flatMap((l) => l.prs ?? []);
@@ -99,6 +115,7 @@ export function useReportStats(from: string, to: string, data: ReportData | null
     proteinGoal: food.setupDone ? Math.round(food.target.p) : null,
     waterDays: cw.parts.water,
     calDays: cw.parts.cal,
+    logged,
     sleepAvg: sleeps.length ? Math.round((sleeps.reduce((a, b) => a + b, 0) / sleeps.length) * 10) / 10 : null,
     shortNights: sleeps.filter((h) => h < 6.5).length,
     sleepNights: sleeps.length,

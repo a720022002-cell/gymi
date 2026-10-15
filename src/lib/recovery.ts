@@ -52,15 +52,30 @@ function loadRatio(logs: WorkoutLog[], today: string) {
   return { ratio: chronic > 0 ? acute / chronic : 1, early: false };
 }
 
+// Each part from 0 to 100 (a neutral value when it wasn't logged), and its weight in the score.
+const sleepPart = (h: number | null | undefined) => (h != null ? clamp(((h - 5) / 3) * 100, 0, 100) : 75);
+const sorePart = (s: number | null | undefined) => (s != null ? [100, 70, 35][s] : 80);
+const energyPart = (e: number | null | undefined) => (e != null ? [45, 80, 100][e] : 80);
+
+/**
+ * A saved score after you change last night's sleep, soreness or energy later (the rest of what went into it, like
+ * training load and food, stays as it was that morning).
+ */
+export function adjustScore(score: number, before: { sleep_h?: number | null; sore?: number | null; energy?: number | null }, after: typeof before) {
+  const d =
+    (sleepPart(after.sleep_h) - sleepPart(before.sleep_h)) * 0.3 + (sorePart(after.sore) - sorePart(before.sore)) * 0.2 + (energyPart(after.energy) - energyPart(before.energy)) * 0.15;
+  return Math.round(clamp(score + d, 5, 99));
+}
+
 /** Recovery score from 5 to 99 and what went into it (design: recScore, simpler without a watch). */
 export function recovery(x: RecoveryInput) {
   const c = x.checkin?.day === x.today ? x.checkin : undefined;
   const sl = c?.sleep ?? null;
   const so = c?.sore ?? null;
   const en = c?.energy ?? null;
-  const sleep = sl != null ? clamp(((sl - 5) / 3) * 100, 0, 100) : 75;
-  const sore = so != null ? [100, 70, 35][so] : 80;
-  const energy = en != null ? [45, 80, 100][en] : 80;
+  const sleep = sleepPart(sl);
+  const sore = sorePart(so);
+  const energy = energyPart(en);
   const { ratio: acwr, early } = loadRatio(x.logs, x.today);
   // Much more than usual tires you; less (a rest week, a break) only costs a little, and only under half your usual.
   const load = acwr > 1 ? clamp(100 - (acwr - 1) * 120, 30, 100) : clamp(100 - Math.max(0, 0.5 - acwr) * 40, 80, 100);

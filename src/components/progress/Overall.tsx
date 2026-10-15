@@ -38,6 +38,8 @@ export function Overall({ go }: { go: (t: PTab, sub?: number) => void }) {
   const food = useFood();
   const train = useTrain();
   const health = useHealth();
+  // Today's food and water, even when the Food page is showing another day.
+  const todayFood = food.isToday ? { k: food.eaten.k, w: food.water } : { k: health.days[food.today]?.k ?? 0, w: health.days[food.today]?.w ?? 0 };
   const s = useStreaks();
   const { r } = useRecovery();
   const w = health.weights;
@@ -138,8 +140,8 @@ export function Overall({ go }: { go: (t: PTab, sub?: number) => void }) {
         {tile('bolt', t('Recovery'), `${r.score}%`, t(recLabel(r.score)[0]), () => go('recovery'), r.score >= 60)}
         {tile('flame', t('Streak'), t('{n} days', { n: s.overall }), t('Best {n}', { n: s.best }), () => go('streaks', 0), s.overall > 0 ? true : null)}
         {tile('check', t('Commitment'), cm == null ? '–' : `${cm}%`, t('Last 30 days'), () => go('streaks', 2), cm == null ? null : cm >= 80)}
-        {tile('food', t('Calories today'), fmt(food.eaten.k), t('of {n} kcal', { n: fmt(food.dayGoal(food.today)) }), () => router.push('/food'), null)}
-        {tile('drop', t('Water today'), `${fx(food.water / 1000)} L`, t('of {n} L', { n: fx((food.plan.water || 2800) / 1000) }), () => router.push('/water'), food.water >= (food.plan.water || 2800) * 0.8 ? true : null)}
+        {tile('food', t('Calories today'), fmt(todayFood.k), t('of {n} kcal', { n: fmt(food.dayGoal(food.today)) }), () => router.push('/food'), null)}
+        {tile('drop', t('Water today'), `${fx(todayFood.w / 1000)} L`, t('of {n} L', { n: fx((food.plan.water || 2800) / 1000) }), () => router.push('/water'), todayFood.w >= (food.plan.water || 2800) * 0.8 ? true : null)}
       </View>
 
       <SecHead title={t('Strength')} />

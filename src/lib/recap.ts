@@ -53,11 +53,11 @@ export type Goal = { key: 'train' | 'food' | 'protein' | 'water' | 'sleep' | 'we
 export function recapGoals(s: ReportStats, goal: number, hasPlan: boolean): Goal[] {
   const out: Goal[] = [];
   if (hasPlan && s.workouts.planned > 0) out.push({ key: 'train', ok: s.workouts.asPlanned >= s.workouts.planned, done: String(s.workouts.asPlanned), target: String(s.workouts.planned) });
-  const [calHit, calDays] = s.calDays;
+  const [calHit, calDays] = s.logged.cal;
   if (calDays >= 3) out.push({ key: 'food', ok: calHit >= Math.ceil(calDays * 0.7), done: String(calHit), target: String(calDays) });
-  const [pHit, pDays] = s.proteinDays;
+  const [pHit, pDays] = s.logged.prot;
   if (pDays >= 3) out.push({ key: 'protein', ok: pHit >= Math.ceil(pDays * 0.7), done: String(pHit), target: String(pDays) });
-  const [wHit, wDays] = s.waterDays;
+  const [wHit, wDays] = s.logged.water;
   if (wDays >= 3) out.push({ key: 'water', ok: wHit >= Math.ceil(wDays * 0.7), done: String(wHit), target: String(wDays) });
   if (s.sleepAvg != null && s.sleepNights >= 3) out.push({ key: 'sleep', ok: s.sleepAvg >= 7, done: String(s.sleepAvg), target: '7' });
   if (s.weight && s.weight.series.length >= 2) {
