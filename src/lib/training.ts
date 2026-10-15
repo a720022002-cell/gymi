@@ -35,8 +35,10 @@ export type TrainPlan = {
   /** Machine picked for an exercise (index into its machine list). */
   machines: Record<string, number>;
   homeMode: boolean;
-  /** Changes for this week only (moved or missed workouts). */
+  /** Changes for one week only (moved or missed workouts): the latest week that has some. */
   override?: { start: string; week: Day[] };
+  /** Other weeks' own changes (by the week's Sunday), kept so past weeks are still judged by what was planned then. */
+  overrides?: Record<string, Day[]>;
   /** Dates (YYYY-MM-DD) skipped or dismissed, and today's short or home version. */
   skipped: Record<string, true>;
   dismiss: Record<string, true>;
@@ -370,7 +372,20 @@ export function weekStart(day: string) {
 export const weekdayOf = (day: string) => new Date(`${day}T12:00:00`).getDay();
 
 /** This week's days (with any moves for this week only). */
-export const effectiveWeek = (plan: TrainPlan, start: string) => (plan.override?.start === start ? plan.override.week : plan.week);
+export const effectiveWeek = (plan: TrainPlan, start: string) => (plan.override?.start === start ? plan.override.week : (plan.overrides?.[start] ?? plan.week));
+
+/**
+ * Give one week its own layout (this week only). Another week's changes move to `overrides` instead of being lost, so
+ * a day moved away from in that week never counts as missed later. Weeks older than 16 weeks are let go.
+ */
+export function setWeekMoves(plan: TrainPlan, start: string, week: Day[]): Pick<TrainPlan, 'override' | 'overrides'> {
+  const all = { ...(plan.overrides ?? {}) };
+  if (plan.override && plan.override.start !== start) all[plan.override.start] = plan.override.week;
+  delete all[start];
+  const oldest = addDay(start, -16 * 7);
+  const overrides = Object.fromEntries(Object.entries(all).filter(([s]) => s >= oldest));
+  return { override: { start, week }, overrides };
+}
 
 /**
  * True when missing a day counts as a missed workout: a workout was on it in that week's plan (with moves for that
@@ -382,10 +397,16 @@ export function plannedOn(plan: TrainPlan, day: string) {
   return !!effectiveWeek(plan, weekStart(day))[weekdayOf(day)]?.w;
 }
 
+/** The first day workouts were saved with their own "lighter" flag. */
+const LIGHT_FLAG_SINCE = '2026-10-14';
+
 /** A lighter-day or deload session: its weights were lower on purpose, so they never set next time's numbers.
  * Newer logs carry a flag; older ones are matched to the plan's lighter day and deload week. */
 export function isLightLog(l: { day: string; exercises?: { light?: boolean }[] | null }, plan?: Pick<TrainPlan, 'light' | 'deload'> | null) {
   if (l.exercises?.some((x) => x.light)) return true;
+  // Sessions since the flag exists say it themselves: a normal one stays normal even if a lighter day or deload week
+  // was turned on later that day or week. Only older ones are matched by date.
+  if (l.day >= LIGHT_FLAG_SINCE) return false;
   return !!plan && (l.day === plan.light || (!!plan.deload && weekStart(l.day) === plan.deload));
 }
 

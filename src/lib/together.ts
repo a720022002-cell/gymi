@@ -1,7 +1,7 @@
 /** Train together: one workout built from everyone's plan, and the right sets and reps for each level. */
 import { askAI } from './ai';
 import { supabase } from './supabase';
-import { DAYS_LONG, EX, type PlanEx, type TrainPlan, effectiveWeek, exInfo, weekStart } from './training';
+import { DAYS_LONG, EX, type PlanEx, type TrainPlan, effectiveWeek, exInfo, setWeekMoves, weekStart } from './training';
 
 export type Level = 'Beginner' | 'Intermediate' | 'Advanced';
 export type Person = { name: string; level: Level; me?: boolean; id?: string };
@@ -99,7 +99,7 @@ export function applyTogether(plan: TrainPlan, sid: string, action: TogetherActi
   if (!w || free < 0) return { ...plan, togetherDone: done };
   week[free].w = w;
   week[i].w = null;
-  return { ...plan, override: { start, week }, togetherDone: done };
+  return { ...plan, ...setWeekMoves(plan, start, week), togetherDone: done };
 }
 
 /** A note in the reader's language. */

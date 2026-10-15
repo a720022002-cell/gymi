@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { View } from 'react-native';
 
 import { useT } from '@/i18n';
-import { changeLine } from '@/lib/coachPlan';
+import { applyUndo, changeLine, undoPatch } from '@/lib/coachPlan';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { reviewDue, runReview } from '@/lib/planReview';
@@ -46,7 +46,9 @@ export function PlanReviewCard() {
   const changed = r.changes.length > 0;
   const done = () => train.updatePlan({ review: { ...r, seen: true } });
   const undo = () => {
-    train.updatePlan({ workouts: r.prev.workouts, deload: r.prev.deload, light: r.prev.light, review: { ...r, seen: true } });
+    // Only what the check changed goes back (workouts renamed since, and anything else you changed, stay).
+    const p0 = train.plan;
+    if (p0) train.updatePlan({ ...applyUndo(p0, undoPatch({ ...p0, ...r.prev }, r.changes)), review: { ...r, seen: true } });
     toast(t('Your plan is back to how it was.'), { icon: 'check' });
   };
   return (

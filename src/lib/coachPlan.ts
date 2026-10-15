@@ -180,3 +180,32 @@ export function changeLine(c: PlanChange, plan: TrainPlan | null, lang: 'en' | '
   if (c.op === 'swap') return t('{w}: {a} → {b}', { w: w(c.workout), a: exName(c.from), b: c.toEx ? exInfo(c.toEx, lang).name : c.to });
   return t('{w}: add {x}, {s} × {r}', { w: w(c.workout), x: c.toEx ? exInfo(c.toEx, lang).name : c.search, s: c.sets, r: c.reps });
 }
+
+/**
+ * What Undo puts back for a set of changes: only the parts they touched (the workouts they changed, the lighter day,
+ * the break days, the week's layout), taken from the plan before. Anything else you changed since stays.
+ */
+export function undoPatch(prev: TrainPlan, changes: PlanChange[]): Partial<TrainPlan> {
+  const patch: Partial<TrainPlan> = {};
+  const names = new Set<string>();
+  for (const c of changes) {
+    if ('workout' in c) (c.workout === 'all' ? Object.keys(prev.workouts) : [c.workout]).forEach((w) => names.add(w));
+    if (c.op === 'deload') patch.deload = prev.deload;
+    if (c.op === 'light') Object.assign(patch, { light: prev.light, lightAsked: prev.lightAsked });
+    if (c.op === 'rest' || c.op === 'resume') patch.skipped = prev.skipped;
+    if (c.op === 'days') Object.assign(patch, { week: prev.week, override: prev.override, overrides: prev.overrides, weekSince: prev.weekSince, days: prev.days, queue: prev.queue });
+  }
+  if (names.size) patch.workouts = Object.fromEntries([...names].filter((w) => prev.workouts[w]).map((w) => [w, prev.workouts[w]]));
+  return patch;
+}
+
+/** The plan with an Undo patch put back (a workout renamed or removed since is left as it is). */
+export function applyUndo(cur: TrainPlan, patch: Partial<TrainPlan>): TrainPlan {
+  const workouts = patch.workouts
+    ? { ...cur.workouts, ...Object.fromEntries(Object.entries(patch.workouts).filter(([w]) => cur.workouts[w])) }
+    : cur.workouts;
+  return { ...cur, ...patch, workouts };
+}
+
+/** Older suggestions kept the whole plan for Undo (newer ones keep only what changed). */
+export const isWholePlan = (p: unknown): p is TrainPlan => !!p && typeof p === 'object' && 'week' in p && 'workouts' in p && 'injuries' in p;

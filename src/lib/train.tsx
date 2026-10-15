@@ -8,7 +8,7 @@ import type { DayTotals } from './health';
 import { addDays, localDay } from './nutrition';
 import { shareWorkout } from './social';
 import { selectAll, supabase } from './supabase';
-import { buildWorkout, type Day, effectiveWeek, isLightLog, type LastSets, orderWeek, type PlanEx, planFromProgram, plannedOn, rangePlan, topReps, type TrainPlan, weekdayOf, weekStart, workoutKcal } from './training';
+import { buildWorkout, type Day, effectiveWeek, isLightLog, type LastSets, orderWeek, type PlanEx, planFromProgram, plannedOn, rangePlan, setWeekMoves, topReps, type TrainPlan, weekdayOf, weekStart, workoutKcal } from './training';
 
 /** `light`: done as a lighter day or deload, so its weights don't set next time's numbers. */
 export type LoggedEx = { id: string; n: string; light?: boolean; sets: { w: number; r: number }[] };
@@ -62,7 +62,7 @@ type Train = {
   week: Day[];
   setWeek: (week: Day[], thisWeekOnly: boolean) => void;
   /** Change the weekly plan for good. If this week has its own moves, they get the same change and stay. */
-  editWeek: (edit: (week: Day[]) => Day[], opts?: { layout?: boolean }) => void;
+  editWeek: (edit: (week: Day[], shown: boolean) => Day[], opts?: { layout?: boolean }) => void;
   /** Weekdays (0 = Sunday) this week with a finished workout. */
   doneIdx: Set<number>;
   todayName: string | null;
@@ -249,6 +249,9 @@ export function TrainProvider({ children }: PropsWithChildren) {
       deload: cur?.deload,
       deloadDismissed: cur?.deloadDismissed,
       level: cur?.level,
+      // Your injuries and home mode are yours, not the program's (injured exercises keep being swapped).
+      injuries: cur?.injuries ?? [],
+      homeMode: cur?.homeMode ?? false,
       coach: { id: prog.id, updated_at: prog.updated_at },
     };
     clearTimeout(saveTimer.current);
@@ -321,7 +324,7 @@ export function TrainProvider({ children }: PropsWithChildren) {
   const setWeek = useCallback(
     (w: Day[], thisWeekOnly: boolean) => {
       if (!planRef.current) return;
-      if (thisWeekOnly) updatePlan({ override: { start, week: w } });
+      if (thisWeekOnly) updatePlan(setWeekMoves(planRef.current, start, w));
       else updatePlan({ week: w, override: undefined });
     },
     [start, updatePlan],
@@ -330,11 +333,13 @@ export function TrainProvider({ children }: PropsWithChildren) {
   // A lasting change goes on the plan's own week; this week's moves (if any) get the same change, so they stay for this week only.
   // Moving workouts to other days (layout) means earlier days can't be judged as missed any more.
   const editWeek = useCallback(
-    (edit: (w: Day[]) => Day[], opts?: { layout?: boolean }) => {
+    (edit: (w: Day[], shown: boolean) => Day[], opts?: { layout?: boolean }) => {
       const p = planRef.current;
       if (!p) return;
-      const ov = p.override?.start === start ? { ...p.override, week: edit(p.override.week) } : p.override;
-      updatePlan({ week: edit(p.week), override: ov, ...(opts?.layout === false ? {} : { weekSince: today }) });
+      // `shown`: this is the week you see (this week's own moves); otherwise it's the plan's usual week.
+      const has = p.override?.start === start;
+      const ov = has ? { ...p.override!, week: edit(p.override!.week, true) } : p.override;
+      updatePlan({ week: edit(p.week, !has), override: ov, ...(opts?.layout === false ? {} : { weekSince: today }) });
     },
     [start, today, updatePlan],
   );
@@ -448,7 +453,9 @@ export function TrainProvider({ children }: PropsWithChildren) {
     [keep],
   );
 
-  const finishWorkout = useCallback(
+  // A workout being saved: a second tap on Finish waits for the same save instead of saving the workout twice.
+  const finishing = useRef<Promise<WorkoutLog | null> | null>(null);
+  const saveWorkout = useCallback(
     async (names: Record<string, string>) => {
       const s = session;
       if (!s || !userId) return null;
@@ -511,6 +518,13 @@ export function TrainProvider({ children }: PropsWithChildren) {
       return log;
     },
     [session, userId, best, history, last, profile?.weight_kg, setSession, keep],
+  );
+  const finishWorkout = useCallback(
+    (names: Record<string, string>) => {
+      if (!finishing.current) finishing.current = saveWorkout(names).finally(() => (finishing.current = null));
+      return finishing.current;
+    },
+    [saveWorkout],
   );
 
   const value = useMemo<Train>(

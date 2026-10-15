@@ -33,7 +33,7 @@ import { REMINDER_NAME } from '@/lib/recap';
 import { remindersSummary, withReminder } from '@/lib/recapApply';
 import { loadPrefs, type Prefs, savePrefs } from '@/lib/reminders';
 import { CARDIO, cardioKcal, DAYS_LONG, effectiveWeek, exInfo, type TrainPlan, weekdayOf, weekStart } from '@/lib/training';
-import { applyPlanChanges, applyTargets, changeLine, prepareSuggestions } from '@/lib/coachPlan';
+import { applyPlanChanges, applyTargets, applyUndo, changeLine, isWholePlan, prepareSuggestions, undoPatch } from '@/lib/coachPlan';
 import { useSettings } from '@/theme/settings';
 
 type Suggestion = Extract<ChatAction, { type: 'plan' } | { type: 'targets' } | { type: 'reminder' }>;
@@ -330,7 +330,8 @@ export default function Coach() {
     if (a.type === 'plan') {
       if (!train.plan) return toast(t('Set up your training plan first.'), { icon: 'info' });
       train.updatePlan(applyPlanChanges(train.plan, a.changes, food.today));
-      setSuggestion(m, i, { ...a, state: 'applied', prev: train.plan });
+      // Undo puts back only what this change touched.
+      setSuggestion(m, i, { ...a, state: 'applied', prev: undoPatch(train.plan, a.changes) });
       toast(t('Your plan is updated'), { ai: true });
     } else if (a.type === 'reminder') {
       if (!session) return;
@@ -350,7 +351,7 @@ export default function Coach() {
   };
 
   const undoSuggestion = async (m: ChatMsg, i: number, a: Suggestion) => {
-    if (a.type === 'plan' && a.prev) train.updatePlan(a.prev as TrainPlan);
+    if (a.type === 'plan' && a.prev && train.plan) train.updatePlan(applyUndo(train.plan, isWholePlan(a.prev) ? undoPatch(a.prev, a.changes) : (a.prev as Partial<TrainPlan>)));
     if (a.type === 'targets' && a.prev) await food.savePlan({ ...food.plan, ...a.prev });
     if (a.type === 'reminder' && a.prev && session) {
       await savePrefs(session.user.id, a.prev);
@@ -369,7 +370,7 @@ export default function Coach() {
         </Text>
       </Row>
       {(a.type === 'plan'
-        ? a.changes.map((ch) => changeLine(ch, (a.prev as TrainPlan | undefined) ?? train.plan, lang, t))
+        ? a.changes.map((ch) => changeLine(ch, isWholePlan(a.prev) ? a.prev : train.plan, lang, t))
         : a.type === 'reminder'
           ? [t('Reminder: {x} at {time}', { x: t(REMINDER_NAME[a.kind]), time: a.time })]
           : [a.kcal ? t('Calories: {n} kcal', { n: fmt(a.kcal) }) : null, a.protein ? t('Protein: {n} g', { n: a.protein }) : null, a.water ? t('Water: {n} ml', { n: fmt(a.water) }) : null].filter((x): x is string => !!x)

@@ -38,13 +38,15 @@ export function dailyLoad(logs: WorkoutLog[], today: string, n = 14) {
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
-/** Training load: this week's volume against the usual week (up to the last 4 weeks). 1.0 = normal.
+/** Training load: this week's work against the usual week (up to the last 4 weeks). 1.0 = normal. Work is sets done
+ * (so bodyweight and timed workouts count too; older logs without sets count 1 set per 3 minutes).
  * With under 2 weeks of history there's no usual week yet, so it stays neutral (`early`). */
 function loadRatio(logs: WorkoutLog[], today: string) {
   const first = logs.reduce<string | null>((a, l) => (l.day <= today && (a == null || l.day < a) ? l.day : a), null);
   const days = first ? Math.round((new Date(`${today}T12:00:00`).getTime() - new Date(`${first}T12:00:00`).getTime()) / 864e5) + 1 : 0;
   if (days < 14) return { ratio: 1, early: true };
-  const sum = (from: string, to: string) => logs.filter((l) => l.day > from && l.day <= to).reduce((a, l) => a + l.volume, 0);
+  const work = (l: WorkoutLog) => (l.sets_done > 0 ? l.sets_done : Math.round((l.minutes || 0) / 3));
+  const sum = (from: string, to: string) => logs.filter((l) => l.day > from && l.day <= to).reduce((a, l) => a + work(l), 0);
   const acute = sum(addDays(today, -7), today);
   const chronic = sum(addDays(today, -28), today) / clamp(days / 7, 1, 4);
   return { ratio: chronic > 0 ? acute / chronic : 1, early: false };
@@ -60,7 +62,8 @@ export function recovery(x: RecoveryInput) {
   const sore = so != null ? [100, 70, 35][so] : 80;
   const energy = en != null ? [45, 80, 100][en] : 80;
   const { ratio: acwr, early } = loadRatio(x.logs, x.today);
-  const load = clamp(100 - Math.abs(acwr - 1) * 120, 30, 100);
+  // Much more than usual tires you; less (a rest week, a break) only costs a little, and only under half your usual.
+  const load = acwr > 1 ? clamp(100 - (acwr - 1) * 120, 30, 100) : clamp(100 - Math.max(0, 0.5 - acwr) * 40, 80, 100);
   // Yesterday's protein, so the morning score isn't low just because you haven't eaten yet today.
   const py = x.protein?.yesterday ?? null;
   const fuel = x.protein && x.protein.target && py != null ? clamp((py / x.protein.target) * 100, 40, 100) : 75;

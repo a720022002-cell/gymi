@@ -83,7 +83,13 @@ export default function WeekPlan() {
     if (to === from) return;
     if (week[to].lock) return toast(t('{day} is locked', { day: t(DAYS_LONG[to]) }), { icon: 'lock' });
     const moved = week[from].w;
-    train.editWeek((w) => w.map((d, j) => (j === to ? { ...d, w: w[from].w } : j === from ? { ...d, w: w[to].w } : d)));
+    train.editWeek((w, shown) => {
+      // The week on screen swaps the two days. The usual week (when this week has its own moves) moves the same
+      // workout to that day, from wherever it is there.
+      const f = shown ? from : moved ? w.findIndex((d) => d.w === moved) : from;
+      if (f < 0 || f === to) return w;
+      return w.map((d, j) => (j === to ? { ...d, w: w[f].w } : j === f ? { ...d, w: w[to].w } : d));
+    });
     toast(t('{w} moved to {day}', { w: t(moved ?? 'Rest'), day: t(DAYS_LONG[to]) }), { icon: 'cal' });
   };
 

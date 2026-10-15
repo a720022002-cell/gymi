@@ -128,12 +128,14 @@ export function MissedCard() {
   const p = train.plan;
   // Coach plans and plans in order have no fixed days to miss.
   // Nothing to catch up on during a break either.
-  if (!p || !train.setupDone || train.coach || p.type === 'order' || p.skipped[train.today]) return null;
+  // Today's workout already done: nothing to catch up on today either.
+  if (!p || !train.setupDone || train.coach || p.type === 'order' || p.skipped[train.today] || train.todayLog) return null;
   let m: { day: number; w: string; sh: NonNullable<ReturnType<typeof shiftPlan>> } | null = null;
   for (let i = train.todayIdx - 1; i >= 0; i--) {
     const w = train.week[i]?.w;
     const date = dateOf(train.today, i - train.todayIdx);
-    if (p.since && date < p.since) break;
+    // Days before the plan, or before its days last changed, were planned differently: never "missed".
+    if ((p.since && date < p.since) || (p.weekSince && date < p.weekSince)) break;
     if (w && !train.doneIdx.has(i) && !p.skipped[date] && !p.dismiss[date]) {
       const sh = shiftPlan(train.week, train.doneIdx, i, train.todayIdx);
       if (sh) m = { day: i, w, sh };

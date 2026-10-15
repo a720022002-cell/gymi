@@ -49,7 +49,13 @@ export default function DayEdit() {
     const workouts = { ...p.workouts, [n]: W };
     delete workouts[w];
     const fix = (wk: TrainPlan['week']) => wk.map((x) => (x.w === w ? { ...x, w: n } : x));
-    train.updatePlan({ workouts, week: fix(p.week), override: p.override ? { ...p.override, week: fix(p.override.week) } : undefined, queue: p.queue?.map((x) => (x === w ? n : x)) });
+    train.updatePlan({
+      workouts,
+      week: fix(p.week),
+      override: p.override ? { ...p.override, week: fix(p.override.week) } : undefined,
+      overrides: p.overrides ? Object.fromEntries(Object.entries(p.overrides).map(([s, wk]) => [s, fix(wk)])) : undefined,
+      queue: p.queue?.map((x) => (x === w ? n : x)),
+    });
     if (wParam) router.setParams({ w: n });
   };
 
