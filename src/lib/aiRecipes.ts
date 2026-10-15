@@ -20,10 +20,16 @@ export const recipesKey = (f: FoodPlan) =>
 /** Your meals' kinds (Breakfast, Lunch, ...), each once. */
 const mealTypes = (f: FoodPlan) => [...new Set(f.meals.map((m) => m.type ?? m.n))].slice(0, 6);
 
+/** Meals are locked to a shopping list you're buying (until its last day). */
+export const shoppingLock = (f: FoodPlan, today: string) => (f.shop?.lock && f.shop.lock.to >= today ? f.shop.lock : null);
+
+/** Time for new recipes? Not while you're shopping from a list (only new allergies, goal or meals change them then). */
 export function needsRecipes(f: FoodPlan, lang: 'en' | 'ar', today: string) {
   if (RAMADAN_SWITCH && f.ramadan) return false;
   const r = f.aiRecipes;
-  return !r || r.lang !== lang || r.key !== recipesKey(f) || r.at < addDays(today, -KEEP_DAYS);
+  if (!r || r.key !== recipesKey(f)) return true;
+  if (shoppingLock(f, today)) return false;
+  return r.lang !== lang || r.at < addDays(today, -KEEP_DAYS);
 }
 
 const pick = <T,>(xs: T[], n: number) => [...xs].sort(() => Math.random() - 0.5).slice(0, n);

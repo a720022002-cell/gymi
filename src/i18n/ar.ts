@@ -3904,4 +3904,8 @@ export const AR: Record<string, string> = {
   "Making recipes for you…": "أسوي لك وصفات…",
   "{n} new recipes made for you": "سويت لك {n} وصفة جديدة",
   "Couldn’t make new recipes. Please try again.": "ما قدرت أسوي وصفات جديدة. جرّب مرة ثانية.",
+  "Your meals stay the same until {day}, so they match what you buy.": "وجباتك تبقى نفسها لين {day}، عشان تطابق اللي تشتريه.",
+  "Unlocked. Your meals can change again.": "انفك القفل. وجباتك ممكن تتغير من جديد.",
+  "You’re shopping for your meals until {day}. New recipes change your meals and your shopping list.": "أنت تتسوق لوجباتك لين {day}. الوصفات الجديدة بتغيّر وجباتك وقائمة المشتريات.",
+  "Make anyway": "سوّها على كل حال",
 };

@@ -48,7 +48,8 @@ export type FoodPlan = {
   picks?: Record<string, number>;
   /** Recipes changed by swapping an ingredient (or made from your ingredients), per meal slot. */
   custom?: Record<string, CustomRecipe>;
-  shop?: { checked: Record<string, boolean>; extra: { n: string; q: string; cat: string }[]; hidden: string[]; scope: number };
+  /** `lock`: you started buying a week's or a month's list, so meals (and the list) stay the same from `from` to `to`. */
+  shop?: { checked: Record<string, boolean>; extra: { n: string; q: string; cat: string }[]; hidden: string[]; scope: number; lock?: { from: string; to: string; scope: number } };
   ramadan?: boolean;
   /** City for iftar and suhoor times (Ramadan mode). Riyadh when not set. */
   city?: string;

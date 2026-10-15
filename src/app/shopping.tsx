@@ -13,7 +13,9 @@ import { useToast } from '@/components/Toast';
 import { Button, Chip, Label, Row, Segmented, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
+import { shoppingLock } from '@/lib/aiRecipes';
 import { addDays, type FoodPlan, planMeals, scaleIngredients } from '@/lib/nutrition';
+import { daysBetween } from '@/lib/report';
 import { useSettings } from '@/theme/settings';
 
 const CATS = ['Protein', 'Dairy', 'Carbs and grains', 'Fruit and vegetables', 'Pantry', 'Other'];
@@ -30,10 +32,11 @@ type Shop = NonNullable<FoodPlan['shop']>;
 const EMPTY: Shop = { checked: {}, extra: [], hidden: [], scope: 0 };
 
 export default function Shopping() {
-  const { t } = useT();
+  const { t, lang } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
   const food = useFood();
+  const dayLabel = (d: string) => new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date(`${d}T12:00:00`));
   const shop = { ...EMPTY, ...(food.plan.shop ?? {}) };
   const [edit, setEdit] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -42,10 +45,14 @@ export default function Shopping() {
 
   // Add up every ingredient in the plan for the chosen time.
   // Meals change from day to day, so each day's own meals are added up: today, the next 7 days, or the next 30.
-  const days = [1, 7, 30][shop.scope];
+  // Once you start buying a week's or month's list, it stays on those same days (it doesn't move on each day).
+  const lock = shoppingLock(food.plan, food.today);
+  const locked = !!lock && lock.scope === shop.scope;
+  const from = locked ? lock.from : food.today;
+  const days = locked ? daysBetween(lock.from, lock.to) : [1, 7, 30][shop.scope];
   const agg: Record<string, number> = {};
   for (let i = 0; i < days; i++)
-    planMeals(food.plan, addDays(food.today, i)).forEach((m) =>
+    planMeals(food.plan, addDays(from, i)).forEach((m) =>
       scaleIngredients(m.r, m.k).forEach(([n, a, u]) => {
         agg[`${n}|${u}`] = (agg[`${n}|${u}`] ?? 0) + a;
       }),
@@ -129,6 +136,26 @@ export default function Shopping() {
           />
         </View>
       </Row>
+      {lock ? (
+        <Row gap={10} style={{ marginTop: 14, backgroundColor: c.card, borderRadius: 16, padding: 12, alignItems: 'flex-start' }}>
+          <Icon name="lock" size={18} color={c.cobalt} />
+          <View style={{ flex: 1 }}>
+            <Text variant="small" weight={700}>
+              {t('Your meals stay the same until {day}, so they match what you buy.', { day: dayLabel(lock.to) })}
+            </Text>
+            <Springy
+              onPress={() => {
+                save({ lock: undefined });
+                toast(t('Unlocked. Your meals can change again.'), { icon: 'check' });
+              }}
+              style={{ marginTop: 6, alignSelf: 'flex-start' }}>
+              <Text variant="small" weight={700} color="link">
+                {t('Unlock')}
+              </Text>
+            </Springy>
+          </View>
+        </Row>
+      ) : null}
       <Row style={{ justifyContent: 'space-between', marginTop: 16, marginBottom: 8 }}>
         <Text variant="small" weight={700} color="sec">
           {t(edit ? 'Tap − to remove what you already have' : 'Made from your meal plan')}
@@ -162,7 +189,12 @@ export default function Shopping() {
                         icon: extra ? 'trash' : 'check',
                         undo: () => food.updatePlan({ shop: { ...shop, ...(food.plan.shop ?? {}), ...before } }),
                       });
-                    } else save({ checked: { ...shop.checked, [n]: !on } });
+                    } else
+                      save({
+                        checked: { ...shop.checked, [n]: !on },
+                        // First thing bought from a week's or month's list: meals stay the same until its last day.
+                        ...(!on && shop.scope > 0 && !lock ? { lock: { from: food.today, to: addDays(food.today, [1, 7, 30][shop.scope] - 1), scope: shop.scope } } : {}),
+                      });
                   }}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 52, paddingHorizontal: 16, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
                   {edit ? (

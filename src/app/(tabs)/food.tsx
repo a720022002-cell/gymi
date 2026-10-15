@@ -1,11 +1,11 @@
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import { Glass } from '@/components/Glass';
 import { Icon, type IconName } from '@/components/Icon';
 import { OkChip, Tag, WarnChip } from '@/components/food/Chips';
-import { makeRecipes, needsRecipes, recipesKey } from '@/lib/aiRecipes';
+import { makeRecipes, needsRecipes, recipesKey, shoppingLock } from '@/lib/aiRecipes';
 import { ALLERGENS } from '@/lib/allergies';
 import { MacroBars } from '@/components/food/MacroBars';
 import { MealMenu } from '@/components/food/MealMenu';
@@ -36,8 +36,7 @@ function plateau(weights: Measure[], today: string) {
   return Math.max(a, b, c) - Math.min(a, b, c) <= 0.3;
 }
 
-/** AI recipes are being made, and what they were last tried for while the app is open (so a failure doesn't repeat). */
-let recipesBusy = false;
+/** What AI recipes were last tried for while the app is open (so a failure doesn't repeat). */
 let recipesTried = '';
 
 export default function Food() {
@@ -81,14 +80,22 @@ function FoodHome() {
   }, [weightNote, clearWeightNote, toast, t]);
   // Your own AI recipes: made in the background when missing or 2 weeks old (once per open of the app), or on demand.
   const [making, setMaking] = useState(false);
+  const busy = useRef(false);
   const plan = food.plan;
   const ready = food.setupDone && !coach;
-  const freshRecipes = async (manual: boolean) => {
-    if (recipesBusy) return;
-    recipesBusy = true;
+  const freshRecipes = async (manual: boolean, sure = false) => {
+    if (busy.current) return;
+    // You're buying a list for these meals: say what new recipes would do first.
+    const lock = shoppingLock(plan, food.today);
+    if (manual && lock && !sure)
+      return toast(t('You’re shopping for your meals until {day}. New recipes change your meals and your shopping list.', { day: new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { month: 'short', day: 'numeric' }).format(new Date(`${lock.to}T12:00:00`)) }), {
+        icon: 'info',
+        action: { label: t('Make anyway'), fn: () => freshRecipes(true, true) },
+      });
+    busy.current = true;
     setMaking(true);
     const r = await makeRecipes(plan, lang, food.today).catch(() => null);
-    recipesBusy = false;
+    busy.current = false;
     setMaking(false);
     if (r) {
       food.updatePlan({ aiRecipes: r });
