@@ -8,6 +8,7 @@ import { Thinking } from '@/components/food/Thinking';
 import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { Avatar } from '@/components/social/Avatar';
+import { ReportSheet } from '@/components/social/ReportSheet';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Row } from '@/components/ui';
@@ -24,6 +25,7 @@ export default function CoachPage() {
   const toast = useToast();
   const { session } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const [report, setReport] = useState(false);
   const [k, setK] = useState<{ id: string; v: CoachCard | null; mine: MyCoach | null } | null>(null);
   const [busy, setBusy] = useState(false);
   const [pkg, setPkg] = useState<string | null>(null);
@@ -223,6 +225,8 @@ export default function CoachPage() {
       ) : (
         <Button icon="send" title={t('Ask {n} to coach me', { n: name })} loading={busy} onPress={ask} />
       )}
+      <Button kind="ghost" small icon="warn" title={t('Report this coach')} color={c.sec} style={{ marginTop: 8, alignSelf: 'center' }} onPress={() => setReport(true)} />
+      <ReportSheet open={report} onClose={() => setReport(false)} user={id} name={name} kind="coach" />
     </Screen>
   );
 }

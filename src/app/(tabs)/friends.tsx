@@ -7,6 +7,7 @@ import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
 import { Avatar } from '@/components/social/Avatar';
+import { ReportSheet } from '@/components/social/ReportSheet';
 import { List, ListRow } from '@/components/social/List';
 import { PartnerCycles } from '@/components/social/PartnerCycles';
 import { Text } from '@/components/Text';
@@ -136,6 +137,8 @@ function FriendsTab({ friends, reload, onAdd }: { friends: FriendRow[] | null; r
   const { t, lang } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
+  // A request from someone you don't want: report them (and block, on by default).
+  const [reportFor, setReportFor] = useState<FriendRow | null>(null);
   if (!friends) return null;
   const accepted = friends.filter((f) => f.status === 'accepted');
   const incoming = friends.filter((f) => f.status === 'pending' && f.incoming);
@@ -170,9 +173,13 @@ function FriendsTab({ friends, reload, onAdd }: { friends: FriendRow[] | null; r
                   style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
                   <Icon name="close" size={18} color={c.sec} />
                 </Springy>
+                <Springy accessibilityLabel={t('Report {n}', { n: displayName(f) })} onPress={() => setReportFor(f)} style={{ width: 30, height: 36, alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name="more" size={18} color={c.sec} />
+                </Springy>
               </ListRow>
             ))}
           </List>
+          <ReportSheet open={!!reportFor} onClose={() => setReportFor(null)} user={reportFor?.id ?? null} name={reportFor ? displayName(reportFor) : ''} onBlocked={reload} />
         </>
       ) : null}
       <PartnerCycles />

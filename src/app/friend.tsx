@@ -9,6 +9,7 @@ import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
 import { Avatar } from '@/components/social/Avatar';
+import { ReportSheet } from '@/components/social/ReportSheet';
 import { List, ListRow } from '@/components/social/List';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
@@ -17,7 +18,7 @@ import { useT } from '@/i18n';
 import { MEAS_INFO } from '@/lib/health';
 import { fmt } from '@/lib/nutrition';
 import { shortDate } from '@/lib/progress';
-import { displayName, type FriendProfile, friendPhotoUrls, friendProfileChecked, friendShowcase, myFriends, removeFriendship, type Showcase } from '@/lib/social';
+import { blockUser, displayName, type FriendProfile, friendPhotoUrls, friendProfileChecked, friendShowcase, myFriends, removeFriendship, type Showcase } from '@/lib/social';
 import { useWeight } from '@/lib/units';
 import { BadgeIcon } from '@/components/progress/Streaks';
 import { useSettings } from '@/theme/settings';
@@ -33,6 +34,8 @@ export default function FriendScreen() {
   const [p, setP] = useState<{ id: string; v: FriendProfile | null; sc: Showcase | null; urls: (string | null)[]; failed?: boolean } | null>(null);
   const [retry, setRetry] = useState(0);
   const [confirm, setConfirm] = useState(false);
+  const [report, setReport] = useState(false);
+  const [blockAsk, setBlockAsk] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -225,6 +228,31 @@ export default function FriendScreen() {
         <Button kind="glass" icon="users" title={t('Train together')} style={{ flex: 1 }} onPress={() => router.push({ pathname: '/together', params: { members: f.id } })} />
       </Row>
       <Button kind="ghost" title={t('Remove friend')} color={c.down} style={{ marginTop: 8 }} onPress={() => setConfirm(true)} />
+      <Row gap={10}>
+        <Button kind="ghost" small icon="warn" title={t('Report')} color={c.sec} style={{ flex: 1 }} onPress={() => setReport(true)} />
+        <Button kind="ghost" small icon="lock" title={t('Block')} color={c.sec} style={{ flex: 1 }} onPress={() => setBlockAsk(true)} />
+      </Row>
+      <ReportSheet open={report} onClose={() => setReport(false)} user={f.id} name={name} onBlocked={() => goBack()} />
+      <Sheet open={blockAsk} onClose={() => setBlockAsk(false)}>
+        <Text variant="h2" center>
+          {t('Block {n}?', { n: name })}
+        </Text>
+        <Text color="sec" center style={{ marginTop: 4 }}>
+          {t('You’ll stop being friends, and neither of you can find or add the other. You can unblock in Friends privacy.')}
+        </Text>
+        <Button
+          kind="danger"
+          title={t('Block')}
+          style={{ marginTop: 16 }}
+          onPress={async () => {
+            const ok = await blockUser(f.id);
+            setBlockAsk(false);
+            toast(ok ? t('{n} is blocked', { n: name }) : t('Couldn’t save. Please try again.'), { icon: ok ? 'lock' : 'warn' });
+            if (ok) goBack();
+          }}
+        />
+        <Button kind="ghost" title={t('Cancel')} style={{ marginTop: 8 }} onPress={() => setBlockAsk(false)} />
+      </Sheet>
       <Sheet open={confirm} onClose={() => setConfirm(false)}>
         <Text variant="h2" center>
           {t('Remove {n}?', { n: name })}

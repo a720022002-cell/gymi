@@ -275,3 +275,48 @@ export async function setSessionStatus(id: string, status: 'live' | 'done') {
   const { data } = await supabase.rpc('set_group_session_status', { p_id: id, p_status: status });
   return !!data;
 }
+
+// ---------------------------------------------------------------------------
+// Report and block
+// ---------------------------------------------------------------------------
+export type ReportReason = 'spam' | 'harassment' | 'inappropriate' | 'fake' | 'other';
+export const REPORT_REASONS: [ReportReason, string][] = [
+  ['harassment', 'Harassment or bullying'],
+  ['inappropriate', 'Inappropriate photo or words'],
+  ['spam', 'Spam or selling'],
+  ['fake', 'Fake account'],
+  ['other', 'Something else'],
+];
+
+/** Report a person (or a coach page, group or challenge). Only the Gymi team reads reports. */
+export async function sendReport(r: { reported: string | null; kind?: 'user' | 'coach' | 'group' | 'challenge'; ref?: string; reason: ReportReason; note?: string }) {
+  const { error } = await supabase.from('user_reports').insert({ reported: r.reported, kind: r.kind ?? 'user', ref: r.ref ?? null, reason: r.reason, note: r.note?.trim().slice(0, 500) || null });
+  return !error;
+}
+
+/** Block someone: the friendship ends, and neither of you can find or add the other. */
+export async function blockUser(id: string) {
+  const { data, error } = await rpc<boolean>('block_user', { p_user: id });
+  return !error && data === true;
+}
+
+export async function unblockUser(id: string) {
+  const { error } = await supabase.from('user_blocks').delete().eq('blocked', id);
+  return !error;
+}
+
+/** People you blocked, with their names. */
+export async function myBlocks() {
+  const { data } = await rpc<{ id: string; username: string | null; name: string | null }[]>('my_blocks');
+  return data ?? [];
+}
+
+export type AdminReport = { id: string; created_at: string; kind: string; ref: string | null; reason: ReportReason; note: string | null; status: 'open' | 'done'; reporter: string | null; reported_id: string | null; reported: string | null; reported_name: string | null; reports_on_them: number };
+export async function adminReports() {
+  const { data, error } = await rpc<AdminReport[]>('admin_reports');
+  return error ? null : (data ?? []);
+}
+export async function closeReport(id: string, reopen = false) {
+  const { data } = await rpc<boolean>('admin_close_report', { p_id: id, p_open: reopen });
+  return data === true;
+}

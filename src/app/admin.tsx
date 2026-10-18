@@ -89,6 +89,7 @@ function Overview({ go }: { go: (t: Tab) => void }) {
             ['doc', 'Accounting', '/admin-money'],
             ['pulse', 'Server', '/admin-server'],
             ['sparkle', 'AI costs', '/admin-ai'],
+            ['warn', 'User reports', '/admin-reports'],
           ] as const
         ).map(([i, l, r]) => (
           <Card key={l} onPress={() => router.push(r)} style={{ flex: 1, alignItems: 'center', paddingVertical: 16, marginBottom: 0 }}>

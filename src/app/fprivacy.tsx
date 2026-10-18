@@ -5,10 +5,10 @@ import { Screen } from '@/components/Screen';
 import { List, ListRow } from '@/components/social/List';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
-import { Toggle } from '@/components/ui';
+import { Button, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
-import { DEFAULT_SHARE, getShare, saveShare, type Share } from '@/lib/social';
+import { DEFAULT_SHARE, getShare, myBlocks, saveShare, type Share, unblockUser } from '@/lib/social';
 
 const ITEMS: [keyof Share, string][] = [
   ['workouts', 'Workouts you finish'],
@@ -26,6 +26,16 @@ export default function FriendPrivacy() {
   const { session } = useAuth();
   const uid = session?.user.id;
   const [s, setS] = useState<Share | null>(null);
+  // People you blocked: unblock them here.
+  const [blocked, setBlocked] = useState<{ id: string; username: string | null; name: string | null }[]>([]);
+  useEffect(() => {
+    if (!uid) return;
+    let alive = true;
+    myBlocks().then((v) => alive && setBlocked(v));
+    return () => {
+      alive = false;
+    };
+  }, [uid]);
 
   useEffect(() => {
     if (!uid) return;
@@ -65,6 +75,33 @@ export default function FriendPrivacy() {
       <Text variant="small" color="sec" style={{ marginHorizontal: 4 }}>
         {t('Food logs, sleep, health and cycle data are never shared with friends.')}
       </Text>
+      {blocked.length ? (
+        <>
+          <Text variant="small" weight={700} color="sec" style={{ marginTop: 20, marginBottom: 8, marginHorizontal: 4 }}>
+            {t('Blocked people')}
+          </Text>
+          <List>
+            {blocked.map((b, i) => (
+              <ListRow key={b.id} first={!i}>
+                <View style={{ flex: 1 }}>
+                  <Text weight={700}>{b.name || (b.username ? `@${b.username}` : t('Someone'))}</Text>
+                  {b.username ? <Text variant="small" color="sec">{`@${b.username}`}</Text> : null}
+                </View>
+                <Button
+                  small
+                  kind="soft"
+                  title={t('Unblock')}
+                  onPress={async () => {
+                    if (!(await unblockUser(b.id))) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+                    setBlocked((xs) => xs.filter((x) => x.id !== b.id));
+                    toast(t('Unblocked'), { icon: 'unlock' });
+                  }}
+                />
+              </ListRow>
+            ))}
+          </List>
+        </>
+      ) : null}
     </Screen>
   );
 }
