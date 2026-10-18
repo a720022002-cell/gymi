@@ -128,6 +128,7 @@ Passwords and keys are left out on purpose.
 - **Pregnancy workouts and weight unit (18 Oct):** "Adjust my workouts for pregnancy" now changes training (no lying on the back or belly, no jumps or crunches, about 20% lighter, 3 sets at most, no weight jumps); the switch is on the Train page for women and on the pregnancy page. The kg/lb setting is now "Weight unit" and covers body weight too (progress, home, report, coach, entry wheel).
 - **Meal steps (18 Oct):** when creating or editing a saved meal you can write the cooking steps (up to 30), shown on the meal and shared with its code. Fixed: saving a new meal failed after meal codes became 8 characters (the database check only took 4).
 - **Recap suggestions fix (18 Oct):** after AI answers got a fixed shape (I7), the recap's open "suggest" objects came back empty, so the last slide had nothing to apply. Open shapes now only ask for JSON; this week's empty recaps were cleared so they're written again.
+- **Workout screen (18 Oct):** small up/down arrows to reorder exercises mid-workout; a water button (150/250/500/750 ml) logs to today's water; a smarter set coach (lib/setCoach) reads today's sets and your last 6 workouts: works out the right weight from what you just lifted, sees when reps drop from tiredness (rest, keep the weight), suggests a heavier last set when you're strong and steady, says when you've been stuck on one weight for 3+ workouts, and where to start before the first set.
 
 ---
 

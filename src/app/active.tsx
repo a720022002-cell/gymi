@@ -16,7 +16,9 @@ import { useT } from '@/i18n';
 import { restDone } from '@/lib/beep';
 import { toPlanEx } from '@/lib/exercisesDb';
 import { type Session, type SessionEx, useTrain } from '@/lib/train';
-import { exInfo, type PlanEx, rangeText, topReps } from '@/lib/training';
+import { useFood } from '@/lib/food';
+import { coachSet, type SetIn } from '@/lib/setCoach';
+import { exInfo, isLightLog, type PlanEx, topReps } from '@/lib/training';
 import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 import { goBack } from '@/lib/nav';
@@ -43,55 +45,44 @@ type Tone = 'up' | 'ok' | 'down';
 type Tr = (k: string, v?: Record<string, string | number>) => string;
 type W = ReturnType<typeof useWeight>;
 
-/** Coach advice for an exercise, from its last finished working set: reps against the target range,
- * the weight jump from the set before, and last time's numbers. Updates after every set. */
-function setAdvice(x: SessionEx, timed: boolean, bodyweight: boolean, t: Tr, W: W): { text: string; tone: Tone } | null {
-  const a = adviceKg(x, timed, bodyweight, t, W);
+/** Coach advice for an exercise: today's sets and your last workouts with it (lib/setCoach for weights).
+ * Updates after every set; before the first set it can say where to start. */
+function setAdvice(x: SessionEx, timed: boolean, bodyweight: boolean, hist: SetIn[][], t: Tr, W: W): { text: string; tone: Tone } | null {
+  const a = adviceKg(x, timed, bodyweight, hist, t, W);
   // Written in kg; shown in lb when you picked pounds.
   return a ? { ...a, text: W.words(a.text) } : null;
 }
 
-function adviceKg(x: SessionEx, timed: boolean, bodyweight: boolean, t: Tr, W: W): { text: string; tone: Tone } | null {
-  const kg = W.show;
+function adviceKg(x: SessionEx, timed: boolean, bodyweight: boolean, hist: SetIn[][], t: Tr, W: W): { text: string; tone: Tone } | null {
   const work = x.sets.filter((y) => !y.warm);
   const done = work.filter((y) => y.done);
-  if (!done.length) return null;
   const nums = String(x.reps).match(/\d+/g)?.map(Number) ?? [10];
   const lo = Math.min(...nums);
   const hi = Math.max(...nums);
   const last = done[done.length - 1];
-  const prev = done.length > 1 ? done[done.length - 2] : null;
-  const w = +last.w || 0;
-  const r = +last.r || 0;
-  const step = W.step;
+  const w = last ? +last.w || 0 : 0;
+  const r = last ? +last.r || 0 : 0;
   const finished = done.length === work.length;
 
   if (timed) {
+    if (!last) return null;
     if (r >= hi + 10) return { text: t('{r} s, strong hold. Add 10 seconds next set.', { r }), tone: 'up' };
     if (r >= hi) return { text: t('{r} s, you hit the target. Keep it steady.', { r }), tone: 'ok' };
     return { text: t('{r} s. Rest a little longer and aim for {hi} s.', { r, hi }), tone: 'down' };
   }
-  if (bodyweight || w <= 0) {
+  if (bodyweight || (last && w <= 0)) {
+    if (!last) return null;
     if (r > hi + 2) return { text: t('{r} reps, too easy. Slow it down or add weight.', { r }), tone: 'up' };
     if (r >= lo) return { text: finished ? t('All sets done. Nice work.') : t('{r} reps, right in the range. Same again.', { r }), tone: 'ok' };
     return { text: t('{r} reps. Rest a bit longer before the next set.', { r }), tone: 'down' };
   }
-  // Better than last time's matching set?
-  const beat = last.lw > 0 && (w > last.lw || (w === last.lw && r > last.lr)) ? (w > last.lw ? t('+{n} kg on last time. ', { n: kg(w - last.lw) }) : t('+{n} reps on last time. ', { n: r - last.lr })) : '';
-  if (finished) {
-    const allTop = done.every((y) => (+y.r || 0) >= hi);
-    if (allTop) return { text: `${beat}${t('Every set hit {hi} reps. Next time start at {w} kg.', { hi, w: kg(w + step) })}`, tone: 'up' };
-    if (r >= lo) return { text: `${beat}${t('Done. Top set {w} kg × {r}. Stay at {w} kg until you get {hi} reps.', { w: kg(w), r, hi })}`, tone: 'ok' };
-    return { text: t('Done. The last set was heavy ({r} reps). Next time use {w} kg.', { r, w: kg(Math.max(0, w - step)) }), tone: 'down' };
-  }
-  if (r > hi + 2) return { text: `${beat}${t('{r} reps is too light for {range}. Go up to {w} kg next set.', { r, range: rangeText(lo, hi), w: kg(w + step * 2) })}`, tone: 'up' };
-  if (r > hi) return { text: `${beat}${t('{r} reps, above {hi}. Add {s} kg next set ({w} kg).', { r, hi, s: kg(step), w: kg(w + step) })}`, tone: 'up' };
-  if (r === hi) return { text: `${beat}${t('Top of the range. Try {w} kg next set.', { w: kg(w + step) })}`, tone: 'up' };
-  if (r >= lo) {
-    if (prev && w > (+prev.w || 0)) return { text: `${beat}${t('Good jump to {w} kg, {r} reps is right in the range. Stay here.', { w: kg(w), r })}`, tone: 'ok' };
-    return { text: `${beat}${t('{r} reps, in the range. Stay at {w} kg and aim for {n}.', { r, w: kg(w), n: Math.min(hi, r + 1) })}`, tone: 'ok' };
-  }
-  return { text: t('{r} reps is below {lo}. Drop to {w} kg so you can do {lo} or more.', { r, lo, w: kg(Math.max(0, w - step)) }), tone: 'down' };
+  const a = coachSet({ done: done.map((y) => ({ w: +y.w || 0, r: +y.r || 0 })), left: work.length - done.length, lo, hi, step: W.step, hist });
+  if (!a) return null;
+  // Weights are kg: shown in your unit.
+  const vars = Object.fromEntries(Object.entries(a.vars).map(([k, v]) => [k, k === 'w' || k === 'w2' ? W.show(+v) : v]));
+  // Better than last time's matching set? Said first, when it's good news.
+  const beat = last && a.tone !== 'down' && last.lw > 0 && (w > last.lw || (w === last.lw && r > last.lr)) ? (w > last.lw ? t('+{n} kg on last time. ', { n: W.show(w - last.lw) }) : t('+{n} reps on last time. ', { n: r - last.lr })) : '';
+  return { text: `${beat}${t(a.key, vars)}`, tone: a.tone };
 }
 
 /** The workout in progress (design: active). */
@@ -114,6 +105,8 @@ export default function Active() {
   const [swapped, setSwapped] = useState<{ oldId: string; ex: PlanEx; name: string } | null>(null);
   // The exercise whose trash button was tapped: remove it today, or from your plan too.
   const [removeFor, setRemoveFor] = useState<number | null>(null);
+  const food = useFood();
+  const [waterOpen, setWaterOpen] = useState(false);
 
   // Tick every quarter second; end the rest when its time is up.
   const restRef = useRef(rest);
@@ -152,6 +145,28 @@ export default function Active() {
   const elapsed = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
 
   const update = (fn: (x: Session) => Session) => train.setSession(fn(s));
+  // Your last normal workouts with an exercise (newest first, working sets only), for the coach under it.
+  const histFor = (id: string): SetIn[][] =>
+    train.logs
+      .filter((l) => !isLightLog(l, train.plan))
+      .map((l) => (l.exercises ?? []).find((e) => e.id === id)?.sets ?? [])
+      .filter((sets) => sets.length)
+      .slice(0, 6);
+  // Change the order mid-workout: move an exercise up or down (its sets go with it).
+  const move = (ei: number, d: -1 | 1) =>
+    update((x) => {
+      const j = ei + d;
+      if (j < 0 || j >= x.ex.length) return x;
+      const ex = [...x.ex];
+      [ex[ei], ex[j]] = [ex[j], ex[ei]];
+      return { ...x, ex };
+    });
+  // Water you drink while training goes to today's water.
+  const drink = async (ml: number) => {
+    setWaterOpen(false);
+    await food.addWater(ml, 'Water', food.today);
+    toast(t('+{n} ml water', { n: ml }), { icon: 'drop' });
+  };
   const setField = (ei: number, si: number, k: 'w' | 'r', v: string) =>
     update((x) => ({ ...x, ex: x.ex.map((e, i) => (i !== ei ? e : { ...e, sets: e.sets.map((st, j) => (j === si ? { ...st, [k]: v } : st)) })) }));
 
@@ -295,6 +310,16 @@ export default function Active() {
                   <Text variant="small" weight={700} color="sec">
                     {info.timed ? `${x.reps} ${t('s')}` : x.reps}
                   </Text>
+                  {s.ex.length > 1 ? (
+                    <View style={{ alignItems: 'center' }}>
+                      <Springy onPress={() => move(ei, -1)} disabled={!ei} scaleTo={0.9} accessibilityRole="button" accessibilityLabel={t('Move {x} up', { x: info.name })} style={{ width: 30, height: 20, alignItems: 'center', justifyContent: 'center', opacity: ei ? 1 : 0.25 }}>
+                        <Icon name="chevup" size={16} color={c.sec} strokeWidth={2.4} />
+                      </Springy>
+                      <Springy onPress={() => move(ei, 1)} disabled={ei === s.ex.length - 1} scaleTo={0.9} accessibilityRole="button" accessibilityLabel={t('Move {x} down', { x: info.name })} style={{ width: 30, height: 20, alignItems: 'center', justifyContent: 'center', opacity: ei === s.ex.length - 1 ? 0.25 : 1 }}>
+                        <Icon name="chevd" size={16} color={c.sec} strokeWidth={2.4} />
+                      </Springy>
+                    </View>
+                  ) : null}
                   <Springy
                     onPress={() => setSwapFor(ei)}
                     scaleTo={0.9}
@@ -408,7 +433,7 @@ export default function Active() {
                 </Springy>
               </Row>
               {(() => {
-                const adv = setAdvice(x, info.timed, info.type === 'Bodyweight', t, W);
+                const adv = setAdvice(x, info.timed, info.type === 'Bodyweight', histFor(x.id), t, W);
                 if (!adv) return null;
                 const tc = adv.tone === 'up' ? c.up : adv.tone === 'down' ? '#F59E0B' : c.cobalt;
                 return (
@@ -471,10 +496,34 @@ export default function Active() {
                 {t('Tap ✓ after each set')}
               </Text>
             </View>
+            <Springy onPress={() => setWaterOpen(true)} accessibilityRole="button" accessibilityLabel={t('Log water')} style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(56,189,248,0.16)' }}>
+              <Icon name="drop" size={20} color="#38BDF8" />
+            </Springy>
             <Button small kind="glass" icon="timer" title={t('Rest')} onPress={() => setRest({ end: Date.now() + REST * 1000, total: REST })} />
           </Glass>
         )}
       </View>
+
+      <Sheet open={waterOpen} onClose={() => setWaterOpen(false)}>
+        <Text variant="h2" center>
+          {t('How much did you drink?')}
+        </Text>
+        {food.isToday ? (
+          <Text color="sec" center style={{ marginTop: 4 }}>
+            {t('{n} ml so far today', { n: food.water })}
+          </Text>
+        ) : null}
+        <Row gap={8} style={{ marginTop: 16 }}>
+          {[150, 250, 500, 750].map((ml) => (
+            <View key={ml} style={{ flex: 1 }}>
+              <Button kind="soft" title={`${ml}`} style={{ alignSelf: 'stretch' }} onPress={() => drink(ml)} />
+            </View>
+          ))}
+        </Row>
+        <Text variant="xs" color="sec" center style={{ marginTop: 8 }}>
+          {t('ml')}
+        </Text>
+      </Sheet>
 
       <Sheet open={!!setMenu} onClose={() => setSetMenu(null)}>
         {setMenu && s.ex[setMenu.ei]?.sets[setMenu.si] ? (
