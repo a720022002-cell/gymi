@@ -301,6 +301,9 @@ function CreateMeal({ onDone, edit }: { onDone: () => void; edit?: SavedMeal }) 
   const [items, setItems] = useState<Ing[]>(() => (edit ? toIngs(edit) : []));
   const [picking, setPicking] = useState(false);
   const [saving, setSaving] = useState(false);
+  // How to make it, one step per box (optional). Up to 30 steps.
+  const [steps, setSteps] = useState<string[]>(() => (edit?.steps?.length ? edit.steps : []));
+  const setStep = (i: number, v: string) => setSteps((xs) => xs.map((x, j) => (j === i ? v : x)));
 
   // A scanned product is added as one serving.
   const { scanning, scan } = useScanProduct(
@@ -323,6 +326,10 @@ function CreateMeal({ onDone, edit }: { onDone: () => void; edit?: SavedMeal }) 
       protein: Math.round(tot.p),
       carbs: Math.round(tot.c),
       fat: Math.round(tot.f),
+      steps: (() => {
+        const list = steps.map((x) => x.trim().slice(0, 400)).filter(Boolean).slice(0, 30);
+        return list.length ? list : null;
+      })(),
     };
     const row = edit ? await food.updateMeal(edit.id, meal) : await food.saveMeal(meal);
     setSaving(false);
@@ -390,6 +397,35 @@ function CreateMeal({ onDone, edit }: { onDone: () => void; edit?: SavedMeal }) 
         <Text variant="xs" color="sec" style={{ marginTop: 8, marginHorizontal: 4 }}>
           {t('These amounts are for one serving.')}
         </Text>
+      ) : null}
+
+      <Label>{t('Steps (optional)')}</Label>
+      {steps.length ? (
+        <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden' }}>
+          {steps.map((x, i) => (
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingVertical: 8, paddingHorizontal: 12, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
+              <Text num weight={700} style={{ color: c.cobalt, minWidth: 18, marginTop: 11 }}>
+                {i + 1}
+              </Text>
+              <TextInput
+                value={x}
+                onChangeText={(v) => setStep(i, v)}
+                placeholder={t(i ? 'Next step' : 'For example: Cook the rice for 15 minutes')}
+                placeholderTextColor={c.sec}
+                multiline
+                maxLength={400}
+                accessibilityLabel={t('Step {n}', { n: i + 1 })}
+                style={{ flex: 1, minWidth: 0, minHeight: 44, paddingVertical: 10, fontSize: 16, lineHeight: 22, color: c.text, fontFamily: fontFor(lang === 'ar' ? 'arabic' : 'manrope', 500), outlineStyle: 'none', textAlign: lang === 'ar' ? 'right' : 'left', textAlignVertical: 'top' } as object}
+              />
+              <Springy onPress={() => setSteps(steps.filter((_, j) => j !== i))} accessibilityLabel={t('Remove')} style={{ width: 32, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name="close" size={16} color={c.sec} strokeWidth={2.2} />
+              </Springy>
+            </View>
+          ))}
+        </View>
+      ) : null}
+      {steps.length < 30 ? (
+        <Button small kind="soft" icon="plus" title={t('Add a step')} style={{ marginTop: 10, alignSelf: 'flex-start' }} onPress={() => setSteps([...steps, ''])} />
       ) : null}
 
       <Card style={{ marginTop: 16, alignItems: 'center' }}>

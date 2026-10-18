@@ -3938,4 +3938,9 @@ export const AR: Record<string, string> = {
   "The link may be old or mistyped.": "يمكن الرابط قديم أو مكتوب غلط.",
   "No lying on your back or belly, no jumps or crunches, about 20% lighter, 3 sets at most. Check with your doctor what’s right for you.": "بدون تمارين على ظهرك أو بطنك، بدون قفز أو كرنش، الأوزان أخف بحوالي 20%، وأقصى شي 3 جولات. اسألي دكتورتك وش يناسبك.",
   "Weight unit": "وحدة الوزن",
+  "Steps (optional)": "طريقة التحضير (اختياري)",
+  "Next step": "الخطوة الجاية",
+  "For example: Cook the rice for 15 minutes": "مثلاً: اطبخ الرز 15 دقيقة",
+  "Step {n}": "الخطوة {n}",
+  "Add a step": "أضف خطوة",
 };
