@@ -16,7 +16,7 @@ import { Button, Card, Row } from '@/components/ui';
 import { useT } from '@/i18n';
 import { MEAS_INFO } from '@/lib/health';
 import { fmt } from '@/lib/nutrition';
-import { fx, shortDate } from '@/lib/progress';
+import { shortDate } from '@/lib/progress';
 import { displayName, type FriendProfile, friendPhotoUrls, friendProfileChecked, friendShowcase, myFriends, removeFriendship, type Showcase } from '@/lib/social';
 import { useWeight } from '@/lib/units';
 import { BadgeIcon } from '@/components/progress/Streaks';
@@ -168,7 +168,7 @@ export default function FriendScreen() {
         <Card>
           <Row style={{ justifyContent: 'space-between' }}>
             <Text weight={700}>{t('Weight')}</Text>
-            <Text variant="small" weight={700} color="sec">{`${fx(Number(w.at(-1)!.value))} ${t('kg')}`}</Text>
+            <Text variant="small" weight={700} color="sec">{W.text(Number(w.at(-1)!.value))}</Text>
           </Row>
           <View style={{ marginTop: 8 }}>
             <LineChart values={w.map((x) => Number(x.value))} height={110} />

@@ -17,6 +17,7 @@ import { fx } from '@/lib/progress';
 import { useStreaks } from '@/lib/useProgress';
 import { fmt, localDay } from '@/lib/nutrition';
 import { useCycleToday } from '@/lib/cyclePhase';
+import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
 export function WaterCard() {
@@ -93,10 +94,11 @@ export function ReadingsCard() {
   const food = useFood();
   const health = useHealth();
   const w = health.weights.at(-1);
+  const W = useWeight();
   const sl = [...health.checkins].reverse().find((x) => x.sleep_h != null);
   const items: [IconName, string, string][] = [
     ['walk', fmt(food.steps), t('Steps')],
-    ['scale', w ? `${fx(w.value)}` : '–', t('kg')],
+    ['scale', w ? W.show(w.value) : '–', W.label],
     ['moon', sl ? `${fx(sl.sleep_h as number)}` : '–', t('h sleep')],
   ];
   return (

@@ -17,6 +17,7 @@ import { PlanReviewCard } from '@/components/train/PlanReviewCard';
 import { WorkoutBell } from '@/components/train/WorkoutBell';
 import { Button, Card, Row, Springy, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
+import { useAuth } from '@/lib/auth';
 import { useFood } from '@/lib/food';
 import { addDays, fmt } from '@/lib/nutrition';
 import { useTrain } from '@/lib/train';
@@ -78,6 +79,7 @@ export default function Train() {
       <GroupWorkoutsCard />
       <DeloadCard />
       <HomeModeCard />
+      <PregnancyCard />
 
       <Section title={t('Plan')} />
       <List
@@ -191,6 +193,43 @@ function HomeModeCard() {
           toast(t(v ? 'Workouts are now no-equipment' : 'Back to your gym plan'), { icon: v ? 'home' : 'train' });
         }}
       />
+    </Card>
+  );
+}
+
+/** Women only: pregnancy-safe workouts (the same switch as on the pregnancy page). */
+function PregnancyCard() {
+  const { t } = useT();
+  const toast = useToast();
+  const train = useTrain();
+  const { profile } = useAuth();
+  if (profile?.gender !== 'female') return null;
+  return (
+    <Card style={{ marginTop: 10 }}>
+      <Row gap={12}>
+        <View style={{ width: 36, height: 36, borderRadius: 11, backgroundColor: 'rgba(236,72,153,0.14)', alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name="heart" size={20} color="#EC4899" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text weight={700}>{t('Adjust my workouts for pregnancy')}</Text>
+          <Text variant="small" color="sec">
+            {t('Lighter weights, safer exercises')}
+          </Text>
+        </View>
+        <Toggle
+          value={train.preg}
+          label={t('Adjust my workouts for pregnancy')}
+          onChange={async (v) => {
+            const ok = await train.setPreg(v);
+            toast(ok ? t(v ? 'Workouts will be adjusted for pregnancy' : 'Workouts back to normal') : t('Couldn’t save. Please try again.'), { icon: ok ? 'check' : 'warn' });
+          }}
+        />
+      </Row>
+      {train.preg ? (
+        <Text variant="xs" color="sec" style={{ marginTop: 10 }}>
+          {t('No lying on your back or belly, no jumps or crunches, about 20% lighter, 3 sets at most. Check with your doctor what’s right for you.')}
+        </Text>
+      ) : null}
     </Card>
   );
 }

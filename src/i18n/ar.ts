@@ -3936,4 +3936,6 @@ export const AR: Record<string, string> = {
   "Show earlier messages ({n})": "اعرض الرسايل الأقدم ({n})",
   "This page doesn’t exist": "هالصفحة مو موجودة",
   "The link may be old or mistyped.": "يمكن الرابط قديم أو مكتوب غلط.",
+  "No lying on your back or belly, no jumps or crunches, about 20% lighter, 3 sets at most. Check with your doctor what’s right for you.": "بدون تمارين على ظهرك أو بطنك، بدون قفز أو كرنش، الأوزان أخف بحوالي 20%، وأقصى شي 3 جولات. اسألي دكتورتك وش يناسبك.",
+  "Weight unit": "وحدة الوزن",
 };

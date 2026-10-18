@@ -146,7 +146,7 @@ function ReportBody({ stats: s, label, a, b, c }: { stats: ReportStats; label: s
 
   const tiles: [string, string][] = [
     [t('Workouts'), s.workouts.planned ? t('{a} of {b}', { a: s.workouts.asPlanned, b: s.workouts.planned }) : String(s.workouts.done)],
-    [t('Weight'), s.weight && s.weight.change !== 0 ? `${s.weight.change > 0 ? '+' : ''}${fx(s.weight.change)} ${t('kg')}` : s.weight ? `${fx(s.weight.last)} ${t('kg')}` : '–'],
+    [t('Weight'), s.weight && s.weight.change !== 0 ? `${s.weight.change > 0 ? '+' : ''}${W.text(s.weight.change)}` : s.weight ? W.text(s.weight.last) : '–'],
     [t('Protein goal'), s.proteinGoal ? t('{a} of {b} days', { a: s.proteinDays[0], b: s.proteinDays[1] }) : '–'],
     [t('Sleep'), s.sleepAvg != null ? t('{n} h avg', { n: fx(s.sleepAvg) }) : '–'],
   ];
@@ -176,7 +176,7 @@ function ReportBody({ stats: s, label, a, b, c }: { stats: ReportStats; label: s
             <Text variant="small" weight={700}>
               {t('Weight')}
             </Text>
-            <Text variant="small" weight={700} color="sec">{`${s.weight.change < 0 ? '↓' : '↑'} ${fx(Math.abs(s.weight.change))} ${t('kg')}`}</Text>
+            <Text variant="small" weight={700} color="sec">{`${s.weight.change < 0 ? '↓' : '↑'} ${W.text(Math.abs(s.weight.change))}`}</Text>
           </Row>
           <View style={{ marginTop: 8 }}>
             <LineChart values={s.weight.series} height={110} />

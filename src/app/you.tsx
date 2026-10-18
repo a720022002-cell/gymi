@@ -142,7 +142,7 @@ export default function You() {
         onChange={s.setTheme}
       />
 
-      <Label>{t('Gym weights')}</Label>
+      <Label>{t('Weight unit')}</Label>
       <Segmented<'kg' | 'lb'>
         value={s.unit}
         options={[

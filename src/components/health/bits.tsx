@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 
 import { useT } from '@/i18n';
+import { fromUnit, LB } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
 import { Icon, type IconName } from '../Icon';
@@ -36,19 +37,23 @@ export function Choices({ options, value, onChange, icons }: { options: string[]
 
 /** Weight wheel: whole kilos and one decimal (design: weightPicker). */
 export function WeightWheel({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  const whole = Math.max(30, Math.min(250, Math.floor(value + 1e-6)));
-  const dec = Math.round((value - Math.floor(value + 1e-6)) * 10) % 10;
+  // `value` is always kg; the wheel turns in kg or lb (your choice in settings), 30–250 kg.
+  const lb = useSettings().unit === 'lb';
+  const [lo, hi] = lb ? [66, 551] : [30, 250];
+  const shown = lb ? Math.round(value * LB * 10) / 10 : value;
+  const whole = Math.max(lo, Math.min(hi, Math.floor(shown + 1e-6)));
+  const dec = Math.round((shown - Math.floor(shown + 1e-6)) * 10) % 10;
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', direction: 'ltr' } as object}>
       <Wheel
         columns={[
-          { items: Array.from({ length: 221 }, (_, i) => ({ value: 30 + i, label: String(30 + i) })), selected: whole, width: 92 },
+          { items: Array.from({ length: hi - lo + 1 }, (_, i) => ({ value: lo + i, label: String(lo + i) })), selected: whole, width: 92 },
           { items: Array.from({ length: 10 }, (_, i) => ({ value: i, label: `.${i}` })), selected: dec, width: 60 },
         ]}
-        onChange={([w, d]) => onChange(w + d / 10)}
+        onChange={([w, d]) => onChange(lb ? fromUnit(w + d / 10, 'lb') : w + d / 10)}
       />
       <Text weight={700} color="sec" size={18} style={{ marginStart: 4 }}>
-        kg
+        {lb ? 'lb' : 'kg'}
       </Text>
     </View>
   );

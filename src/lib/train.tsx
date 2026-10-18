@@ -3,6 +3,7 @@ import { createContext, type PropsWithChildren, useCallback, useContext, useEffe
 import { AppState } from 'react-native';
 
 import { useAuth } from './auth';
+import { peekCycle, pregnancySafe, setPregAdjust } from './cycle';
 import { myCoach, myCoachPlans } from './coaching';
 import type { DayTotals } from './health';
 import { addDays, localDay } from './nutrition';
@@ -91,6 +92,9 @@ type Train = {
   coach: { name: string; link: string } | null;
   /** Recovery you logged today (stretching, nap…). */
   recTools: string[];
+  /** Women only: pregnancy-safe workouts are on (safer exercises, lighter weights, no weight jumps). */
+  preg: boolean;
+  setPreg: (on: boolean) => Promise<boolean>;
   setRecTools: (tools: string[]) => void;
   /** Save a finished workout made elsewhere (group workouts). */
   addLog: (row: Omit<WorkoutLog, 'id'>) => Promise<WorkoutLog | null>;
@@ -106,6 +110,35 @@ const PENDING_KEY = (uid: string) => `gymi.trainplan.pending.v1.${uid}`;
 export function TrainProvider({ children }: PropsWithChildren) {
   const { session: auth, profile } = useAuth();
   const userId = auth?.user.id;
+  const female = profile?.gender === 'female';
+  // Pregnancy-safe workouts: a setting kept with the cycle settings (the pregnancy page and the Train page change it).
+  const [pregFor, setPregFor] = useState<{ uid: string; on: boolean } | null>(null);
+  const preg = female && !!userId && pregFor?.uid === userId && pregFor.on;
+  useEffect(() => {
+    if (!userId || !female) return;
+    let alive = true;
+    const load = () =>
+      peekCycle(userId)
+        .then((c) => alive && setPregFor({ uid: userId, on: pregnancySafe(c.settings) }))
+        .catch(() => {});
+    load();
+    // Changed on the pregnancy page: picked up when you come back to the app.
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && load());
+    return () => {
+      alive = false;
+      sub.remove();
+    };
+  }, [userId, female]);
+  const setPreg = useCallback(
+    async (on: boolean) => {
+      if (!userId) return false;
+      setPregFor({ uid: userId, on });
+      const ok = await setPregAdjust(userId, on);
+      if (!ok) setPregFor({ uid: userId, on: !on });
+      return ok;
+    },
+    [userId],
+  );
   const [today, setToday] = useState(localDay());
   const [readyFor, setReadyFor] = useState<string | null>(null);
   // The plan couldn't load (no connection) and isn't on this phone: the Train tab shows a retry, never setup.
@@ -483,8 +516,9 @@ export function TrainProvider({ children }: PropsWithChildren) {
       if (!p) return;
       // A one-off list (Train together) uses the same building rules as a planned workout.
       const src = opts?.ex ? { ...p, workouts: { ...p.workouts, [name]: { ex: opts.ex, focus: '', min: 0 } } } : p;
-      const wo = buildWorkout(src, name, { home, short, light: opts?.light, deload: opts?.deload, last, top });
-      const lighter = !!(opts?.light || opts?.deload);
+      const wo = buildWorkout(src, name, { home, short, light: opts?.light, deload: opts?.deload, preg, last, top });
+      // Pregnant counts as a lighter session: lighter weights, and it doesn't lower next time's numbers.
+      const lighter = !!(opts?.light || opts?.deload || preg);
       setSession({
         name,
         start: Date.now(),
@@ -507,7 +541,7 @@ export function TrainProvider({ children }: PropsWithChildren) {
         }),
       });
     },
-    [last, top, setSession],
+    [last, top, preg, setSession],
   );
 
   // A new log goes into the recent list and the whole history.
@@ -602,8 +636,8 @@ export function TrainProvider({ children }: PropsWithChildren) {
   );
 
   const value = useMemo<Train>(
-    () => ({ ready, loadError, reload: () => setLoadTry((n) => n + 1), setupDone, plan, savePlan, changePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, best, top, session, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, recTools, setRecTools, addLog }),
-    [ready, loadError, setupDone, plan, savePlan, changePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, best, top, session, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, recTools, setRecTools, addLog],
+    () => ({ ready, loadError, reload: () => setLoadTry((n) => n + 1), setupDone, plan, savePlan, changePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, best, top, session, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, recTools, setRecTools, addLog, preg, setPreg }),
+    [ready, loadError, setupDone, plan, savePlan, changePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, best, top, session, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, recTools, setRecTools, addLog, preg, setPreg],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

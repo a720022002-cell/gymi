@@ -12,12 +12,14 @@ import { useT } from '@/i18n';
 import { type CycleSettings, dueDate } from '@/lib/cycle';
 import { cycleRemindersSupported } from '@/lib/cycleReminders';
 import { useFood } from '@/lib/food';
+import { useTrain } from '@/lib/train';
 import { addDays } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
 
 const SIZES = ['poppy seed', 'sesame seed', 'lentil', 'blueberry', 'raspberry', 'grape', 'kumquat', 'fig', 'lime', 'lemon', 'peach', 'apple', 'avocado', 'onion', 'sweet potato', 'mango', 'banana', 'carrot', 'papaya', 'grapefruit', 'cantaloupe', 'cauliflower', 'lettuce', 'cabbage', 'coconut', 'pineapple', 'squash', 'honeydew', 'watermelon'];
 
 export function Pregnancy({ s, save }: { s: CycleSettings; save: (next: CycleSettings) => void }) {
+  const train = useTrain();
   const { t, lang } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
@@ -97,6 +99,8 @@ export function Pregnancy({ s, save }: { s: CycleSettings; save: (next: CycleSet
             label={t('Adjust my workouts for pregnancy')}
             onChange={(v) => {
               save({ ...s, preg_adjust: v });
+              // Training picks it up right away.
+              train.setPreg(v);
               toast(t(v ? 'Workouts will be adjusted for pregnancy' : 'Workouts back to normal'), { icon: 'check' });
             }}
           />

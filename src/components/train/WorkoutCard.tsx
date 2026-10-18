@@ -28,7 +28,7 @@ export function useToday() {
   const light = !!p && p.light === train.today;
   const deload = !!p && p.deload === weekStart(train.today);
   const name = train.todayName;
-  const wo = p && name ? buildWorkout(p, name, { home, short, light, deload, last: train.last, top: train.top }) : null;
+  const wo = p && name ? buildWorkout(p, name, { home, short, light, deload, preg: train.preg, last: train.last, top: train.top }) : null;
   return { name, home, short, light, deload, wo, skipped: !!p?.skipped[train.today], done: !!train.todayLog };
 }
 

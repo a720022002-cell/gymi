@@ -337,10 +337,60 @@ export type LastSets = Record<string, { w: number; r: number }[]>;
 
 export type BuiltEx = PlanEx & { swapped: boolean; target: number; last: { w: number; r: number }[] };
 
+/**
+ * Pregnancy-safe swaps (common guidance, like ACOG's): nothing lying flat on the back or on the belly, no heavy
+ * barbell lifts held with the breath, no jumps or fast swings, no crunches. null = left out of the workout.
+ */
+export const PREG_SWAP: Record<string, string | null> = {
+  bench: 'chestpress',
+  smith: 'chestpress',
+  dbpress: 'chestpress',
+  dbfly: 'pecdeck',
+  skull: 'pushdown',
+  closegrip: 'pushdown',
+  ohp: 'shoulder',
+  row: 'cablerow',
+  tbar: 'cablerow',
+  deadlift: 'cablerow',
+  squat: 'goblet',
+  frontsquat: 'goblet',
+  legcurl: 'hipthrust',
+  jumpsquat: 'bwsquat',
+  kbswing: 'goblet',
+  crunch: 'sideplank',
+  crunchfloor: 'sideplank',
+  legraise: 'sideplank',
+  russian: 'sideplank',
+  mountain: 'sideplank',
+  superman: null,
+  pike: null,
+};
+/** Exercises from the full list that aren't pregnancy-safe, by name (lying, jumping, crunches and the like). */
+const PREG_UNSAFE = /lying|supine|decline|prone|crunch|sit-?up|jump|burpee|plyo|leg raise|v-up|russian twist|snatch|clean and|box/i;
+
+/** The pregnancy-safe version of an exercise: itself, a safer one (by id), or null to leave it out. */
+export function pregSafe(x: PlanEx): string | null {
+  if (x.id in PREG_SWAP) return PREG_SWAP[x.id];
+  if (!EX[x.id] && PREG_UNSAFE.test(`${x.n ?? ''} ${x.id}`)) return null;
+  return x.id;
+}
+
 /** The workout for today, with injury swaps, short or home version, and last time's numbers. */
-export function buildWorkout(plan: TrainPlan, name: string, opts: { home?: boolean; short?: boolean; light?: boolean; deload?: boolean; last: LastSets; top?: Record<string, number> }) {
+export function buildWorkout(plan: TrainPlan, name: string, opts: { home?: boolean; short?: boolean; light?: boolean; deload?: boolean; preg?: boolean; last: LastSets; top?: Record<string, number> }) {
   const home = opts.home;
-  const base: PlanEx[] = home ? tplEx(WK.Home.ex) : (plan.workouts[name]?.ex ?? []);
+  let base: PlanEx[] = home ? tplEx(WK.Home.ex) : (plan.workouts[name]?.ex ?? []);
+  // Pregnant: safer exercises (a swap shows the new one's name), at most 3 sets of 10 reps or more.
+  if (opts.preg) {
+    const seen = new Set<string>();
+    base = base.flatMap((x) => {
+      const id = pregSafe(x);
+      if (!id || seen.has(id)) return [];
+      seen.add(id);
+      const lo = parseInt(String(x.reps).split(/[–-]/)[0] ?? '10', 10) || 10;
+      const reps = EX[id]?.time || x.time ? (id === x.id ? x.reps : '30') : lo >= 10 ? x.reps : '10–12';
+      return [{ ...(id === x.id ? x : { id }), sets: Math.min(3, x.sets), reps }];
+    });
+  }
   const inj = plan.injuries;
   let ex: BuiltEx[] = base.map((x) => {
     const e = EX[x.id];
@@ -351,8 +401,9 @@ export function buildWorkout(plan: TrainPlan, name: string, opts: { home?: boole
   });
   // Lighter day: one set less and about 10% less weight. Deload week: one set less and about 60%.
   // Cut from your best recent normal session, so an old lighter session doesn't make it cut twice.
-  const cut = opts.deload ? 0.6 : opts.light ? 0.9 : 1;
-  if (cut < 1) ex = ex.map((x) => ({ ...x, sets: Math.max(2, x.sets - 1), target: Math.round((Math.max(x.target, opts.top?.[x.id] ?? 0) * cut) / 2.5) * 2.5 }));
+  // Pregnant: about 20% lighter than your best recent weights (and never pushing for more).
+  const cut = opts.deload ? 0.6 : opts.light ? 0.9 : opts.preg ? 0.8 : 1;
+  if (cut < 1) ex = ex.map((x) => ({ ...x, sets: opts.preg && !opts.light && !opts.deload ? x.sets : Math.max(2, x.sets - 1), target: Math.round((Math.max(x.target, opts.top?.[x.id] ?? 0) * cut) / 2.5) * 2.5 }));
   let min = home ? WK.Home.min : (plan.workouts[name]?.min ?? workoutMinutes(base));
   if (cut < 1) min = Math.round((min * 0.85) / 5) * 5;
   if (opts.short && ex.length > 3) {

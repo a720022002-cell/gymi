@@ -19,7 +19,7 @@ import { useAuth } from '@/lib/auth';
 import { removeOldAvatars, uploadAvatar } from '@/lib/avatars';
 import { useHealth } from '@/lib/health';
 import { takePhoto } from '@/lib/photo';
-import { badgeLevel, fx, shortDate } from '@/lib/progress';
+import { badgeLevel, shortDate } from '@/lib/progress';
 import { DEFAULT_SHARE, type FeedItem, feed, getShare, getShowcase, saveShare, saveShowcase, type Share, type Showcase, timeAgo } from '@/lib/social';
 import { useTrain } from '@/lib/train';
 import { EX } from '@/lib/training';
@@ -294,7 +294,7 @@ export default function Profile() {
           <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <Icon name="scale" size={18} color={change < 0 ? c.cobalt : c.text} />
             <View style={{ flex: 1 }}>
-              <Text weight={700}>{change <= 0 ? t('Down {n} kg', { n: fx(-change) }) : t('Up {n} kg', { n: fx(change) })}</Text>
+              <Text weight={700}>{W.words(change <= 0 ? t('Down {n} kg', { n: W.show(-change) }) : t('Up {n} kg', { n: W.show(change) }))}</Text>
               <Text variant="small" color="sec">
                 {t('Since {d}', { d: shortDate(ws[0].day, lang) })}
               </Text>

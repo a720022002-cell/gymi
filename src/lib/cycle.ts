@@ -17,7 +17,7 @@ export type CycleSettings = {
   reminders?: CycleReminders;
   /** Use skin temperature from a watch or ring for ovulation (needs the phone app and a device). */
   temp_watch?: boolean;
-  /** Pregnant: make workouts pregnancy-safe (Train reads this through pregnancySafe()). */
+  /** Pregnancy-safe workouts (set on the pregnancy page or the Train page; Train reads it through pregnancySafe()). */
   preg_adjust?: boolean;
   checklist?: PregChecklist;
 };
@@ -336,6 +336,18 @@ export const dueDate = (week: number, today: string) => addDays(today, (40 - wee
  * True when workouts should be pregnancy-safe: she is in pregnancy mode and turned on
  * "Adjust my workouts for pregnancy". Train can use it to pick lighter, safer exercises.
  */
-export function pregnancySafe(s: Pick<CycleSettings, 'mode' | 'preg_adjust'> | null | undefined) {
-  return !!s && s.mode === 'preg' && !!s.preg_adjust;
+export function pregnancySafe(s: Pick<CycleSettings, 'preg_adjust'> | null | undefined) {
+  return !!s?.preg_adjust;
+}
+
+/** Turn pregnancy-safe workouts on or off from any screen (kept on this phone only in anonymous mode). */
+export async function setPregAdjust(uid: string, on: boolean) {
+  changed();
+  if (await isAnon(uid)) {
+    const l = await readLocal(uid);
+    await writeLocal(uid, { ...l, settings: { ...l.settings, preg_adjust: on } });
+    return true;
+  }
+  const { error } = await supabase.from('cycle_settings').upsert({ user_id: uid, preg_adjust: on, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+  return !error;
 }

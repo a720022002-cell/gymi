@@ -6,7 +6,7 @@ import type { ChatCard as Card } from '@/lib/coach';
 import { useFood, useLogFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { addDays, fmt } from '@/lib/nutrition';
-import { fx } from '@/lib/progress';
+import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
 import { BarChart, LineChart } from '../Charts';
@@ -77,6 +77,7 @@ export function ChatCard({ card }: { card: Card }) {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
   const health = useHealth();
+  const W = useWeight();
   const food = useFood();
   const box = (children: ReactNode) => <View style={{ backgroundColor: c.bg, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12, marginTop: 10, minWidth: 220 }}>{children}</View>;
   const week = Array.from({ length: 7 }, (_, i) => addDays(food.today, i - 6));
@@ -98,7 +99,7 @@ export function ChatCard({ card }: { card: Card }) {
           </Text>
           <Row gap={2}>
             <Icon name={d <= 0 ? 'down' : 'up'} size={12} strokeWidth={2.6} color={c.cobalt} />
-            <Text variant="xs" weight={700} color={c.cobalt}>{`${fx(Math.abs(d))} ${t('kg')}`}</Text>
+            <Text variant="xs" weight={700} color={c.cobalt}>{W.text(Math.abs(d))}</Text>
           </Row>
         </Row>
         <LineChart values={series} height={70} dots={false} />

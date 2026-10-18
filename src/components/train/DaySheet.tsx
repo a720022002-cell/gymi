@@ -80,7 +80,7 @@ export function DaySheet({ d, onClose }: { d: number | null; onClose: () => void
   }
 
   const W = p.workouts[w];
-  const b = buildWorkout(p, w, { last: train.last, top: train.top });
+  const b = buildWorkout(p, w, { preg: train.preg, last: train.last, top: train.top });
   const sets = b.ex.reduce((a, x) => a + x.sets, 0);
   const canStart = isToday && !train.todayLog && b.ex.length > 0;
   return (

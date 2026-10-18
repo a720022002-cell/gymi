@@ -42,7 +42,7 @@ export default function ExportScreen() {
 
   const rows = (x: ReportStats) => {
     const out: [string, string][] = [];
-    if (inc.weight && x.weight) out.push([t('Weight'), `${fx(x.weight.first)} → ${fx(x.weight.last)} ${t('kg')} (${x.weight.change > 0 ? '+' : ''}${fx(x.weight.change)})`]);
+    if (inc.weight && x.weight) out.push([t('Weight'), `${W.show(x.weight.first)} → ${W.text(x.weight.last)} (${x.weight.change > 0 ? '+' : ''}${W.show(x.weight.change)})`]);
     if (inc.weight && x.waistChange != null) out.push([t('Waist change'), `${x.waistChange > 0 ? '+' : ''}${fx(x.waistChange)} cm`]);
     if (inc.food) {
       if (x.caloriesAvg != null) out.push([t('Average calories'), `${fmt(x.caloriesAvg)} kcal${x.calorieGoal ? ` (${t('goal')} ${fmt(x.calorieGoal)})` : ''}`]);

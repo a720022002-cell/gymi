@@ -9,6 +9,7 @@ import { MEAS, MEAS_INFO, type MeasKind, useHealth } from '@/lib/health';
 import { addDays } from '@/lib/nutrition';
 import { takePhoto } from '@/lib/photo';
 import { fx, shortDate, weekAvg } from '@/lib/progress';
+import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
 import { LineChart } from '../Charts';
@@ -42,6 +43,8 @@ const longDate = (d: string, lang: 'en' | 'ar') =>
   new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric', year: d.slice(0, 4) === String(new Date().getFullYear()) ? undefined : 'numeric' }).format(new Date(`${d}T12:00:00`));
 
 function Weight() {
+  // Body weight in your unit (kg or lb); saved in kg.
+  const W = useWeight();
   const { t, lang } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
@@ -71,8 +74,8 @@ function Weight() {
   if (change != null) {
     const toward = goal >= 3 ? change < 0 : goal <= 1 ? change > 0 : Math.abs(change) < 1;
     note = toward
-      ? t('You’re on track. {n} kg since {d}. If your weight stays flat for two weeks, I’ll suggest adjusting calories.', { n: `${change > 0 ? '+' : '−'}${fx(Math.abs(change))}`, d: shortDate(first.day, lang) })
-      : t('Your weight is going the other way ({n} kg since {d}). Weigh in a few more mornings; one day doesn’t mean much.', { n: `${change > 0 ? '+' : '−'}${fx(Math.abs(change))}`, d: shortDate(first.day, lang) });
+      ? W.words(t('You’re on track. {n} kg since {d}. If your weight stays flat for two weeks, I’ll suggest adjusting calories.', { n: `${change > 0 ? '+' : '−'}${W.show(Math.abs(change))}`, d: shortDate(first.day, lang) }))
+      : W.words(t('Your weight is going the other way ({n} kg since {d}). Weigh in a few more mornings; one day doesn’t mean much.', { n: `${change > 0 ? '+' : '−'}${W.show(Math.abs(change))}`, d: shortDate(first.day, lang) }));
   }
   return (
     <View>
@@ -85,8 +88,8 @@ function Weight() {
                   {t(cur.day === food.today ? 'Today' : 'Latest')}
                 </Text>
                 <Text num size={34}>
-                  {fx(cur.value)}
-                  <Text num size={18} weight={500} color="sec">{` ${t('kg')}`}</Text>
+                  {W.show(cur.value)}
+                  <Text num size={18} weight={500} color="sec">{` ${W.label}`}</Text>
                 </Text>
               </View>
               {a != null ? (
@@ -94,10 +97,10 @@ function Weight() {
                   <Text variant="small" weight={700} color="sec">
                     {t('Weekly average')}
                   </Text>
-                  <Text num size={20}>{`${fx(a)} ${t('kg')}`}</Text>
+                  <Text num size={20}>{W.text(a)}</Text>
                   {b != null ? (
                     <Text variant="small" weight={700} color={(a - b < 0) === goal >= 3 ? 'up' : 'sec'}>
-                      {`${a - b < 0 ? '↓' : '↑'} ${fx(Math.abs(a - b))} ${t('vs last week')}`}
+                      {`${a - b < 0 ? '↓' : '↑'} ${W.show(Math.abs(a - b))} ${t('vs last week')}`}
                     </Text>
                   ) : null}
                 </View>
@@ -105,7 +108,7 @@ function Weight() {
             </Row>
             {w.length > 1 ? (
               <View style={{ marginTop: 16 }}>
-                <LineChart values={w.map((x) => x.value)} labels={labels} />
+                <LineChart values={w.map((x) => W.num(x.value))} labels={labels} />
                 <Row gap={6} style={{ marginTop: 8, justifyContent: 'center' }}>
                   <Text variant="xs" weight={700} color="link">
                     {t('Tap to see every weigh-in and fix one')}
@@ -157,7 +160,7 @@ function Weight() {
                 setBusy(true);
                 const ok = await health.fixWeight(editDay, ev);
                 setBusy(false);
-                toast(ok ? t('Weight saved: {n} kg', { n: fx(ev) }) : t('Couldn’t save. Please try again.'), { icon: ok ? 'scale' : 'warn' });
+                toast(ok ? W.words(t('Weight saved: {n} kg', { n: W.show(ev) })) : t('Couldn’t save. Please try again.'), { icon: ok ? 'scale' : 'warn' });
                 if (ok) setEditDay(null);
               }}
             />
@@ -197,10 +200,10 @@ function Weight() {
                     <Text style={{ flex: 1 }}>{longDate(x.day, lang)}</Text>
                     {d != null && Math.abs(d) >= 0.05 ? (
                       <Text variant="small" weight={700} color={Math.abs(d) >= 3 ? 'down' : 'sec'} num>
-                        {`${d > 0 ? '+' : '−'}${fx(Math.abs(d))}`}
+                        {`${d > 0 ? '+' : '−'}${W.show(Math.abs(d))}`}
                       </Text>
                     ) : null}
-                    <Text num weight={700}>{`${fx(x.value)} ${t('kg')}`}</Text>
+                    <Text num weight={700}>{W.text(x.value)}</Text>
                     <Icon name="edit" size={16} color={c.sec} />
                   </Springy>
                 );
@@ -227,7 +230,7 @@ function Weight() {
           onPress={async () => {
             setOpen(false);
             const ok = await health.logWeight(v);
-            toast(ok ? t('Weight saved: {n} kg', { n: fx(v) }) : t('Couldn’t save. Please try again.'), { icon: ok ? 'scale' : 'warn' });
+            toast(ok ? W.words(t('Weight saved: {n} kg', { n: W.show(v) })) : t('Couldn’t save. Please try again.'), { icon: ok ? 'scale' : 'warn' });
           }}
         />
       </Sheet>

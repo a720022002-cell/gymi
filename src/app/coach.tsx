@@ -27,6 +27,7 @@ import { daysBetween } from '@/lib/report';
 import { fx, weekAvg } from '@/lib/progress';
 import { supabase } from '@/lib/supabase';
 import { useTrain } from '@/lib/train';
+import { useWeight } from '@/lib/units';
 import { useStreaks } from '@/lib/useProgress';
 import { allergensIn, allergiesText } from '@/lib/allergies';
 import { REMINDER_NAME } from '@/lib/recap';
@@ -46,6 +47,7 @@ const r1 = (n: number) => Math.round(n * 10) / 10;
 /** Chat with the AI coach. It can log food, cardio, water, sleep and weight for you, and remembers you between chats (design: chat). */
 export default function Coach() {
   const { t, lang } = useT();
+  const W = useWeight();
   const { colors: c } = useSettings();
   const insets = useSafeAreaInsets();
   const toast = useToast();
@@ -269,7 +271,7 @@ export default function Coach() {
         const prev = health.weights.find((w) => w.day === food.today)?.value ?? null;
         if (await health.logWeight(kg)) {
           done.push({ type: 'weight', kg, prev, day: food.today });
-          toast(t('Logged to Progress: {n} kg', { n: fx(kg) }), { ai: true });
+          toast(W.words(t('Logged to Progress: {n} kg', { n: W.show(kg) })), { ai: true });
         }
       }
     }
@@ -443,7 +445,7 @@ export default function Coach() {
         : a.type === 'sleep'
           ? ['moon', t('Logged to Sleep: {n} h', { n: fx(a.hours) })]
           : a.type === 'weight'
-            ? ['scale', t('Logged to Progress: {n} kg', { n: fx(a.kg) })]
+            ? ['scale', W.words(t('Logged to Progress: {n} kg', { n: W.show(a.kg) }))]
             : ['drop', t('Added {n} ml water', { n: a.ml })];
 
   return (
