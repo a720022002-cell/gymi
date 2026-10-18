@@ -176,5 +176,3 @@ export function useSettings() {
   if (!v) throw new Error('useSettings must be used inside SettingsProvider');
   return v;
 }
-
-export const useColors = () => useSettings().colors;

@@ -1,7 +1,6 @@
 // Workout overlays drawn on a photo for stories (web canvas). 1080 × 1920, like Instagram and Snapchat stories.
 
 export type OverlayStyle = 'stats' | 'rings' | 'record' | 'line';
-export const OVERLAY_STYLES: OverlayStyle[] = ['stats', 'rings', 'record', 'line'];
 
 /** Everything an overlay shows, already worded and in your unit. */
 export type OverlayData = {

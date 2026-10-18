@@ -74,10 +74,6 @@ export async function removeFriendship(friendshipId: string) {
   return !error;
 }
 
-export async function friendProfile(id: string) {
-  return (await rpc<FriendProfile>('friend_profile', { p_id: id })).data;
-}
-
 /** A friend's profile; `failed` when it couldn't be loaded (no connection), not because you aren't friends. */
 export async function friendProfileChecked(id: string) {
   const { data, error } = await rpc<FriendProfile>('friend_profile', { p_id: id });
@@ -266,36 +262,14 @@ export async function myReferrals() {
   const { data } = await supabase.rpc('my_referrals');
   return (data as { name: string | null; username: string; joined: string }[] | null) ?? [];
 }
-export async function claimReferral(username: string) {
-  const { data } = await supabase.rpc('claim_referral', { p_username: username });
-  return (data as string | null) ?? 'failed';
-}
 
 // ---------------------------------------------------------------------------
 // Live group workouts
 // ---------------------------------------------------------------------------
-export type SessionEx = { id: string; type: number };
-export type GroupSession = { id: string; host: string; workout: SessionEx[]; status: 'open' | 'live' | 'done'; started_at: string | null };
 export type SessionMember = { user_id: string; name: string | null; username: string; level: 'Beginner' | 'Intermediate' | 'Advanced'; joined: boolean; done: Record<string, number>; updated_at: string };
-export async function startGroupSession(workout: SessionEx[], members: string[], levels: string[], myLevel: string) {
-  const { data, error } = await supabase.rpc('start_group_session', { p_workout: workout, p_members: members, p_levels: levels, p_my_level: myLevel });
-  return error ? null : (data as string);
-}
 export async function myGroupSessions() {
   const { data } = await supabase.rpc('my_group_sessions');
   return (data as { id: string; host: string; host_name: string | null; status: string; created_at: string; members: number; joined: boolean }[] | null) ?? [];
-}
-export async function getGroupSession(id: string) {
-  const { data } = await supabase.from('group_sessions').select('id,host,workout,status,started_at').eq('id', id).maybeSingle();
-  return (data as GroupSession) ?? null;
-}
-export async function sessionBoard(id: string) {
-  const { data } = await supabase.rpc('group_session_board', { p_id: id });
-  return (data as SessionMember[] | null) ?? [];
-}
-export async function updateMySession(id: string, uid: string, patch: { joined?: boolean; done?: Record<string, number> }) {
-  const { error } = await supabase.from('group_session_members').update({ ...patch, updated_at: new Date().toISOString() }).eq('session_id', id).eq('user_id', uid);
-  return !error;
 }
 export async function setSessionStatus(id: string, status: 'live' | 'done') {
   const { data } = await supabase.rpc('set_group_session_status', { p_id: id, p_status: status });

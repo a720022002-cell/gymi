@@ -37,15 +37,6 @@ export async function loadCycleToday(uid: string): Promise<CycleToday | null> {
   }
 }
 
-/** True when she is pregnant and asked for pregnancy-safe workouts (for Train). */
-export async function loadPregnancySafe(uid: string): Promise<boolean> {
-  try {
-    return (await read(uid)).preg;
-  } catch {
-    return false;
-  }
-}
-
 /** Hook version: only loads for women. */
 export function useCycleToday() {
   const { session, profile } = useAuth();

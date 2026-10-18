@@ -12,7 +12,6 @@ export const CAFFEINE_DAY_PREG = 200;
 
 // Today's daily limit: FoodProvider sets it to 200 mg in pregnancy mode, so every caffeine check uses it.
 let dayLimit = CAFFEINE_DAY;
-export const caffeineDayLimit = () => dayLimit;
 export function setCaffeinePregnant(on: boolean) {
   dayLimit = on ? CAFFEINE_DAY_PREG : CAFFEINE_DAY;
 }

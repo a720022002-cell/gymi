@@ -205,17 +205,6 @@ export function mealPlanTotals(m: Pick<MealPlan, 'meals'> | null | undefined) {
   const meals = m?.meals ?? [];
   return { kcal: Math.round(meals.reduce((a, x) => a + (+x.k || 0), 0)), protein: Math.round(meals.reduce((a, x) => a + (+x.p || 0), 0)) };
 }
-/**
- * For other areas: is the member's training or food managed by a coach?
- * Returns null without an active coach. program / meals are null when the coach hasn't sent one (then the AI plans it).
- * meals.kcal / meals.protein are the plan's daily totals; kcal / protein are the coach's own targets (if set).
- */
-export async function coachManaged(): Promise<{ coach: string; coachId: string; link: string; program: Program | null; meals: CoachMealPlan | null; kcal: number | null; protein: number | null } | null> {
-  const p = await myCoachPlans();
-  if (!p) return null;
-  const meals = p.meals ? { ...p.meals, ...mealPlanTotals(p.meals) } : null;
-  return { coach: p.coach, coachId: p.coach_id, link: p.link_id, program: p.program, meals, kcal: p.kcal, protein: p.protein };
-}
 /** Change just the program or just the meal plan of a client or invite, keeping the other. */
 export async function assignOne(link: string, kind: 'program' | 'meal', id: string | null) {
   const l = (await coachList()).find((x) => x.id === link);
