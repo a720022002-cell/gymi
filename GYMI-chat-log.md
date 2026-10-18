@@ -127,6 +127,7 @@ Passwords and keys are left out on purpose.
 - **Improvements I1–I13 (18 Oct):** invite code sends a friend request; sharing starts closed for new accounts; allergy warning on products and search; your own allergy words filter recipes; +2.5 kg after a full session; plan save queue with retry; AI fixed JSON shape and length limits; no technical errors sent to the app; faster long lists and chat; error and not-found pages; one date helper; period and home screens split into smaller files and dead code removed; phone app restarts after a language change.
 - **Pregnancy workouts and weight unit (18 Oct):** "Adjust my workouts for pregnancy" now changes training (no lying on the back or belly, no jumps or crunches, about 20% lighter, 3 sets at most, no weight jumps); the switch is on the Train page for women and on the pregnancy page. The kg/lb setting is now "Weight unit" and covers body weight too (progress, home, report, coach, entry wheel).
 - **Meal steps (18 Oct):** when creating or editing a saved meal you can write the cooking steps (up to 30), shown on the meal and shared with its code. Fixed: saving a new meal failed after meal codes became 8 characters (the database check only took 4).
+- **Recap suggestions fix (18 Oct):** after AI answers got a fixed shape (I7), the recap's open "suggest" objects came back empty, so the last slide had nothing to apply. Open shapes now only ask for JSON; this week's empty recaps were cleared so they're written again.
 
 ---
 

@@ -83,6 +83,14 @@ async function openrouter(system: string, msgs: Msg[], schema?: object): Promise
 }
 const retryable = (e: unknown) => (e as Error).message === 'busy' || /^openrouter 5\d\d/.test((e as Error).message);
 
+/** Does every object in this JSON schema list its fields? (Then the answer can be held to it.) */
+function closedSchema(s: unknown): boolean {
+  if (!s || typeof s !== 'object') return true;
+  const o = s as Record<string, unknown>;
+  if (o.type === 'object' && !o.properties) return false;
+  return Object.values(o).every((v) => (Array.isArray(v) ? v.every(closedSchema) : typeof v === 'object' ? closedSchema(v) : true));
+}
+
 async function openrouterCall(model: string, system: string, msgs: Msg[], schema?: object): Promise<string> {
   const key = openrouterKey();
   if (!key) throw new Error('ai_off');
@@ -99,7 +107,9 @@ async function openrouterCall(model: string, system: string, msgs: Msg[], schema
       ...(cx().temperature != null ? { temperature: cx().temperature } : {}),
       max_tokens: cx().maxTokens,
       // The answer's shape is fixed by the schema (or at least JSON), so it doesn't have to be fixed up afterwards.
-      ...(cx().noFormat ? {} : { response_format: schema ? { type: 'json_schema', json_schema: { name: 'answer', strict: false, schema } } : { type: 'json_object' } }),
+      // Only a schema that lists every object's fields is enforced: an open object ({ type: 'object' }) would be held
+      // to no fields at all and come back empty (the recap's suggestions did). Those just ask for JSON.
+      ...(cx().noFormat ? {} : { response_format: schema && closedSchema(schema) ? { type: 'json_schema', json_schema: { name: 'answer', strict: false, schema } } : { type: 'json_object' } }),
       // Ask OpenRouter to return tokens and the real cost of this call.
       usage: { include: true },
       // PDFs (lab reports) are turned into text by OpenRouter's free PDF reader.
