@@ -145,8 +145,3 @@ export const type = {
   small: { fontSize: 13, lineHeight: 19 },
   xs: { fontSize: 12, lineHeight: 17 },
 } as const;
-
-export const motion = {
-  // cubic-bezier(.34,1.45,.64,1) in the design, as a spring.
-  spring: { damping: 14, stiffness: 180, mass: 0.9 },
-} as const;
