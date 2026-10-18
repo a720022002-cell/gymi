@@ -203,11 +203,7 @@ export function MissedCard() {
   );
 }
 
-const dateOf = (today: string, offset: number) => {
-  const [y, m, d] = today.split('-').map(Number);
-  const x = new Date(y, m - 1, d + offset);
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
-};
+const dateOf = addDays;
 
 /** Today's workout card for Home and Train (design: workoutCard). */
 export function WorkoutCard() {

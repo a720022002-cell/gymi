@@ -1,7 +1,7 @@
 // Recipes the AI writes for you: a few for each meal in your plan, from cuisines picked at random, so two people
 // rarely get the same meal plan. Checked here (amounts, macros, allergens) and kept in your food plan for 2 weeks.
 import { askAI } from './ai';
-import { allergensIn, allergiesText } from './allergies';
+import { allergensIn, allergiesText, noteHit } from './allergies';
 import { addDays, type FoodPlan, RAMADAN_SWITCH } from './nutrition';
 import type { Recipe } from './recipes';
 
@@ -88,7 +88,7 @@ function clean(raw: unknown, type: string, f: FoodPlan): AiRecipe | null {
   const steps = (Array.isArray(x.steps) ? x.steps : []).map((s) => str(s, 200)).filter(Boolean).slice(0, 5);
   if (ing.length < 2 || !steps.length) return null;
   // Never a dish with one of your allergens, even if the AI slipped.
-  if (allergensIn([n, ...ing.map((i) => i[0])], f.allergies).length) return null;
+  if (allergensIn([n, ...ing.map((i) => i[0])], f.allergies).length || noteHit([n, ...ing.map((i) => i[0])], f.allergyNote)) return null;
   const r2 = (v: number) => Math.round((v / sum) * 100) / 100;
   return { type, n, m: [r2(p), r2(c), r2(fat)], tag: x.tag === 'Bulk' ? 'Bulk' : 'Cut', min: Math.min(180, Math.max(1, Math.round(Number(x.min) || 15))), ing, steps };
 }

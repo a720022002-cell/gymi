@@ -41,7 +41,7 @@ import {
   sendMessage,
   setTargets,
 } from '@/lib/coaching';
-import { fmt, fmtTime, GOALS } from '@/lib/nutrition';
+import { fmt, fmtTime, GOALS, localDay } from '@/lib/nutrition';
 import { fx, shortDate } from '@/lib/progress';
 import { exInfo } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
@@ -52,10 +52,7 @@ type Data = { link: string; s: ClientSummary | null; l: ClientLink | null; note:
 
 const nowMs = () => Date.now();
 /** "2026-10-10" for a day n days before now. */
-const dayKey = (now: number, back: number) => {
-  const d = new Date(now - back * 864e5);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
+const dayKey = (now: number, back: number) => localDay(new Date(now - back * 864e5));
 
 /** Coach: one client's commitment, food, training, health, to-dos, notes and plans (design: client). Invites show their code. */
 export default function ClientScreen() {

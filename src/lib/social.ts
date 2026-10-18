@@ -1,7 +1,8 @@
 import { supabase } from './supabase';
 
 export type Share = { workouts: boolean; prs: boolean; streak: boolean; weight: boolean; body: boolean; photos: boolean };
-export const DEFAULT_SHARE: Share = { workouts: true, prs: true, streak: true, weight: false, body: false, photos: false };
+/** Nothing is shared until you choose (accounts made before this keep what they had). */
+export const DEFAULT_SHARE: Share = { workouts: false, prs: false, streak: false, weight: false, body: false, photos: false };
 
 export type FriendRow = {
   friendship_id: string;

@@ -13,7 +13,8 @@ import { fontFor, Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Row, Segmented, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
-import { useLogFood } from '@/lib/food';
+import { productAllergies } from '@/lib/allergies';
+import { useFood, useLogFood } from '@/lib/food';
 import { aiErrorText, askAI } from '@/lib/ai';
 import { lookupProduct, type Product } from '@/lib/products';
 import { takePhoto } from '@/lib/photo';
@@ -94,6 +95,9 @@ function Found({ x, code, onFix }: { x: Product; code: string; onFix: () => void
   const { colors: c } = useSettings();
   const toast = useToast();
   const logFood = useLogFood();
+  const food = useFood();
+  // Your allergies in this product: from its name, ingredient list and the label's allergen tags.
+  const allergic = productAllergies({ name: `${x.name} ${shownName}`, ingredients: x.ingredients, tags: x.allergenTags }, food.plan.allergies, food.plan.allergyNote);
   const [um, setUm] = useState<'serving' | 'g'>('serving');
   const [sv, setSv] = useState(1);
   const [g, setG] = useState(String(x.size));
@@ -129,6 +133,14 @@ function Found({ x, code, onFix }: { x: Product; code: string; onFix: () => void
           </Springy>
         ) : null}
       </Card>
+      {allergic.length ? (
+        <Row gap={8} style={{ marginTop: 10, padding: 12, borderRadius: 16, backgroundColor: 'rgba(220,38,38,0.1)', alignItems: 'flex-start' }}>
+          <Icon name="warn" size={18} color={c.down} />
+          <Text variant="small" weight={700} style={{ flex: 1 }}>
+            {t('Careful: this may contain {x}, which you’re allergic to.', { x: allergic.map((a) => t(a)).join(t(', ')) })}
+          </Text>
+        </Row>
+      ) : null}
       {renaming != null ? (
         <Card>
           <Field label={t('Your name for it')} value={renaming} onChangeText={setRenaming} maxLength={120} autoFocus />

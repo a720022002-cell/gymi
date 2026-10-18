@@ -11,6 +11,7 @@ import { Card, Chip, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { type DbExercise, dbExName, searchExercises } from '@/lib/exercisesDb';
 import { EQUIPMENT, exMuscle, FILTER_MUSCLES, muscleLabel } from '@/lib/training';
+import { useProgressive } from '@/lib/useProgressive';
 import { useSettings } from '@/theme/settings';
 
 /** All exercises, filtered by equipment and muscle (design: library). */
@@ -25,6 +26,8 @@ export default function Library() {
   const key = `${eq}|${m}|${q}`;
   const loading = doneKey !== key;
   const latest = useRef(0);
+  // Up to 200 rows with pictures: drawn a part at a time so the screen opens fast.
+  const shown = useProgressive(doneKey ?? '', list.length);
 
   useEffect(() => {
     const id = ++latest.current;
@@ -60,7 +63,7 @@ export default function Library() {
         <ActivityIndicator color={c.cobalt} style={{ marginTop: 30 }} />
       ) : list.length ? (
         <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden' }}>
-          {list.map((e, i) => (
+          {list.slice(0, shown).map((e, i) => (
             <Springy key={e.id} onPress={() => router.push({ pathname: '/exercise', params: { id: e.id } })} scaleTo={0.99} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, paddingVertical: 8, paddingHorizontal: 12, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
               <View style={{ width: 48, height: 48, borderRadius: 12, overflow: 'hidden', backgroundColor: c.inset }}>
                 {e.images[0] ? <Image source={{ uri: e.images[0] }} style={{ width: 48, height: 48 }} contentFit="cover" recyclingKey={e.id} /> : null}

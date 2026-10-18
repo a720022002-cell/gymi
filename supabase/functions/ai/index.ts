@@ -32,6 +32,10 @@ type Ctx = {
   billed: boolean;
   /** When this request must be answered by (all tries together stay under the server's 150 s limit). */
   deadline: number;
+  /** Longest answer allowed for this task (tokens): a runaway answer can't cost more than the task needs. */
+  maxTokens: number;
+  /** The model's route turned down a fixed answer shape: the rest of this request asks in words only. */
+  noFormat?: boolean;
 };
 /** Time for all tries of one request together. */
 const REQUEST_BUDGET_MS = 110_000;
@@ -41,6 +45,25 @@ const cx = () => requestCtx.getStore()!;
 /** One AI call may take at most this long, and answer at most this many tokens. */
 const AI_TIMEOUT_MS = 60_000;
 const MAX_TOKENS = 8000;
+/**
+ * Longest answer per task, about twice the longest seen so far (a plan lists every exercise of every workout).
+ * Anything else gets MAX_TOKENS.
+ */
+const TASK_TOKENS: Record<string, number> = {
+  chat: 3000,
+  food_text: 2500,
+  meal_photo: 4000,
+  label_photo: 1500,
+  machine: 3500,
+  together: 4000,
+  plan_review: 3000,
+  report: 3000,
+  recap: 9000,
+  recipe: 9000,
+  blood: 7000,
+  plan: 16000,
+  recipes: 12000,
+};
 const timedOut = (e: unknown) => (e as Error)?.name === 'TimeoutError' || (e as Error)?.name === 'AbortError';
 const openrouterKey = () => env('OPENROUTER_API_KEY') || env('OpenRouter') || env('OPENROUTER');
 
@@ -74,7 +97,9 @@ async function openrouterCall(model: string, system: string, msgs: Msg[], schema
     body: JSON.stringify({
       model,
       ...(cx().temperature != null ? { temperature: cx().temperature } : {}),
-      max_tokens: MAX_TOKENS,
+      max_tokens: cx().maxTokens,
+      // The answer's shape is fixed by the schema (or at least JSON), so it doesn't have to be fixed up afterwards.
+      ...(cx().noFormat ? {} : { response_format: schema ? { type: 'json_schema', json_schema: { name: 'answer', strict: false, schema } } : { type: 'json_object' } }),
       // Ask OpenRouter to return tokens and the real cost of this call.
       usage: { include: true },
       // PDFs (lab reports) are turned into text by OpenRouter's free PDF reader.
@@ -107,6 +132,11 @@ async function openrouterCall(model: string, system: string, msgs: Msg[], schema
     throw e;
   }
   if (!res.ok) cx().lastDetail = `openrouter ${res.status}: ${(await res.text()).slice(0, 200)}`;
+  // A route that can't take a fixed answer shape: ask again right away without it (nothing was answered or paid).
+  if (res.status === 400 && !cx().noFormat && /response_format|json_schema|structured/i.test(cx().lastDetail)) {
+    cx().noFormat = true;
+    return openrouterCall(model, system, msgs, schema);
+  }
   if (res.status === 401 || res.status === 403) throw new Error('ai_off');
   if (!res.ok) throw new Error(res.status === 429 ? 'busy' : cx().lastDetail);
   cx().billed = true;
@@ -732,7 +762,7 @@ Use only these numbers and say them plainly (for example "you trained 2 of 4 day
   }
 }
 
-Deno.serve((req) => requestCtx.run({ lastDetail: '', lastModel: '', temperature: undefined, lastUsage: { prompt: 0, completion: 0, cost: 0 }, billed: false, deadline: Date.now() + REQUEST_BUDGET_MS }, () => handle(req)));
+Deno.serve((req) => requestCtx.run({ lastDetail: '', lastModel: '', temperature: undefined, lastUsage: { prompt: 0, completion: 0, cost: 0 }, billed: false, deadline: Date.now() + REQUEST_BUDGET_MS, maxTokens: MAX_TOKENS }, () => handle(req)));
 
 async function handle(req: Request) {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -782,7 +812,10 @@ async function handle(req: Request) {
       const data = await res.json().catch(() => null);
       const url = data?.choices?.[0]?.message?.images?.[0]?.image_url?.url ?? null;
       await admin.from('ai_calls').insert({ user_id: u.user.id, task, model: data?.model ?? '', prompt_tokens: data?.usage?.prompt_tokens ?? 0, completion_tokens: data?.usage?.completion_tokens ?? 0, cost_usd: Number(data?.usage?.cost ?? 0) || 0, ok: !!url, error: url ? null : JSON.stringify(data?.error ?? data)?.slice(0, 300) });
-      if (!url) return json({ error: 'failed', detail: JSON.stringify(data?.error ?? data?.choices?.[0]?.message?.content ?? '').slice(0, 300) }, 500);
+      if (!url) {
+        console.error(JSON.stringify(data?.error ?? data?.choices?.[0]?.message?.content ?? '').slice(0, 300));
+        return json({ error: 'failed' }, 500);
+      }
       return json({ result: { image: url, cost: data?.usage?.cost ?? null } });
     }
     const log = (ok: boolean, error?: string) =>
@@ -799,6 +832,7 @@ async function handle(req: Request) {
 
     cx().lastModel = '';
     cx().lastDetail = '';
+    cx().maxTokens = TASK_TOKENS[task] ?? MAX_TOKENS;
     cx().temperature = ['meal_photo', 'food_text', 'label_photo', 'blood', 'machine', 'plan', 'plan_review', 'recipe'].includes(task) ? 0 : undefined;
     cx().lastUsage = { prompt: 0, completion: 0, cost: 0 };
     let result;
@@ -816,8 +850,9 @@ async function handle(req: Request) {
   } catch (e) {
     const msg = (e as Error).message;
     console.error(msg);
-    if (msg === 'ai_off') return json({ error: 'ai_off', detail: cx().lastDetail }, 503);
-    if (msg === 'busy') return json({ error: 'busy', detail: cx().lastDetail }, 503);
-    return json({ error: 'failed', detail: msg.slice(0, 200) }, 500);
+    // Only a short code goes back to the app: the details (model errors, provider text) stay in the server log and ai_calls.
+    if (msg === 'ai_off') return json({ error: 'ai_off' }, 503);
+    if (msg === 'busy') return json({ error: 'busy' }, 503);
+    return json({ error: 'failed' }, 500);
   }
 }

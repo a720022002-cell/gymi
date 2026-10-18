@@ -24,7 +24,7 @@ export function ReferralClaim() {
         if (r.status === 'failed' || r.status === 'slow') return; // offline or too many tries: try again next time
         await AsyncStorage.removeItem(REF_KEY);
         if (r.status === 'ok' || r.status === 'friends') toast(t('You and {n} are now Gym Bros', { n: r.name || r.username || '' }), { icon: 'users' });
-        else if (r.status === 'requested') toast(t('Friend request sent to @{u}', { u: r.username ?? '' }), { icon: 'users' });
+        else if (r.status === 'requested') toast(t('Friend request sent to {n}. You’ll be Gym Bros once they accept.', { n: r.name || `@${r.username ?? ''}` }), { icon: 'users' });
       })
       .catch(() => {});
   }, [ready, t, toast]);

@@ -3928,4 +3928,12 @@ export const AR: Record<string, string> = {
   "Delete the photo from {d}": "احذف صورة {d}",
   "This can’t be undone.": "ما تقدر ترجعها بعدين.",
   "Reminders arrive on the phone app. Your choices here are saved on this device only, so set them again in the phone app.": "التذكيرات توصل على تطبيق الجوال. اختياراتك هنا محفوظة على هالجهاز بس، فاختارها مرة ثانية في تطبيق الجوال.",
+  "Friends type it when they sign up. You get a friend request to accept.": "أصحابك يكتبونه وهم يسجلون، ويوصلك منهم طلب صداقة توافق عليه.",
+  "Join me on Gymi, the AI fitness coach. Use my code {c} when you sign up to send me a friend request.": "انضم لي في Gymi، مدرب اللياقة الذكي. استخدم كودي {c} وأنت تسجل عشان ترسل لي طلب صداقة.",
+  "Friend request sent to {n}. You’ll be Gym Bros once they accept.": "انرسل طلب صداقة لـ {n}. بتصيرون Gym Bros أول ما يوافق.",
+  "Careful: this may contain {x}, which you’re allergic to.": "انتبه: ممكن فيه {x}، وأنت عندك حساسية منه.",
+  "May contain {x}": "ممكن فيه {x}",
+  "Show earlier messages ({n})": "اعرض الرسايل الأقدم ({n})",
+  "This page doesn’t exist": "هالصفحة مو موجودة",
+  "The link may be old or mistyped.": "يمكن الرابط قديم أو مكتوب غلط.",
 };

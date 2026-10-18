@@ -9,7 +9,7 @@ export const REF_GOAL = 5;
 /** `count`: friends who joined and have used Gymi on 2 days (they count toward free months); `waiting`: joined, not yet. */
 export type MyInvite = { code: string | null; count: number; waiting?: number; months: number };
 /** 'slow': too many wrong codes in the last hour (they're limited, so codes can't be guessed). */
-export type ClaimResult = { status: 'ok' | 'friends' | 'requested' | 'bad' | 'self' | 'auth' | 'failed' | 'slow'; name?: string | null; username?: string };
+export type ClaimResult = { status: 'ok' | 'friends' | 'requested' | 'bad' | 'self' | 'auth' | 'failed' | 'slow'; name?: string | null; username?: string; referral?: boolean };
 
 /** Your personal code ("OMAR-7K2QXP"), how many friends joined with it and the free months earned. */
 export async function myInvite(): Promise<MyInvite> {
@@ -18,8 +18,8 @@ export async function myInvite(): Promise<MyInvite> {
 }
 
 /**
- * Use a friend's invite code: you become Gym Bros right away. A username (from an older link) only sends a friend request.
- * 'ok' = it also counted toward their free month, 'friends' = you were already counted, 'requested' = request sent.
+ * Use a friend's invite code (or username): it sends them a friend request to accept. 'friends' = you're Gym Bros now
+ * (they had already asked you, or you were friends), 'requested' = request sent. `referral`: it counted toward their free month.
  */
 export async function claimInvite(code: string): Promise<ClaimResult> {
   const { data, error } = await supabase.rpc('claim_invite', { p_code: code.trim() });
@@ -32,7 +32,7 @@ export const inviteLink = (code: string) => `${siteUrl()}/welcome?ref=${encodeUR
 
 /** Text for Share invite (design: shareInvite). */
 export const inviteText = (code: string, t: (s: string, v?: Record<string, string | number>) => string) =>
-  t('Join me on Gymi, the AI fitness coach. Use my code {c} when you sign up and we’ll be Gym Bros right away.', { c: code }) + ` ${inviteLink(code)}`;
+  t('Join me on Gymi, the AI fitness coach. Use my code {c} when you sign up to send me a friend request.', { c: code }) + ` ${inviteLink(code)}`;
 
 /** Free months you've already been told about, so "You earned a free month!" shows once. */
 const SEEN = (uid: string) => `gymi.freemonths.seen.v1.${uid}`;

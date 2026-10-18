@@ -8,7 +8,7 @@ import type { DayTotals } from './health';
 import { addDays, localDay } from './nutrition';
 import { shareWorkout } from './social';
 import { selectAll, supabase } from './supabase';
-import { buildWorkout, type Day, effectiveWeek, isLightLog, type LastSets, orderWeek, type PlanEx, planFromProgram, plannedOn, rangePlan, setWeekMoves, topReps, type TrainPlan, weekdayOf, weekStart, workoutKcal } from './training';
+import { buildWorkout, type Day, effectiveWeek, EX, isLightLog, type LastSets, lowReps, nextWeight, orderWeek, type PlanEx, planFromProgram, plannedOn, rangePlan, setWeekMoves, topReps, type TrainPlan, weekdayOf, weekStart, workoutKcal } from './training';
 
 /** `light`: done as a lighter day or deload, so its weights don't set next time's numbers. */
 export type LoggedEx = { id: string; n: string; light?: boolean; sets: { w: number; r: number }[] };
@@ -100,6 +100,8 @@ const Ctx = createContext<Train | null>(null);
 const SESSION_KEY = 'gymi.session.v1';
 /** Your plan, kept on this phone for when there's no connection. */
 const PLAN_KEY = (uid: string) => `gymi.trainplan.v1.${uid}`;
+/** A plan change not saved to your account yet (no connection): sent when it can be, even after the app restarts. */
+const PENDING_KEY = (uid: string) => `gymi.trainplan.pending.v1.${uid}`;
 
 export function TrainProvider({ children }: PropsWithChildren) {
   const { session: auth, profile } = useAuth();
@@ -123,6 +125,65 @@ export function TrainProvider({ children }: PropsWithChildren) {
     planRef.current = plan;
   }, [plan]);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // One save queue for the plan: the newest plan goes out, one save at a time. If it fails (no connection) it's
+  // kept on the phone and tried again every 15 seconds, when the app comes back, and after a restart.
+  const pending = useRef<{ plan: TrainPlan; done?: boolean } | null>(null);
+  const flushing = useRef<Promise<boolean> | null>(null);
+  const retryTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const flushRef = useRef<() => Promise<boolean>>(async () => false);
+  // Another account on this phone: its unsaved change isn't this one's.
+  useEffect(() => {
+    pending.current = null;
+  }, [userId]);
+  const flush = useCallback(async (): Promise<boolean> => {
+    if (!userId) return false;
+    if (flushing.current) return flushing.current;
+    const run = (async () => {
+      while (pending.current) {
+        const job = pending.current;
+        const { error } = await supabase.from('train_plans').upsert({ user_id: userId, plan: job.plan, ...(job.done !== undefined ? { setup_done: job.done } : {}) });
+        if (error) {
+          clearTimeout(retryTimer.current);
+          retryTimer.current = setTimeout(() => void flushRef.current(), 15_000);
+          return false;
+        }
+        // A newer change made while this one was saving goes out next.
+        if (pending.current === job) {
+          pending.current = null;
+          await AsyncStorage.removeItem(PENDING_KEY(userId)).catch(() => {});
+        }
+      }
+      return true;
+    })();
+    flushing.current = run;
+    try {
+      return await run;
+    } finally {
+      flushing.current = null;
+    }
+  }, [userId]);
+  useEffect(() => {
+    flushRef.current = flush;
+  }, [flush]);
+  const queueSave = useCallback(
+    (plan: TrainPlan, done?: boolean) => {
+      if (!userId) return Promise.resolve(false);
+      pending.current = { plan, done: done ?? pending.current?.done };
+      AsyncStorage.setItem(PENDING_KEY(userId), JSON.stringify(pending.current)).catch(() => {});
+      return flush();
+    },
+    [userId, flush],
+  );
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'active' && pending.current) void flushRef.current();
+    });
+    return () => {
+      sub.remove();
+      clearTimeout(retryTimer.current);
+    };
+  }, []);
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s) => {
@@ -157,6 +218,19 @@ export function TrainProvider({ children }: PropsWithChildren) {
         row = JSON.parse(kept);
       }
       setLoadError(false);
+      // A change that didn't reach your account last time (no connection) wins, and is sent now.
+      const unsent = await AsyncStorage.getItem(PENDING_KEY(userId)).catch(() => null);
+      if (!alive) return;
+      if (unsent) {
+        try {
+          const u = JSON.parse(unsent) as { plan: TrainPlan; done?: boolean };
+          if (u?.plan?.week) {
+            row = { plan: u.plan, setup_done: u.done ?? row?.setup_done };
+            pending.current = u;
+            setTimeout(() => void flushRef.current(), 0);
+          }
+        } catch {}
+      }
       const raw = row?.plan as TrainPlan | undefined;
       // "In order" plans were removed: every plan now uses fixed days.
       const loaded = raw?.week ? { ...rangePlan(raw), type: 'fixed' as const, skipped: raw.skipped ?? {}, dismiss: raw.dismiss ?? {}, machines: raw.machines ?? {} } : null;
@@ -211,11 +285,6 @@ export function TrainProvider({ children }: PropsWithChildren) {
     };
   }, [userId, loadTry]);
 
-  // Keep the newest plan on this phone too.
-  useEffect(() => {
-    if (userId && plan && readyFor === userId) AsyncStorage.setItem(PLAN_KEY(userId), JSON.stringify({ plan, setup_done: setupDone })).catch(() => {});
-  }, [userId, plan, setupDone, readyFor]);
-
   // Your coach's program is your plan. It updates when the coach changes it.
   const syncCoach = useCallback(async () => {
     if (!userId) return;
@@ -230,7 +299,7 @@ export function TrainProvider({ children }: PropsWithChildren) {
         const next = { ...cur, coach: undefined };
         planRef.current = next;
         setPlan(next);
-        supabase.from('train_plans').upsert({ user_id: userId, plan: next }).then(() => {});
+        queueSave(next);
       }
       return;
     }
@@ -258,8 +327,8 @@ export function TrainProvider({ children }: PropsWithChildren) {
     planRef.current = next;
     setPlan(next);
     setSetupDone(true);
-    await supabase.from('train_plans').upsert({ user_id: userId, plan: next, setup_done: true });
-  }, [userId]);
+    await queueSave(next, true);
+  }, [userId, queueSave]);
 
   useEffect(() => {
     if (!ready) return;
@@ -294,10 +363,9 @@ export function TrainProvider({ children }: PropsWithChildren) {
       setPlan(p);
       planRef.current = p;
       if (done !== undefined) setSetupDone(done);
-      const { error } = await supabase.from('train_plans').upsert({ user_id: userId, plan: p, ...(done !== undefined ? { setup_done: done } : {}) });
-      return !error;
+      return queueSave(p, done);
     },
-    [userId],
+    [userId, queueSave],
   );
 
   const changePlan = useCallback(async (fn: (p: TrainPlan) => TrainPlan) => (planRef.current ? savePlan(fn(planRef.current)) : false), [savePlan]);
@@ -311,10 +379,10 @@ export function TrainProvider({ children }: PropsWithChildren) {
       clearTimeout(saveTimer.current);
       // Saved a moment later (changes in a row go out once), always the newest plan.
       saveTimer.current = setTimeout(() => {
-        if (userId && planRef.current) supabase.from('train_plans').upsert({ user_id: userId, plan: planRef.current }).then(() => {});
+        if (planRef.current) queueSave(planRef.current);
       }, 500);
     },
-    [userId],
+    [queueSave],
   );
 
   const start = weekStart(today);
@@ -423,14 +491,20 @@ export function TrainProvider({ children }: PropsWithChildren) {
         day: opts?.day ?? localDay(),
         home,
         ...(lighter ? { light: true } : {}),
-        ex: wo.ex.map(({ swapped: _s, target, last: ls, sets, ...x }) => ({
-          ...x,
-          tip: false,
-          sets: Array.from({ length: sets }, (_, i) => {
-            const l = ls[i] ?? ls[ls.length - 1];
-            return { w: '', r: '', done: false, lw: lighter ? target : (l?.w ?? 0), lr: l?.r ?? topReps(x.reps) };
-          }),
-        })),
+        ex: wo.ex.map(({ swapped: _s, target, last: ls, sets, ...x }) => {
+          // Every rep done last time: start a step heavier (not on a lighter day, bodyweight or timed exercises).
+          const weighted = !x.time && !EX[x.id]?.time && (x.t ?? EX[x.id]?.t) !== 'Bodyweight';
+          const up = !lighter && weighted ? nextWeight(ls, x.reps) : null;
+          return {
+            ...x,
+            tip: false,
+            sets: Array.from({ length: sets }, (_, i) => {
+              const l = ls[i] ?? ls[ls.length - 1];
+              if (up) return { w: '', r: '', done: false, lw: up, lr: lowReps(x.reps) };
+              return { w: '', r: '', done: false, lw: lighter ? target : (l?.w ?? 0), lr: l?.r ?? topReps(x.reps) };
+            }),
+          };
+        }),
       });
     },
     [last, top, setSession],

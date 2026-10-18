@@ -1,3 +1,5 @@
+import { AR } from '../i18n/ar';
+
 // Food allergies: asked once in the food setup, then kept out of every meal the app or the AI suggests.
 
 type Allergen = {
@@ -100,4 +102,64 @@ export function allergiesText(keys: readonly string[] | undefined, note?: string
   const list = ALLERGENS.filter((a) => keys?.includes(a.key)).map((a) => a.en.toLowerCase());
   const extra = (note ?? '').trim().slice(0, 200);
   return [...list, ...(extra ? [extra] : [])].join(', ');
+}
+
+/** Your other allergies in your own words ("strawberries, kiwi"), as separate words of 2 letters or more. */
+export function noteWords(note?: string) {
+  return (note ?? '')
+    .toLowerCase()
+    .split(/[,،;\n/]|\band\b|\s+و\s*(?=\S)/)
+    .map((w) => w.trim().replace(/^(?:allergic to|allergy to|حساسية من|حساسية)\s*/, ''))
+    .filter((w) => w.length >= 2)
+    .slice(0, 10);
+}
+
+const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * The first word from your own allergy note that a food has (or null). Built-in recipes are in English, so their
+ * Arabic names are checked too: "فراولة" finds "Strawberries". Arabic words match with و ب ف ل ك and ال in front.
+ */
+export function noteHit(texts: string[], note?: string): string | null {
+  const words = noteWords(note);
+  if (!words.length) return null;
+  const en = texts.join(' | ').toLowerCase();
+  const ar = [...texts.map((x) => AR[x] ?? ''), ...texts].join(' | ');
+  for (const w of words) {
+    const re = /[\u0600-\u06FF]/.test(w)
+      ? new RegExp(`(?<!${AR_LETTER})(?:[وبفلك])?(?:ال|لل)?${esc(w)}`)
+      : new RegExp(`\\b${esc(w)}`, 'i');
+    if (re.test(ar) || re.test(en)) return w;
+  }
+  return null;
+}
+
+/** Open Food Facts allergen tags, as our allergens. */
+const OFF_TAGS: Record<string, AllergenKey> = {
+  'en:milk': 'dairy',
+  'en:eggs': 'eggs',
+  'en:gluten': 'gluten',
+  'en:nuts': 'nuts',
+  'en:peanuts': 'peanuts',
+  'en:fish': 'fish',
+  'en:crustaceans': 'shellfish',
+  'en:molluscs': 'shellfish',
+  'en:sesame-seeds': 'sesame',
+  'en:soybeans': 'soy',
+};
+
+/**
+ * What in a product you're allergic to: from its name, its ingredient list and the label's allergen tags (packaged
+ * foods), plus your own words. Names to show (like "Milk and dairy", or the word you wrote).
+ */
+export function productAllergies(p: { name: string; ingredients?: string; tags?: string[] }, keys: readonly string[] | undefined, note?: string): string[] {
+  const texts = [p.name, p.ingredients ?? ''];
+  const found = new Set<string>(allergensIn(texts, keys));
+  for (const tag of p.tags ?? []) {
+    const k = OFF_TAGS[tag];
+    if (k && keys?.includes(k)) found.add(k);
+  }
+  const out = ALLERGENS.filter((a) => found.has(a.key)).map((a) => a.en as string);
+  const own = noteHit(texts, note);
+  return own ? [...out, own] : out;
 }

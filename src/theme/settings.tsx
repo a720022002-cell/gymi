@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { reloadAppAsync } from 'expo';
 import { getLocales } from 'expo-localization';
 import {
   createContext,
@@ -120,7 +121,7 @@ export function SettingsProvider({ children }: PropsWithChildren) {
       document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
       document.documentElement.lang = lang;
     } else if (I18nManager.isRTL !== isRTL) {
-      // Native apps need a restart to flip direction. Handled when we ship native builds.
+      // Phone apps flip direction on the next start (choosing a language in the app restarts it right away).
       I18nManager.allowRTL(isRTL);
       I18nManager.forceRTL(isRTL);
     }
@@ -148,7 +149,18 @@ export function SettingsProvider({ children }: PropsWithChildren) {
       reduceTransparency: stored.reduce || systemReduce,
       reduceSetting: stored.reduce,
       setTheme: (theme) => save({ theme }),
-      setLang: (l) => save({ lang: l }),
+      setLang: (l) => {
+        save({ lang: l });
+        // The phone app only flips left and right after a restart: save the choice first, then restart on the new side.
+        const rtl = l === 'ar';
+        if (Platform.OS !== 'web' && I18nManager.isRTL !== rtl) {
+          I18nManager.allowRTL(rtl);
+          I18nManager.forceRTL(rtl);
+          AsyncStorage.setItem(KEY, JSON.stringify({ ...stored, lang: l }))
+            .then(() => reloadAppAsync('Language changed'))
+            .catch(() => {});
+        }
+      },
       setReduce: (reduce) => save({ reduce }),
       unit: stored.unit === 'lb' ? 'lb' : 'kg',
       setUnit: (unit) => save({ unit }),

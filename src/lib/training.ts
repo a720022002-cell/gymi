@@ -466,6 +466,22 @@ export const rangeText = (lo: number, hi: number) => (lo === hi ? String(hi) : `
 
 /** Highest number in a reps text like "8–10" or "12". */
 export const topReps = (reps: string) => parseInt(String(reps).split(/[–-]/).pop() ?? '10', 10) || 10;
+/** The low end of a rep range ("8–12" gives 8). */
+export const lowReps = (reps: string) => parseInt(String(reps).split(/[–-]/)[0] ?? '8', 10) || topReps(reps);
+
+/** One weight step up (kg). */
+export const STEP_KG = 2.5;
+
+/**
+ * Last time every set reached the top of the rep range at your working weight: this time starts one step heavier
+ * (back at the low end of the range). Null when it isn't time to go up yet (or it isn't a weighted exercise).
+ */
+export function nextWeight(prev: { w: number; r: number }[], reps: string): number | null {
+  if (!prev.length) return null;
+  const w = Math.max(...prev.map((s) => s.w));
+  if (!(w > 0)) return null;
+  return prev.every((s) => s.w >= w && s.r >= topReps(reps)) ? w + STEP_KG : null;
+}
 
 /** Calories for a strength workout (about 5 METs). */
 export const workoutKcal = (minutes: number, weightKg: number) => Math.round((5 * weightKg * minutes) / 60);

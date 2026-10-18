@@ -1,6 +1,6 @@
 // Calorie math, copied from the design file (docs/index.html: bmr, calcPlan, targets).
 import type { AiRecipes } from './aiRecipes';
-import { type AllergenKey, allergensIn } from './allergies';
+import { allergensIn, noteHit } from './allergies';
 import { addMin, fastTimes } from './prayer';
 import { MEAL_WEIGHT, type Recipe, RECIPES } from './recipes';
 
@@ -269,7 +269,7 @@ export const withMealIds = (meals: Meal[]): Meal[] => meals.map((m, i) => (m.id 
 export const nextMealId = (meals: Meal[]) => withMealIds(meals).reduce((a, m) => Math.max(a, (m.id ?? 0) + 1), 0);
 
 /** `contains`: your allergens in this meal, only when there was no safe recipe to pick (shown as a warning). */
-export type PlannedMeal = Meal & { key: string; r: CustomRecipe; k: number; p: number; c: number; f: number; contains?: AllergenKey[] };
+export type PlannedMeal = Meal & { key: string; r: CustomRecipe; k: number; p: number; c: number; f: number; contains?: string[] };
 
 /**
  * A day's suggested meals, sized to the daily calories. Your own AI recipes come first, then the built-in ones; the
@@ -292,7 +292,13 @@ export function planMeals(f: FoodPlan, day?: string, dayKcal?: number): PlannedM
     const key = `${ram ? 'r' : ''}${type}${m.id ?? i}`;
     // Recipes without your allergens: this meal's for your goal; when that's fewer than 3, any for this meal too,
     // then other meals' (so there's always a choice and "Change meal" changes something).
-    const safe = (list: Recipe[]) => list.filter((x) => !allergensIn([x.n, ...x.ing.map((g) => g[0])], f.allergies).length);
+    // Your own words count too ("strawberries"), not just the allergens you picked.
+    const has = (x: Recipe) => {
+      const texts = [x.n, ...x.ing.map((g) => g[0])];
+      const own = noteHit(texts, f.allergyNote);
+      return [...allergensIn(texts, f.allergies), ...(own ? [own] : [])];
+    };
+    const safe = (list: Recipe[]) => list.filter((x) => !has(x).length);
     const ai = ram ? [] : (f.aiRecipes?.list ?? []).filter((x) => x.type === type);
     const all = [...ai, ...(RECIPES[type] ?? RECIPES.Snack)];
     const mine = all.filter((x) => x.tag === tag);
@@ -309,7 +315,7 @@ export function planMeals(f: FoodPlan, day?: string, dayKcal?: number): PlannedM
     const fresh = Array.from({ length: pool.length }, (_, j) => pool[(start + j) % pool.length]).find((x) => !used.has(x.n));
     const r = f.custom?.[key] ?? fresh ?? pool[start % pool.length];
     used.add(r.n);
-    const contains = allergensIn([r.n, ...r.ing.map((g) => g[0])], f.allergies);
+    const contains = has(r);
     const k = Math.round(((kcal * ws[i]) / tot) * (r.kAdj ?? 1) / 10) * 10;
     return { ...m, key, r, k, p: Math.round((k * r.m[0]) / 4), c: Math.round((k * r.m[1]) / 4), f: Math.round((k * r.m[2]) / 9), ...(contains.length ? { contains } : {}) };
   });

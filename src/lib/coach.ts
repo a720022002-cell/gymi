@@ -1,3 +1,4 @@
+import { localDay } from './nutrition';
 import { supabase } from './supabase';
 import type { ReminderKind } from './recap';
 import type { Prefs } from './reminders';
@@ -104,7 +105,7 @@ export async function saveMemory(uid: string, summary: string) {
 /** "Today", "Yesterday" or a date, for chat history headings. */
 export function dayHeading(iso: string, today: string, yesterday: string, lang: 'en' | 'ar') {
   const d = new Date(iso);
-  const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const key = localDay(d);
   if (key === today) return 'Today';
   if (key === yesterday) return 'Yesterday';
   return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { month: 'short', day: 'numeric', ...(key.slice(0, 4) !== today.slice(0, 4) ? { year: 'numeric' } : {}) }).format(d);

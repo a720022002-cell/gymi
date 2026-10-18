@@ -22,7 +22,7 @@ import { useCycleToday } from '@/lib/cyclePhase';
 import { useDevices } from '@/lib/devices';
 import { useFood } from '@/lib/food';
 import { MEAS, useHealth } from '@/lib/health';
-import { addDays, fmt, GOALS } from '@/lib/nutrition';
+import { addDays, fmt, GOALS, localDay } from '@/lib/nutrition';
 import { daysBetween } from '@/lib/report';
 import { fx, weekAvg } from '@/lib/progress';
 import { supabase } from '@/lib/supabase';
@@ -89,7 +89,7 @@ export default function Coach() {
       // Open the latest chat when it's from today; otherwise start fresh.
       if (!chat && !ask) {
         const g = groupChats(m)[0];
-        if (g && g.last.slice(0, 10) === new Date().toISOString().slice(0, 10)) setChatId(g.id);
+        if (g && localDay(new Date(g.last)) === localDay()) setChatId(g.id);
       }
     });
     return () => {
@@ -98,6 +98,11 @@ export default function Coach() {
   }, [chat, ask, session]);
 
   const msgs = (all ?? []).filter((m) => m.chat_id === chatId);
+  // A long chat shows its last 40 messages; older ones on tap (so it opens fast).
+  const [olderFor, setOlderFor] = useState<{ chat: typeof chatId; n: number }>({ chat: chatId, n: 0 });
+  const older = olderFor.chat === chatId ? olderFor.n : 0;
+  const shownCount = 40 + older;
+  const earlier = Math.max(0, msgs.length - shownCount);
   const title = msgs.find((m) => m.role === 'user')?.text ?? t('New chat');
 
   useEffect(() => {
@@ -481,7 +486,14 @@ export default function Coach() {
             <Text>{t('Hi {name}. Tell me what you ate, how you trained, or ask me anything.', { name: profile?.name || '' })}</Text>
           </View>
         ) : null}
-        {msgs.map((m) =>
+        {earlier > 0 ? (
+          <Springy onPress={() => setOlderFor({ chat: chatId, n: older + 40 })} style={{ alignSelf: 'center', marginBottom: 10, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 16, backgroundColor: c.card }}>
+            <Text variant="small" weight={700} color="link">
+              {t('Show earlier messages ({n})', { n: earlier })}
+            </Text>
+          </Springy>
+        ) : null}
+        {msgs.slice(-shownCount).map((m) =>
           m.role === 'user' ? (
             <View key={m.id} style={{ alignSelf: 'flex-end', maxWidth: '82%', backgroundColor: c.text, borderRadius: 22, borderBottomEndRadius: 8, paddingVertical: 11, paddingHorizontal: 15, marginBottom: 8 }}>
               <Text color={c.bg}>{m.text}</Text>

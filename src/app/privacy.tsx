@@ -11,6 +11,7 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, ErrorText, Row } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
+import { localDay } from '@/lib/nutrition';
 import { supabase } from '@/lib/supabase';
 import { useSettings } from '@/theme/settings';
 
@@ -46,7 +47,7 @@ export default function Privacy() {
       const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
       const a = document.createElement('a');
       a.href = url;
-      a.download = `gymi-data-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `gymi-data-${localDay()}.json`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
       toast(t('Your data file is downloading'), { icon: 'download' });

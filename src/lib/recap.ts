@@ -1,6 +1,6 @@
 // The weekly recap: a story about last week (Sunday to Saturday), shown on the first open of a new week.
 import { askAI } from './ai';
-import { allergensIn, allergiesText } from './allergies';
+import { allergensIn, allergiesText, noteHit } from './allergies';
 import type { ChatAction } from './coach';
 import { prepareSuggestions } from './coachPlan';
 import { addDays, localDay } from './nutrition';
@@ -180,7 +180,7 @@ export async function writeRecap(
     } else if (r.type === 'meal') {
       const name = str(r.name, 80);
       const g = (v: unknown, max: number) => Math.min(max, Math.max(0, Math.round(num(v) || 0)));
-      if (!name || !(num(r.kcal) > 0) || (x.savedMeals ?? []).includes(name) || allergensIn([name, title], x.allergies).length) continue;
+      if (!name || !(num(r.kcal) > 0) || (x.savedMeals ?? []).includes(name) || allergensIn([name, title], x.allergies).length || noteHit([name, title], x.allergyNote)) continue;
       suggest.push({ type: 'meal', title, name, kcal: g(r.kcal, 2500), protein: g(r.protein, 200), carbs: g(r.carbs, 400), fat: g(r.fat, 200) });
     } else if (r.type === 'balance') {
       const kcal = Math.round(num(r.kcal) / 10) * 10;

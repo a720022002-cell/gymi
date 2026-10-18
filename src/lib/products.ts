@@ -20,6 +20,9 @@ export type Product = {
   id?: string;
   /** Everything the label says, per 100 (see lib/nutrients). */
   facts: Facts;
+  /** The ingredient list and allergen tags from the label (Open Food Facts), for allergy warnings. */
+  ingredients?: string;
+  allergenTags?: string[];
 };
 
 type Nutriments = Record<string, number | string | undefined>;
@@ -44,7 +47,7 @@ export async function lookupProduct(code: string, lang: 'en' | 'ar'): Promise<Pr
       id: own.id,
       facts: factsOf(own),
     };
-  const fields = 'product_name,product_name_ar,product_name_en,brands,quantity,serving_quantity,nutriments,image_front_small_url';
+  const fields = 'product_name,product_name_ar,product_name_en,brands,quantity,serving_quantity,nutriments,image_front_small_url,ingredients_text,ingredients_text_ar,ingredients_text_en,allergens_tags,traces_tags';
   const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=${fields}`);
   if (!res.ok) return null;
   const j = await res.json();
@@ -72,6 +75,9 @@ export async function lookupProduct(code: string, lang: 'en' | 'ar'): Promise<Pr
     sugar: +(n.sugars_100g ?? 0),
     src: 'off',
     facts: { ...offFacts(n), kcal },
+    ingredients: [x.ingredients_text, x.ingredients_text_ar, x.ingredients_text_en].filter(Boolean).join(' | ').slice(0, 4000),
+    // "May contain" (traces) counts too: for an allergy that's still a risk.
+    allergenTags: [...(x.allergens_tags ?? []), ...(x.traces_tags ?? [])].filter((v: unknown) => typeof v === 'string'),
   };
 }
 

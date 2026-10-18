@@ -11,11 +11,12 @@ import { Sora_500Medium } from '@expo-google-fonts/sora/500Medium';
 import { Sora_600SemiBold } from '@expo-google-fonts/sora/600SemiBold';
 import { Sora_700Bold } from '@expo-google-fonts/sora/700Bold';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { type ErrorBoundaryProps, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
+import { ErrorScreen } from '@/components/ErrorScreen';
 import { BalanceSheet } from '@/components/food/BalanceSheet';
 import { CaffeineSheet } from '@/components/food/CaffeineSheet';
 import { LogSheet } from '@/components/food/LogSheet';
@@ -38,6 +39,11 @@ import { SettingsProvider, useSettings } from '@/theme/settings';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 installLatinDigits();
+
+/** Something broke on a screen: a friendly page with Try again, instead of a white screen. */
+export function ErrorBoundary(p: ErrorBoundaryProps) {
+  return <ErrorScreen {...p} />;
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({

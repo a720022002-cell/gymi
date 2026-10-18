@@ -72,7 +72,7 @@ export default function Invite() {
           {code || '…'}
         </Text>
         <Text variant="small" color="sec" center style={{ marginTop: 8 }}>
-          {t('Friends type it when they sign up. You’re added as Gym Bros right away.')}
+          {t('Friends type it when they sign up. You get a friend request to accept.')}
         </Text>
         <Row gap={8} style={{ marginTop: 12, alignSelf: 'stretch' }}>
           <Button small kind="glass" icon="copy" title={t('Copy code')} disabled={!code} style={{ flex: 1, alignSelf: 'stretch' }} onPress={copy} />

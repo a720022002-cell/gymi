@@ -11,6 +11,8 @@ import { fontFor, Text } from '@/components/Text';
 import { Button, Card, Chip, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
+import { productAllergies } from '@/lib/allergies';
+import { useProgressive } from '@/lib/useProgressive';
 import { type DbFood, foodName, foodSource, listRestaurants, type Restaurant, searchFoods, servingLabel } from '@/lib/foodsDb';
 import { myNames, type RecentFood, recentFoods } from '@/lib/nutrients';
 import { fmt } from '@/lib/nutrition';
@@ -33,10 +35,14 @@ export default function FoodSearch() {
   const [cat, setCat] = useState<string | null>(null);
   const [results, setResults] = useState<DbFood[]>([]);
   const [doneKey, setDoneKey] = useState<string | null>(null);
+  // Each result checks your allergies too: drawn a part at a time so typing stays quick.
+  const shown = useProgressive(doneKey ?? '', results.length, 20, 20);
   const loading = doneKey !== `${cat}|${q}`;
   const [picked, setPicked] = useState<DbFood | null>(null);
   const [listening, setListening] = useState(false);
   const food = useFood();
+  // Your allergies in a food, from its name in English and Arabic (and your own words).
+  const allergic = (f: { name_en?: string | null; name_ar?: string | null }) => productAllergies({ name: `${f.name_en ?? ''} | ${f.name_ar ?? ''}` }, food.plan.allergies, food.plan.allergyNote);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   // What you logged lately, and the names you gave foods (only you see them). Fresh each time you come back.
   const [recent, setRecent] = useState<RecentFood[]>([]);
@@ -152,7 +158,7 @@ export default function FoodSearch() {
             <ActivityIndicator color={c.cobalt} style={{ marginTop: 30 }} />
           ) : results.length ? (
             <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden' }}>
-              {results.map((f, i) => (
+              {results.slice(0, shown).map((f, i) => (
                 <Springy key={f.id} onPress={() => setPicked(f)} scaleTo={0.99} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 60, paddingVertical: 10, paddingHorizontal: 16, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text weight={700} numberOfLines={2}>
@@ -161,6 +167,11 @@ export default function FoodSearch() {
                     <Text variant="small" color="sec" numberOfLines={1}>
                       {[foodSource(f, lang), servingLabel(f, lang)].filter(Boolean).join(t(', '))}
                     </Text>
+                    {allergic(f).length ? (
+                      <Text variant="xs" weight={700} color={c.down} numberOfLines={1}>
+                        {t('May contain {x}', { x: allergic(f).map((a) => t(a)).join(t(', ')) })}
+                      </Text>
+                    ) : null}
                   </View>
                   {f.sugar_high || f.fat_high ? <Icon name="warn" size={16} color={c.down} strokeWidth={2} /> : null}
                   <Text num>{fmt((f.kcal_100 * f.serving_g) / 100)}</Text>

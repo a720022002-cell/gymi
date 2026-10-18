@@ -2,6 +2,7 @@
 import { askAI } from './ai';
 import { supabase } from './supabase';
 import { DAYS_LONG, EX, type PlanEx, type TrainPlan, effectiveWeek, exInfo, setWeekMoves, weekStart } from './training';
+import { addDays } from './nutrition';
 
 export type Level = 'Beginner' | 'Intermediate' | 'Advanced';
 export type Person = { name: string; level: Level; me?: boolean; id?: string };
@@ -37,11 +38,7 @@ export function myDayInfo(plan: TrainPlan | null, day: string, name: string, lev
   return { key: 'me', name, level, planned: w, plannedEx: (w && plan?.workouts[w]?.ex) || [], injuries: plan?.injuries ?? [], recent: logs.filter((l) => l.day > addDay(day, -7) && l.day <= day).slice(0, 5) };
 }
 
-const addDay = (day: string, n: number) => {
-  const d = new Date(`${day}T12:00:00`);
-  d.setDate(d.getDate() + n);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
+const addDay = addDays;
 
 /** Friends' plans for a day (friends only, from the server). */
 export async function friendsDay(ids: string[], day: string): Promise<DayInfo[]> {

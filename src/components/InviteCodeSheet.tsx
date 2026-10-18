@@ -40,7 +40,7 @@ export function InviteCodeSheet({ open, onDone, cancel }: { open: boolean; onDon
     if (f.status === 'requested') {
       setBusy(false);
       setV('');
-      toast(t('Friend request sent to @{u}', { u: f.username ?? '' }), { icon: 'users' });
+      toast(t('Friend request sent to {n}. You’ll be Gym Bros once they accept.', { n: f.name || `@${f.username ?? ''}` }), { icon: 'users' });
       return onDone('friend');
     }
     if (f.status === 'self') {
