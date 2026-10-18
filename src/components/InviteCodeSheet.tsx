@@ -82,7 +82,7 @@ export function InviteCodeSheet({ open, onDone, cancel }: { open: boolean; onDon
           setV(x.toUpperCase());
           setErr(null);
         }}
-        placeholder="NOURA-2K8 or GYMI-XXXX"
+        placeholder="NOURA-2K8QXM or GYMI-XXXXXXXX"
         autoCapitalize="characters"
         autoCorrect={false}
         maxLength={16}

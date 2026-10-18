@@ -116,8 +116,9 @@ export function suggestKcal(f: Pick<FoodPlan, 'weight' | 'activity' | 'sun' | 'g
 /** What calcPlan suggested before the floor and the 25% cap (to tell untouched plans from ones changed by hand). */
 export const oldSuggestKcal = (f: Pick<FoodPlan, 'weight' | 'activity' | 'sun' | 'goal'>, p: Person) => Math.round((maintenance(f, p) + GOAL_ADJ[f.goal]) / 10) * 10;
 
-/** Suggested water (ml): 35 ml per kg, more for sun and an active day. */
-export const suggestWater = (f: Pick<FoodPlan, 'weight' | 'activity' | 'sun'>) => Math.round((f.weight * 35 + (f.sun ? 700 : 0) + (f.activity >= 2 ? 300 : 0)) / 100) * 100;
+/** Suggested water (ml): 35 ml per kg, more for sun and an active day. Between 1.5 and 6 litres (the most you can set). */
+export const suggestWater = (f: Pick<FoodPlan, 'weight' | 'activity' | 'sun'>) =>
+  Math.min(6000, Math.max(1500, Math.round((f.weight * 35 + (f.sun ? 700 : 0) + (f.activity >= 2 ? 300 : 0)) / 100) * 100));
 
 /** Work out calories, protein, water, meal times and workout time from the setup answers. */
 export function calcPlan(plan: FoodPlan, person: Person): FoodPlan {
@@ -189,9 +190,21 @@ export function withPregnancy(f: FoodPlan, p: Person, extra: number): FoodPlan {
 
 export type Macros = { k: number; p: number; c: number; f: number };
 
+/** Most protein we suggest in a day (g). */
+export const PROTEIN_MAX = 250;
+
+/**
+ * The weight protein per kg is counted on. Over 100 kg only part of the extra counts (most of it isn't muscle),
+ * so 250 kg doesn't ask for 550 g a day.
+ */
+export const proteinKg = (weight: number) => (weight <= 100 ? weight : 100 + (weight - 100) * 0.4);
+
+/** Daily protein (g) for a weight and grams per kg. */
+export const proteinFor = (weight: number, perKg: number) => Math.min(PROTEIN_MAX, Math.round(proteinKg(weight) * perKg));
+
 /** Daily targets in grams. Calories follow the grams when carbs/fat were set by hand. */
 export function targets(f: FoodPlan): Macros {
-  const p = Math.round(f.weight * f.perKg);
+  const p = proteinFor(f.weight, f.perKg);
   const fat = f.fatG ?? Math.round((f.kcal * 0.257) / 9);
   if (f.carbG != null) return { k: p * 4 + f.carbG * 4 + fat * 9, p, c: f.carbG, f: fat };
   return { k: f.kcal, p, c: Math.max(0, Math.round((f.kcal - p * 4 - fat * 9) / 4)), f: fat };
@@ -218,7 +231,9 @@ export function mealAt(meals: { n: string; t: string }[], time: string) {
   let best: { n: string; d: number } | null = null;
   for (const m of meals) {
     if (!/^\d{2}:\d{2}/.test(m.t)) continue;
-    const d = Math.abs(min(m.t) - now);
+    // Around midnight: 23:30 and 00:10 are 40 minutes apart, not 23 hours.
+    const raw = Math.abs(min(m.t) - now);
+    const d = Math.min(raw, 1440 - raw);
     if (d <= 60 && (!best || d < best.d)) best = { n: m.n, d };
   }
   if (best) return best.n;

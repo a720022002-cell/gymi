@@ -30,7 +30,7 @@ export function BalanceSheet() {
   const full = Math.max(0, Math.round(under ? food.kcalLeft : -food.kcalLeft));
   const dayName = (d: string) => {
     const [y, m, dd] = d.split('-').map(Number);
-    return new Intl.DateTimeFormat(lang === 'ar' ? 'ar' : 'en-US', { weekday: 'short' }).format(new Date(y, m - 1, dd));
+    return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { weekday: 'short' }).format(new Date(y, m - 1, dd));
   };
   const [mode, setMode] = useState<'tomorrow' | 'split'>('tomorrow');
   const [picked, setPicked] = useState<string[]>([]);

@@ -153,8 +153,8 @@ export function CodeSheet({ open, onClose }: { open: boolean; onClose: () => voi
       </View>
       <TextInput
         value={v}
-        onChangeText={(x) => (setV(x.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 9)), setErr(null))}
-        placeholder="GYMI-XXXX"
+        onChangeText={(x) => (setV(x.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 13)), setErr(null))}
+        placeholder="GYMI-XXXXXXXX"
         placeholderTextColor={c.sec}
         autoCapitalize="characters"
         autoCorrect={false}

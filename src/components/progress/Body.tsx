@@ -382,6 +382,7 @@ function Photos() {
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [sel, setSel] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [del, setDel] = useState(false);
   const list = health.photos;
   const picked = (sel.length ? sel : list.slice(-2).map((p) => p.id)).map((id) => list.find((p) => p.id === id)).filter(Boolean) as typeof list;
   const need = picked.map((p) => p.path).filter((p) => !urls[p]);
@@ -446,16 +447,36 @@ function Photos() {
               small
               kind="ghost"
               icon="trash"
-              title={t('Delete the latest photo')}
+              title={t('Delete a photo')}
               style={{ alignSelf: 'center', marginTop: 4 }}
-              onPress={() => {
-                const last = picked.at(-1)!;
-                health.deletePhoto(last.id);
-                setSel([]);
-                toast(t('Photo deleted'), { icon: 'trash' });
-              }}
+              onPress={() => setDel(true)}
             />
           ) : null}
+          {/* You choose which of the photos on screen to delete, by its date, and it asks first. */}
+          <Sheet open={del} onClose={() => setDel(false)}>
+            <Text variant="h2" center>
+              {t('Delete a photo?')}
+            </Text>
+            <Text color="sec" center style={{ marginTop: 4 }}>
+              {t('This can’t be undone.')}
+            </Text>
+            {picked.map((p) => (
+              <Button
+                key={p.id}
+                kind="danger"
+                icon="trash"
+                title={t('Delete the photo from {d}', { d: shortDate(p.day, lang) })}
+                style={{ marginTop: 12 }}
+                onPress={() => {
+                  health.deletePhoto(p.id);
+                  setSel([]);
+                  setDel(false);
+                  toast(t('Photo deleted'), { icon: 'trash' });
+                }}
+              />
+            ))}
+            <Button kind="ghost" title={t('Cancel')} style={{ marginTop: 8 }} onPress={() => setDel(false)} />
+          </Sheet>
         </>
       ) : (
         <Card style={{ alignItems: 'center', paddingVertical: 20 }}>

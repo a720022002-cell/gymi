@@ -31,7 +31,7 @@ export default function NotificationsScreen() {
         <Card style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
           <Icon name="info" size={20} color={c.cobalt} />
           <Text variant="small" style={{ flex: 1 }}>
-            {t('Reminders arrive on the phone app. Your choices are saved now and start working when you install it.')}
+            {t('Reminders arrive on the phone app. Your choices here are saved on this device only, so set them again in the phone app.')}
           </Text>
         </Card>
       ) : null}

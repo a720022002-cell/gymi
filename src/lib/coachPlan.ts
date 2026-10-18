@@ -1,7 +1,7 @@
 // Suggestions from the AI coach that change your plan: checked and made concrete here, applied only when you tap Apply.
 import type { ChatAction, PlanChange } from './coach';
 import { searchExercises, toPlanEx } from './exercisesDb';
-import { addDays, type FoodPlan } from './nutrition';
+import { addDays, type FoodPlan, proteinKg } from './nutrition';
 import { REMINDER_KINDS } from './recap';
 import { DAYS_LONG, EX, exInfo, type TrainPlan, weekOrder, weekStart } from './training';
 
@@ -148,7 +148,7 @@ export function applyTargets(plan: FoodPlan, s: Extract<ChatAction, { type: 'tar
   return {
     ...plan,
     ...(s.kcal ? { kcal: s.kcal, carbG: null } : {}),
-    ...(s.protein && plan.weight ? { perKg: Math.round((s.protein / plan.weight) * 100) / 100 } : {}),
+    ...(s.protein && plan.weight ? { perKg: Math.round((s.protein / proteinKg(plan.weight)) * 100) / 100 } : {}),
     ...(s.water ? { water: s.water } : {}),
   };
 }

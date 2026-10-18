@@ -3921,4 +3921,11 @@ export const AR: Record<string, string> = {
   "Left out {x}. The rest is bigger, and this meal is now about {n} kcal.": "شلت {x}. الباقي صار أكثر، والوجبة صارت تقريبًا {n} سعرة.",
   "I’ll add more of the rest to keep the calories when I can": "بزيد من الباقي عشان تبقى السعرات قد ما أقدر",
   "This list is kept until {day}, and new AI recipes wait until then. Changing a meal yourself changes the list.": "هالقائمة ثابتة لين {day}، والوصفات الجديدة تنتظر لين ذاك اليوم. لو غيّرت وجبة بنفسك تتغير القائمة.",
+  "At least {n} kcal a day": "على الأقل {n} سعرة باليوم",
+  "Careful: this can be hard on your {x}. Go light, and stop if it hurts.": "انتبه: هذا ممكن يتعب {x} عندك. خفّف الوزن ووقّف إذا حسيت بألم.",
+  "Delete a photo": "احذف صورة",
+  "Delete a photo?": "تحذف صورة؟",
+  "Delete the photo from {d}": "احذف صورة {d}",
+  "This can’t be undone.": "ما تقدر ترجعها بعدين.",
+  "Reminders arrive on the phone app. Your choices here are saved on this device only, so set them again in the phone app.": "التذكيرات توصل على تطبيق الجوال. اختياراتك هنا محفوظة على هالجهاز بس، فاختارها مرة ثانية في تطبيق الجوال.",
 };

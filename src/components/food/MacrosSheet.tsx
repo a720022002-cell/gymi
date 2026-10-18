@@ -73,7 +73,9 @@ export function MacrosSheet({ open, onClose, initial, weight, onSave }: { open: 
   if (m.c < 50) warns.push('Under 50 g of carbs is a low-carb diet. Training may feel harder.');
   if (m.p < weight * 1.2) warns.push('Protein under 1.2 g per kg makes it hard to keep muscle.');
   if (k < 1200) warns.push('These calories are very low. Talk to a doctor before eating this little.');
-  const blocked = mode === '%' && tot !== 100;
+  // A goal under 800 kcal (or 0) can't be saved.
+  const tooLow = k < 800;
+  const blocked = (mode === '%' && tot !== 100) || tooLow;
 
   const row = (key: keyof M, label: string) => (
     <View key={key} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 60, paddingHorizontal: 14, borderTopWidth: key === 'p' ? 0 : 1, borderTopColor: c.line }}>
@@ -137,7 +139,7 @@ export function MacrosSheet({ open, onClose, initial, weight, onSave }: { open: 
           </Text>
         </View>
       ))}
-      <Button title={blocked ? t('Total must be 100% (now {n}%)', { n: tot }) : t('Save')} disabled={blocked} style={{ marginTop: 12 }} onPress={() => onSave(m)} />
+      <Button title={tooLow ? t('At least {n} kcal a day', { n: 800 }) : blocked ? t('Total must be 100% (now {n}%)', { n: tot }) : t('Save')} disabled={blocked} style={{ marginTop: 12 }} onPress={() => onSave(m)} />
       <Button title={t('Cancel')} kind="ghost" style={{ marginTop: 8 }} onPress={onClose} />
     </Sheet>
   );

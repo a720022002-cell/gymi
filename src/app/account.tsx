@@ -355,7 +355,7 @@ function PhoneSheet({ onClose }: { onClose: () => void }) {
 function PasswordSheet({ onClose }: { onClose: () => void }) {
   const { t } = useT();
   const toast = useToast();
-  const { session, checkPassword, sendReset } = useAuth();
+  const { session, sendReset } = useAuth();
   const [cur, setCur] = useState('');
   const [n1, setN1] = useState('');
   const [n2, setN2] = useState('');
@@ -370,12 +370,10 @@ function PasswordSheet({ onClose }: { onClose: () => void }) {
     setE(er);
     if (Object.keys(er).length) return;
     setBusy(true);
-    if (!(await checkPassword(cur))) {
-      setBusy(false);
-      return setE({ cur: 'That password is not right.' });
-    }
-    const { error } = await supabase.auth.updateUser({ password: n1 });
+    // The server checks your current password too (not just the app).
+    const { error } = await supabase.auth.updateUser({ password: n1, current_password: cur });
     setBusy(false);
+    if (error && (error.code === 'current_password_invalid' || error.code === 'current_password_required')) return setE({ cur: 'That password is not right.' });
     if (error) return setE({ n1: error.message.toLowerCase().includes('different') ? 'Use a password you haven’t used here before.' : 'Couldn’t change the password. Please try again.' });
     onClose();
     toast(t('Password saved'), { icon: 'lock' });

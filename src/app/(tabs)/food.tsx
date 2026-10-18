@@ -121,7 +121,7 @@ function FoodHome() {
   const upcoming = [1, 2, 3, 4].map((n) => addDays(food.today, n)).filter((d) => food.moves.some((m) => m.day === d));
   const dayName = (d: string) => {
     const [y, m, dd] = d.split('-').map(Number);
-    return new Intl.DateTimeFormat(lang === 'ar' ? 'ar' : 'en-US', { weekday: 'short' }).format(new Date(y, m - 1, dd));
+    return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { weekday: 'short' }).format(new Date(y, m - 1, dd));
   };
   // Logged food grouped by meal; food logged without a meal goes by the time it was logged.
   const planned = meals;

@@ -19,8 +19,13 @@ type Item = { name: string; grams: number; kcal: number; protein: number; carbs:
 type Result = { title: string; items: Item[] };
 
 const CHIPS = ['chicken', 'eggs', 'rice', 'potatoes', 'tuna', 'tomatoes', 'spinach', 'yogurt'];
+/**
+ * Where a list of ingredients splits: commas, "and", and the Arabic "و" in front of a word. Foods that start
+ * with و themselves (ورق عنب، ورد، وايت) aren't cut.
+ */
+const SPLIT = /,|\band\b|،|\s+و\s+|\s+و(?!رق|رد|ايت|يت)/;
 const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
-const PROT = /chicken|beef|tuna|fish|egg|salmon|meat|lamb|yogurt|shrimp|دجاج|لحم|تونة|بيض|سمك/i;
+const PROT = /chicken|beef|tuna|fish|egg(?!plant)|salmon|meat|lamb|yogurt|shrimp|دجاج|لحم|تونة|بيض|سمك/i;
 const CARB = /rice|potato|bread|pasta|oat|bulgur|رز|أرز|بطاطس|خبز|معكرونة|شوفان/i;
 
 /** Simple steps for whatever the ingredients are (the AI gives amounts, these give the method). */
@@ -45,7 +50,7 @@ function localRecipe(words: string[], meal: PlannedMeal, t: (s: string, v?: Reco
       ? [cap(i), 200, 'g']
       : /tuna/i.test(i)
         ? [cap(i), 2, 'cans']
-        : /egg/i.test(i)
+        : /egg(?!plant)/i.test(i)
           ? [cap(i), 3, 'large']
           : /rice|bulgur|pasta|oat/i.test(i)
             ? [`${cap(i)} (raw)`, 90, 'g']
@@ -81,7 +86,7 @@ export function IngredientsSheet({ meal, onClose }: { meal: PlannedMeal | null; 
     if (!v) return setBad(true);
     setBusy(true);
     const words = v
-      .split(/,|\band\b|،| و/)
+      .split(SPLIT)
       .map((s) => s.trim())
       .filter(Boolean)
       .slice(0, 8);

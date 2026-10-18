@@ -41,11 +41,12 @@ export default function SavedMeals() {
   const addCode = async () => {
     const v = code.trim().toUpperCase();
     if (!v) return;
-    if (!/^MEAL-[A-Z0-9]{4}$/.test(v)) return setCodeErr(t('No meal with that code.'));
+    if (!/^MEAL-(?:[A-Z0-9]{4}|[A-Z0-9]{8})$/.test(v)) return setCodeErr(t('No meal with that code.'));
     setAdding(true);
     const r = await food.addMealByCode(v);
     setAdding(false);
     if (r.status === 'not_found') return setCodeErr(t('No meal with that code.'));
+    if (r.status === 'slow') return setCodeErr(t('Too many tries. Wait an hour and try again.'));
     if (r.status === 'exists') return setCodeErr(t('That meal is already in your saved meals.'));
     if (r.status !== 'ok' || !r.meal) return setCodeErr(t('Couldn’t save. Please try again.'));
     setCode('');
@@ -66,12 +67,12 @@ export default function SavedMeals() {
                 v
                   .toUpperCase()
                   .replace(/[^A-Z0-9-]/g, '')
-                  .slice(0, 9),
+                  .slice(0, 13),
               ),
               setCodeErr(null)
             )}
             onSubmitEditing={addCode}
-            placeholder="MEAL-XXXX"
+            placeholder="MEAL-XXXXXXXX"
             placeholderTextColor={c.sec}
             autoCapitalize="characters"
             autoCorrect={false}

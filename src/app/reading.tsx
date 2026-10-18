@@ -104,7 +104,7 @@ export default function Reading() {
   const dayVals = hours.map((x) => (x == null || (k === 'hr' && x === 0) ? null : x));
   const vals = (range === 'day' ? dayVals : series).filter((x): x is number => x != null);
   const show = (v: number) => (info.dec ? fx(v) : fmt(v));
-  const locale = lang === 'ar' ? 'ar' : 'en-US';
+  const locale = lang === 'ar' ? 'ar-u-nu-latn' : 'en-US';
   const labels = range === 'day' ? hours.map((_, h) => (h % 3 === 0 ? ['12a', '3a', '6a', '9a', '12p', '3p', '6p', '9p'][h / 3] : '')) : range === 'week' ? days.map((d) => new Intl.DateTimeFormat(locale, { weekday: 'narrow' }).format(new Date(`${d}T12:00:00`))) : days.map((d, i) => (i % 5 === 0 ? String(Number(d.slice(8))) : ''));
   const enough = vals.length > (info.bar ? 0 : 1);
   const open: Partial<Record<ReadingKey, [string, () => void]>> = {

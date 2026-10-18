@@ -125,7 +125,7 @@ export function RecoveryTab() {
           ) : null}
         </Row>
         <View style={{ marginTop: 12 }}>
-          <BarChart values={nights} labels={week.map((d) => new Intl.DateTimeFormat(lang === 'ar' ? 'ar' : 'en-US', { weekday: 'narrow' }).format(new Date(`${d}T12:00:00`)))} highlight={6} max={10} goal={7.5} />
+          <BarChart values={nights} labels={week.map((d) => new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { weekday: 'narrow' }).format(new Date(`${d}T12:00:00`)))} highlight={6} max={10} goal={7.5} />
         </View>
         <Text variant="xs" color="sec">
           {t('Dashed line: 7.5 h goal')}

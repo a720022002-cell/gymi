@@ -15,7 +15,7 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Row, Segmented, Springy, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
-import { type FoodPlan, fmt, fmtTime, GOALS, isMinor, kcalFloor, nextMealId, RAMADAN_SWITCH, suggestWater, targets, withMealIds, withPregnancy } from '@/lib/nutrition';
+import { type FoodPlan, fmt, fmtTime, GOALS, isMinor, kcalFloor, nextMealId, proteinKg, RAMADAN_SWITCH, suggestWater, targets, withMealIds, withPregnancy } from '@/lib/nutrition';
 import { CITIES, DEFAULT_CITY, fastTimes } from '@/lib/prayer';
 import { fx } from '@/lib/progress';
 import { useSettings } from '@/theme/settings';
@@ -287,7 +287,7 @@ export default function FoodResults() {
         weight={f.weight}
         onSave={(m) => {
           set({
-            perKg: m.p / f.weight,
+            perKg: m.p / proteinKg(f.weight),
             carbG: m.c,
             fatG: m.f,
             kcal: m.p * 4 + m.c * 4 + m.f * 9,

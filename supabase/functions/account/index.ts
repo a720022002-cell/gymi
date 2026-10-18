@@ -20,6 +20,12 @@ Deno.serve(async (req) => {
     if (ue || !u.user) return json({ error: 'auth' }, 401);
     const body = await req.json().catch(() => ({}));
     if (body.action !== 'delete' || body.confirm !== 'DELETE') return json({ error: 'confirm' }, 400);
+    // Your password, checked here on the server: holding an unlocked phone (or the session) isn't enough to delete.
+    const email = u.user.email;
+    if (!email || typeof body.password !== 'string' || !body.password) return json({ error: 'password' }, 403);
+    const anon = createClient(url, Deno.env.get('SUPABASE_ANON_KEY') ?? '', { auth: { persistSession: false } });
+    const { error: pe } = await anon.auth.signInWithPassword({ email, password: body.password });
+    if (pe) return json({ error: 'password' }, 403);
     const id = u.user.id;
     // Files live in storage under the user's folder in each bucket (photos, health files, certificates, avatar).
     // Every file must be gone before the account is: otherwise health files would stay behind with no owner.

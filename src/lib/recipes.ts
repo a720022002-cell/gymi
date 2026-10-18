@@ -862,7 +862,7 @@ const KCAL_100: [RegExp, number][] = [
   [/cheese|labneh|hummus|avocado|جبن|لبنة|حمص|أفوكادو/i, 170],
   [/whey|protein/i, 380],
   [/beef|lamb|mince|kofta|thigh|salmon|لحم|سلمون/i, 190],
-  [/chicken|fish|hamour|tuna|shrimp|turkey|egg|دجاج|سمك|هامور|تونة|ربيان|بيض/i, 140],
+  [/chicken|fish|hamour|tuna|shrimp|turkey|egg(?!plant)|دجاج|سمك|هامور|تونة|ربيان|بيض/i, 140],
   [/potato|sweet potato|banana|foul|bean|بطاطس|بطاطا|موز|فول/i, 90],
   [/milk|laban|yogurt|حليب|لبن|زبادي/i, 60],
 ];

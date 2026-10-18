@@ -38,7 +38,8 @@ function unitG(u: Unit, name: string): number {
   if (u === 'tbsp') return /oil|ghee|butter|زيت|سمن|زبدة/.test(n) ? 13.5 : /honey|عسل/.test(n) ? 21 : 15;
   if (u === 'tsp') return unitG('tbsp', name) / 3;
   if (u === 'cup') return /milk|laban|juice|water|soup|حليب|لبن|عصير|شوربة/.test(n) ? 240 : 160;
-  return /egg|بيض/.test(n) ? 50 : /date|تمر/.test(n) ? 8 : 100;
+  // Eggs: "eggplant" and "أبيض" (white) aren't eggs.
+  return /\beggs?\b|(?<![\u0600-\u06FF])(?:ال)?بيض(?:ة|ه|ات)?(?![\u0600-\u06FF])/.test(n) ? 50 : /date|تمر/.test(n) ? 8 : 100;
 }
 const grams = (x: Row_) => x.g * unitG(x.u, x.name);
 /** Switch to the next unit, keeping about the same amount of food. */

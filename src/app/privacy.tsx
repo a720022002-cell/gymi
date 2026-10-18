@@ -24,7 +24,7 @@ export default function Privacy() {
   const { t } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
-  const { session, logOut, checkPassword } = useAuth();
+  const { session, logOut } = useAuth();
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [typed, setTyped] = useState('');
@@ -56,14 +56,13 @@ export default function Privacy() {
   const del = async () => {
     setDeleting(true);
     setErr(null);
-    // Your password first, so someone holding your unlocked phone can't delete your account.
-    if (!(await checkPassword(pw))) {
-      setDeleting(false);
-      return setErr(t('That password is not right.'));
-    }
-    const { error } = await supabase.functions.invoke('account', { body: { action: 'delete', confirm: 'DELETE' } });
+    // The server checks your password, so someone holding your unlocked phone can't delete your account.
+    const { error } = await supabase.functions.invoke('account', { body: { action: 'delete', confirm: 'DELETE', password: pw } });
     setDeleting(false);
-    if (error) return setErr(t('Couldn’t delete. Please try again.'));
+    if (error) {
+      const code = await (error as { context?: Response }).context?.json().then((j: { error?: string }) => j.error).catch(() => null);
+      return setErr(t(code === 'password' ? 'That password is not right.' : 'Couldn’t delete. Please try again.'));
+    }
     setStep(0);
     await logOut().catch(() => {});
     router.replace('/welcome');

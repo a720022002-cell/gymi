@@ -80,7 +80,7 @@ export function ChatCard({ card }: { card: Card }) {
   const food = useFood();
   const box = (children: ReactNode) => <View style={{ backgroundColor: c.bg, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12, marginTop: 10, minWidth: 220 }}>{children}</View>;
   const week = Array.from({ length: 7 }, (_, i) => addDays(food.today, i - 6));
-  const letters = week.map((d) => new Intl.DateTimeFormat(lang === 'ar' ? 'ar' : 'en-US', { weekday: 'narrow' }).format(new Date(`${d}T12:00:00`)));
+  const letters = week.map((d) => new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { weekday: 'narrow' }).format(new Date(`${d}T12:00:00`)));
 
   if (card.type === 'meal') return box(<MealCard card={card} />);
 

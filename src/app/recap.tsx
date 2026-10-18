@@ -21,6 +21,7 @@ import { useReportData, useReportStats } from '@/lib/report';
 import { loadPrefs, savePrefs } from '@/lib/reminders';
 import { useTrain } from '@/lib/train';
 import { goBack } from '@/lib/nav';
+import { useWeight } from '@/lib/units';
 
 // The story is always dark, like a story on any phone.
 const K = { bg: '#07080D', card2: '#10131D', card: 'rgba(255,255,255,0.08)', line: 'rgba(255,255,255,0.12)', text: '#F5F6FA', sec: '#A3A8B8', cobalt: '#3355FF', up: '#22C55E', down: '#F05252', amber: '#F5B83D' };
@@ -402,6 +403,8 @@ function StoryButton({ title, onPress, kind = 'primary', loading }: { title: str
 const dayLetter = weekdayLetter;
 
 function SlideBody(p: BodyProps) {
+  // Weights in your unit (kg or lb); saved numbers are always kg.
+  const W = useWeight();
   const { t, stats: s, ai } = p;
   const pctChange = (a: number, b: number | undefined | null) => (b ? Math.round(((a - b) / b) * 100) : null);
   if (p.k === 'intro')
@@ -447,8 +450,8 @@ function SlideBody(p: BodyProps) {
           </Card>
         ) : null}
         <Card>
-          <RowKV k={t('Training volume')} v={`${fmt(s.volume)} ${t('kg')}`} tone={vol == null ? undefined : vol >= 0 ? 'up' : 'down'} tag={vol == null ? undefined : `${vol >= 0 ? '↑' : '↓'} ${Math.abs(vol)}%`} />
-          {s.liftUps[0] ? <RowKV k={t('Best lift up')} v={`${t(s.liftUps[0].name)} ${fx(s.liftUps[0].to)} ${t('kg')}`} tone="up" tag={`+${fx(s.liftUps[0].to - s.liftUps[0].from)} ${t('kg')}`} /> : null}
+          <RowKV k={t('Training volume')} v={`${fmt(W.num(s.volume))} ${W.label}`} tone={vol == null ? undefined : vol >= 0 ? 'up' : 'down'} tag={vol == null ? undefined : `${vol >= 0 ? '↑' : '↓'} ${Math.abs(vol)}%`} />
+          {s.liftUps[0] ? <RowKV k={t('Best lift up')} v={`${t(s.liftUps[0].name)} ${W.show(s.liftUps[0].to)} ${W.label}`} tone="up" tag={`+${W.show(s.liftUps[0].to - s.liftUps[0].from)} ${W.label}`} /> : null}
           {missed ? <RowKV k={t('Missed')} v={(p.days ?? []).map((d, j) => (d === 'miss' ? t(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][j]) : null)).filter(Boolean).join(t(', '))} tone="down" tag={t('{n} missed', { n: missed })} /> : null}
         </Card>
       </Stack>
@@ -476,9 +479,9 @@ function SlideBody(p: BodyProps) {
     return (
       <Stack style={{ gap: 14 }} pointerEvents="none">
         <Eyebrow>{t('Body and sleep')}</Eyebrow>
-        <H>{s.weight ? (s.weight.change === 0 ? t('Your weight held steady') : t(s.weight.change > 0 ? 'Up {n} kg this week' : 'Down {n} kg this week', { n: fx(Math.abs(s.weight.change)) })) : t('Your sleep this week')}</H>
+        <H>{s.weight ? (s.weight.change === 0 ? t('Your weight held steady') : W.words(t(s.weight.change > 0 ? 'Up {n} kg this week' : 'Down {n} kg this week', { n: W.show(Math.abs(s.weight.change)) }))) : t('Your sleep this week')}</H>
         <Card>
-          {s.weight ? <RowKV k={t('Weight')} v={`${fx(s.weight.first)} → ${fx(s.weight.last)} ${t('kg')}`} tone={g ? (g.ok ? 'up' : 'down') : undefined} tag={g ? t(g.ok ? 'On plan' : 'Off plan') : undefined} /> : null}
+          {s.weight ? <RowKV k={t('Weight')} v={`${W.show(s.weight.first)} → ${W.show(s.weight.last)} ${W.label}`} tone={g ? (g.ok ? 'up' : 'down') : undefined} tag={g ? t(g.ok ? 'On plan' : 'Off plan') : undefined} /> : null}
           {s.sleepAvg != null ? <RowKV k={t('Average sleep')} v={`${fx(s.sleepAvg)} ${t('h')}`} tone={s.sleepAvg >= 7 ? 'up' : s.sleepAvg >= 6 ? 'amber' : 'down'} tag={t(s.sleepAvg >= 7 ? 'Great' : s.sleepAvg >= 6 ? 'Fair' : 'Low')} /> : null}
           {s.waistChange != null ? <RowKV k={t('Waist')} v={`${s.waistChange > 0 ? '+' : ''}${fx(s.waistChange)} ${t('cm')}`} /> : null}
         </Card>
@@ -520,8 +523,9 @@ function SlideBody(p: BodyProps) {
 }
 
 function Goals({ t, goals }: { t: T; goals: Goal[] }) {
+  const W = useWeight();
   const label = { train: 'Workouts as planned', food: 'Calories on target', protein: 'Protein goal', water: 'Water goal', sleep: 'Sleep, 7 h or more', weight: 'Weight on plan' } as const;
-  const value = (g: Goal) => (g.key === 'weight' ? `${g.done} ${t('kg')}` : g.key === 'sleep' ? `${g.done} ${t('h')}` : g.key === 'train' ? `${g.done}/${g.target}` : t('{a} of {b} days', { a: g.done, b: g.target }));
+  const value = (g: Goal) => (g.key === 'weight' ? `${Number(g.done) > 0 ? '+' : ''}${W.show(Number(g.done))} ${W.label}` : g.key === 'sleep' ? `${g.done} ${t('h')}` : g.key === 'train' ? `${g.done}/${g.target}` : t('{a} of {b} days', { a: g.done, b: g.target }));
   if (!goals.length) return null;
   return (
     <Card>
@@ -538,7 +542,7 @@ function ApplySlide(p: BodyProps) {
   const [picked, setPicked] = useState<number[]>(() => sug.map((_, j) => j));
   const [busy, setBusy] = useState(false);
   const done = p.applied != null;
-  const day = (d: number) => new Intl.DateTimeFormat(p.lang === 'ar' ? 'ar' : 'en-US', { weekday: 'long' }).format(new Date(2026, 9, 4 + d, 12));
+  const day = (d: number) => new Intl.DateTimeFormat(p.lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { weekday: 'long' }).format(new Date(2026, 9, 4 + d, 12));
   const lines = (s: Suggestion): string[] => {
     if (s.type === 'plan') return s.changes.map((c) => changeLine(c, p.plan ?? null, p.lang, t));
     if (s.type === 'targets') return [s.kcal ? t('Calories: {n} kcal', { n: fmt(s.kcal) }) : null, s.protein ? t('Protein: {n} g', { n: s.protein }) : null, s.water ? t('Water: {n} ml', { n: fmt(s.water) }) : null].filter((x): x is string => !!x);

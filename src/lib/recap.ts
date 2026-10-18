@@ -3,7 +3,7 @@ import { askAI } from './ai';
 import { allergensIn, allergiesText } from './allergies';
 import type { ChatAction } from './coach';
 import { prepareSuggestions } from './coachPlan';
-import { addDays } from './nutrition';
+import { addDays, localDay } from './nutrition';
 import type { ReportStats } from './report';
 import { supabase } from './supabase';
 import type { WorkoutLog } from './train';
@@ -40,8 +40,8 @@ export const hasRecap = (joinedAt: string | undefined, start: string) => {
   return !!joined && joined <= start;
 };
 
-/** The Sunday your first recap is ready: the first Sunday after the week you joined. */
-export const firstRecapDay = (joinedAt: string) => addDays(weekStart(joinedAt.slice(0, 10)), 7);
+/** The Sunday your first recap is ready: the first Sunday after the week you joined (your own day, not the server's UTC day). */
+export const firstRecapDay = (joinedAt: string) => addDays(weekStart(localDay(new Date(joinedAt))), 7);
 
 export type Goal = { key: 'train' | 'food' | 'protein' | 'water' | 'sleep' | 'weight'; ok: boolean; done: string; target: string };
 

@@ -235,12 +235,12 @@ export default function CardioScreen() {
           const row = await food.addCardio(other ? { kind: 'Other', name: otherName.trim() || null, minutes: mins, intensity: 1, kcal } : { kind: CARDIO[kind][0], minutes: mins, intensity: inten, kcal });
           if (!row) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
           const walked = row.kind === 'Walk' ? row.minutes * 110 : 0;
-          if (walked) food.setSteps(food.steps + walked);
+          if (walked) food.addSteps(walked);
           toast(t('Added {x}: +{n} kcal to today', { x: row.name || t(row.kind).toLowerCase(), n: row.kcal }), {
             icon: 'flame',
             undo: () => {
               food.deleteCardio(row.id);
-              if (walked) food.setSteps(Math.max(0, food.steps));
+              if (walked) food.addSteps(-walked);
             },
           });
         }}

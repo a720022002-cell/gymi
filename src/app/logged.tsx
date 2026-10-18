@@ -87,7 +87,7 @@ export default function LoggedScreen() {
     setEdit(null);
     toast(t('Saved'), { icon: 'check' });
   };
-  const time = new Date(log.created_at).toLocaleTimeString(lang === 'ar' ? 'ar-SA' : 'en-US', { hour: 'numeric', minute: '2-digit' });
+  const time = new Date(log.created_at).toLocaleTimeString(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { hour: 'numeric', minute: '2-digit' });
 
   return (
     <Screen title={t('Meal')} back>

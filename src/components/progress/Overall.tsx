@@ -53,7 +53,9 @@ export function Overall({ go }: { go: (t: PTab, sub?: number) => void }) {
   const dWaist = waist.length > 1 ? waist.at(-1)!.value - waist[0].value : 0;
   const goal = food.plan.goal;
   const goodW = !hasDw ? null : goal >= 3 ? dw < 0 : goal <= 1 ? dw > 0 : Math.abs(dw) < 1;
-  const sleeps = health.checkins.filter((x) => x.sleep_h != null).slice(-7);
+  // Sleep from the last 7 days only (an old check-in from months ago doesn't count).
+  const weekAgo = addDays(food.today, -6);
+  const sleeps = health.checkins.filter((x) => x.sleep_h != null && x.day >= weekAgo);
   const sAvg = sleeps.length ? sleeps.reduce((a, x) => a + (x.sleep_h ?? 0), 0) / sleeps.length : null;
   const cm = s.commitment;
   const vol = weeklyVolume(train.logs, train.today);

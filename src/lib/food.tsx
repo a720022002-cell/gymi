@@ -52,7 +52,7 @@ export type SavedMeal = {
   protein: number;
   carbs: number;
   fat: number;
-  /** Shareable code like MEAL-K7Q2. */
+  /** Shareable code like MEAL-K7Q2RX9P (older ones have 4 characters). */
   code: string;
   /** The code this meal was copied from (added by code). */
   from_code: string | null;
@@ -136,7 +136,7 @@ type Food = {
   updateMeal: (id: string, patch: Partial<NewSavedMeal>) => Promise<SavedMeal | null>;
   deleteMeal: (id: string) => Promise<void>;
   /** Copy someone's meal into your saved meals by its code. */
-  addMealByCode: (code: string) => Promise<{ status: 'ok' | 'not_found' | 'exists' | 'failed'; meal?: SavedMeal }>;
+  addMealByCode: (code: string) => Promise<{ status: 'ok' | 'not_found' | 'exists' | 'slow' | 'failed'; meal?: SavedMeal }>;
   moves: Move[];
   addMoves: (m: { day: string; kcal: number }[]) => Promise<Move[]>;
   removeMoves: (ids: string[]) => Promise<void>;
@@ -151,6 +151,8 @@ type Food = {
   /** Steps today (typed in, plus about 110 per minute of walking). */
   steps: number;
   setSteps: (n: number) => Promise<void>;
+  /** Add (or take off) steps from today's latest count, not an older copy. */
+  addSteps: (d: number) => Promise<void>;
   addWater: (ml: number, kind?: string, on?: string) => Promise<void>;
   /** Over/under balance sheet (shown above everything). */
   balance: 'over' | 'under' | null;
@@ -186,6 +188,10 @@ export function FoodProvider({ children }: PropsWithChildren) {
   const [waterLogs, setWaterLogs] = useState<WaterLog[]>([]);
   const [cardio, setCardio] = useState<Cardio[]>([]);
   const [steps, setStepsState] = useState(0);
+  const stepsNow = useRef(0);
+  useEffect(() => {
+    stepsNow.current = steps;
+  }, [steps]);
   const [balance, openBalance] = useState<'over' | 'under' | null>(null);
   const [logOpen, setLogOpenState] = useState(false);
   const [typeSeed, setTypeSeed] = useState<string | null>(null);
@@ -449,7 +455,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
     return (data as SavedMeal) ?? null;
   }, []);
 
-  const addMealByCode = useCallback(async (code: string): Promise<{ status: 'ok' | 'not_found' | 'exists' | 'failed'; meal?: SavedMeal }> => {
+  const addMealByCode = useCallback(async (code: string): Promise<{ status: 'ok' | 'not_found' | 'exists' | 'slow' | 'failed'; meal?: SavedMeal }> => {
     const { data, error } = await supabase.rpc('add_meal_by_code', { p_code: code });
     const r = data as { status: string; meal?: SavedMeal } | null;
     if (error || !r) return { status: 'failed' as const };
@@ -458,7 +464,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       setSaved((xs) => [meal, ...xs]);
       return { status: 'ok' as const, meal };
     }
-    return { status: r.status === 'not_found' || r.status === 'exists' ? r.status : 'failed' };
+    return { status: r.status === 'not_found' || r.status === 'exists' || r.status === 'slow' ? r.status : 'failed' };
   }, []);
 
   const updateMeal = useCallback(async (id: string, patch: Partial<NewSavedMeal>) => {
@@ -523,11 +529,13 @@ export function FoodProvider({ children }: PropsWithChildren) {
   const setSteps = useCallback(
     async (n: number) => {
       const v = Math.max(0, Math.min(200000, Math.round(n)));
+      stepsNow.current = v;
       setStepsState(v);
       if (userId) await supabase.from('step_logs').upsert({ user_id: userId, day, steps: v });
     },
     [userId, day],
   );
+  const addSteps = useCallback((d: number) => setSteps(stepsNow.current + d), [setSteps]);
 
   const deleteCardio = useCallback(async (id: string) => {
     setCardio((xs) => xs.filter((x) => x.id !== id));
@@ -583,6 +591,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       deleteCardio,
       steps,
       setSteps,
+      addSteps,
       addWater,
       balance,
       openBalance,
@@ -591,7 +600,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       typeSeed,
       openTyping,
     }),
-    [day, setDay, isToday, loadedDay, balance, logOpen, setLogOpen, typeSeed, openTyping, coach, coachMeals, addMealByCode, ready, today, setupDone, plan, person, draft, savePlan, applyWeight, weightNote, clearWeightNote, preg, updatePlan, logs, eaten, target, dayGoal, coachTargets, kcalLeft, addLog, deleteLog, setLogMeal, updateLog, restoreLog, saved, saveMeal, updateMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, addCardio, deleteCardio, steps, setSteps, addWater],
+    [day, setDay, isToday, loadedDay, balance, logOpen, setLogOpen, typeSeed, openTyping, coach, coachMeals, addMealByCode, ready, today, setupDone, plan, person, draft, savePlan, applyWeight, weightNote, clearWeightNote, preg, updatePlan, logs, eaten, target, dayGoal, coachTargets, kcalLeft, addLog, deleteLog, setLogMeal, updateLog, restoreLog, saved, saveMeal, updateMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, addCardio, deleteCardio, steps, setSteps, addSteps, addWater],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

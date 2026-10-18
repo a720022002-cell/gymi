@@ -106,6 +106,11 @@ export default function MachineScreen() {
     setBusy(false);
   };
 
+  // Sets from the AI: a number from 1 to 6 (3 if it gave nothing usable).
+  const setsOf = (n?: number) => Math.min(6, Math.max(1, Math.round(Number(n) || 3)));
+  // Your injuries that this exercise is hard on (the workout swaps it for you when there's a safer one).
+  const hurts = match ? (EX[match.id]?.stress ?? []).filter((x) => train.plan?.injuries.includes(x)) : [];
+
   const add = (pe: PlanEx, label: string) => {
     const s = train.session;
     if (live && s) {
@@ -127,7 +132,7 @@ export default function MachineScreen() {
 
   const addFound = () => {
     if (!found) return;
-    if (match) return add({ ...toPlanEx(match), sets: Math.round(found.sets || 3), reps: /\d/.test(found.reps ?? '') ? String(found.reps).slice(0, 7) : '10–12' }, dbExName(match, lang));
+    if (match) return add({ ...toPlanEx(match), sets: setsOf(found.sets), reps: /\d/.test(found.reps ?? '') ? String(found.reps).slice(0, 7) : '10–12' }, dbExName(match, lang));
     addOwn(found.name, found.name_ar);
   };
 
@@ -137,7 +142,7 @@ export default function MachineScreen() {
     const g = fine ? muscleGroup(fine.pri) : group;
     if (!nm || !g) return;
     const id = `custom:${nm.toLowerCase().replace(/[^a-z0-9؀-ۿ]+/g, '-')}`;
-    add({ id, sets: Math.round(found?.sets || 3), reps, n: nm, ar: ar ?? (lang === 'ar' ? nm : null), m: g, t: found?.equipment ?? 'Machine', ...(fine ? { pri: fine.pri, sec: fine.sec } : {}) }, nm);
+    add({ id, sets: setsOf(found?.sets), reps, n: nm, ar: ar ?? (lang === 'ar' ? nm : null), m: g, t: found?.equipment ?? 'Machine', ...(fine ? { pri: fine.pri, sec: fine.sec } : {}) }, nm);
   };
 
   // Not sure (or it picked nothing): the look-alikes are shown to choose from.
@@ -246,9 +251,17 @@ export default function MachineScreen() {
                       {t('Start with')}
                     </Text>
                     <Text variant="small" weight={700}>
-                      {t('{s} × {r} at a weight you could do 2 more times', { s: Math.round(found.sets || 3), r: /\d/.test(found.reps ?? '') ? found.reps! : '10–12' })}
+                      {t('{s} × {r} at a weight you could do 2 more times', { s: setsOf(found.sets), r: /\d/.test(found.reps ?? '') ? found.reps! : '10–12' })}
                     </Text>
                   </Row>
+                  {hurts.length ? (
+                    <Row gap={8} style={{ marginTop: 10, alignItems: 'flex-start' }}>
+                      <Icon name="warn" size={16} color={c.down} />
+                      <Text variant="small" style={{ flex: 1 }}>
+                        {t('Careful: this can be hard on your {x}. Go light, and stop if it hurts.', { x: hurts.map((x) => t(x).toLowerCase()).join(', ') })}
+                      </Text>
+                    </Row>
+                  ) : null}
                   {swapFor ? (
                     <Row style={{ justifyContent: 'space-between', marginTop: 8 }}>
                       <Text variant="small" color="sec">

@@ -22,7 +22,7 @@ import { useSettings } from '@/theme/settings';
 const CATS = ['Protein', 'Dairy', 'Carbs and grains', 'Fruit and vegetables', 'Pantry', 'Other'];
 
 function category(n: string) {
-  if (/chicken|beef|fish|salmon|egg|whey|patty|mince|hamour|tuna|thigh|lamb|shrimp|prawn|kofta|kebab|turkey|دجاج|لحم|سمك|سلمون|بيض|تونة|هامور|ربيان|روبيان|كفتة|ديك رومي/i.test(n)) return 'Protein';
+  if (/chicken|beef|fish|salmon|egg(?!plant)|whey|patty|mince|hamour|tuna|thigh|lamb|shrimp|prawn|kofta|kebab|turkey|دجاج|لحم|سمك|سلمون|بيض|تونة|هامور|ربيان|روبيان|كفتة|ديك رومي/i.test(n)) return 'Protein';
   if (/rice|oat|bread|toast|bun|potato|bulgur|dates|lentil|pasta|harees|sambousek|vermicelli|tortilla|wheat|chickpea|foul|quinoa|couscous|freekeh|رز|أرز|ارز|شوفان|خبز|توست|بطاطس|بطاطا|برغل|تمر|عدس|مكرونة|معكرونة|هريس|شعيرية|تورتيلا|حمص|فول|كينوا|كسكس|فريكة/i.test(n)) return 'Carbs and grains';
   if (/yogurt|labneh|milk|laban|cheese|cottage|زبادي|لبنة|حليب|لبن|جبن/i.test(n)) return 'Dairy';
   if (/salad|tomato|cucumber|onion|pepper|bean|banana|apple|berr|lemon|lettuce|pickle|fattoush|spinach|veggies|greens|vegetable|carrot|avocado|orange|zucchini|parsley|garlic|ginger|سلطة|طماطم|خيار|بصل|فلفل|فاصوليا|موز|تفاح|ليمون|خس|سبانخ|خضار|جزر|أفوكادو|برتقال|كوسة|بقدونس|ثوم|زنجبيل/i.test(n)) return 'Fruit and vegetables';
