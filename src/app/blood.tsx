@@ -181,6 +181,9 @@ export default function BloodScreen() {
           />
         </>
       ) : null}
+      <Text variant="xs" color="sec" center style={{ marginTop: 16 }}>
+        {t('Gymi reads and tracks your results to guide your training and food. It doesn’t diagnose or treat anything. Talk to your doctor about your results. Not medical advice.')}
+      </Text>
     </Screen>
   );
 }

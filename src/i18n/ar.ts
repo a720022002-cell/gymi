@@ -4001,4 +4001,13 @@ export const AR: Record<string, string> = {
   "User reports": "بلاغات المستخدمين",
   "Not handled": "ما انحلت",
   "Handled": "انحلت",
+  "Gymi reads and tracks your results to guide your training and food. It doesn’t diagnose or treat anything. Talk to your doctor about your results. Not medical advice.": "Gymi يقرأ نتايجك ويتابعها عشان يوجه تمرينك وأكلك. ما يشخّص ولا يعالج أي شي. ناقش نتايجك مع طبيبك. هذا مو نصيحة طبية.",
+  "Apple Health and Health Connect": "Apple Health و Health Connect",
+  "If you connect them, Gymi reads only what you allow (like steps, sleep, heart rate, weight and workouts) to show it in the app and adjust your plan. This data is never sold, never used for ads or marketing, and never shared with anyone else, including friends.": "إذا ربطتها، Gymi يقرأ بس اللي تسمح فيه (مثل الخطوات والنوم ونبض القلب والوزن والتمارين) عشان يعرضه في التطبيق ويعدل خطتك. هالبيانات ما تنباع أبد، وما تُستخدم للإعلانات أو التسويق، وما تنشارك مع أي أحد، حتى الأصدقاء.",
+  "How long we keep it": "كم نحتفظ فيها",
+  "Your data stays while you have an account. When you delete your account, your data, photos and files are deleted from our servers.": "بياناتك تبقى دام عندك حساب. إذا حذفت حسابك، تنحذف بياناتك وصورك وملفاتك من سيرفراتنا.",
+  "Updated": "آخر تحديث",
+  "This policy was last updated on 18 October 2026.": "آخر تحديث لهالسياسة كان 18 أكتوبر 2026.",
+  "No abuse": "ممنوع الإساءة",
+  "There is zero tolerance for harassment, hate, nudity, spam or other objectionable content or behaviour. You can report or block anyone. Our team reviews reports within 24 hours and removes content and accounts that break these rules.": "ما نقبل أبد التحرش أو الكراهية أو العري أو الإزعاج أو أي محتوى أو تصرف مسيء. تقدر تبلّغ عن أي أحد أو تحظره. فريقنا يراجع البلاغات خلال 24 ساعة، ويشيل المحتوى والحسابات اللي تخالف هالقواعد.",
 };

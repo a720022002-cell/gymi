@@ -12,10 +12,14 @@ const PRIVACY: [string, string][] = [
   ['Friends and coaches', 'Friends only see what you turn on in What friends see. A coach you join sees your food, workouts, weight and sleep. Cycle data and blood tests are never shared.'],
   ['Where it’s stored', 'In our secure database with access rules that let only you read your own data. Progress photos are stored privately.'],
   ['Your choices', 'You can download all your data or delete your account any time from You, then Privacy and data. Deleting removes everything.'],
+  ['Apple Health and Health Connect', 'If you connect them, Gymi reads only what you allow (like steps, sleep, heart rate, weight and workouts) to show it in the app and adjust your plan. This data is never sold, never used for ads or marketing, and never shared with anyone else, including friends.'],
+  ['How long we keep it', 'Your data stays while you have an account. When you delete your account, your data, photos and files are deleted from our servers.'],
   ['Health', 'Gymi is not a medical service. It never suggests treatment. Check with your doctor about health questions.'],
+  ['Updated', 'This policy was last updated on 18 October 2026.'],
 ];
 const TERMS: [string, string][] = [
   ['Using Gymi', 'You need to be 16 or older. Keep your password private. Be respectful in Gym Bros and with coaches.'],
+  ['No abuse', 'There is zero tolerance for harassment, hate, nudity, spam or other objectionable content or behaviour. You can report or block anyone. Our team reviews reports within 24 hours and removes content and accounts that break these rules.'],
   ['Not medical advice', 'Calories, plans and AI answers are estimates for healthy adults. Stop and see a doctor if you feel pain, dizziness or anything unusual.'],
   ['Coaches', 'Coaches are checked by our team before they appear, but they are independent. Payments with a coach are between you and them for now.'],
   ['Subscriptions', 'Gymi Pro renews until you cancel in your App Store or Google Play settings. Free trials turn into paid plans unless cancelled first.'],
