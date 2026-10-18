@@ -20,6 +20,13 @@ Everything in the code is ready for the phone apps. The steps below need **your*
    - On expo.dev: Account settings → Access tokens → Create token.
    - Add it to **this Claude Code environment** as a secret named **`EXPO_TOKEN`**.
    - Then tell me "build the phone apps". I will run the cloud builds (`eas build`) for iPhone and Android.
+   - **Status (18 Oct 2026):** done. The token works (account `ahmed.2002`) and the Expo project is linked.
+3b. **Add the database settings to Expo** (needed before the first phone build)
+   - On expo.dev: project **gymi** → Environment variables. Add these two to **production**, **preview** and **development**, with visibility "Plain text":
+     - `EXPO_PUBLIC_SUPABASE_URL` = `https://utvhvzwkwhocdbiutavg.supabase.co`
+     - `EXPO_PUBLIC_SUPABASE_ANON_KEY` = the same "anon" key you put in Vercel (Supabase → Project settings → API keys)
+   - Both are public values (they're already inside the website). Without them the phone app opens but can't load anything.
+   - Or let me add them: allow Claude Code to run `eas env:create` and I'll do it.
 4. **First upload to the stores**
    - Apple asks you to sign in once during the first iPhone build (it makes the certificates for you).
    - For Google, the first upload of the Android file is done by hand in the Play Console; after that I can send updates.
