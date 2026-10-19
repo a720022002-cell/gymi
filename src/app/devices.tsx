@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { Platform, View } from 'react-native';
 
 import { DEVICE_FIELD, DEVICE_ONLY, INFO, orderedKeys, type ReadingKey } from '@/components/health/readings';
@@ -12,7 +12,8 @@ import { useRecovery } from '@/components/train/RecoveryCard';
 import { Button, Card, NavButton, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
-import { connectDevice, disconnectDevice, phoneSource, saveCardOrder, sourceName, syncDevice, useDevices } from '@/lib/devices';
+import { connectDevice, disconnectDevice, phoneSource, reloadDeviceDays, saveCardOrder, sourceName, syncDevice, useDevices } from '@/lib/devices';
+import { linkWearable, syncWearables, unlinkWearable, wearableName, WEARABLES, type WearableProvider, wearableStatus, type WearableStatus } from '@/lib/wearables';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { fmt } from '@/lib/nutrition';
@@ -33,6 +34,43 @@ export default function Devices() {
   const dev = useDevices(session?.user.id);
   const [editing, setEditing] = useState<ReadingKey[] | null>(null);
   const [busy, setBusy] = useState(false);
+  // Wearables linked directly (WHOOP, Oura): what the server has, and which one is busy.
+  const [ws, setWs] = useState<WearableStatus | null>(null);
+  const [wBusy, setWBusy] = useState<WearableProvider | null>(null);
+  const loadWs = useCallback(() => {
+    wearableStatus().then(setWs);
+  }, []);
+  useEffect(() => {
+    loadWs();
+  }, [loadWs]);
+  // Back from a wearable's sign-in: say how it went once, then clear the link.
+  const back = useLocalSearchParams<{ wearable?: string; status?: string }>();
+  useEffect(() => {
+    if (!back.wearable || !back.status) return;
+    const n = wearableName(back.wearable);
+    const msg: Record<string, string> = { linked: '{n} connected. Your last month is in.', denied: '{n} wasn’t connected: access was not allowed.', expired: 'That took too long. Tap {n} to try again.', error: 'Couldn’t connect {n}. Please try again.' };
+    toast(t(msg[back.status] ?? msg.error, { n }), { icon: back.status === 'linked' ? 'check' : 'warn' });
+    if (back.status === 'linked') reloadDeviceDays();
+    router.replace('/devices');
+  }, [back.wearable, back.status, t, toast]);
+  const linkOf = (p: WearableProvider) => ws?.links.find((l) => l.provider === p);
+  const tapWearable = async (p: WearableProvider) => {
+    const l = linkOf(p);
+    setWBusy(p);
+    if (l && l.status === 'ok') {
+      const r = await syncWearables(p);
+      setWBusy(null);
+      loadWs();
+      await reloadDeviceDays();
+      const v = r?.[p];
+      return toast(typeof v === 'number' ? t('Synced {n} days from {s}', { n: v, s: wearableName(p) }) : t(v === 'expired' ? 'Sign in to {n} again to keep syncing.' : 'Couldn’t sync {n}. Please try again.', { n: wearableName(p) }), { icon: typeof v === 'number' ? 'check' : 'warn' });
+    }
+    const r = await linkWearable(p);
+    setWBusy(null);
+    if (r === 'not_set_up') toast(t('{n} is almost ready. It opens as soon as Gymi’s {n} account is approved.', { n: wearableName(p) }), { icon: 'watch' });
+    else if (r === 'offline') toast(t('You’re offline. Check your connection and try again.'), { icon: 'warn' });
+    else if (r === 'failed') toast(t('Couldn’t connect {n}. Please try again.', { n: wearableName(p) }), { icon: 'warn' });
+  };
 
   // Newest value a device sent for a field (within the last week).
   const devLast = (k: keyof (typeof dev.days)[number]) => [...dev.days].reverse().find((d) => d[k] != null && (!Array.isArray(d[k]) || (d[k] as unknown[]).length))?.[k] as number | undefined;
@@ -163,6 +201,46 @@ export default function Devices() {
         })}
       </View>
       <Text variant="small" weight={700} color="sec" style={{ marginTop: 8, marginBottom: 8, marginHorizontal: 4 }}>
+        {t('Rings and bands')}
+      </Text>
+      <List>
+        {WEARABLES.map(([p, n, d], idx) => {
+          const l = linkOf(p);
+          const ready = !!ws?.configured[p];
+          const state = l ? (l.status === 'ok' ? 'on' : 'again') : ready ? 'off' : 'soon';
+          const when = l?.last_sync ? new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', day: 'numeric', month: 'short' }).format(new Date(l.last_sync)) : null;
+          return (
+            <ListRow key={p} first={!idx} onPress={() => (wBusy ? undefined : tapWearable(p))}>
+              <Icon name={p === 'oura' ? 'watch' : 'pulse'} size={20} color={c.cobalt} />
+              <View style={{ flex: 1 }}>
+                <Text weight={700}>{n}</Text>
+                <Text variant="small" color="sec">
+                  {state === 'on' ? (when ? t('Connected. Synced {t}. Tap to sync now.', { t: when }) : t('Connected. Tap to sync now.')) : state === 'again' ? t('Sign in again to keep syncing.') : t(d)}
+                </Text>
+              </View>
+              <Text variant="xs" weight={700} color={state === 'on' ? 'up' : state === 'again' ? c.down : 'sec'}>
+                {wBusy === p ? t('Syncing…') : t(state === 'on' ? 'Connected' : state === 'again' ? 'Sign in' : state === 'off' ? 'Connect' : 'Coming soon')}
+              </Text>
+            </ListRow>
+          );
+        })}
+      </List>
+      {(ws?.links ?? []).map((l) => (
+        <Button
+          key={l.provider}
+          small
+          kind="ghost"
+          title={t('Disconnect {n}', { n: wearableName(l.provider) })}
+          style={{ alignSelf: 'center' }}
+          onPress={async () => {
+            if (!(await unlinkWearable(l.provider))) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+            loadWs();
+            await reloadDeviceDays();
+            toast(t('{n} disconnected. Its data was deleted from Gymi.', { n: wearableName(l.provider) }), { icon: 'info' });
+          }}
+        />
+      ))}
+      <Text variant="small" weight={700} color="sec" style={{ marginTop: 8, marginBottom: 8, marginHorizontal: 4 }}>
         {t('Connect a device')}
       </Text>
       <List>
@@ -172,8 +250,9 @@ export default function Devices() {
               ['Apple Health', 'heart', 'Steps, sleep, heart rate and workouts', 'web'],
               ['Health Connect', 'heart', 'For Android phones and watches', 'web'],
             ]),
-            ['WHOOP', 'pulse', 'Recovery, strain and sleep', 'soon'],
             ['Garmin', 'watch', 'Steps, heart rate and training', 'soon'],
+            ['Polar', 'watch', 'Heart rate, training and sleep', 'soon'],
+            ['Fitbit', 'watch', 'Steps, sleep and heart rate', 'soon'],
             ['Smart scale', 'scale', 'Weight and body fat each morning', 'soon'],
           ] as [string, IconName, string, 'phone' | 'web' | 'soon'][]
         ).map(([n, i, d, kind], idx) => (

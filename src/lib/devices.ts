@@ -4,6 +4,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 
 import { connectSource, nativeSource, readRaw } from './healthSource';
 import { addDays, localDay } from './nutrition';
+import { loadWearableDays, syncWearables, type WearableDay, type WearableProvider, wearableStatus } from './wearables';
 import { supabase } from './supabase';
 
 export type DeviceSource = 'apple' | 'health_connect';
@@ -11,7 +12,8 @@ export type DeviceWorkout = { type: string; minutes: number; kcal: number };
 export type DeviceHours = { steps: number[]; hr: (number | null)[] };
 export type DeviceDay = {
   day: string;
-  source: DeviceSource;
+  /** Where the day came from: the phone's health app, or a wearable linked directly (WHOOP, Oura). */
+  source: DeviceSource | WearableProvider;
   steps: number | null;
   active_kcal: number | null;
   hr_avg: number | null;
@@ -24,6 +26,10 @@ export type DeviceDay = {
   vo2: number | null;
   workouts: DeviceWorkout[];
   hours: DeviceHours | null;
+  /** WHOOP recovery or Oura readiness (0–100), when a wearable is linked. */
+  recovery?: number | null;
+  /** The linked wearable whose numbers are in this day. */
+  wearable?: WearableProvider;
 };
 export type DevicePrefs = { source: DeviceSource | null; connected: boolean; card_order: string[]; last_sync: string | null };
 
@@ -130,8 +136,39 @@ function clean(rows: Record<string, unknown>[] | null): DeviceDay[] {
 }
 
 export async function loadDeviceDays(from: string): Promise<DeviceDay[]> {
-  const { data } = await supabase.from('device_readings').select(COLS).gte('day', from).order('day');
-  return clean(data as Record<string, unknown>[] | null);
+  const [{ data }, wear] = await Promise.all([supabase.from('device_readings').select(COLS).gte('day', from).order('day'), loadWearableDays(from).catch(() => [] as WearableDay[])]);
+  return mergeWearables(clean(data as Record<string, unknown>[] | null), wear);
+}
+
+/**
+ * Days from a wearable linked directly go into the same days: its sleep, HRV and resting heart rate win (a ring or
+ * band worn all night measures them better than a phone), and it fills steps, calories and workouts the phone
+ * didn't have. A day only the wearable has becomes a day of its own.
+ */
+export function mergeWearables(days: DeviceDay[], wear: WearableDay[]): DeviceDay[] {
+  if (!wear.length) return days;
+  const byDay = new Map(days.map((d) => [d.day, { ...d }]));
+  for (const w of wear) {
+    const d: DeviceDay = byDay.get(w.day) ?? { day: w.day, source: w.provider, steps: null, active_kcal: null, hr_avg: null, hr_rest: null, hrv: null, sleep_h: null, in_bed_h: null, sleep_eff: null, weight: null, vo2: null, workouts: [], hours: null };
+    // Two wearables on one day: the first one (in the order they come) keeps its numbers.
+    const first = !d.wearable;
+    const win = <K extends 'hrv' | 'hr_rest' | 'sleep_h' | 'in_bed_h' | 'sleep_eff'>(k: K, v: number | null) => {
+      if (v != null && (first || d[k] == null)) d[k] = v;
+    };
+    win('hrv', w.hrv);
+    win('hr_rest', w.hr_rest);
+    win('sleep_h', w.sleep_h);
+    win('in_bed_h', w.in_bed_h);
+    win('sleep_eff', w.sleep_eff);
+    if (d.steps == null && w.steps != null) d.steps = w.steps;
+    if (d.active_kcal == null && w.active_kcal != null) d.active_kcal = w.active_kcal;
+    if (d.hr_avg == null && w.hr_avg != null) d.hr_avg = w.hr_avg;
+    if (!d.workouts.length && w.workouts.length) d.workouts = w.workouts;
+    if (w.recovery != null && (first || d.recovery == null)) d.recovery = w.recovery;
+    if (first) d.wearable = w.provider;
+    byDay.set(w.day, d);
+  }
+  return [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day));
 }
 
 export async function loadDevicePrefs(): Promise<DevicePrefs> {
@@ -172,6 +209,15 @@ async function load(uid: string) {
   set({ uid, ready: true, prefs, days });
   // Phones refresh by themselves at most every 30 minutes.
   if (phoneSource && prefs.connected && prefs.source === phoneSource && (!prefs.last_sync || Date.now() - new Date(prefs.last_sync).getTime() > 30 * 6e4)) syncDevice().catch(() => {});
+  // Linked wearables (WHOOP, Oura) refresh at most every 3 hours, then the days load again.
+  wearableStatus()
+    .then(async (s) => {
+      const due = (s?.links ?? []).some((l) => l.status === 'ok' && (!l.last_sync || Date.now() - new Date(l.last_sync).getTime() > 3 * 36e5));
+      if (!due) return;
+      await syncWearables();
+      if (state.uid === uid) set({ days: await loadDeviceDays(addDays(localDay(), -59)) });
+    })
+    .catch(() => {});
 }
 
 async function savePrefs(patch: Partial<DevicePrefs>) {
@@ -211,6 +257,14 @@ export async function connectDevice(): Promise<'ok' | 'denied' | 'unavailable'> 
 
 export async function disconnectDevice() {
   await savePrefs({ connected: false });
+}
+
+/** Load the days again (after linking, syncing or disconnecting a wearable). */
+export async function reloadDeviceDays() {
+  if (!state.uid) return;
+  const uid = state.uid;
+  const days = await loadDeviceDays(addDays(localDay(), -59));
+  if (state.uid === uid) set({ days });
 }
 
 export const saveCardOrder = (order: string[]) => savePrefs({ card_order: order });

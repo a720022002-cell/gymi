@@ -130,12 +130,14 @@ Passwords and keys are left out on purpose.
 - **Recap suggestions fix (18 Oct):** after AI answers got a fixed shape (I7), the recap's open "suggest" objects came back empty, so the last slide had nothing to apply. Open shapes now only ask for JSON; this week's empty recaps were cleared so they're written again.
 - **Workout screen (18 Oct):** small up/down arrows to reorder exercises mid-workout; a water button (150/250/500/750 ml) logs to today's water; a smarter set coach (lib/setCoach) reads today's sets and your last 6 workouts: works out the right weight from what you just lifted, sees when reps drop from tiredness (rest, keep the weight), suggests a heavier last set when you're strong and steady, says when you've been stuck on one weight for 3+ workouts, and where to start before the first set.
 
+- **WHOOP and Oura direct (19 Oct):** a new "Rings and bands" list on the devices page. You sign in on WHOOP's or Oura's own page; the server keeps the keys (the app never sees them), pulls your last 30 days, then syncs again when you open the app (every 3 hours at most) or tap to sync. Recovery/readiness, sleep, HRV, resting heart rate, steps and workouts join your readings (the ring or band wins over the phone for sleep and HRV). Disconnect also deletes its data. Shows "Coming soon" until Gymi's WHOOP and Oura developer apps are registered and their 4 keys are added in Supabase. Polar and Fitbit added as "Coming soon"; Garmin needs a partner approval.
 ---
 
 ## Still waiting on you
 
 - **Login and email-change codes:** built, but off until you add SMTP in Supabase under **Authentication → Emails → SMTP settings**.
 - **Phone-only features** (Apple Health, Health Connect, voice, PDF, sounds): need a phone build with EAS. That needs an `EXPO_TOKEN` secret added to this Claude Code environment.
+- **WHOOP and Oura keys:** register an app at developer.whoop.com and cloud.ouraring.com (redirect `https://utvhvzwkwhocdbiutavg.supabase.co/functions/v1/wearables`), then add `WHOOP_CLIENT_ID`, `WHOOP_CLIENT_SECRET`, `OURA_CLIENT_ID`, `OURA_CLIENT_SECRET` in Supabase → Edge Functions → Secrets.
 - **OpenRouter balance:** about $3.9 left. Top up before it runs out.
 
 ## Optional ideas offered
