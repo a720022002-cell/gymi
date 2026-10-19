@@ -4116,4 +4116,5 @@ export const AR: Record<string, string> = {
   "Zone {z} · {h} bpm": "المنطقة {z} · {h} نبضة",
   "Your watch says you usually fall asleep around {c}.": "ساعتك تقول إنك عادةً تنام حوالي الساعة {c}.",
   "Use {c}": "استخدم {c}",
+  "Moved to tomorrow. Today is a rest day.": "انتقل لبكرة. اليوم راحة.",
 };

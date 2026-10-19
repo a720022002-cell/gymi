@@ -314,7 +314,8 @@ export function sleepDetail(days: DeviceDay[], today = localDay()) {
 
 /**
  * Early signs of getting sick, from last night against your usual: temperature up, breathing faster, resting heart
- * rate up, HRV down, low blood oxygen. Two or more together (or very low oxygen) is worth a warning. Null otherwise.
+ * rate up, HRV down, low blood oxygen. Two or more together, one of them temperature, breathing or oxygen (or very
+ * low oxygen alone), is worth a warning. Null otherwise.
  */
 export function illnessCheck(days: DeviceDay[], today = localDay()): { reasons: string[]; keys: string[] } | null {
   const night = days.find((d) => d.day === today);
@@ -341,7 +342,10 @@ export function illnessCheck(days: DeviceDay[], today = localDay()): { reasons: 
   if (night.hrv != null && vUsual && night.hrv / vUsual <= 0.85) add('hrv', `HRV ${Math.round((1 - night.hrv / vUsual) * 100)}% under usual`);
   if (night.spo2 != null && night.spo2 < 94) add('spo2', `blood oxygen ${r1(night.spo2)}%`);
   const veryLow = night.spo2 != null && night.spo2 < 90;
-  return keys.length >= 2 || veryLow ? { reasons, keys } : null;
+  // Resting heart rate up and HRV down alone are as likely from hard training or a short night (that's readiness);
+  // getting sick needs a body sign too: temperature, breathing or oxygen.
+  const bodySign = keys.some((k) => k === 'temp' || k === 'resp' || k === 'spo2');
+  return (keys.length >= 2 && bodySign) || veryLow ? { reasons, keys } : null;
 }
 
 /** Your VO2 max against people your age and sex (about; from common fitness norms). */

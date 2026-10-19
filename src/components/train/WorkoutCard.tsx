@@ -222,6 +222,8 @@ export function WorkoutCard() {
   // It's only offered: the person decides.
   const watchTired = rec.body != null && rec.body < 45;
   const tired = (rec.sleepH != null && rec.sleepH < 6) || rec.score < 50 || rec.sore === 2 || watchTired;
+  // When the watch says the body hasn't recovered and tomorrow is a rest day, today's workout can also move there.
+  const canPushToTomorrow = watchTired && train.plan?.type !== 'order' && train.todayIdx < 6 && !!train.week[train.todayIdx]?.w && !train.week[train.todayIdx + 1]?.w && !train.todayLog;
 
   if (!train.setupDone)
     return (
@@ -334,7 +336,7 @@ export function WorkoutCard() {
               {t('Want to make today’s workout lighter? One set less and about 10% less weight.')}
             </Text>
           </Row>
-          <Row gap={8} style={{ marginTop: 10, marginStart: 26 }}>
+          <Row gap={8} style={{ marginTop: 10, marginStart: 26, flexWrap: 'wrap' }}>
             <Button
               small
               title={t('Yes, lighter')}
@@ -343,6 +345,22 @@ export function WorkoutCard() {
                 toast(t('Lighter today: one set less and about 10% less weight.'), { ai: true });
               }}
             />
+            {canPushToTomorrow ? (
+              <Button
+                small
+                kind="glass"
+                title={t('Move to tomorrow')}
+                onPress={() => {
+                  // Swap with tomorrow's rest day, this week only.
+                  const before = train.week;
+                  const next = before.map((d) => ({ ...d }));
+                  [next[train.todayIdx], next[train.todayIdx + 1]] = [next[train.todayIdx + 1], next[train.todayIdx]];
+                  train.setWeek(next, true);
+                  train.updatePlan({ lightAsked: train.today });
+                  toast(t('Moved to tomorrow. Today is a rest day.'), { icon: 'cal', undo: () => train.setWeek(before, true) });
+                }}
+              />
+            ) : null}
             <Button small kind="glass" title={t('No, keep it')} onPress={() => train.updatePlan({ lightAsked: train.today })} />
           </Row>
         </View>
