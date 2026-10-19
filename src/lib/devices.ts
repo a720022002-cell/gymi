@@ -1,5 +1,6 @@
 // Phone health data (Apple Health on iPhone, Health Connect on Android), saved as one summary per day
 // in "device_readings" so the web app and the coach can use it too. The phone-only parts live in healthSource.
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useSyncExternalStore } from 'react';
 
 import { connectSource, type HealthItem, nativeSource, readHeartRate, readRaw, removeHealth, writeHealth } from './healthSource';
@@ -466,6 +467,7 @@ export async function latestDeviceReadings(): Promise<{ days: DeviceDay[]; today
 // A small shared store so every screen sees the same data
 // ---------------------------------------------------------------------------
 type State = { uid: string | null; ready: boolean; prefs: DevicePrefs; days: DeviceDay[]; syncing: boolean };
+const STEPS_FIX = 'gymi.stepsDedupe.v1';
 let state: State = { uid: null, ready: false, prefs: EMPTY_PREFS, days: [], syncing: false };
 const subs = new Set<() => void>();
 const set = (patch: Partial<State>) => {
@@ -479,8 +481,13 @@ async function load(uid: string) {
   loading = uid;
   const [prefs, days] = await Promise.all([loadDevicePrefs(), loadDeviceDays(addDays(localDay(), -59))]);
   set({ uid, ready: true, prefs, days });
-  // Phones refresh by themselves at most every 30 minutes.
-  if (phoneSource && prefs.connected && prefs.source === phoneSource && (!prefs.last_sync || Date.now() - new Date(prefs.last_sync).getTime() > 30 * 6e4)) syncDevice().catch(() => {});
+  // Phones refresh by themselves at most every 30 minutes. Once after the steps fix (they used to count twice when the
+  // phone and the watch both recorded a walk), the whole last month is read again.
+  if (phoneSource && prefs.connected && prefs.source === phoneSource) {
+    const fixed = await AsyncStorage.getItem(STEPS_FIX).catch(() => '1');
+    if (!fixed) syncDevice(30).then(() => AsyncStorage.setItem(STEPS_FIX, '1').catch(() => {}), () => {});
+    else if (!prefs.last_sync || Date.now() - new Date(prefs.last_sync).getTime() > 30 * 6e4) syncDevice().catch(() => {});
+  }
   // Linked wearables (WHOOP, Oura) refresh at most every 3 hours, then the days load again.
   wearableStatus()
     .then(async (s) => {

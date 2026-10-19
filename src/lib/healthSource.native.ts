@@ -82,12 +82,28 @@ async function hkRead(from: Date, to: Date): Promise<RawHealth> {
       return [];
     }
   };
+  /**
+   * Steps and active calories as hourly totals worked out by Apple Health itself, so the iPhone and the Apple Watch
+   * (or two apps) counting the same walk count once, like in the Health app. What Gymi wrote is left out.
+   */
+  const hourly = async (id: 'HKQuantityTypeIdentifierStepCount' | 'HKQuantityTypeIdentifierActiveEnergyBurned', unit: string): Promise<Span[]> => {
+    try {
+      let me: ReturnType<typeof HK.currentAppSource>[] = [];
+      try {
+        me = [HK.currentAppSource()];
+      } catch {}
+      const rs = await HK.queryStatisticsCollectionForQuantity(id, ['cumulativeSum'], from, { hour: 1 }, { filter: { date: { startDate: from, endDate: to }, ...(me.length ? { NOT: [{ sources: me }] } : {}) }, unit: unit as never });
+      return rs.filter((r) => r.startDate && r.endDate && (r.sumQuantity?.quantity ?? 0) > 0).map((r) => ({ start: new Date(r.startDate as Date), end: new Date(r.endDate as Date), v: r.sumQuantity!.quantity }));
+    } catch {
+      return [];
+    }
+  };
   const pts = (xs: Span[]): Point[] => xs.map((x) => ({ t: x.start, v: x.v }));
   // Percentages may come as a fraction (0.97): always store them out of 100.
   const pct = (xs: Point[]) => xs.map((x) => ({ ...x, v: x.v <= 1.5 ? x.v * 100 : x.v }));
   const [steps, kcal, hr, rest, hrv, weight, fat, vo2, resp, spo2, wrist] = await Promise.all([
-    q('HKQuantityTypeIdentifierStepCount', 'count'),
-    q('HKQuantityTypeIdentifierActiveEnergyBurned', 'kcal'),
+    hourly('HKQuantityTypeIdentifierStepCount', 'count'),
+    hourly('HKQuantityTypeIdentifierActiveEnergyBurned', 'kcal'),
     q('HKQuantityTypeIdentifierHeartRate', 'count/min'),
     q('HKQuantityTypeIdentifierRestingHeartRate', 'count/min'),
     q('HKQuantityTypeIdentifierHeartRateVariabilitySDNN', 'ms'),
@@ -242,8 +258,24 @@ async function hcRead(from: Date, to: Date): Promise<RawHealth> {
     hcAll('MenstruationFlow', from, to),
     hcAll('ExerciseSession', from, to),
   ]);
-  out.steps = steps.map((r) => ({ start: new Date(r.startTime), end: new Date(r.endTime), v: r.count }));
-  out.kcal = kcal.map((r) => ({ start: new Date(r.startTime), end: new Date(r.endTime), v: r.energy.inKilocalories }));
+  // Daily totals: hourly sums worked out by Health Connect, which counts a walk once even when the phone and a watch
+  // (or two apps) both recorded it. Gymi's own calories (written when you turned that on) are taken back out.
+  const range = { operator: 'between' as const, startTime: from.toISOString(), endTime: to.toISOString() };
+  const slicer = { duration: 'HOURS' as const, length: 1 };
+  const [aSteps, aKcal, mine] = await Promise.all([
+    HC.aggregateGroupByDuration({ recordType: 'Steps', timeRangeFilter: range, timeRangeSlicer: slicer }).catch(() => null),
+    HC.aggregateGroupByDuration({ recordType: 'ActiveCaloriesBurned', timeRangeFilter: range, timeRangeSlicer: slicer }).catch(() => null),
+    HC.aggregateGroupByDuration({ recordType: 'ActiveCaloriesBurned', timeRangeFilter: range, timeRangeSlicer: slicer, dataOriginFilter: [HC_SELF] }).catch(() => null),
+  ]);
+  const own = new Map((mine ?? []).map((g) => [g.startTime, g.result.ACTIVE_CALORIES_TOTAL?.inKilocalories ?? 0]));
+  out.steps = aSteps
+    ? aSteps.filter((g) => (g.result.COUNT_TOTAL ?? 0) > 0).map((g) => ({ start: new Date(g.startTime), end: new Date(g.endTime), v: g.result.COUNT_TOTAL }))
+    : steps.map((r) => ({ start: new Date(r.startTime), end: new Date(r.endTime), v: r.count }));
+  out.kcal = aKcal
+    ? aKcal.map((g) => ({ start: new Date(g.startTime), end: new Date(g.endTime), v: Math.max(0, (g.result.ACTIVE_CALORIES_TOTAL?.inKilocalories ?? 0) - (own.get(g.startTime) ?? 0)) })).filter((x) => x.v > 0)
+    : kcal.map((r) => ({ start: new Date(r.startTime), end: new Date(r.endTime), v: r.energy.inKilocalories }));
+  // Calories inside a workout come from the records themselves (Gymi's own already left out).
+  const kcalRecs = kcal.map((r) => ({ start: new Date(r.startTime), v: r.energy.inKilocalories }));
   out.hr = hr.flatMap((r) => r.samples.map((s) => ({ t: new Date(s.time), v: s.beatsPerMinute })));
   out.rest = rest.map((r) => ({ t: new Date(r.time), v: r.beatsPerMinute }));
   out.hrv = hrv.map((r) => ({ t: new Date(r.time), v: r.heartRateVariabilityMillis }));
@@ -271,7 +303,7 @@ async function hcRead(from: Date, to: Date): Promise<RawHealth> {
   out.workouts = ex.map((r) => {
     const s = new Date(r.startTime);
     const e = new Date(r.endTime);
-    const k = out.kcal.filter((x) => x.start >= s && x.start < e).reduce((a, x) => a + x.v, 0);
+    const k = kcalRecs.filter((x) => x.start >= s && x.start < e).reduce((a, x) => a + x.v, 0);
     return { start: s, end: e, type: HC_WORKOUT[r.exerciseType] ?? 'Workout', kcal: k };
   });
   return out;
