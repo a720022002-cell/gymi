@@ -11,7 +11,7 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Row, Segmented, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
-import { hrZone } from '@/lib/devices';
+import { hrZone, useStepGoal } from '@/lib/devices';
 import { useFood } from '@/lib/food';
 import { fmt } from '@/lib/nutrition';
 import { CARDIO, cardioKcal } from '@/lib/training';
@@ -25,13 +25,14 @@ const digitsOnly = (v: string, max: number) =>
     .slice(0, max);
 
 /** Log cardio; calories burned are added to today's budget (design: cardio). */
-const STEP_GOAL = 8000;
 
-/** Steps today: typed in for now (phone health data comes later). */
+/** Steps today (from the watch, or typed in) against your own step goal. */
 function StepsCard() {
   const { t } = useT();
   const { colors: c } = useSettings();
   const food = useFood();
+  const { session } = useAuth();
+  const STEP_GOAL = useStepGoal(session?.user.id);
   const [edit, setEdit] = useState(false);
   const [val, setVal] = useState('');
   return (

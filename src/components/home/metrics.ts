@@ -2,6 +2,8 @@ import { router } from 'expo-router';
 
 import { useRecovery } from '@/components/train/RecoveryCard';
 import { useT } from '@/i18n';
+import { useAuth } from '@/lib/auth';
+import { useStepGoal } from '@/lib/devices';
 import { useFood } from '@/lib/food';
 import { type RingKey } from '@/lib/homeLayout';
 import { recLabel } from '@/lib/recovery';
@@ -12,12 +14,13 @@ import { fmt } from '@/lib/nutrition';
 
 type Metric = { v: number; max: number; big: string; txt: string; go: () => void };
 export const RCOL = (c: { cobalt: string; up: string }) => [c.cobalt, c.up, '#F59E0B'];
-export const STEP_GOAL = 10000;
 
 /** Every ring's value, goal and the screen it opens (design: metricOf). */
 export function useMetrics(): Record<RingKey, Metric> {
   const { t } = useT();
   const food = useFood();
+  const { session } = useAuth();
+  const STEP_GOAL = useStepGoal(session?.user.id);
   const train = useTrain();
   const s = useStreaks();
   const { r } = useRecovery();

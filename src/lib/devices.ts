@@ -653,3 +653,20 @@ export function useDevices(uid: string | undefined) {
     latest: days.at(-1) ?? null,
   };
 }
+
+/**
+ * Your daily step goal: a little above what you usually walk (your 30-day average + 10%, rounded to 500, between
+ * 5,000 and 12,000), so it's reachable and still a push. 8,000 until the watch has a week of steps.
+ */
+export function stepGoal(days: DeviceDay[], today = localDay()) {
+  const xs = days.filter((d) => d.day < today && d.day >= addDays(today, -30) && d.steps != null && d.steps > 0).map((d) => d.steps as number);
+  if (xs.length < 7) return 8000;
+  const usual = avg(xs) as number;
+  return Math.max(5000, Math.min(12000, Math.round((usual * 1.1) / 500) * 500));
+}
+
+/** The step goal for the signed-in person (see stepGoal). */
+export function useStepGoal(uid: string | undefined) {
+  const dev = useDevices(uid);
+  return stepGoal(dev.days);
+}

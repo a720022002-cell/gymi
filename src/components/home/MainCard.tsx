@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { RCOL, STEP_GOAL, useMetrics } from '@/components/home/metrics';
+import { RCOL, useMetrics } from '@/components/home/metrics';
 import { RingPickSheet } from '@/components/home/RingPickSheet';
 import { Icon } from '@/components/Icon';
 import { Ring } from '@/components/Ring';
@@ -12,6 +12,8 @@ import { useToast } from '@/components/Toast';
 import { MacroBars } from '@/components/food/MacroBars';
 import { Button, Card, Row } from '@/components/ui';
 import { useT } from '@/i18n';
+import { useAuth } from '@/lib/auth';
+import { useStepGoal } from '@/lib/devices';
 import { useFood } from '@/lib/food';
 import { RING_NAMES, type RingKey, useHomeLayout } from '@/lib/homeLayout';
 import { recLabel } from '@/lib/recovery';
@@ -118,6 +120,8 @@ function HeroCard({ k, sw }: { k: RingKey; sw: React.ReactNode }) {
   const { colors: c } = useSettings();
   const toast = useToast();
   const food = useFood();
+  const { session } = useAuth();
+  const STEP_GOAL = useStepGoal(session?.user.id);
   const train = useTrain();
   const s = useStreaks();
   const { r } = useRecovery();

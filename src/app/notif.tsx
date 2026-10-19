@@ -12,6 +12,8 @@ import { Button, Card, Chip, Label, Row, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
 import { getSoundPrefs, previewSound, setSoundPrefs, SOUNDS, type SoundPrefs } from '@/lib/beep';
 import { FREQ, NCAT_INFO, NCATS, type NCat, NSOUNDS, type Prefs, SOUND_NAMES, type WaterFreq } from '@/lib/reminders';
+import { useAuth } from '@/lib/auth';
+import { sleepDetail, useDevices } from '@/lib/devices';
 import { catSummary, useReminderPrefs } from '@/lib/remindersPrefs';
 import { playTone } from '@/lib/sound';
 import { useSettings } from '@/theme/settings';
@@ -34,6 +36,18 @@ export default function NotifDetail() {
       alive = false;
     };
   }, [k]);
+
+  // Your usual bedtime from the watch (last 2 weeks), to the nearest 5 minutes, as a time for the bedtime reminder.
+  const { session } = useAuth();
+  const dev = useDevices(session?.user.id);
+  const usualBed = k === 'sleep' ? sleepDetail(dev.days)?.bedUsual : null;
+  const watchBed =
+    usualBed == null
+      ? null
+      : (() => {
+          const m = (((Math.round(usualBed / 5) * 5) % 1440) + 1440) % 1440;
+          return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+        })();
 
   const cat = p[k];
   const set = <K extends NCat>(key: K, patch: Partial<Prefs[K]>) => save({ ...p, [key]: { ...p[key], ...patch } });
@@ -199,6 +213,12 @@ export default function NotifDetail() {
               {timeRow(t('Bedtime'), p.sleep.time, (v) => set('sleep', { time: v }), true)}
               {toggleRow(t('Wind-down reminder'), t('30 minutes before bedtime'), p.sleep.wind, (v) => set('sleep', { wind: v }))}
             </List>
+            {watchBed && watchBed !== p.sleep.time ? (
+              <Card style={{ marginTop: 10 }}>
+                <Text variant="small">{t('Your watch says you usually fall asleep around {c}.', { c: watchBed })}</Text>
+                <Button small kind="soft" title={t('Use {c}', { c: watchBed })} style={{ marginTop: 10, alignSelf: 'flex-start' }} onPress={() => set('sleep', { time: watchBed, on: true })} />
+              </Card>
+            ) : null}
           </>
         ) : null}
 
