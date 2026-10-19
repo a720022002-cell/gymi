@@ -48,10 +48,10 @@ export async function wearableStatus(): Promise<WearableStatus | null> {
   return (await call<WearableStatus>({ action: 'status' })).data;
 }
 
-/** Where the wearable's sign-in sends you back: this page on the web, or the phone app. */
-const returnTo = () => (Platform.OS === 'web' && typeof window !== 'undefined' ? `${window.location.origin}/devices` : Linking.createURL('/devices'));
+/** Where the wearable's sign-in sends you back: Connections, on the web or in the phone app. */
+const returnTo = () => (Platform.OS === 'web' && typeof window !== 'undefined' ? `${window.location.origin}/connections` : Linking.createURL('/connections'));
 
-/** Open the wearable's own sign-in. Coming back to /devices with ?wearable=…&status=linked finishes it. */
+/** Open the wearable's own sign-in. Coming back to /connections with ?wearable=…&status=linked finishes it. */
 export async function linkWearable(p: WearableProvider): Promise<'opened' | 'not_set_up' | 'offline' | 'failed'> {
   const { data, code } = await call<{ url: string }>({ action: 'start', provider: p, return_to: returnTo() });
   if (!data?.url) return code === 'not_set_up' || code === 'offline' ? code : 'failed';
