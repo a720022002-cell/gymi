@@ -10,13 +10,14 @@ import { useAuth } from '@/lib/auth';
 import { illnessCheck, useDevices } from '@/lib/devices';
 import { localDay } from '@/lib/nutrition';
 import { useTrain } from '@/lib/train';
+import { useWatchPrefs } from '@/lib/watchPrefs';
 import { useSettings } from '@/theme/settings';
 
 const WHAT: Record<string, string> = { temp: 'Temperature up', resp: 'Breathing faster', rhr: 'Resting heart rate up', hrv: 'HRV down', spo2: 'Blood oxygen low' };
 
 /**
  * Early warning: last night the watch saw two or more signs that often come before getting sick. Offers a rest day
- * (it only asks) and can be closed for today. Not a diagnosis.
+ * (it only asks) and can be closed for today, or turned off in Connections. Not a diagnosis.
  */
 export function IllnessCard() {
   const { t } = useT();
@@ -27,7 +28,8 @@ export function IllnessCard() {
   const train = useTrain();
   const today = localDay();
   const [closed, setClosed] = useState<string | null>(null);
-  const ill = dev.connected ? illnessCheck(dev.days, today) : null;
+  const { watch } = useWatchPrefs(session?.user.id);
+  const ill = dev.connected && watch.illness ? illnessCheck(dev.days, today) : null;
   if (!ill || closed === today) return null;
   const lighter = !!train.plan && train.plan.light !== today && !train.todayLog;
   return (

@@ -47,7 +47,7 @@ const toMin = (t: string) => {
 
 /**
  * Between 5 and 12 in the morning, once a day, when last night's readings are in: a short note on how ready you are.
- * Only when the daily check-in reminder is on, outside quiet hours, and notifications are allowed.
+ * Only when the morning note is on (Connections), outside quiet hours, and notifications are allowed.
  */
 async function morningNote(uid: string, days: DeviceDay[]) {
   const now = new Date();
@@ -59,7 +59,7 @@ async function morningNote(uid: string, days: DeviceDay[]) {
   const key = `gymi.morningNote.${uid}`;
   if ((await AsyncStorage.getItem(key).catch(() => null)) === today) return;
   const prefs = await loadPrefs(uid);
-  if (!prefs.on || !prefs.checkin.on) return;
+  if (!prefs.on || !prefs.watch.morning) return;
   if (prefs.quiet.on) {
     const m = hour * 60 + now.getMinutes();
     const a = toMin(prefs.quiet.from);

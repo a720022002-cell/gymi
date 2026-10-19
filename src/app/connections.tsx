@@ -12,6 +12,7 @@ import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { connectDevice, disconnectDevice, phoneSource, reloadDeviceDays, setWriteBack, sourceName, syncDevice, useDevices } from '@/lib/devices';
 import { linkWearable, syncWearables, unlinkWearable, wearableName, type WearableProvider, wearableStatus, type WearableStatus } from '@/lib/wearables';
+import { useWatchPrefs } from '@/lib/watchPrefs';
 import { useSettings } from '@/theme/settings';
 
 /** Connections: link, sync or disconnect what talks straight to Gymi, and what comes in through the phone's health app. */
@@ -49,6 +50,8 @@ export default function Connections() {
   const native = phoneSource ? sourceName(phoneSource) : null;
   const phoneLinked = dev.connected && dev.prefs.source === phoneSource;
   const linkOf = (p: WearableProvider) => ws?.links.find((l) => l.provider === p);
+  const anyLinked = phoneLinked || (ws?.links ?? []).some((l) => l.status === 'ok');
+  const { watch, set: setWatch } = useWatchPrefs(session?.user.id);
 
   const tapPhone = async () => {
     if (!phoneSource) return toast(t('{n} connects in the phone app. Your steps, sleep and heart rate will then come in by themselves.', { n: hub }), { icon: 'heart' });
@@ -182,6 +185,30 @@ export default function Connections() {
       <Text variant="xs" color="sec" style={{ marginTop: 8, marginHorizontal: 4 }}>
         {t('More direct connections are coming soon.')}
       </Text>
+
+      {anyLinked ? (
+        <>
+          {section(t('From your watch'), c.cobalt)}
+          <Card>
+            {(
+              [
+                ['morning', 'Morning readiness note', 'After you wake up: how ready you are today, from last night.'],
+                ['illness', 'Illness warning', 'When your temperature, breathing or oxygen and your heart show signs of getting sick.'],
+              ] as const
+            ).map(([k, title, sub], i) => (
+              <Row key={k} style={{ alignItems: 'center', marginTop: i ? 14 : 0 }}>
+                <View style={{ flex: 1 }}>
+                  <Text weight={700}>{t(title)}</Text>
+                  <Text variant="small" color="sec" style={{ marginTop: 2 }}>
+                    {t(sub)}
+                  </Text>
+                </View>
+                <Toggle value={watch[k]} onChange={(v) => setWatch({ [k]: v })} />
+              </Row>
+            ))}
+          </Card>
+        </>
+      ) : null}
 
       {section(t('Everything else already works'), c.up, t('Most watches, rings, scales and fitness apps reach Gymi through {h}. Yours is almost surely one of them.', { h: hub }))}
       <Card onPress={busy ? undefined : tapPhone}>

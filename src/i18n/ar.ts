@@ -4117,4 +4117,8 @@ export const AR: Record<string, string> = {
   "Your watch says you usually fall asleep around {c}.": "ساعتك تقول إنك عادةً تنام حوالي الساعة {c}.",
   "Use {c}": "استخدم {c}",
   "Moved to tomorrow. Today is a rest day.": "انتقل لبكرة. اليوم راحة.",
+  "Morning readiness note": "إشعار الجاهزية الصبح",
+  "After you wake up: how ready you are today, from last night.": "بعد ما تصحى: جاهزيتك اليوم حسب ليلة أمس.",
+  "Illness warning": "إنذار المرض",
+  "When your temperature, breathing or oxygen and your heart show signs of getting sick.": "لما حرارتك أو تنفسك أو الأكسجين ونبضك يبينون علامات مرض.",
 };
