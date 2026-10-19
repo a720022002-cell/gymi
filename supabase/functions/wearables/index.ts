@@ -396,6 +396,29 @@ async function callback(url: URL) {
 }
 
 // ---------------------------------------------------------------------------
+// Scheduled sync
+// ---------------------------------------------------------------------------
+/** Links not synced for 3 hours, oldest first: the last 3 days each, for at most 100 seconds per run. */
+async function cronSync(db: SupabaseClient) {
+  const since = new Date(Date.now() - 3 * 36e5).toISOString();
+  const { data } = await db.from('device_links').select('user_id,provider,access_token,refresh_token,expires_at,last_sync').eq('status', 'ok').or(`last_sync.is.null,last_sync.lt.${since}`).order('last_sync', { ascending: true, nullsFirst: true }).limit(60);
+  const stop = Date.now() + 100_000;
+  let ok = 0;
+  let failed = 0;
+  for (const l of (data ?? []) as Link[]) {
+    if (Date.now() > stop) break;
+    if (!isProvider(l.provider) || !configured(l.provider)) continue;
+    try {
+      await syncLink(db, l, 3);
+      ok++;
+    } catch {
+      failed++;
+    }
+  }
+  return { ok, failed, waiting: Math.max(0, (data?.length ?? 0) - ok - failed) };
+}
+
+// ---------------------------------------------------------------------------
 // The app's requests
 // ---------------------------------------------------------------------------
 // Tests import this file to check the mapping (WEARABLES_TEST=1), without starting the server.
@@ -410,6 +433,10 @@ if (!Deno.env.get('WEARABLES_TEST')) Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'method' }, 405);
   try {
     const db = admin();
+    // The database's scheduler (every 3 hours): bring every linked wearable up to date, so the coach and the morning
+    // note have last night's data even if the app wasn't opened. Only with the scheduler's own secret.
+    const cronSecret = env('WEARABLES_CRON_SECRET');
+    if (cronSecret && req.headers.get('x-cron-secret') === cronSecret) return json(await cronSync(db));
     const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
     const { data: u, error: ue } = await db.auth.getUser(token);
     if (ue || !u.user) return json({ error: 'auth' }, 401);
