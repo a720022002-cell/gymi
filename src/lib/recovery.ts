@@ -11,6 +11,11 @@ export type RecoveryInput = {
   water: { ml: number; goal: number };
   /** Recovery logged today (REC_TOOLS ids). */
   tools?: string[];
+  /**
+   * What the watch, ring or band measured last night, next to your usual (30-day average): heart rate variability,
+   * resting heart rate, and the recovery or readiness score of a WHOOP or Oura.
+   */
+  body?: { hrv?: number | null; hrvUsual?: number | null; rhr?: number | null; rhrUsual?: number | null; device?: { name: string; score: number } | null } | null;
 };
 
 /** Things you can do to recover and what each adds to today's score (design: REC_TOOLS). Up to +6 in all. */
@@ -56,6 +61,18 @@ function loadRatio(logs: WorkoutLog[], today: string) {
 const sleepPart = (h: number | null | undefined) => (h != null ? clamp(((h - 5) / 3) * 100, 0, 100) : 75);
 const sorePart = (s: number | null | undefined) => (s != null ? [100, 70, 35][s] : 80);
 const energyPart = (e: number | null | undefined) => (e != null ? [45, 80, 100][e] : 80);
+/**
+ * Body signals from the watch: a WHOOP or Oura score as it is; otherwise HRV against your usual (10% under ≈ 50,
+ * 20% under ≈ 20) and resting heart rate against your usual (5 beats over ≈ 55). Null when there's nothing to compare.
+ */
+function bodyPart(b: RecoveryInput['body']) {
+  if (!b) return null;
+  if (b.device) return clamp(b.device.score, 0, 100);
+  const xs: number[] = [];
+  if (b.hrv != null && b.hrvUsual) xs.push(clamp(80 + (b.hrv / b.hrvUsual - 1) * 300, 15, 100));
+  if (b.rhr != null && b.rhrUsual) xs.push(clamp(85 - (b.rhr - b.rhrUsual) * 6, 20, 100));
+  return xs.length ? xs.reduce((a, v) => a + v, 0) / xs.length : null;
+}
 
 /**
  * A saved score after you change last night's sleep, soreness or energy later (the rest of what went into it, like
@@ -83,15 +100,33 @@ export function recovery(x: RecoveryInput) {
   const py = x.protein?.yesterday ?? null;
   const fuel = x.protein && x.protein.target && py != null ? clamp((py / x.protein.target) * 100, 40, 100) : 75;
   const bonus = toolsBonus(x.tools);
-  const score = Math.round(clamp(sleep * 0.3 + sore * 0.2 + energy * 0.15 + load * 0.2 + fuel * 0.15 + bonus, 5, 99));
+  // With a watch, what it measured counts for a quarter of the score and the rest shrinks to make room.
+  const body = bodyPart(x.body);
+  const base = sleep * 0.3 + sore * 0.2 + energy * 0.15 + load * 0.2 + fuel * 0.15;
+  const score = Math.round(clamp((body == null ? base : base * 0.75 + body * 0.25) + bonus, 5, 99));
+  const b = x.body;
   const parts = [
     { key: 'Sleep', icon: 'moon', value: Math.round(sleep), sub: sl != null ? { t: '{n} h last night', n: sl } : null },
     { key: 'Soreness', icon: 'body', value: sore, sub: so != null ? { t: ['None', 'A little', 'Very sore'][so] } : null },
     { key: 'Energy', icon: 'bolt', value: energy, sub: en != null ? { t: ['Tired', 'Normal', 'Great'][en] } : null },
     { key: 'Training load', icon: 'train', value: Math.round(load), sub: early ? { t: 'Building your baseline' } : { t: '{n}× your usual', n: Math.round(acwr * 10) / 10 } },
     { key: 'Nutrition', icon: 'food', value: Math.round(fuel), sub: x.protein && py != null ? { t: '{a} of {b} g protein yesterday', a: Math.round(py), b: Math.round(x.protein.target) } : null },
+    ...(body == null || !b
+      ? []
+      : [
+          {
+            key: 'Body signals',
+            icon: 'pulse',
+            value: Math.round(body),
+            sub: b.device
+              ? { t: '{d} says {n}%', d: b.device.name, n: Math.round(b.device.score) }
+              : b.hrv != null && b.hrvUsual
+                ? { t: 'HRV {a} ms, usual {b}', a: Math.round(b.hrv), b: Math.round(b.hrvUsual) }
+                : { t: 'Resting heart rate {a}, usual {b}', a: Math.round(b.rhr ?? 0), b: Math.round(b.rhrUsual ?? 0) },
+          } as const,
+        ]),
   ] as const;
-  return { score, bonus, parts, acwr, early, checked: sl != null || so != null || en != null, sleepH: sl ?? undefined, sore: so ?? 0 };
+  return { score, bonus, parts, acwr, early, checked: sl != null || so != null || en != null, sleepH: sl ?? undefined, sore: so ?? 0, body: body == null ? null : Math.round(body) };
 }
 
 export const recLabel = (v: number): [string, 'up' | 'cobalt' | 'sec' | 'down'] =>

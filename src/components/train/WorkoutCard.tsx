@@ -218,8 +218,10 @@ export function WorkoutCard() {
   const cycle = useCycleToday();
   const toast = useToast();
   const { r: rec } = useRecovery();
-  // Poor sleep, low recovery or very sore: offer a lighter workout (once a day).
-  const tired = (rec.sleepH != null && rec.sleepH < 6) || rec.score < 50 || rec.sore === 2;
+  // Poor sleep, low recovery, very sore, or the watch says the body is tired: ask about a lighter workout (once a day).
+  // It's only offered: the person decides.
+  const watchTired = rec.body != null && rec.body < 45;
+  const tired = (rec.sleepH != null && rec.sleepH < 6) || rec.score < 50 || rec.sore === 2 || watchTired;
 
   if (!train.setupDone)
     return (
@@ -321,7 +323,13 @@ export function WorkoutCard() {
             <Icon name="moon" size={18} color={c.cobalt} />
             <Text variant="small" style={{ flex: 1 }}>
               <Text variant="small" weight={700}>
-                {rec.sleepH != null && rec.sleepH < 6 ? t('You slept {n} h last night.', { n: rec.sleepH }) : rec.sore === 2 ? t('You’re very sore today.') : t('Your recovery is {n}% today.', { n: rec.score })}
+                {rec.sleepH != null && rec.sleepH < 6
+                  ? t('You slept {n} h last night.', { n: rec.sleepH })
+                  : rec.sore === 2
+                    ? t('You’re very sore today.')
+                    : watchTired
+                      ? t('Your watch says your body hasn’t recovered yet.')
+                      : t('Your recovery is {n}% today.', { n: rec.score })}
               </Text>{' '}
               {t('Want to make today’s workout lighter? One set less and about 10% less weight.')}
             </Text>

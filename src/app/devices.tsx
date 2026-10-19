@@ -108,7 +108,7 @@ export default function Devices() {
             <Text variant="small" weight={700}>
               {t('{n} connected.', { n: sources.join(' · ') })}
             </Text>{' '}
-            {t('Low recovery makes your workout lighter automatically.')}
+            {t('When your readings say you’re tired, Gymi asks if you want a lighter workout.')}
           </Text>
         </Card>
       )}

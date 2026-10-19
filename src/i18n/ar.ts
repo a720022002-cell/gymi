@@ -4070,4 +4070,12 @@ export const AR: Record<string, string> = {
   "Some things connect straight to Gymi. Everything else comes in through Apple Health or Health Connect.": "بعض الأجهزة تنربط مباشرة مع Gymi، والباقي يوصل عن طريق Apple Health أو Health Connect.",
   "Like Garmin, Galaxy Watch, Polar, COROS, Suunto, Huawei, Amazfit, Withings, Strava and many more.": "مثل Garmin و Galaxy Watch و Polar و COROS و Suunto و Huawei و Amazfit و Withings و Strava وغيرها كثير.",
   "Manage connections": "إدارة الربط",
+  "Body signals": "إشارات الجسم",
+  "{d} says {n}%": "{d} يقول {n}%",
+  "HRV {a} ms, usual {b}": "تقلب النبض {a} ms، المعتاد {b}",
+  "Resting heart rate {a}, usual {b}": "نبض الراحة {a}، المعتاد {b}",
+  "Your watch says your body hasn’t recovered yet.": "ساعتك تقول إن جسمك للحين ما ارتاح.",
+  "When your readings say you’re tired, Gymi asks if you want a lighter workout.": "إذا قراءاتك قالت إنك تعبان، Gymi يسألك إذا تبي تمرين أخف.",
+  "{n} min · from your watch": "{n} دقيقة · من ساعتك",
+  "Your watch shows you moved more than usual today: +{n} kcal added to today’s calories.": "ساعتك تقول إنك تحركت اليوم أكثر من العادة: انضاف +{n} سعرة لسعرات اليوم.",
 };

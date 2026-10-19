@@ -24,6 +24,7 @@ import {
   targets,
   withPregnancy,
 } from './nutrition';
+import { extraMoveKcal, useDevices, watchCardio } from './devices';
 import { supabase } from './supabase';
 
 export type FoodLog = {
@@ -68,7 +69,7 @@ export type Move = { id: string; day: string; kcal: number };
 
 export type WaterLog = { id: string; ml: number; kind: string; created_at: string };
 
-export type Cardio = { id: string; kind: 'Walk' | 'Run' | 'Bike' | 'Swim' | 'Other'; name?: string | null; minutes: number; intensity: number; kcal: number; created_at: string };
+export type Cardio = { id: string; kind: 'Walk' | 'Run' | 'Bike' | 'Swim' | 'Other'; name?: string | null; minutes: number; intensity: number; kcal: number; created_at: string; /** Recorded by the watch (not saved in Gymi, can't be deleted here). */ watch?: boolean };
 
 export type NewLog = {
   name: string;
@@ -143,12 +144,15 @@ type Food = {
   water: number;
   waterLogs: WaterLog[];
   deleteWater: (id: string) => Promise<WaterLog | null>;
-  /** Cardio logged today. Its calories are added to today's budget. */
+  /** Cardio today: what you logged plus the cardio your watch recorded. Its calories are added to today's budget. */
   cardio: Cardio[];
+  /** Calories added to today's budget: cardio, plus the watch's extra movement (moveKcal). */
   burned: number;
+  /** From the watch: active calories beyond your usual day that no cardio explains. */
+  moveKcal: number;
   addCardio: (c: Omit<Cardio, 'id' | 'created_at'>, on?: string) => Promise<Cardio | null>;
   deleteCardio: (id: string) => Promise<void>;
-  /** Steps today (typed in, plus about 110 per minute of walking). */
+  /** Steps today: your watch's count, or what you typed in (plus about 110 per minute of walking) when that's higher. */
   steps: number;
   setSteps: (n: number) => Promise<void>;
   /** Add (or take off) steps from today's latest count, not an older copy. */
@@ -186,12 +190,9 @@ export function FoodProvider({ children }: PropsWithChildren) {
   const [saved, setSaved] = useState<SavedMeal[]>([]);
   const [moves, setMoves] = useState<Move[]>([]);
   const [waterLogs, setWaterLogs] = useState<WaterLog[]>([]);
-  const [cardio, setCardio] = useState<Cardio[]>([]);
-  const [steps, setStepsState] = useState(0);
+  const [loggedCardio, setCardio] = useState<Cardio[]>([]);
+  const [loggedSteps, setStepsState] = useState(0);
   const stepsNow = useRef(0);
-  useEffect(() => {
-    stepsNow.current = steps;
-  }, [steps]);
   const [balance, openBalance] = useState<'over' | 'under' | null>(null);
   const [logOpen, setLogOpenState] = useState(false);
   const [typeSeed, setTypeSeed] = useState<string | null>(null);
@@ -395,8 +396,22 @@ export function FoodProvider({ children }: PropsWithChildren) {
   );
   const dayGoal = useCallback((day: string) => target.k + moves.filter((m) => m.day === day).reduce((a, m) => a + m.kcal, 0), [target.k, moves]);
   const water = useMemo(() => waterLogs.reduce((a, x) => a + x.ml, 0), [waterLogs]);
-  const burned = cardio.reduce((a, x) => a + x.kcal, 0);
+  // The watch fills in what you didn't log: its steps when higher, its cardio workouts, and calories you moved off
+  // beyond your usual day (your goal already covers a normal day's activity).
+  const dev = useDevices(userId);
+  const devDay = dev.days.find((d) => d.day === day);
+  const steps = Math.max(loggedSteps, devDay?.steps ?? 0);
+  const cardio = useMemo<Cardio[]>(
+    () => [...loggedCardio, ...watchCardio(devDay, loggedCardio).map((w, i) => ({ id: `watch:${day}:${i}`, ...w, intensity: 1, created_at: `${day}T12:00:00`, watch: true }))],
+    [loggedCardio, devDay, day],
+  );
+  const cardioKcal = cardio.reduce((a, x) => a + x.kcal, 0);
+  const moveKcal = extraMoveKcal(dev.days, day, cardioKcal);
+  const burned = cardioKcal + moveKcal;
   const kcalLeft = dayGoal(day) + burned - eaten.k;
+  useEffect(() => {
+    stepsNow.current = steps;
+  }, [steps]);
 
   const addLog = useCallback(
     async (l: NewLog, on?: string) => {
@@ -538,6 +553,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
   const addSteps = useCallback((d: number) => setSteps(stepsNow.current + d), [setSteps]);
 
   const deleteCardio = useCallback(async (id: string) => {
+    if (id.startsWith('watch:')) return;
     setCardio((xs) => xs.filter((x) => x.id !== id));
     await supabase.from('cardio_logs').delete().eq('id', id);
   }, []);
@@ -587,6 +603,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       deleteWater,
       cardio,
       burned,
+      moveKcal,
       addCardio,
       deleteCardio,
       steps,
@@ -600,7 +617,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       typeSeed,
       openTyping,
     }),
-    [day, setDay, isToday, loadedDay, balance, logOpen, setLogOpen, typeSeed, openTyping, coach, coachMeals, addMealByCode, ready, today, setupDone, plan, person, draft, savePlan, applyWeight, weightNote, clearWeightNote, preg, updatePlan, logs, eaten, target, dayGoal, coachTargets, kcalLeft, addLog, deleteLog, setLogMeal, updateLog, restoreLog, saved, saveMeal, updateMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, addCardio, deleteCardio, steps, setSteps, addSteps, addWater],
+    [day, setDay, isToday, loadedDay, balance, logOpen, setLogOpen, typeSeed, openTyping, coach, coachMeals, addMealByCode, ready, today, setupDone, plan, person, draft, savePlan, applyWeight, weightNote, clearWeightNote, preg, updatePlan, logs, eaten, target, dayGoal, coachTargets, kcalLeft, addLog, deleteLog, setLogMeal, updateLog, restoreLog, saved, saveMeal, updateMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, moveKcal, addCardio, deleteCardio, steps, setSteps, addSteps, addWater],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

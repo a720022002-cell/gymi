@@ -176,6 +176,54 @@ export function mergeWearables(days: DeviceDay[], wear: WearableDay[]): DeviceDa
   return [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day));
 }
 
+export type WatchCardio = { kind: 'Walk' | 'Run' | 'Bike' | 'Swim' | 'Other'; name: string | null; minutes: number; kcal: number };
+
+/** What kind of cardio a workout from the watch is. Null: strength or an unnamed workout (those are logged in Gymi). */
+export function cardioKind(type: string): WatchCardio['kind'] | 'skip' {
+  const s = type.toLowerCase();
+  if (/strength|weight|lift|functional|crossfit|powerlift|^workout$/.test(s)) return 'skip';
+  if (/run|jog/.test(s)) return 'Run';
+  if (/walk|hik/.test(s)) return 'Walk';
+  if (/cycl|bik|spin/.test(s)) return 'Bike';
+  if (/swim/.test(s)) return 'Swim';
+  return 'Other';
+}
+
+/**
+ * Cardio the watch recorded on a day, as cardio entries. One you also logged yourself (same kind, about the same
+ * length) is left out, so it isn't counted twice.
+ */
+export function watchCardio(d: DeviceDay | undefined, logged: { kind: string; minutes: number }[]): WatchCardio[] {
+  if (!d) return [];
+  const left = [...logged];
+  const out: WatchCardio[] = [];
+  for (const w of d.workouts) {
+    const kind = cardioKind(w.type);
+    if (kind === 'skip' || w.minutes < 5) continue;
+    const i = left.findIndex((l) => l.kind === kind && Math.abs(l.minutes - w.minutes) <= Math.max(10, w.minutes * 0.35));
+    if (i >= 0) {
+      left.splice(i, 1);
+      continue;
+    }
+    out.push({ kind, name: kind === 'Other' ? w.type : null, minutes: Math.round(w.minutes), kcal: Math.round(w.kcal || 0) });
+  }
+  return out;
+}
+
+/**
+ * Calories you moved off on a day beyond your usual (the watch's active calories over your 30-day average), less the
+ * cardio already counted. Your calorie goal already includes a normal day's activity, so only the extra is added.
+ * 0 until the watch has 7 days to know your usual; at most 600 a day.
+ */
+export function extraMoveKcal(days: DeviceDay[], day: string, cardioKcal: number): number {
+  const today = days.find((d) => d.day === day)?.active_kcal;
+  if (today == null) return 0;
+  const before = days.filter((d) => d.day < day && d.day >= addDays(day, -30) && d.active_kcal != null).map((d) => d.active_kcal as number);
+  if (before.length < 7) return 0;
+  const usual = avg(before) as number;
+  return Math.max(0, Math.min(600, Math.round(today - usual - cardioKcal)));
+}
+
 type Num = 'steps' | 'active_kcal' | 'hr_rest' | 'hrv' | 'sleep_h' | 'sleep_eff' | 'recovery' | 'strain' | 'sleep_score' | 'spo2' | 'temp_dev';
 export type DeviceBrief = {
   sources: string[];

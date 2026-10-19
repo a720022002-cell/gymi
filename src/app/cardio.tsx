@@ -258,17 +258,28 @@ export default function CardioScreen() {
                 <View style={{ flex: 1 }}>
                   <Text weight={700}>{x.name || t(x.kind)}</Text>
                   <Text variant="small" color="sec">
-                    {t('{n} min', { n: x.minutes })}
+                    {x.watch ? t('{n} min · from your watch', { n: x.minutes }) : t('{n} min', { n: x.minutes })}
                   </Text>
                 </View>
                 <Text num>{`${x.kcal} ${t('kcal')}`}</Text>
-                <Springy onPress={() => food.deleteCardio(x.id)} accessibilityLabel={t('Delete')} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon name="trash" size={16} color={c.sec} />
-                </Springy>
+                {x.watch ? (
+                  <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon name="watch" size={16} color={c.sec} />
+                  </View>
+                ) : (
+                  <Springy onPress={() => food.deleteCardio(x.id)} accessibilityLabel={t('Delete')} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon name="trash" size={16} color={c.sec} />
+                  </Springy>
+                )}
               </Row>
             ))}
           </View>
         </View>
+      ) : null}
+      {food.moveKcal > 0 ? (
+        <Text variant="small" color="sec" style={{ marginTop: 10, marginHorizontal: 4 }}>
+          {t('Your watch shows you moved more than usual today: +{n} kcal added to today’s calories.', { n: food.moveKcal })}
+        </Text>
       ) : null}
     </Screen>
   );

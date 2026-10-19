@@ -3,13 +3,14 @@ import { View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
-import { useDevices } from '@/lib/devices';
+import { type DeviceDay, useDevices } from '@/lib/devices';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { addDays } from '@/lib/nutrition';
-import { recLabel, recovery } from '@/lib/recovery';
+import { recLabel, recovery, type RecoveryInput } from '@/lib/recovery';
 import { useTrain } from '@/lib/train';
 import { droppingLifts, EX, weekStart } from '@/lib/training';
+import { wearableName } from '@/lib/wearables';
 import { useSettings } from '@/theme/settings';
 
 import { Icon, Mark } from '../Icon';
@@ -18,7 +19,20 @@ import { Text } from '../Text';
 import { useToast } from '../Toast';
 import { Button, Card, Row, Springy } from '../ui';
 
-/** Everything the recovery score needs, from food and training. */
+/** Last night's HRV, resting heart rate and WHOOP/Oura score next to your 30-day usual. Null without today's readings. */
+function watchBody(days: DeviceDay[], today: string): RecoveryInput['body'] {
+  const d = days.find((x) => x.day === today);
+  if (!d) return null;
+  const usual = (k: 'hrv' | 'hr_rest') => {
+    const xs = days.filter((x) => x.day < today && x.day >= addDays(today, -30) && x[k] != null).map((x) => x[k] as number);
+    return xs.length >= 5 ? xs.reduce((a, v) => a + v, 0) / xs.length : null;
+  };
+  const device = d.recovery != null && d.wearable ? { name: wearableName(d.wearable), score: d.recovery } : null;
+  if (!device && d.hrv == null && d.hr_rest == null) return null;
+  return { hrv: d.hrv, hrvUsual: usual('hrv'), rhr: d.hr_rest, rhrUsual: usual('hr_rest'), device };
+}
+
+/** Everything the recovery score needs, from food, training and the watch. */
 export function useRecovery() {
   const train = useTrain();
   const food = useFood();
@@ -37,6 +51,7 @@ export function useRecovery() {
     // Today's water, even when the Food page is showing another day.
     water: { ml: food.isToday ? food.water : (days[food.today]?.w ?? 0), goal: food.plan.water || 2800 },
     tools: train.recTools,
+    body: watchBody(devices.days, train.today),
   };
   return { input, r: recovery(input) };
 }
