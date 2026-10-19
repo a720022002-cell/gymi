@@ -4067,4 +4067,6 @@ export const AR: Record<string, string> = {
   "Galaxy Ring only works with Android phones.": "خاتم Galaxy يشتغل مع جوالات أندرويد بس.",
   "Fitbit doesn’t send to Apple Health. A direct Fitbit link is coming to Gymi.": "Fitbit ما يرسل لـ Apple Health. وربط Fitbit المباشر جاي في Gymi قريباً.",
   "Smart rings": "خواتم ذكية",
+  "Some things connect straight to Gymi. Everything else comes in through Apple Health or Health Connect.": "بعض الأجهزة تنربط مباشرة مع Gymi، والباقي يوصل عن طريق Apple Health أو Health Connect.",
+  "Like Garmin, Galaxy Watch, Polar, COROS, Suunto, Huawei, Amazfit, Withings, Strava and many more.": "مثل Garmin و Galaxy Watch و Polar و COROS و Suunto و Huawei و Amazfit و Withings و Strava وغيرها كثير.",
 };
