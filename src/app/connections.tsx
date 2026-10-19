@@ -54,7 +54,7 @@ export default function Connections() {
   const direct: { name: string; art: ArtKind; state: string; on?: boolean; go?: () => void }[] = [
     {
       name: phoneSource ? hub : 'Apple Health',
-      art: 'health',
+      art: phoneSource === 'health_connect' ? 'health_connect' : 'health',
       state: phoneSource ? (dev.connected ? 'Connected' : 'Connect') : 'Phone app',
       on: dev.connected,
       go: () => router.push('/devices'),
