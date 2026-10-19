@@ -135,7 +135,7 @@ Gymi يعطي إرشادات عامة للياقة والتغذية، وهو م�
 | Audio | Voice: اختياري، يتحول لنص على الجهاز أو عبر خدمة الجوال، وما نحفظ الصوت |
 | App activity | App interactions: للحد اليومي للذكاء الاصطناعي |
 
-**Health Connect:** Google يطلب نموذج خاص يشرح ليش تقرا كل نوع بيانات صحية. الجواب الموحد: "To show the user's own activity, sleep, heart rate and weight in the app and adjust their training and recovery plan."
+**Health Connect:** Google يطلب نموذج خاص يشرح ليش تقرا كل نوع بيانات صحية. الجواب الموحد: "To show the user's own activity, sleep, heart rate, breathing, blood oxygen, temperature, weight, body fat and cycle in the app and adjust their training and recovery plan. Write access (exercise, nutrition, hydration, weight) is optional and only copies what the user logs in Gymi."
 
 ## 6. قائمة المراجعة (أشياء يرفضون عليها)
 

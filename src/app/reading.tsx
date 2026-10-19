@@ -10,7 +10,7 @@ import { Text } from '@/components/Text';
 import { Button, Card, Row, Segmented } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
-import { type DeviceDay, sourceName, useDevices } from '@/lib/devices';
+import { type DeviceDay, sleepDetail, sourceName, useDevices, vo2Level } from '@/lib/devices';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { addDays, fmt } from '@/lib/nutrition';
@@ -28,7 +28,7 @@ export default function Reading() {
   const food = useFood();
   const health = useHealth();
   const train = useTrain();
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
   const dev = useDevices(session?.user.id);
   const { k: raw } = useLocalSearchParams<{ k: string }>();
   const k: ReadingKey = raw && raw in INFO ? (raw as ReadingKey) : 'steps';
@@ -198,6 +198,10 @@ export default function Reading() {
           ))}
         </Row>
       ) : null}
+      {k === 'sleep' ? <SleepMore days={dev.days} today={today} /> : null}
+      {k === 'vo2' && devLatestVo2(dev.days) != null ? (
+        <Vo2More vo2={devLatestVo2(dev.days) as number} age={ageOf(profile?.date_of_birth)} female={profile?.gender === 'female'} />
+      ) : null}
       <Text variant="small" weight={700} color="sec" style={{ marginTop: 8, marginBottom: 8, marginHorizontal: 4 }}>
         {t('What it means')}
       </Text>
@@ -221,5 +225,79 @@ export default function Reading() {
       </Card>
       {btn && go ? <Button kind="glass" title={t(btn)} style={{ marginTop: 4 }} onPress={go} /> : null}
     </Screen>
+  );
+}
+
+const devLatestVo2 = (days: DeviceDay[]) => [...days].reverse().find((d) => d.vo2 != null)?.vo2 ?? null;
+const ageOf = (dob?: string | null) => (dob ? Math.max(14, Math.floor((Date.now() - new Date(dob).getTime()) / 3.15576e10)) : 30);
+/** Minutes from midnight (negative = before it) as a clock time, like 23:15. */
+const clock = (m: number) => {
+  const v = ((m % 1440) + 1440) % 1440;
+  return `${String(Math.floor(v / 60)).padStart(2, '0')}:${String(v % 60).padStart(2, '0')}`;
+};
+
+/** Sleep stages from the watch, and how steady your bedtime is. */
+function SleepMore({ days, today }: { days: DeviceDay[]; today: string }) {
+  const { t } = useT();
+  const sd = sleepDetail(days, today);
+  if (!sd || (sd.deep == null && sd.rem == null && sd.bedUsual == null)) return null;
+  const h = (v: number | null) => (v == null ? '–' : t('{h} h {m} min', { h: Math.floor(v), m: Math.round((v % 1) * 60) }));
+  const steady = sd.bedSpread == null ? null : sd.bedSpread < 30 ? 'Very steady' : sd.bedSpread < 60 ? 'Fairly steady' : 'Changes a lot';
+  return (
+    <Card>
+      <Text weight={700}>{t('Last night')}</Text>
+      <Row gap={8} style={{ marginTop: 10 }}>
+        {(
+          [
+            ['Deep sleep', sd.deep, sd.deepWeek],
+            ['REM sleep', sd.rem, sd.remWeek],
+          ] as const
+        ).map(([a, v, wk]) => (
+          <View key={a} style={{ flex: 1 }}>
+            <Text num size={18}>
+              {h(v)}
+            </Text>
+            <Text variant="xs" weight={700} color="sec">
+              {t(a)}
+            </Text>
+            {wk != null ? (
+              <Text variant="xs" color="sec">
+                {t('This week {v}', { v: h(wk) })}
+              </Text>
+            ) : null}
+          </View>
+        ))}
+      </Row>
+      {sd.bedUsual != null ? (
+        <Text variant="small" style={{ marginTop: 12 }}>
+          {t('You usually fall asleep around {c}.', { c: clock(sd.bedUsual) })} {steady ? t(steady === 'Very steady' ? 'Your bedtime is very steady.' : steady === 'Fairly steady' ? 'Your bedtime is fairly steady.' : 'Your bedtime moves about {n} min from night to night. A steadier bedtime sleeps better.', { n: sd.bedSpread ?? 0 }) : null}
+        </Text>
+      ) : null}
+      <Text variant="xs" color="sec" style={{ marginTop: 8 }}>
+        {t('Most adults get 1 to 2 h of deep sleep and 1.5 to 2 h of REM.')}
+      </Text>
+    </Card>
+  );
+}
+
+/** Where your VO2 max stands for your age and sex. */
+function Vo2More({ vo2, age, female }: { vo2: number; age: number; female: boolean }) {
+  const { t } = useT();
+  const { colors: c } = useSettings();
+  const lv = vo2Level(vo2, age, female);
+  const steps = ['Low', 'Fair', 'Good', 'Excellent', 'Superior'] as const;
+  const i = steps.indexOf(lv);
+  return (
+    <Card>
+      <Text weight={700}>{t('For your age: {l}', { l: t(lv) })}</Text>
+      <Row gap={4} style={{ marginTop: 10 }}>
+        {steps.map((x, j) => (
+          <View key={x} style={{ flex: 1, height: 8, borderRadius: 4, backgroundColor: j <= i ? (i >= 2 ? c.up : i === 1 ? c.cobalt : c.down) : c.inset }} />
+        ))}
+      </Row>
+      <Text variant="xs" color="sec" style={{ marginTop: 8 }}>
+        {t('Compared with {s} aged {a}, from common fitness norms. Regular cardio raises it slowly over weeks.', { s: t(female ? 'women' : 'men'), a: age })}
+      </Text>
+    </Card>
   );
 }

@@ -5,11 +5,12 @@ import { AppState } from 'react-native';
 import { useAuth } from './auth';
 import { peekCycle, pregnancySafe, setPregAdjust } from './cycle';
 import { myCoach, myCoachPlans } from './coaching';
+import { pullHealth, pushHealth, useDevices, workoutHeart } from './devices';
 import type { DayTotals } from './health';
 import { addDays, localDay } from './nutrition';
 import { shareWorkout } from './social';
 import { selectAll, supabase } from './supabase';
-import { buildWorkout, type Day, effectiveWeek, EX, isLightLog, type LastSets, lowReps, nextWeight, orderWeek, type PlanEx, planFromProgram, plannedOn, rangePlan, setWeekMoves, topReps, type TrainPlan, weekdayOf, weekStart, workoutKcal } from './training';
+import { buildWorkout, type Day, effectiveWeek, EX, isLightLog, type LastSets, lowReps, nextWeight, orderWeek, type PlanEx, planFromProgram, plannedOn, rangePlan, setWeekMoves, topReps, type TrainPlan, weekdayOf, weekStart, workoutKcal, heartKcal } from './training';
 
 /** `light`: done as a lighter day or deload, so its weights don't set next time's numbers. */
 export type LoggedEx = { id: string; n: string; light?: boolean; sets: { w: number; r: number }[] };
@@ -26,6 +27,9 @@ export type WorkoutLog = {
   prs: { id: string; n: string; w: number }[];
   ups: number;
   downs: number;
+  /** Heart rate the watch measured during it (average and highest). */
+  avg_hr?: number | null;
+  max_hr?: number | null;
 };
 
 /** One set in the workout. Warm-up sets (warm) don't count toward volume, records or next time's numbers. */
@@ -621,12 +625,40 @@ export function TrainProvider({ children }: PropsWithChildren) {
       const log = { ...(data as WorkoutLog), volume: +data.volume };
       keep(log);
       setSession(null);
+      // A copy for the phone's health app (when that's on), so the workout closes your rings there.
+      pushHealth({ type: 'workout', id: log.id, start: new Date(log.started_at), end: new Date(new Date(log.started_at).getTime() + log.minutes * 6e4), kind: 'Strength', kcal: log.kcal });
       // Friends see it in Gym Bros, if you share workouts.
       if (userId) shareWorkout(userId, { name: log.name, minutes: log.minutes, volume: log.volume, prs: log.prs ?? [] }).catch(() => {});
       return log;
     },
     [session, userId, best, history, last, profile?.weight_kg, setSession, keep],
   );
+  // Heart rate from the watch for workouts of the last 2 days that don't have it yet (watches send it a little late,
+  // so this runs again whenever the list or the watch data changes). Calories then come from the heart rate.
+  const dev = useDevices(userId);
+  const hrTried = useRef(new Set<string>());
+  useEffect(() => {
+    if (!dev.connected || !logs.length) return;
+    const age = profile?.date_of_birth ? Math.max(14, Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / 3.15576e10)) : 30;
+    const kg = Number(profile?.weight_kg ?? 80);
+    const todo = logs.filter((l) => l.avg_hr == null && l.day >= addDays(localDay(), -1) && !hrTried.current.has(`${l.id}:${dev.prefs.last_sync}`));
+    todo.forEach(async (l) => {
+      hrTried.current.add(`${l.id}:${dev.prefs.last_sync}`);
+      const start = new Date(l.started_at);
+      const mins = Math.min(l.minutes, 180);
+      const hr = await workoutHeart(start, new Date(start.getTime() + mins * 6e4)).catch(() => null);
+      if (!hr) return;
+      const kcal = heartKcal({ avgHr: hr.avg, minutes: mins, weightKg: kg, age, female, guess: l.kcal });
+      const { error } = await supabase.from('workout_logs').update({ avg_hr: hr.avg, max_hr: hr.max, kcal }).eq('id', l.id);
+      if (error) return;
+      setLogs((xs) => xs.map((x) => (x.id === l.id ? { ...x, avg_hr: hr.avg, max_hr: hr.max, kcal } : x)));
+      if (kcal !== l.kcal) {
+        pullHealth('workout', l.id);
+        pushHealth({ type: 'workout', id: l.id, start, end: new Date(start.getTime() + l.minutes * 6e4), kind: 'Strength', kcal });
+      }
+    });
+  }, [dev.connected, dev.prefs.last_sync, logs, profile?.date_of_birth, profile?.weight_kg, female]);
+
   const finishWorkout = useCallback(
     (names: Record<string, string>) => {
       if (!finishing.current) finishing.current = saveWorkout(names).finally(() => (finishing.current = null));

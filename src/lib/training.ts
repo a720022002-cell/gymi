@@ -537,6 +537,17 @@ export function nextWeight(prev: { w: number; r: number }[], reps: string): numb
 /** Calories for a strength workout (about 5 METs). */
 export const workoutKcal = (minutes: number, weightKg: number) => Math.round((5 * weightKg * minutes) / 60);
 
+/**
+ * Calories from the heart rate the watch measured (Keytel et al., 2005), for when it's there. Heart-rate formulas read
+ * high for lifting (rest between sets keeps the heart rate up), so the result is taken at 75%, at most 10 a minute,
+ * and kept between half and twice the estimate without a watch.
+ */
+export function heartKcal(x: { avgHr: number; minutes: number; weightKg: number; age: number; female: boolean; guess: number }) {
+  const perMin = x.female ? (-20.4022 + 0.4472 * x.avgHr - 0.1263 * x.weightKg + 0.074 * x.age) / 4.184 : (-55.0969 + 0.6309 * x.avgHr + 0.1988 * x.weightKg + 0.2017 * x.age) / 4.184;
+  const total = Math.min(perMin * 0.75, 10) * x.minutes;
+  return Math.round(Math.min(x.guess * 2, Math.max(x.guess * 0.5, total)));
+}
+
 /** Cardio types and their METs (design: CARDIO). */
 export const CARDIO: [('Walk' | 'Run' | 'Bike' | 'Swim'), number][] = [
   ['Walk', 3.5],

@@ -66,6 +66,8 @@ export default function Summary() {
             ['Volume', `${fmt(W.num(s.volume))} ${W.label}`],
             ['Sets', String(s.sets_done)],
             ['Intensity', t(inten)],
+            // From the watch, once it has sent the heart rate for this workout.
+            ...(s.avg_hr ? ([['Heart rate', t('{a} avg · {m} max', { a: s.avg_hr, m: s.max_hr ?? s.avg_hr })]] as const) : []),
           ] as const
         ).map(([a, b]) => (
           <Card key={a} style={{ width: '47%', flexGrow: 1, alignItems: 'center', marginBottom: 0 }}>

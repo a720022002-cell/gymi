@@ -1,6 +1,9 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { useAuth } from './auth';
+import { importPeriods } from './cycle';
+import { pullHealth, pushHealth, useDevices } from './devices';
 import { useFood } from './food';
 import { addDays } from './nutrition';
 import { adjustScore } from './recovery';
@@ -56,7 +59,8 @@ type Health = {
   measures: Measure[];
   weights: Measure[];
   /** Log today's weight, or another day's (`on`). Only today's updates your targets. */
-  logWeight: (kg: number, on?: string) => Promise<boolean>;
+  /** fromDevice: it came from the phone's health app (a smart scale), so it isn't copied back there. */
+  logWeight: (kg: number, on?: string, fromDevice?: boolean) => Promise<boolean>;
   /** Remove one day's weight (used by Undo in the coach chat). */
   deleteWeight: (day: string) => Promise<void>;
   /** Correct or delete (null) one day's weigh-in. When it's your latest, targets and profile follow the corrected weight. */
@@ -93,7 +97,7 @@ function b64ToBytes(b64: string) {
 }
 
 export function HealthProvider({ children }: PropsWithChildren) {
-  const { session, updateProfile } = useAuth();
+  const { session, profile, updateProfile } = useAuth();
   const userId = session?.user.id;
   const food = useFood();
   const today = food.today;
@@ -196,8 +200,13 @@ export function HealthProvider({ children }: PropsWithChildren) {
 
   const applyWeight = food.applyWeight;
   const logWeight = useCallback(
-    async (kg: number, on = today) => {
+    async (kg: number, on = today, fromDevice = false) => {
       const ok = await putMeasures({ weight: kg }, on);
+      // A weigh-in typed into Gymi is copied to the phone's health app (when that's on); one that came from there isn't.
+      if (ok && !fromDevice) {
+        pullHealth('weight', `weight-${on}`);
+        pushHealth({ type: 'weight', id: `weight-${on}`, at: on === today ? new Date() : new Date(`${on}T08:00:00`), kg });
+      }
       if (ok && on === today) {
         // Targets follow your weight: this week's average when there are other weigh-ins, otherwise this one.
         const week = [...measures.filter((m) => m.kind === 'weight' && m.day >= addDays(today, -6) && m.day !== today).map((m) => m.value), kg];
@@ -212,6 +221,7 @@ export function HealthProvider({ children }: PropsWithChildren) {
   const deleteWeight = useCallback(async (day: string) => {
     setMeasures((xs) => xs.filter((x) => !(x.kind === 'weight' && x.day === day)));
     await supabase.from('measurements').delete().eq('kind', 'weight').eq('day', day);
+    pullHealth('weight', `weight-${day}`);
   }, []);
 
   const fixWeight = useCallback(
@@ -222,7 +232,12 @@ export function HealthProvider({ children }: PropsWithChildren) {
         const { error } = await supabase.from('measurements').delete().eq('kind', 'weight').eq('day', day);
         if (error) return false;
         setMeasures((xs) => xs.filter((x) => !(x.kind === 'weight' && x.day === day)));
-      } else if (!(await putMeasures({ weight: kg }, day))) return false;
+        pullHealth('weight', `weight-${day}`);
+      } else {
+        if (!(await putMeasures({ weight: kg }, day))) return false;
+        pullHealth('weight', `weight-${day}`);
+        pushHealth({ type: 'weight', id: `weight-${day}`, at: new Date(`${day}T08:00:00`), kg });
+      }
       if (wasLatest) {
         // Your latest weight changed: targets use this week's average of what's left, and your profile the newest one.
         const left = ws.filter((m) => m.day !== day).map((m) => ({ day: m.day, value: m.value }));
@@ -239,6 +254,41 @@ export function HealthProvider({ children }: PropsWithChildren) {
     },
     [measures, putMeasures, applyWeight, updateProfile],
   );
+
+  // Smart scale: weigh-ins (and body fat) from the phone's health app become Gymi weigh-ins by themselves. Only days
+  // after the last import (the first time: the last 2 weeks), and never over one you typed, so a day you deleted
+  // stays deleted. The newest one updates your targets like a typed weigh-in.
+  const dev = useDevices(userId);
+  const scaleKey = userId ? `gymi.scale.${userId}` : null;
+  useEffect(() => {
+    if (!ready || !scaleKey || !dev.ready || !dev.connected) return;
+    const fromScale = dev.days.filter((d) => d.weight != null && d.day <= today);
+    if (!fromScale.length) return;
+    let stop = false;
+    (async () => {
+      const last = (await AsyncStorage.getItem(scaleKey).catch(() => null)) ?? addDays(today, -15);
+      const fresh = fromScale.filter((d) => d.day > last && !measures.some((m) => m.kind === 'weight' && m.day === d.day));
+      const newest = fromScale.at(-1)!.day;
+      for (const d of fresh) {
+        if (stop) return;
+        if (d.day === newest) await logWeight(d.weight as number, d.day, true);
+        else await putMeasures({ weight: d.weight as number }, d.day);
+        if (d.body_fat != null && !measures.some((m) => m.kind === 'bf' && m.day === d.day)) await putMeasures({ bf: d.body_fat }, d.day);
+      }
+      if (!stop && newest > last) await AsyncStorage.setItem(scaleKey, newest).catch(() => {});
+    })();
+    return () => {
+      stop = true;
+    };
+  }, [ready, scaleKey, dev.ready, dev.connected, dev.days, today, measures, logWeight, putMeasures]);
+
+  // Period days logged in the phone's health app fill in cycle tracking (women only; see importPeriods).
+  const female = profile?.gender === 'female';
+  useEffect(() => {
+    if (!userId || !female || !dev.connected) return;
+    const flow = dev.days.filter((d) => d.period != null).map((d) => d.day);
+    if (flow.length) importPeriods(userId, flow, today).catch(() => 0);
+  }, [userId, female, dev.connected, dev.days, today]);
 
   const addPhoto = useCallback(
     async (p: Photo) => {

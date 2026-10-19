@@ -7,10 +7,10 @@ import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
-import { Button, Card, Row } from '@/components/ui';
+import { Button, Card, Row, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
-import { connectDevice, disconnectDevice, phoneSource, reloadDeviceDays, sourceName, syncDevice, useDevices } from '@/lib/devices';
+import { connectDevice, disconnectDevice, phoneSource, reloadDeviceDays, setWriteBack, sourceName, syncDevice, useDevices } from '@/lib/devices';
 import { linkWearable, syncWearables, unlinkWearable, wearableName, type WearableProvider, wearableStatus, type WearableStatus } from '@/lib/wearables';
 import { useSettings } from '@/theme/settings';
 
@@ -131,6 +131,27 @@ export default function Connections() {
           </Card>
         ))}
       </View>
+      {phoneLinked ? (
+        <Card style={{ marginTop: 10, marginBottom: 0 }}>
+          <Row style={{ alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <Text weight={700}>{t('Send Gymi data to {n}', { n: native ?? '' })}</Text>
+              <Text variant="small" color="sec" style={{ marginTop: 2 }}>
+                {t(phoneSource === 'apple' ? 'Your workouts, meals, water and weight. Gymi workouts then count toward your Apple Watch rings.' : 'Your workouts, meals, water and weight, so your other health apps see them too.')}
+              </Text>
+            </View>
+            <Toggle
+              value={!!dev.prefs.write_back}
+              onChange={async (on) => {
+                const r = await setWriteBack(on);
+                if (on && r === 'ok') toast(t('From now on, Gymi saves a copy in {n}.', { n: native ?? '' }), { icon: 'check' });
+                else if (on && r === 'denied') toast(t('Gymi wasn’t allowed to write to {n}. You can allow it in Settings.', { n: native ?? '' }), { icon: 'warn' });
+                else if (on) toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+              }}
+            />
+          </Row>
+        </Card>
+      ) : null}
       {phoneLinked ? (
         <Button
           small

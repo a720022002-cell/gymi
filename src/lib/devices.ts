@@ -2,7 +2,7 @@
 // in "device_readings" so the web app and the coach can use it too. The phone-only parts live in healthSource.
 import { useEffect, useSyncExternalStore } from 'react';
 
-import { connectSource, nativeSource, readRaw } from './healthSource';
+import { connectSource, type HealthItem, nativeSource, readHeartRate, readRaw, removeHealth, writeHealth } from './healthSource';
 import { addDays, localDay } from './nutrition';
 import { loadWearableDays, syncWearables, type WearableDay, wearableName, type WearableProvider, wearableStatus } from './wearables';
 import { supabase } from './supabase';
@@ -26,6 +26,19 @@ export type DeviceDay = {
   vo2: number | null;
   workouts: DeviceWorkout[];
   hours: DeviceHours | null;
+  /** Body fat (%), deep and REM sleep (hours), when you fell asleep (minutes from midnight, negative before it). */
+  body_fat?: number | null;
+  deep_h?: number | null;
+  rem_h?: number | null;
+  bed_min?: number | null;
+  /** Breaths per minute and wrist temperature while asleep (°C). Blood oxygen and skin temperature change are below. */
+  resp_rate?: number | null;
+  wrist_temp?: number | null;
+  /**
+   * Period flow logged in the health app (0 unknown … 3 heavy). Only in memory after a sync, never saved on our
+   * server: it goes straight into cycle tracking, which may be kept on this phone only.
+   */
+  period?: number | null;
   /** WHOOP recovery or Oura readiness (0–100), when a wearable is linked. */
   recovery?: number | null;
   /** WHOOP strain (0–21) or Oura activity score; the wearable's sleep score; blood oxygen; skin temperature vs normal (°C). */
@@ -36,7 +49,7 @@ export type DeviceDay = {
   /** The linked wearable whose numbers are in this day. */
   wearable?: WearableProvider;
 };
-export type DevicePrefs = { source: DeviceSource | null; connected: boolean; card_order: string[]; last_sync: string | null };
+export type DevicePrefs = { source: DeviceSource | null; connected: boolean; card_order: string[]; last_sync: string | null; /** Gymi also writes its workouts, meals, water and weight to the phone's health app. */ write_back?: boolean };
 
 /** Raw samples read from the phone, before they're summed into days. */
 export type Span = { start: Date; end: Date; v: number };
@@ -47,16 +60,30 @@ export type RawHealth = {
   hr: Point[];
   rest: Point[];
   hrv: Point[];
-  /** kind: 'asleep' or 'bed' (in bed / awake in bed). */
-  sleep: { start: Date; end: Date; kind: 'asleep' | 'bed' }[];
+  /** kind: 'asleep' or 'bed' (in bed / awake in bed); stage when the watch tells sleep stages apart. */
+  sleep: { start: Date; end: Date; kind: 'asleep' | 'bed'; stage?: 'deep' | 'rem' | 'core' }[];
   weight: Point[];
+  /** Body fat, %. */
+  bodyFat: Point[];
   vo2: Point[];
+  /** Breaths per minute (while asleep on a watch). */
+  resp: Point[];
+  /** Blood oxygen, %. */
+  spo2: Point[];
+  /** Apple Watch wrist temperature while asleep, °C. */
+  wristTemp: Point[];
+  /** Health Connect skin temperature: change from your baseline, °C. */
+  tempDev: Point[];
+  /** Period days logged in the health app: v = flow, 0 spotting/unknown, 1 light, 2 medium, 3 heavy. */
+  period: Point[];
   workouts: { start: Date; end: Date; type: string; kcal: number }[];
 };
 
-const COLS = 'day,source,steps,active_kcal,hr_avg,hr_rest,hrv,sleep_h,in_bed_h,sleep_eff,weight,vo2,workouts,hours';
-const NUMS = ['steps', 'active_kcal', 'hr_avg', 'hr_rest', 'hrv', 'sleep_h', 'in_bed_h', 'sleep_eff', 'weight', 'vo2'] as const;
-const EMPTY_PREFS: DevicePrefs = { source: null, connected: false, card_order: [], last_sync: null };
+export const EMPTY_RAW = (): RawHealth => ({ steps: [], kcal: [], hr: [], rest: [], hrv: [], sleep: [], weight: [], bodyFat: [], vo2: [], resp: [], spo2: [], wristTemp: [], tempDev: [], period: [], workouts: [] });
+
+const COLS = 'day,source,steps,active_kcal,hr_avg,hr_rest,hrv,sleep_h,in_bed_h,sleep_eff,weight,vo2,workouts,hours,body_fat,deep_h,rem_h,bed_min,resp_rate,spo2,wrist_temp,temp_dev';
+const NUMS = ['steps', 'active_kcal', 'hr_avg', 'hr_rest', 'hrv', 'sleep_h', 'in_bed_h', 'sleep_eff', 'weight', 'vo2', 'body_fat', 'deep_h', 'rem_h', 'bed_min', 'resp_rate', 'spo2', 'wrist_temp', 'temp_dev'] as const;
+const EMPTY_PREFS: DevicePrefs = { source: null, connected: false, card_order: [], last_sync: null, write_back: false };
 
 /** Which phone source this device can connect to (null on the web). */
 export const phoneSource: DeviceSource | null = nativeSource;
@@ -108,6 +135,20 @@ export function buildDays(raw: RawHealth, days: string[], source: DeviceSource, 
     });
     const hasHours = steps.length > 0 || hr.length > 0;
     const hrAvg = avg(hr.map((x) => x.v));
+    // Sleep stages and when you fell asleep (the night that ended this morning).
+    const staged = (st: 'deep' | 'rem') => asleep.filter((x) => x.stage === st);
+    const deep = staged('deep');
+    const rem = staged('rem');
+    const fellAsleep = asleep.length ? new Date(Math.min(...asleep.map((x) => x.start.getTime()))) : null;
+    const bedMin = fellAsleep ? (() => {
+      const m = fellAsleep.getHours() * 60 + fellAsleep.getMinutes();
+      return m > 720 ? m - 1440 : m;
+    })() : null;
+    const mean = (ps: Point[], dec = 1) => {
+      const v = avg(ps.filter((x) => on(x.t)).map((x) => x.v));
+      return v == null ? null : Math.round(v * 10 ** dec) / 10 ** dec;
+    };
+    const flow = raw.period.filter((x) => on(x.t)).map((x) => x.v);
     return {
       day,
       source,
@@ -123,11 +164,20 @@ export function buildDays(raw: RawHealth, days: string[], source: DeviceSource, 
       vo2: last(raw.vo2) == null ? null : r1(last(raw.vo2) as number),
       workouts,
       hours: hasHours && day >= addDays(today, -6) ? { steps: hourSteps.map(Math.round), hr: hourHr } : null,
+      body_fat: last(raw.bodyFat) == null ? null : r1(last(raw.bodyFat) as number),
+      deep_h: deep.length ? Math.round(unionHours(deep) * 100) / 100 : null,
+      rem_h: rem.length ? Math.round(unionHours(rem) * 100) / 100 : null,
+      bed_min: bedMin,
+      resp_rate: mean(raw.resp),
+      spo2: mean(raw.spo2),
+      wrist_temp: mean(raw.wristTemp, 2),
+      temp_dev: mean(raw.tempDev, 2),
+      period: flow.length ? Math.max(...flow) : null,
     };
   });
 }
 
-const hasData = (d: DeviceDay) => NUMS.some((k) => d[k] != null) || d.workouts.length > 0;
+const hasData = (d: DeviceDay) => NUMS.some((k) => d[k] != null) || d.workouts.length > 0 || d.period != null;
 
 // ---------------------------------------------------------------------------
 // Database
@@ -224,7 +274,59 @@ export function extraMoveKcal(days: DeviceDay[], day: string, cardioKcal: number
   return Math.max(0, Math.min(600, Math.round(today - usual - cardioKcal)));
 }
 
-type Num = 'steps' | 'active_kcal' | 'hr_rest' | 'hrv' | 'sleep_h' | 'sleep_eff' | 'recovery' | 'strain' | 'sleep_score' | 'spo2' | 'temp_dev';
+type Num = 'steps' | 'active_kcal' | 'hr_rest' | 'hrv' | 'sleep_h' | 'sleep_eff' | 'recovery' | 'strain' | 'sleep_score' | 'spo2' | 'temp_dev' | 'deep_h' | 'rem_h' | 'bed_min' | 'resp_rate' | 'wrist_temp' | 'vo2' | 'body_fat' | 'weight';
+/** Last night's deep and REM sleep, and your usual bedtime with how much it moves (14 nights). */
+export function sleepDetail(days: DeviceDay[], today = localDay()) {
+  const last = [...days].reverse().find((d) => d.day <= today && d.day >= addDays(today, -1) && (d.deep_h != null || d.rem_h != null || d.bed_min != null));
+  const two = days.filter((d) => d.day <= today && d.day > addDays(today, -14));
+  const beds = two.map((d) => d.bed_min).filter((v): v is number => v != null);
+  const mean = beds.length ? beds.reduce((a, v) => a + v, 0) / beds.length : null;
+  const spread = beds.length >= 5 && mean != null ? Math.sqrt(beds.reduce((a, v) => a + (v - mean) ** 2, 0) / beds.length) : null;
+  const week = (k: 'deep_h' | 'rem_h') => avg(two.filter((d) => d.day > addDays(today, -7) && d[k] != null).map((d) => d[k] as number));
+  if (!last && mean == null) return null;
+  return { deep: last?.deep_h ?? null, rem: last?.rem_h ?? null, deepWeek: week('deep_h'), remWeek: week('rem_h'), bedUsual: mean == null ? null : Math.round(mean), bedSpread: spread == null ? null : Math.round(spread) };
+}
+
+/**
+ * Early signs of getting sick, from last night against your usual: temperature up, breathing faster, resting heart
+ * rate up, HRV down, low blood oxygen. Two or more together (or very low oxygen) is worth a warning. Null otherwise.
+ */
+export function illnessCheck(days: DeviceDay[], today = localDay()): { reasons: string[]; keys: string[] } | null {
+  const night = days.find((d) => d.day === today);
+  if (!night) return null;
+  const before = days.filter((d) => d.day < today && d.day >= addDays(today, -30));
+  const usual = (k: 'wrist_temp' | 'resp_rate' | 'hr_rest' | 'hrv') => {
+    const xs = before.map((d) => d[k]).filter((v): v is number => v != null);
+    return xs.length >= 5 ? (avg(xs) as number) : null;
+  };
+  const keys: string[] = [];
+  const reasons: string[] = [];
+  const add = (key: string, why: string) => {
+    keys.push(key);
+    reasons.push(why);
+  };
+  const tUsual = usual('wrist_temp');
+  const tUp = night.temp_dev != null ? night.temp_dev : night.wrist_temp != null && tUsual != null ? night.wrist_temp - tUsual : null;
+  if (tUp != null && tUp >= 0.5) add('temp', `temperature +${r1(tUp)} °C`);
+  const rUsual = usual('resp_rate');
+  if (night.resp_rate != null && rUsual != null && night.resp_rate - rUsual >= 2) add('resp', `breathing ${r1(night.resp_rate)} a minute (usual ${r1(rUsual)})`);
+  const hUsual = usual('hr_rest');
+  if (night.hr_rest != null && hUsual != null && night.hr_rest - hUsual >= 5) add('rhr', `resting heart rate +${Math.round(night.hr_rest - hUsual)}`);
+  const vUsual = usual('hrv');
+  if (night.hrv != null && vUsual && night.hrv / vUsual <= 0.85) add('hrv', `HRV ${Math.round((1 - night.hrv / vUsual) * 100)}% under usual`);
+  if (night.spo2 != null && night.spo2 < 94) add('spo2', `blood oxygen ${r1(night.spo2)}%`);
+  const veryLow = night.spo2 != null && night.spo2 < 90;
+  return keys.length >= 2 || veryLow ? { reasons, keys } : null;
+}
+
+/** Your VO2 max against people your age and sex (about; from common fitness norms). */
+export function vo2Level(vo2: number, age: number, female: boolean): 'Low' | 'Fair' | 'Good' | 'Excellent' | 'Superior' {
+  const men = [[36, 41, 45, 52], [34, 39, 43, 49], [32, 36, 41, 46], [29, 33, 38, 43], [26, 30, 35, 40]];
+  const women = [[30, 34, 39, 45], [28, 32, 37, 42], [26, 30, 35, 40], [24, 27, 32, 37], [21, 24, 29, 34]];
+  const cut = (female ? women : men)[Math.max(0, Math.min(4, Math.floor((age - 20) / 10)))];
+  return vo2 >= cut[3] ? 'Superior' : vo2 >= cut[2] ? 'Excellent' : vo2 >= cut[1] ? 'Good' : vo2 >= cut[0] ? 'Fair' : 'Low';
+}
+
 export type DeviceBrief = {
   sources: string[];
   /** Your normal: the average of the 30 days before today (needs 3 days or more). */
@@ -249,12 +351,12 @@ export function deviceBrief(days: DeviceDay[], today = localDay()): DeviceBrief 
   const vals = (k: Num, xs: DeviceDay[]) => xs.map((d) => d[k]).filter((v): v is number => v != null);
   const base = all.filter((d) => d.day < today && d.day >= addDays(today, -30));
   const usual: Partial<Record<Num, number>> = {};
-  for (const k of ['steps', 'active_kcal', 'hr_rest', 'hrv', 'sleep_h', 'sleep_eff', 'recovery', 'strain', 'sleep_score'] as Num[]) {
+  for (const k of ['steps', 'active_kcal', 'hr_rest', 'hrv', 'sleep_h', 'sleep_eff', 'recovery', 'strain', 'sleep_score', 'deep_h', 'rem_h', 'resp_rate', 'wrist_temp'] as Num[]) {
     const xs = vals(k, base);
     if (xs.length >= 3) usual[k] = k === 'steps' || k === 'active_kcal' ? Math.round(avg(xs) as number) : r1(avg(xs) as number);
   }
   const night = [...all].reverse().find((d) => d.day >= addDays(today, -1) && (d.hrv != null || d.hr_rest != null || d.sleep_h != null || d.recovery != null));
-  const pick = (d: DeviceDay) => Object.fromEntries((['recovery', 'sleep_h', 'sleep_eff', 'sleep_score', 'hrv', 'hr_rest', 'spo2', 'temp_dev', 'strain', 'steps', 'active_kcal'] as Num[]).filter((k) => d[k] != null).map((k) => [k, d[k] as number]));
+  const pick = (d: DeviceDay) => Object.fromEntries((['recovery', 'sleep_h', 'deep_h', 'rem_h', 'bed_min', 'sleep_eff', 'sleep_score', 'hrv', 'hr_rest', 'resp_rate', 'spo2', 'temp_dev', 'wrist_temp', 'strain', 'steps', 'active_kcal', 'weight', 'body_fat', 'vo2'] as Num[]).filter((k) => d[k] != null).map((k) => [k, d[k] as number]));
   const latest = night ? { day: night.day, source: src(night), ...pick(night) } : null;
 
   const signals: string[] = [];
@@ -310,6 +412,21 @@ export function deviceBrief(days: DeviceDay[], today = localDay()): DeviceBrief 
     const p = pct(wSteps, usual.steps);
     if (Math.abs(p) >= 25) signals.push(`Steps this week ${Math.round(wSteps)} a day, ${Math.abs(p)}% ${p < 0 ? 'less' : 'more'} than usual (${usual.steps})`);
   }
+  // Sleep quality, getting sick, and heart fitness (worked out the same way the app shows them).
+  const sd = sleepDetail(all, today);
+  if (sd?.deep != null && sd.deep < 0.75) signals.push(`Little deep sleep last night: ${Math.round(sd.deep * 60)} min (most adults get 1 to 2 h)`);
+  if (sd?.bedSpread != null && sd.bedSpread >= 60) signals.push(`Bedtime changes a lot: about ${Math.round(sd.bedSpread)} min from night to night (a steady bedtime sleeps better)`);
+  const ill = illnessCheck(all, today);
+  if (ill) {
+    signals.push(`Possible illness: ${ill.reasons.join(', ')}. Suggest rest, fluids and a doctor if they feel unwell; never diagnose`);
+    low++;
+  }
+  const v2 = all.filter((d) => d.vo2 != null);
+  if (v2.length) {
+    const first = v2[0].vo2 as number;
+    const lastV = v2.at(-1)!.vo2 as number;
+    signals.push(`VO2 max ${lastV} ml/kg/min${v2.length > 1 && Math.abs(lastV - first) >= 1 ? `, ${lastV > first ? 'up' : 'down'} ${r1(Math.abs(lastV - first))} since ${v2[0].day}` : ''}`);
+  }
   const hasNight = !!night && (night.hrv != null || night.hr_rest != null || night.recovery != null || night.sleep_h != null);
   const readiness = !hasNight ? null : low >= 2 || (night?.recovery != null && low >= 1 && (night.wearable === 'whoop' ? night.recovery < 34 : night.recovery < 60)) ? 'low' : low === 0 && good >= 2 ? 'good' : 'ok';
 
@@ -327,7 +444,7 @@ export async function loadDeviceBrief(): Promise<DeviceBrief | null> {
 }
 
 export async function loadDevicePrefs(): Promise<DevicePrefs> {
-  const { data } = await supabase.from('device_prefs').select('source,connected,card_order,last_sync').maybeSingle();
+  const { data } = await supabase.from('device_prefs').select('source,connected,card_order,last_sync,write_back').maybeSingle();
   return (data as DevicePrefs | null) ?? EMPTY_PREFS;
 }
 
@@ -390,7 +507,7 @@ export async function syncDevice(n = 7): Promise<number> {
     const days = Array.from({ length: n }, (_, i) => addDays(today, i - (n - 1)));
     const raw = await readRaw(new Date(`${days[0]}T00:00:00`), new Date());
     const out = buildDays(raw, days, phoneSource, today).filter(hasData);
-    if (out.length) await supabase.from('device_readings').upsert(out.map((d) => ({ user_id: state.uid, ...d, updated_at: new Date().toISOString() })));
+    if (out.length) await supabase.from('device_readings').upsert(out.map(({ period: _p, ...d }) => ({ user_id: state.uid, ...d, updated_at: new Date().toISOString() })));
     const keep = state.days.filter((d) => !out.some((o) => o.day === d.day));
     set({ days: [...keep, ...out].sort((a, b) => a.day.localeCompare(b.day)) });
     await savePrefs({ last_sync: new Date().toISOString() });
@@ -411,7 +528,45 @@ export async function connectDevice(): Promise<'ok' | 'denied' | 'unavailable'> 
 }
 
 export async function disconnectDevice() {
-  await savePrefs({ connected: false });
+  await savePrefs({ connected: false, write_back: false });
+}
+
+/**
+ * Turn on or off writing Gymi's own workouts, meals, water and weight to the phone's health app. Turning it on asks
+ * the phone for permission to write first.
+ */
+export async function setWriteBack(on: boolean): Promise<'ok' | 'denied' | 'unavailable'> {
+  if (!on) {
+    await savePrefs({ write_back: false });
+    return 'ok';
+  }
+  if (!phoneSource) return 'unavailable';
+  const r = await connectSource(true);
+  if (r === 'ok') await savePrefs({ write_back: true });
+  return r;
+}
+
+const writing = () => !!phoneSource && state.prefs.connected && state.prefs.source === phoneSource && !!state.prefs.write_back;
+
+/** A copy of something logged in Gymi, for the phone's health app (only when the person turned it on). */
+export function pushHealth(x: HealthItem) {
+  if (writing()) writeHealth(x).catch(() => {});
+}
+
+/** Take back a copy after it was deleted in Gymi. */
+export function pullHealth(type: HealthItem['type'], id: string) {
+  if (writing()) removeHealth(type, id).catch(() => {});
+}
+
+/**
+ * Heart rate during a workout, from the watch: average and highest, or null without readings. Watches send heart
+ * rate to the phone a little later, so this is tried again on the next open.
+ */
+export async function workoutHeart(start: Date, end: Date): Promise<{ avg: number; max: number } | null> {
+  if (!phoneSource || !state.prefs.connected) return null;
+  const xs = (await readHeartRate(start, end)).filter((v) => v >= 30 && v <= 250);
+  if (xs.length < 5) return null;
+  return { avg: Math.round(xs.reduce((a, v) => a + v, 0) / xs.length), max: Math.round(Math.max(...xs)) };
 }
 
 /** Load the days again (after linking, syncing or disconnecting a wearable). */

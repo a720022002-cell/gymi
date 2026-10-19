@@ -24,7 +24,7 @@ import {
   targets,
   withPregnancy,
 } from './nutrition';
-import { extraMoveKcal, useDevices, watchCardio } from './devices';
+import { extraMoveKcal, pullHealth, pushHealth, useDevices, watchCardio } from './devices';
 import { supabase } from './supabase';
 
 export type FoodLog = {
@@ -170,6 +170,10 @@ type Food = {
 };
 
 const Ctx = createContext<Food | null>(null);
+
+/** When something was eaten or drunk, for the phone's health app: when it was logged, or midday for an earlier day. */
+const loggedAt = (day: string, created: string) => (localDay(new Date(created)) === day ? new Date(created) : new Date(`${day}T12:00:00`));
+const mealCopy = (l: FoodLog) => ({ type: 'meal' as const, id: l.id, at: loggedAt(l.day, l.created_at), kcal: +l.kcal, protein: +l.protein, carbs: +l.carbs, fat: +l.fat });
 
 export function FoodProvider({ children }: PropsWithChildren) {
   const { session, profile, updateProfile } = useAuth();
@@ -434,6 +438,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       const { data, error } = await supabase.from('food_logs').insert(row).select('*').single();
       if (error || !data) return null;
       if (row.day === day) setLogs((xs) => [...xs, data as FoodLog]);
+      pushHealth(mealCopy(data as FoodLog));
       return data as FoodLog;
     },
     [day, today],
@@ -443,6 +448,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
     const removed = logsRef.current.find((x) => x.id === id) ?? null;
     setLogs((xs) => xs.filter((x) => x.id !== id));
     await supabase.from('food_logs').delete().eq('id', id);
+    pullHealth('meal', id);
     return removed;
   }, []);
 
@@ -455,13 +461,19 @@ export function FoodProvider({ children }: PropsWithChildren) {
     const { data, error } = await supabase.from('food_logs').update(patch).eq('id', id).select('*').single();
     if (error || !data) return false;
     setLogs((xs) => xs.map((x) => (x.id === id ? (data as FoodLog) : x)));
+    // The health app's copy is replaced with the new amounts.
+    pullHealth('meal', id);
+    pushHealth(mealCopy(data as FoodLog));
     return true;
   }, []);
 
   const restoreLog = useCallback(async (l: FoodLog) => {
     const { id: _id, created_at: _c, ...rest } = l;
     const { data } = await supabase.from('food_logs').insert(rest).select('*').single();
-    if (data) setLogs((xs) => [...xs, data as FoodLog].sort((a, b) => a.created_at.localeCompare(b.created_at)));
+    if (data) {
+      setLogs((xs) => [...xs, data as FoodLog].sort((a, b) => a.created_at.localeCompare(b.created_at)));
+      pushHealth(mealCopy(data as FoodLog));
+    }
   }, []);
 
   const saveMeal = useCallback(async (m: NewSavedMeal) => {
@@ -509,13 +521,15 @@ export function FoodProvider({ children }: PropsWithChildren) {
     async (ml: number, kind = 'Water', on?: string) => {
       const d = on ?? day;
       if (d !== day) {
-        await supabase.from('water_logs').insert({ day: d, ml, kind });
+        const { data } = await supabase.from('water_logs').insert({ day: d, ml, kind }).select('id,ml,kind,created_at').single();
+        if (data) pushHealth({ type: 'water', id: (data as WaterLog).id, at: loggedAt(d, (data as WaterLog).created_at), ml });
         return;
       }
       const tmp: WaterLog = { id: `tmp-${Date.now()}`, ml, kind, created_at: new Date().toISOString() };
       setWaterLogs((xs) => [...xs, tmp]);
       const { data, error } = await supabase.from('water_logs').insert({ day: d, ml, kind }).select('id,ml,kind,created_at').single();
       setWaterLogs((xs) => (error || !data ? xs.filter((x) => x.id !== tmp.id) : xs.map((x) => (x.id === tmp.id ? (data as WaterLog) : x))));
+      if (data) pushHealth({ type: 'water', id: (data as WaterLog).id, at: new Date((data as WaterLog).created_at), ml });
     },
     [day],
   );
@@ -526,7 +540,10 @@ export function FoodProvider({ children }: PropsWithChildren) {
       removed = xs.find((x) => x.id === id) ?? null;
       return xs.filter((x) => x.id !== id);
     });
-    if (!id.startsWith('tmp-')) await supabase.from('water_logs').delete().eq('id', id);
+    if (!id.startsWith('tmp-')) {
+      await supabase.from('water_logs').delete().eq('id', id);
+      pullHealth('water', id);
+    }
     return removed;
   }, []);
 
@@ -536,6 +553,9 @@ export function FoodProvider({ children }: PropsWithChildren) {
       const { data, error } = await supabase.from('cardio_logs').insert({ ...c, day: d }).select('id,kind,name,minutes,intensity,kcal,created_at').single();
       if (error || !data) return null;
       if (d === day) setCardio((xs) => [...xs, data as Cardio]);
+      // Cardio typed into Gymi goes to the health app as a workout that ended when it was logged.
+      const end = loggedAt(d, (data as Cardio).created_at);
+      pushHealth({ type: 'workout', id: (data as Cardio).id, start: new Date(end.getTime() - c.minutes * 6e4), end, kind: c.kind, kcal: c.kcal });
       return data as Cardio;
     },
     [day],
@@ -556,6 +576,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
     if (id.startsWith('watch:')) return;
     setCardio((xs) => xs.filter((x) => x.id !== id));
     await supabase.from('cardio_logs').delete().eq('id', id);
+    pullHealth('workout', id);
   }, []);
 
   const value = useMemo<Food>(

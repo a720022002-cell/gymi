@@ -231,6 +231,39 @@ export async function startPeriod(day: string): Promise<Period | null> {
   const { data, error } = await supabase.from('cycle_periods').upsert({ start_day: day }, { onConflict: 'user_id,start_day' }).select('id,start_day,end_day').single();
   return error ? null : (data as Period);
 }
+/**
+ * Period days logged in Apple Health or Health Connect become periods here, so tracking fills in by itself. Only
+ * stretches that start after the last import (a period you delete stays deleted), never one that overlaps a period
+ * already here, and only while tracking (not in pregnancy or after birth). Saved like your own: on this phone only
+ * when you chose that. Returns how many periods were added.
+ */
+export async function importPeriods(uid: string, flowDays: string[], today: string) {
+  const key = `gymi.cyclePeriodImport.v1.${uid}`;
+  const last = await AsyncStorage.getItem(key).catch(() => null);
+  const days = [...new Set(flowDays)].filter((d) => d <= today && (!last || d > last)).sort();
+  if (!days.length) return 0;
+  const data = await loadCycle(uid);
+  if (data.settings.mode !== 'track' && data.settings.mode !== 'ttc') return 0;
+  // Stretches of days (a one-day gap is still the same period).
+  const runs: { start: string; end: string }[] = [];
+  for (const d of days) {
+    const r = runs.at(-1);
+    if (r && d <= addDays(r.end, 2)) r.end = d;
+    else runs.push({ start: d, end: d });
+  }
+  const endOf = (p: Period) => p.end_day ?? addDays(p.start_day, data.settings.period_len - 1);
+  let added = 0;
+  for (const r of runs) {
+    if (data.periods.some((p) => r.start <= addDays(endOf(p), 2) && r.end >= addDays(p.start_day, -2))) continue;
+    // Still going (logged today or yesterday): an open period you end yourself, like one you start in Gymi.
+    if (r.end >= addDays(today, -1)) await startPeriod(r.start);
+    else await addPastPeriod(r.start, Math.round((new Date(`${r.end}T12:00:00`).getTime() - new Date(`${r.start}T12:00:00`).getTime()) / 864e5) + 1);
+    added++;
+  }
+  await AsyncStorage.setItem(key, days.at(-1) as string).catch(() => {});
+  return added;
+}
+
 export async function endPeriod(id: string, day: string) {
   changed();
   if (onDevice()) return editLocal((l) => (l.periods = l.periods.map((x) => (x.id === id ? { ...x, end_day: day } : x))));

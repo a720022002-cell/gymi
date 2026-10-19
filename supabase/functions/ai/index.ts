@@ -450,7 +450,10 @@ const DEVICE_RULES = `Device data ("devices", when present) comes from the perso
 - Workouts the device recorded count as training even if not logged in Gymi; use them for how much they trained.
 - Raised skin temperature together with HRV down and resting heart rate up can mean getting sick: suggest rest and fluids, and a doctor if they feel ill. Low blood oxygen that repeats: suggest a doctor. Never diagnose.
 - If the device and the person's own check-in disagree, say both kindly and ask how they feel; how they feel wins for today.
-- No "devices" in the data means nothing is connected: never invent watch numbers; if useful, mention they can connect one in Devices.`;
+- Sleep stages and bedtime ("deep_h", "rem_h", "bed_min" = minutes from midnight, negative before it): little deep sleep or a bedtime that moves a lot is a reason to suggest a steady bedtime (and a bedtime reminder where you can suggest one), less caffeine late, and no heavy meal late.
+- "Possible illness" in the signals: rest comes first; no hard training until it passes.
+- VO2 max (heart and lung fitness) going down, or low for their age: suggest regular easy cardio (2 to 3 times a week, 20 to 40 min); going up: say it and keep it.
+- No "devices" in the data means nothing is connected: never invent watch numbers; if useful, mention they can connect one in Connections.`;
 
 async function run(task: string, b: Record<string, unknown>) {
   const lang = String(b.lang ?? 'en');

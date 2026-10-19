@@ -10,6 +10,7 @@ import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { CoachBanner } from '@/components/train/CoachBanner';
 import { GroupWorkoutsCard } from '@/components/train/GroupWorkoutsCard';
+import { IllnessCard } from '@/components/health/IllnessCard';
 import { DeloadCard, RecoveryCard } from '@/components/train/RecoveryCard';
 import { TrainSetup } from '@/components/train/TrainSetup';
 import { MissedCard, WorkoutCard } from '@/components/train/WorkoutCard';
@@ -73,6 +74,7 @@ export default function Train() {
         <WeekStrip />
       </Card>
       <PlanReviewCard />
+      <IllnessCard />
       <RecoveryCard />
       <MissedCard />
       <WorkoutCard />

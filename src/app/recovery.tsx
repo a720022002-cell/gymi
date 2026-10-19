@@ -4,6 +4,7 @@ import { View } from 'react-native';
 
 import { BarChart, LineChart } from '@/components/Charts';
 import { Stepper } from '@/components/food/Stepper';
+import { IllnessCard } from '@/components/health/IllnessCard';
 import { Icon, type IconName, Mark } from '@/components/Icon';
 import { Bar, Ring } from '@/components/Ring';
 import { Screen } from '@/components/Screen';
@@ -84,6 +85,7 @@ export default function RecoveryScreen() {
 
   return (
     <Screen title={t('Recovery')} back>
+      <IllnessCard />
       <Card style={{ alignItems: 'center', paddingVertical: 22 }}>
         <Ring value={r.score} max={100} size={160} stroke={15} color={r.score >= 60 ? c.cobalt : c.down}>
           <Text num size={40}>{`${r.score}%`}</Text>

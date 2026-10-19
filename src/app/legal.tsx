@@ -12,7 +12,7 @@ const PRIVACY: [string, string][] = [
   ['Friends and coaches', 'Friends only see what you turn on in What friends see. A coach you join sees your food, workouts, weight and sleep. Cycle data and blood tests are never shared.'],
   ['Where it’s stored', 'In our secure database with access rules that let only you read your own data. Progress photos are stored privately.'],
   ['Your choices', 'You can download all your data or delete your account any time from You, then Privacy and data. Deleting removes everything.'],
-  ['Apple Health and Health Connect', 'If you connect them, Gymi reads only what you allow (like steps, sleep, heart rate, weight and workouts) to show it in the app and adjust your plan. This data is never sold, never used for ads or marketing, and never shared with anyone else, including friends.'],
+  ['Apple Health and Health Connect', 'If you connect them, Gymi reads only what you allow (like steps, sleep and sleep stages, heart rate, HRV, breathing, blood oxygen, temperature, weight, body fat, workouts and period days) to show it in the app and adjust your plan. Period days go straight into cycle tracking and follow its privacy setting. If you turn it on, Gymi also writes your Gymi workouts, meals, water and weight to it. This data is never sold, never used for ads or marketing, and never shared with anyone else, including friends.'],
   ['How long we keep it', 'Your data stays while you have an account. When you delete your account, your data, photos and files are deleted from our servers.'],
   ['Health', 'Gymi is not a medical service. It never suggests treatment. Check with your doctor about health questions.'],
   ['Updated', 'This policy was last updated on 18 October 2026.'],
