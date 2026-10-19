@@ -10,7 +10,7 @@ import { loadWearableDays, syncWearables, type WearableDay, wearableName, type W
 import { supabase } from './supabase';
 
 export type DeviceSource = 'apple' | 'health_connect';
-export type DeviceWorkout = { type: string; minutes: number; kcal: number };
+export type DeviceWorkout = { type: string; minutes: number; kcal: number; /** Heart rate during it, when the watch measured it. */ avg_hr?: number | null; max_hr?: number | null };
 export type DeviceHours = { steps: number[]; hr: (number | null)[] };
 export type DeviceDay = {
   day: string;
@@ -127,7 +127,12 @@ export function buildDays(raw: RawHealth, days: string[], source: DeviceSource, 
     const hrvs = raw.hrv.filter((x) => on(x.t)).map((x) => x.v);
     const workouts = raw.workouts
       .filter((w) => on(w.start))
-      .map((w) => ({ type: w.type, minutes: Math.round((w.end.getTime() - w.start.getTime()) / 6e4), kcal: Math.round(w.kcal) }))
+      .map((w) => {
+        // Heart rate during the workout, from the watch's samples in that window.
+        const bpm = raw.hr.filter((x) => x.t >= w.start && x.t <= w.end).map((x) => x.v);
+        const hrOk = bpm.length >= 5;
+        return { type: w.type, minutes: Math.round((w.end.getTime() - w.start.getTime()) / 6e4), kcal: Math.round(w.kcal), ...(hrOk ? { avg_hr: Math.round(avg(bpm) as number), max_hr: Math.round(Math.max(...bpm)) } : {}) };
+      })
       .filter((w) => w.minutes > 0);
     const hourSteps = Array.from({ length: 24 }, () => 0);
     steps.forEach((x) => (hourSteps[x.start.getHours()] += x.v));
@@ -228,7 +233,7 @@ export function mergeWearables(days: DeviceDay[], wear: WearableDay[]): DeviceDa
   return [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day));
 }
 
-export type WatchCardio = { kind: 'Walk' | 'Run' | 'Bike' | 'Swim' | 'Other'; name: string | null; minutes: number; kcal: number };
+export type WatchCardio = { kind: 'Walk' | 'Run' | 'Bike' | 'Swim' | 'Other'; name: string | null; minutes: number; kcal: number; avg_hr?: number | null; max_hr?: number | null };
 
 /** What kind of cardio a workout from the watch is. Null: strength or an unnamed workout (those are logged in Gymi). */
 export function cardioKind(type: string): WatchCardio['kind'] | 'skip' {
@@ -257,9 +262,27 @@ export function watchCardio(d: DeviceDay | undefined, logged: { kind: string; mi
       left.splice(i, 1);
       continue;
     }
-    out.push({ kind, name: kind === 'Other' ? w.type : null, minutes: Math.round(w.minutes), kcal: Math.round(w.kcal || 0) });
+    out.push({ kind, name: kind === 'Other' ? w.type : null, minutes: Math.round(w.minutes), kcal: Math.round(w.kcal || 0), avg_hr: w.avg_hr ?? null, max_hr: w.max_hr ?? null });
   }
   return out;
+}
+
+/** Your highest heart rate, estimated from age (Tanaka: 208 − 0.7 × age). */
+export const maxHeartRate = (age: number) => Math.round(208 - 0.7 * age);
+
+/** Heart rate zone 1–5 for an average heart rate (share of your highest: under 60%, 60–70, 70–80, 80–90, over 90). */
+export function hrZone(avgHr: number, age: number) {
+  const pct = avgHr / maxHeartRate(age);
+  return pct < 0.6 ? 1 : pct < 0.7 ? 2 : pct < 0.8 ? 3 : pct < 0.9 ? 4 : 5;
+}
+
+/**
+ * How hard a cardio session was on the body (Banister TRIMP): minutes, weighted by how high the heart rate was
+ * between resting and highest. About 50 for 45 minutes in zone 2, about 140 for an hour hard.
+ */
+export function trimp(minutes: number, avgHr: number, restHr: number, maxHr: number, female: boolean) {
+  const r = Math.max(0, Math.min(1, (avgHr - restHr) / Math.max(20, maxHr - restHr)));
+  return minutes * r * (female ? 0.86 * Math.exp(1.67 * r) : 0.64 * Math.exp(1.92 * r));
 }
 
 /**

@@ -134,7 +134,7 @@ async function all(p: Provider, token: string, path: string, q: Record<string, s
 type Day = {
   recovery?: number | null; strain?: number | null; sleep_score?: number | null; hrv?: number | null; hr_rest?: number | null; hr_avg?: number | null;
   sleep_h?: number | null; in_bed_h?: number | null; sleep_eff?: number | null; spo2?: number | null; temp_dev?: number | null; steps?: number | null;
-  active_kcal?: number | null; workouts?: { type: string; minutes: number; kcal: number }[];
+  active_kcal?: number | null; workouts?: { type: string; minutes: number; kcal: number; avg_hr?: number | null; max_hr?: number | null }[];
 };
 const r1 = (n: number) => Math.round(n * 10) / 10;
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
@@ -195,7 +195,8 @@ async function whoopDays(token: string, from: Date) {
   for (const w of wos as { start: string; end: string; timezone_offset?: string; sport_name?: string; score?: Record<string, unknown> }[]) {
     const minutes = Math.round((Date.parse(w.end) - Date.parse(w.start)) / 6e4);
     if (!(minutes > 0)) continue;
-    at(localDay(w.start, w.timezone_offset)).workouts!.push({ type: String(w.sport_name ?? 'Workout'), minutes, kcal: num(w.score?.kilojoule) != null ? Math.round((w.score!.kilojoule as number) / 4.184) : 0 });
+    const hr = (k: string) => (num(w.score?.[k]) != null ? Math.round(w.score![k] as number) : null);
+    at(localDay(w.start, w.timezone_offset)).workouts!.push({ type: String(w.sport_name ?? 'Workout'), minutes, kcal: num(w.score?.kilojoule) != null ? Math.round((w.score!.kilojoule as number) / 4.184) : 0, avg_hr: hr('average_heart_rate'), max_hr: hr('max_heart_rate') });
   }
   return days;
 }
@@ -299,7 +300,8 @@ async function polarDays(token: string, from: Date) {
     const day = String(e.start_time ?? '').slice(0, 10);
     const minutes = isoMinutes(String(e.duration ?? ''));
     if (!inRange(day) || !(minutes > 0)) continue;
-    at(day).workouts!.push({ type: String(e.detailed_sport_info ?? e.sport ?? 'Workout').toLowerCase(), minutes, kcal: Math.round(num(e.calories) ?? 0) });
+    const hr = (e.heart_rate ?? {}) as Record<string, unknown>;
+    at(day).workouts!.push({ type: String(e.detailed_sport_info ?? e.sport ?? 'Workout').toLowerCase(), minutes, kcal: Math.round(num(e.calories) ?? 0), avg_hr: num(hr.average) != null ? Math.round(hr.average as number) : null, max_hr: num(hr.maximum) != null ? Math.round(hr.maximum as number) : null });
   }
   for (const t of list(skin)) {
     const day = String(t.sleep_date ?? '');

@@ -16,6 +16,8 @@ export type RecoveryInput = {
    * resting heart rate, and the recovery or readiness score of a WHOOP or Oura.
    */
   body?: { hrv?: number | null; hrvUsual?: number | null; rhr?: number | null; rhrUsual?: number | null; device?: { name: string; score: number } | null } | null;
+  /** Cardio the watch recorded, as work in "sets" (from heart rate when measured, otherwise from minutes). */
+  cardio?: { day: string; work: number }[];
 };
 
 /** Things you can do to recover and what each adds to today's score (design: REC_TOOLS). Up to +6 in all. */
@@ -44,14 +46,16 @@ export function dailyLoad(logs: WorkoutLog[], today: string, n = 14) {
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
 /** Training load: this week's work against the usual week (up to the last 4 weeks). 1.0 = normal. Work is sets done
- * (so bodyweight and timed workouts count too; older logs without sets count 1 set per 3 minutes).
+ * (so bodyweight and timed workouts count too; older logs without sets count 1 set per 3 minutes), plus the cardio
+ * the watch recorded (heart-rate load / 10, or a set per 8 minutes without heart rate).
  * With under 2 weeks of history there's no usual week yet, so it stays neutral (`early`). */
-function loadRatio(logs: WorkoutLog[], today: string) {
-  const first = logs.reduce<string | null>((a, l) => (l.day <= today && (a == null || l.day < a) ? l.day : a), null);
+function loadRatio(logs: WorkoutLog[], today: string, cardio: { day: string; work: number }[] = []) {
+  const first = [...logs.map((l) => l.day), ...cardio.map((c) => c.day)].reduce<string | null>((a, d) => (d <= today && (a == null || d < a) ? d : a), null);
   const days = first ? Math.round((new Date(`${today}T12:00:00`).getTime() - new Date(`${first}T12:00:00`).getTime()) / 864e5) + 1 : 0;
   if (days < 14) return { ratio: 1, early: true };
   const work = (l: WorkoutLog) => (l.sets_done > 0 ? l.sets_done : Math.round((l.minutes || 0) / 3));
-  const sum = (from: string, to: string) => logs.filter((l) => l.day > from && l.day <= to).reduce((a, l) => a + work(l), 0);
+  const sum = (from: string, to: string) =>
+    logs.filter((l) => l.day > from && l.day <= to).reduce((a, l) => a + work(l), 0) + cardio.filter((c) => c.day > from && c.day <= to).reduce((a, c) => a + c.work, 0);
   const acute = sum(addDays(today, -7), today);
   const chronic = sum(addDays(today, -28), today) / clamp(days / 7, 1, 4);
   return { ratio: chronic > 0 ? acute / chronic : 1, early: false };
@@ -93,7 +97,7 @@ export function recovery(x: RecoveryInput) {
   const sleep = sleepPart(sl);
   const sore = sorePart(so);
   const energy = energyPart(en);
-  const { ratio: acwr, early } = loadRatio(x.logs, x.today);
+  const { ratio: acwr, early } = loadRatio(x.logs, x.today, x.cardio);
   // Much more than usual tires you; less (a rest week, a break) only costs a little, and only under half your usual.
   const load = acwr > 1 ? clamp(100 - (acwr - 1) * 120, 30, 100) : clamp(100 - Math.max(0, 0.5 - acwr) * 40, 80, 100);
   // Yesterday's protein, so the morning score isn't low just because you haven't eaten yet today.

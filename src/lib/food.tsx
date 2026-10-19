@@ -69,7 +69,7 @@ export type Move = { id: string; day: string; kcal: number };
 
 export type WaterLog = { id: string; ml: number; kind: string; created_at: string };
 
-export type Cardio = { id: string; kind: 'Walk' | 'Run' | 'Bike' | 'Swim' | 'Other'; name?: string | null; minutes: number; intensity: number; kcal: number; created_at: string; /** Recorded by the watch (not saved in Gymi, can't be deleted here). */ watch?: boolean };
+export type Cardio = { id: string; kind: 'Walk' | 'Run' | 'Bike' | 'Swim' | 'Other'; name?: string | null; minutes: number; intensity: number; kcal: number; created_at: string; /** Recorded by the watch (not saved in Gymi, can't be deleted here), with its heart rate when measured. */ watch?: boolean; avg_hr?: number | null; max_hr?: number | null };
 
 export type NewLog = {
   name: string;

@@ -11,6 +11,7 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Row, Segmented, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
+import { hrZone } from '@/lib/devices';
 import { useFood } from '@/lib/food';
 import { fmt } from '@/lib/nutrition';
 import { CARDIO, cardioKcal } from '@/lib/training';
@@ -106,6 +107,9 @@ export default function CardioScreen() {
   const toast = useToast();
   const food = useFood();
   const { profile } = useAuth();
+  // Heart rate zones use your age (30 when it isn't set).
+  const [now] = useState(() => Date.now());
+  const age = profile?.date_of_birth ? Math.max(14, Math.floor((now - new Date(profile.date_of_birth).getTime()) / 3.15576e10)) : 30;
   const [kind, setKind] = useState(0);
   const [mins, setMins] = useState(30);
   const [text, setText] = useState('30');
@@ -259,6 +263,7 @@ export default function CardioScreen() {
                   <Text weight={700}>{x.name || t(x.kind)}</Text>
                   <Text variant="small" color="sec">
                     {x.watch ? t('{n} min · from your watch', { n: x.minutes }) : t('{n} min', { n: x.minutes })}
+                    {x.avg_hr ? ` · ${t('Zone {z} · {h} bpm', { z: hrZone(x.avg_hr, age), h: x.avg_hr })}` : ''}
                   </Text>
                 </View>
                 <Text num>{`${x.kcal} ${t('kcal')}`}</Text>

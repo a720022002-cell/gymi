@@ -4113,4 +4113,5 @@ export const AR: Record<string, string> = {
   "Your watch says you haven’t fully recovered. Open Gymi to make today’s workout lighter.": "ساعتك تقول إنك ما ارتحت كامل. افتح Gymi عشان تخفف تمرين اليوم.",
   "Your watch says you recovered well. A good day to push.": "ساعتك تقول إنك ارتحت زين. يوم مناسب تشد فيه.",
   "Your readings look normal today.": "قراءاتك اليوم طبيعية.",
+  "Zone {z} · {h} bpm": "المنطقة {z} · {h} نبضة",
 };

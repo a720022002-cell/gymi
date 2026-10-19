@@ -3,7 +3,7 @@ import { View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
-import { type DeviceDay, useDevices } from '@/lib/devices';
+import { cardioKind, type DeviceDay, maxHeartRate, trimp, useDevices } from '@/lib/devices';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { addDays } from '@/lib/nutrition';
@@ -32,11 +32,29 @@ function watchBody(days: DeviceDay[], today: string): RecoveryInput['body'] {
   return { hrv: d.hrv, hrvUsual: usual('hrv'), rhr: d.hr_rest, rhrUsual: usual('hr_rest'), device };
 }
 
+/**
+ * Cardio the watch recorded in the last 4 weeks, as training work: heart-rate load (TRIMP / 10) when the watch
+ * measured heart rate and a resting heart rate is known, otherwise a set per 8 minutes. Strength sessions are left out
+ * (they're the Gymi workouts already counted).
+ */
+function watchCardioLoad(days: DeviceDay[], today: string, dob: string | null | undefined, female: boolean) {
+  const age = dob ? Math.max(14, Math.floor((Date.now() - new Date(dob).getTime()) / 3.15576e10)) : 30;
+  const rests = days.filter((d) => d.hr_rest != null).map((d) => d.hr_rest as number);
+  const rest = rests.length ? rests.reduce((a, v) => a + v, 0) / rests.length : null;
+  return days
+    .filter((d) => d.day <= today && d.day > addDays(today, -28))
+    .flatMap((d) =>
+      d.workouts
+        .filter((w) => cardioKind(w.type) !== 'skip' && w.minutes >= 5)
+        .map((w) => ({ day: d.day, work: w.avg_hr && rest ? trimp(w.minutes, w.avg_hr, rest, maxHeartRate(age), female) / 10 : w.minutes / 8 })),
+    );
+}
+
 /** Everything the recovery score needs, from food, training and the watch. */
 export function useRecovery() {
   const train = useTrain();
   const food = useFood();
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
   const devices = useDevices(session?.user.id);
   const { todayCheckin: ci, days } = useHealth();
   // Sleep you logged wins; otherwise last night's sleep from your watch.
@@ -52,6 +70,7 @@ export function useRecovery() {
     water: { ml: food.isToday ? food.water : (days[food.today]?.w ?? 0), goal: food.plan.water || 2800 },
     tools: train.recTools,
     body: watchBody(devices.days, train.today),
+    cardio: watchCardioLoad(devices.days, train.today, profile?.date_of_birth, profile?.gender === 'female'),
   };
   return { input, r: recovery(input) };
 }
