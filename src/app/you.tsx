@@ -127,6 +127,7 @@ export default function You() {
       <Label>{t('App')}</Label>
       <List>
         <Item icon="heart" title={t('Your readings')} sub={t('Steps, sleep, weight and devices')} onPress={() => router.push('/devices')} chevron />
+        <Item icon="watch" title={t('Connections')} sub={t('Devices, apps and your health records')} onPress={() => router.push('/connections')} chevron />
         <Item icon="bell" title={t('Notifications')} value={notifSummary(np, t)} onPress={() => router.push('/notifications')} chevron />
         <Item icon="star" title={t('Subscription')} value={t('Free plan')} onPress={() => router.push('/subscription')} chevron />
       </List>
