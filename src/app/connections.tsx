@@ -61,7 +61,7 @@ export default function Connections() {
     },
     { name: 'WHOOP', art: 'whoop', state: wearState('whoop'), on: linked('whoop')?.status === 'ok', go: () => router.push('/devices') },
     { name: 'Oura Ring', art: 'oura', state: wearState('oura'), on: linked('oura')?.status === 'ok', go: () => router.push('/devices') },
-    { name: 'Garmin', art: 'garmin', state: 'Coming soon' },
+    { name: 'Google Fitbit Air', art: 'fitbitair', state: 'Coming soon' },
     { name: 'Polar', art: 'polar', state: 'Coming soon' },
     { name: 'Fitbit', art: 'fitbit', state: 'Coming soon' },
   ];

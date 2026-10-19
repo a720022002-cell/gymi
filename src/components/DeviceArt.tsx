@@ -5,7 +5,7 @@ import { useSettings } from '@/theme/settings';
 
 import { Icon } from './Icon';
 
-export type ArtKind = 'health' | 'health_connect' | 'whoop' | 'oura' | 'garmin' | 'polar' | 'fitbit';
+export type ArtKind = 'health' | 'health_connect' | 'whoop' | 'oura' | 'fitbitair' | 'polar' | 'fitbit';
 
 // The makers' own pictures: Apple's official Apple Health icon (Apple Design Resources), the WHOOP icon from its
 // developer kit, and product photos from each company's site.
@@ -13,7 +13,7 @@ const ART: Record<Exclude<ArtKind, 'health_connect'>, number> = {
   health: require('../../assets/devices/health.png'),
   whoop: require('../../assets/devices/whoop.png'),
   oura: require('../../assets/devices/oura.png'),
-  garmin: require('../../assets/devices/garmin.png'),
+  fitbitair: require('../../assets/devices/fitbitair.png'),
   polar: require('../../assets/devices/polar.png'),
   fitbit: require('../../assets/devices/fitbit.png'),
 };
