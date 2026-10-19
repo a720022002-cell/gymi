@@ -4108,4 +4108,9 @@ export const AR: Record<string, string> = {
   "Your watch saw this last night: {w}.": "ساعتك لاحظت ليلة أمس: {w}.",
   "Rest, drink water and sleep early. If you feel unwell, see a doctor.": "ارتاح واشرب ماء ونم بدري. وإذا حسيت إنك تعبان، روح للدكتور.",
   "I feel fine": "أنا بخير",
+  "You slept {h} h.": "نمت {h} ساعة.",
+  "Rest, drink water and sleep early. Open Gymi to see why.": "ارتاح واشرب ماء ونم بدري. افتح Gymi عشان تعرف السبب.",
+  "Your watch says you haven’t fully recovered. Open Gymi to make today’s workout lighter.": "ساعتك تقول إنك ما ارتحت كامل. افتح Gymi عشان تخفف تمرين اليوم.",
+  "Your watch says you recovered well. A good day to push.": "ساعتك تقول إنك ارتحت زين. يوم مناسب تشد فيه.",
+  "Your readings look normal today.": "قراءاتك اليوم طبيعية.",
 };

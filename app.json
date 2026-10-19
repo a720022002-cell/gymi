@@ -132,7 +132,8 @@
           }
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-background-task"
     ],
     "experiments": {
       "typedRoutes": true,

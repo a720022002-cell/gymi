@@ -3,6 +3,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useSyncExternalStore } from 'react';
 
+import { startBackgroundSync, stopBackgroundSync } from './backgroundSync';
 import { connectSource, type HealthItem, nativeSource, readHeartRate, readRaw, removeHealth, writeHealth } from './healthSource';
 import { addDays, localDay } from './nutrition';
 import { loadWearableDays, syncWearables, type WearableDay, wearableName, type WearableProvider, wearableStatus } from './wearables';
@@ -484,6 +485,7 @@ async function load(uid: string) {
   // Phones refresh by themselves at most every 30 minutes. Once after the steps fix (they used to count twice when the
   // phone and the watch both recorded a walk), the whole last month is read again.
   if (phoneSource && prefs.connected && prefs.source === phoneSource) {
+    startBackgroundSync();
     const fixed = await AsyncStorage.getItem(STEPS_FIX).catch(() => '1');
     if (!fixed) syncDevice(30).then(() => AsyncStorage.setItem(STEPS_FIX, '1').catch(() => {}), () => {});
     else if (!prefs.last_sync || Date.now() - new Date(prefs.last_sync).getTime() > 30 * 6e4) syncDevice().catch(() => {});
@@ -536,6 +538,21 @@ export async function connectDevice(): Promise<'ok' | 'denied' | 'unavailable'> 
 
 export async function disconnectDevice() {
   await savePrefs({ connected: false, write_back: false });
+  await stopBackgroundSync();
+}
+
+/**
+ * For the background task: load (when the app was closed), read the newest from the phone, and hand back the days.
+ * Null when no phone health app is connected.
+ */
+export async function syncInBackground(uid: string): Promise<DeviceDay[] | null> {
+  if (!phoneSource) return null;
+  if (state.uid !== uid) await load(uid);
+  if (!state.prefs.connected || state.prefs.source !== phoneSource) return null;
+  // Loading may have started a sync already: wait for it (up to 20 seconds), then read the last 2 days.
+  for (let i = 0; i < 40 && state.syncing; i++) await new Promise((r) => setTimeout(r, 500));
+  await syncDevice(2).catch(() => 0);
+  return state.days;
 }
 
 /**
