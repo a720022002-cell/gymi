@@ -8,6 +8,7 @@ import { Icon } from '@/components/Icon';
 import { OtpInput } from '@/components/OtpInput';
 import { PhoneField } from '@/components/PhoneField';
 import { Screen } from '@/components/Screen';
+import { DeviceStep, HealthStep } from '@/components/signup/ConnectSteps';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, ErrorText, Label, Option, ProgDots, Row, Segmented, Springy } from '@/components/ui';
@@ -34,28 +35,38 @@ import {
 } from '@/lib/validation';
 import { useSettings } from '@/theme/settings';
 
-type Step = 0 | 1 | 2;
+type Step = 0 | 1 | 2 | 3 | 4;
 type Errors = Record<string, string | undefined>;
 
 export default function SignUp() {
   const { t } = useT();
   const auth = useAuth();
   const { step: stepParam } = useLocalSearchParams<{ step?: string }>();
-  const [step, setStep] = useState<Step>(stepParam === 'about' ? 2 : 0);
+  const [step, setStep] = useState<Step>(stepParam === 'about' ? 2 : stepParam === 'devices' ? 4 : 0);
+  // Back from a band's or ring's sign-in (it opens /signup?step=devices again).
+  const [seenParam, setSeenParam] = useState(stepParam);
+  if (stepParam !== seenParam) {
+    setSeenParam(stepParam);
+    if (stepParam === 'devices') setStep(4);
+  }
   const { accountType } = useSignupDraft();
   const isCoach = (auth.profile?.account_type ?? accountType) === 'coach';
+  const done = () => router.replace({ pathname: '/home', params: { welcome: '1' } });
 
-  // Logged in with a finished profile: nothing to do here (coaches still send their application on step 3).
-  if (auth.session && profileComplete(auth.profile) && !(isCoach && step === 2)) return <Redirect href="/home" />;
-  // Step 3 needs a logged-in user.
-  if (step === 2 && !auth.session && !auth.loading) return <Redirect href="/welcome" />;
+  // Logged in with a finished profile: nothing to do here (coaches still send their application on step 3, and
+  // everyone else can still connect a health app and a device on steps 4 and 5).
+  if (auth.session && profileComplete(auth.profile) && !(isCoach && step === 2) && !(!isCoach && step >= 3)) return <Redirect href="/home" />;
+  // Step 3 and on need a logged-in user.
+  if (step >= 2 && !auth.session && !auth.loading) return <Redirect href="/welcome" />;
 
   return (
-    <Screen title={t('Create account')} back={step !== 2} onBack={step === 1 ? () => setStep(0) : undefined}>
-      <ProgDots step={step} />
+    <Screen title={t(step >= 3 ? 'Connect' : 'Create account')} back={step < 2} onBack={step === 1 ? () => setStep(0) : undefined}>
+      <ProgDots step={step} total={isCoach ? 3 : 5} />
       {step === 0 ? <Basics onNext={() => setStep(1)} /> : null}
       {step === 1 ? <Verify onBack={() => setStep(0)} onVerified={() => setStep(2)} /> : null}
-      {step === 2 ? isCoach ? <CoachApplication /> : <About /> : null}
+      {step === 2 ? isCoach ? <CoachApplication /> : <About onDone={() => setStep(3)} /> : null}
+      {step === 3 ? <HealthStep onNext={() => setStep(4)} /> : null}
+      {step === 4 ? <DeviceStep onDone={done} /> : null}
     </Screen>
   );
 }
@@ -401,7 +412,7 @@ function Verify({ onBack, onVerified }: { onBack: () => void; onVerified: () => 
 /* ---------- Step 3: a bit about you ---------- */
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-function About() {
+function About({ onDone }: { onDone: () => void }) {
   const { t } = useT();
   const { colors: c } = useSettings();
   const auth = useAuth();
@@ -442,8 +453,8 @@ function About() {
     setBusy(false);
     if (r.error) return setE({ save: r.error });
     toast(t('Welcome to Gymi'), { icon: 'check' });
-    // Home asks "Got an invite code?" next, then opens the daily check-in.
-    router.replace({ pathname: '/home', params: { welcome: '1' } });
+    // Next: connect a health app and a device; then Home asks "Got an invite code?" and opens the daily check-in.
+    onDone();
   };
 
   return (
