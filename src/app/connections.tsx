@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Platform, ScrollView, View } from 'react-native';
 
+import { type ArtKind, DeviceArt } from '@/components/DeviceArt';
 import { Field } from '@/components/Field';
 import { Icon, type IconName } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
@@ -50,19 +51,19 @@ export default function Connections() {
     const l = linked(p);
     return l ? (l.status === 'ok' ? 'Connected' : 'Sign in again') : ws?.configured[p] ? 'Connect' : 'Coming soon';
   };
-  const direct: { name: string; icon: IconName; state: string; on?: boolean; go?: () => void }[] = [
+  const direct: { name: string; art: ArtKind; state: string; on?: boolean; go?: () => void }[] = [
     {
       name: phoneSource ? hub : 'Apple Health',
-      icon: 'heart',
+      art: 'health',
       state: phoneSource ? (dev.connected ? 'Connected' : 'Connect') : 'Phone app',
       on: dev.connected,
       go: () => router.push('/devices'),
     },
-    { name: 'WHOOP', icon: 'pulse', state: wearState('whoop'), on: linked('whoop')?.status === 'ok', go: () => router.push('/devices') },
-    { name: 'Oura Ring', icon: 'watch', state: wearState('oura'), on: linked('oura')?.status === 'ok', go: () => router.push('/devices') },
-    { name: 'Garmin', icon: 'watch', state: 'Coming soon' },
-    { name: 'Polar', icon: 'watch', state: 'Coming soon' },
-    { name: 'Fitbit', icon: 'watch', state: 'Coming soon' },
+    { name: 'WHOOP', art: 'whoop', state: wearState('whoop'), on: linked('whoop')?.status === 'ok', go: () => router.push('/devices') },
+    { name: 'Oura Ring', art: 'oura', state: wearState('oura'), on: linked('oura')?.status === 'ok', go: () => router.push('/devices') },
+    { name: 'Garmin', art: 'garmin', state: 'Coming soon' },
+    { name: 'Polar', art: 'polar', state: 'Coming soon' },
+    { name: 'Fitbit', art: 'fitbit', state: 'Coming soon' },
   ];
 
   const lastWeight = health.weights.at(-1);
@@ -99,11 +100,11 @@ export default function Connections() {
           {section(t('Connects straight to Gymi'), c.cobalt)}
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
             {direct.map((d) => (
-              <Card key={d.name} onPress={d.go ?? (() => toast(t('{n} is coming soon. Until then, it reaches Gymi through {h}.', { n: d.name, h: hub }), { icon: 'watch' }))} style={{ width: '48%', flexGrow: 1, marginBottom: 0, minHeight: 112, justifyContent: 'space-between' }}>
-                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon name={d.icon} size={20} color={c.cobalt} />
+              <Card key={d.name} onPress={d.go ?? (() => toast(t('{n} is coming soon. Until then, it reaches Gymi through {h}.', { n: d.name, h: hub }), { icon: 'watch' }))} style={{ width: '48%', flexGrow: 1, marginBottom: 0, minHeight: 150, justifyContent: 'space-between' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: -6, marginEnd: -6 }}>
+                  <DeviceArt kind={d.art} size={68} />
                 </View>
-                <View style={{ marginTop: 12 }}>
+                <View style={{ marginTop: 4 }}>
                   <Text weight={700}>{d.name}</Text>
                   <Text variant="xs" weight={700} color={d.on ? 'up' : 'sec'} style={{ marginTop: 2 }}>
                     {t(d.state)}
