@@ -1,7 +1,8 @@
-// Gymi wearables: connect WHOOP or Oura with their own sign-in (OAuth), then pull daily summaries into
+// Gymi wearables: connect WHOOP, Oura or Polar with their own sign-in (OAuth), then pull daily summaries into
 // wearable_days. Runs on the server only: the keys the wearable gives us are kept in device_links and never
 // reach the app. Client ids and secrets are Edge Function secrets (WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET,
-// OURA_CLIENT_ID, OURA_CLIENT_SECRET); without them a wearable shows as "not set up yet".
+// OURA_CLIENT_ID, OURA_CLIENT_SECRET, POLAR_CLIENT_ID, POLAR_CLIENT_SECRET); without them a wearable shows as
+// "not set up yet".
 //
 // Redirect URL to register with each wearable: https://<project>.supabase.co/functions/v1/wearables
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
@@ -15,8 +16,8 @@ const cors = {
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 const SELF = env('WEARABLES_REDIRECT') || `${env('SUPABASE_URL')}/functions/v1/wearables`;
 
-type Provider = 'whoop' | 'oura';
-const PROVIDERS: Record<Provider, { auth: string; token: string; api: string; scope: string; id: string; secret: string; stateLen: number; revoke?: (t: string) => Promise<unknown> }> = {
+type Provider = 'whoop' | 'oura' | 'polar';
+const PROVIDERS: Record<Provider, { auth: string; token: string; api: string; scope: string; id: string; secret: string; stateLen: number; basic?: boolean; revoke?: (t: string, who: string | null) => Promise<unknown> }> = {
   whoop: {
     auth: 'https://api.prod.whoop.com/oauth/oauth2/auth',
     token: 'https://api.prod.whoop.com/oauth/oauth2/token',
@@ -39,8 +40,22 @@ const PROVIDERS: Record<Provider, { auth: string; token: string; api: string; sc
     stateLen: 32,
     revoke: (t) => fetch(`https://api.ouraring.com/oauth/revoke?access_token=${encodeURIComponent(t)}`),
   },
+  // Polar AccessLink v3: one scope for everything; the key lasts about a year and has no refresh (sign in again then).
+  polar: {
+    auth: 'https://flow.polar.com/oauth2/authorization',
+    token: 'https://polarremote.com/v2/oauth2/token',
+    api: 'https://www.polaraccesslink.com',
+    scope: 'accesslink.read_all',
+    id: 'POLAR_CLIENT_ID',
+    secret: 'POLAR_CLIENT_SECRET',
+    stateLen: 32,
+    // Polar wants the client id and secret in a Basic header, not in the form.
+    basic: true,
+    // Deleting the user on Polar's side also takes the key back.
+    revoke: (t, who) => (who ? fetch(`https://www.polaraccesslink.com/v3/users/${encodeURIComponent(who)}`, { method: 'DELETE', headers: { Authorization: `Bearer ${t}` } }) : Promise.resolve()),
+  },
 };
-const isProvider = (p: unknown): p is Provider => p === 'whoop' || p === 'oura';
+const isProvider = (p: unknown): p is Provider => p === 'whoop' || p === 'oura' || p === 'polar';
 const configured = (p: Provider) => !!env(PROVIDERS[p].id) && !!env(PROVIDERS[p].secret);
 
 // Where the browser may be sent back after signing in: the Gymi website, the phone app, or a local test server.
@@ -62,13 +77,17 @@ async function tokenRequest(p: Provider, body: Record<string, string>) {
   const cfg = PROVIDERS[p];
   const res = await fetch(cfg.token, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ ...body, client_id: env(cfg.id), client_secret: env(cfg.secret) }),
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Accept: 'application/json',
+      ...(cfg.basic ? { Authorization: `Basic ${btoa(`${env(cfg.id)}:${env(cfg.secret)}`)}` } : {}),
+    },
+    body: new URLSearchParams(cfg.basic ? body : { ...body, client_id: env(cfg.id), client_secret: env(cfg.secret) }),
     signal: AbortSignal.timeout(20_000),
   });
   const j = await res.json().catch(() => null);
   if (!res.ok || !j?.access_token) throw new Error(`token ${res.status}: ${JSON.stringify(j ?? {}).slice(0, 200)}`);
-  return j as { access_token: string; refresh_token?: string; expires_in?: number; scope?: string };
+  return j as { access_token: string; refresh_token?: string; expires_in?: number; scope?: string; x_user_id?: number | string };
 }
 
 const expiry = (s?: number) => (s ? new Date(Date.now() + s * 1000).toISOString() : null);
@@ -220,13 +239,83 @@ async function ouraDays(token: string, from: Date) {
   return days;
 }
 
+/** "PT1H2M3.5S" (ISO 8601) in minutes. */
+const isoMinutes = (d: string) => {
+  const m = /^P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:([\d.]+)S)?$/.exec(d ?? '');
+  return m ? Math.round((Number(m[1] ?? 0) * 24 + Number(m[2] ?? 0)) * 60 + Number(m[3] ?? 0) + Number(m[4] ?? 0) / 60) : 0;
+};
+
+async function polarDays(token: string, from: Date) {
+  const get = async (path: string, q: Record<string, string> = {}) => {
+    const u = new URL(PROVIDERS.polar.api + path);
+    for (const [k, v] of Object.entries(q)) u.searchParams.set(k, v);
+    const res = await fetch(u, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, signal: AbortSignal.timeout(20_000) });
+    if (res.status === 401) throw new Error('unauthorized');
+    if (res.status === 204 || res.status === 404) return null;
+    if (!res.ok) throw new Error(`${path} ${res.status}`);
+    return res.json();
+  };
+  // Polar keeps 28 days for these.
+  const start = new Date(Math.max(from.getTime(), Date.now() - 27 * 864e5)).toISOString().slice(0, 10);
+  const end = new Date().toISOString().slice(0, 10);
+  const soft = (p: Promise<unknown>) => p.catch((e) => ((e as Error).message === 'unauthorized' ? Promise.reject(e) : null));
+  const [acts, sleep, recharge, ex, skin] = (await Promise.all([
+    soft(get('/v3/users/activities', { from: start, to: end })),
+    soft(get('/v3/users/sleep')),
+    soft(get('/v3/users/nightly-recharge')),
+    soft(get('/v3/exercises')),
+    soft(get('/v3/users/biosensing/skintemperature', { from: start, to: end })),
+  ])) as [unknown, { nights?: Record<string, unknown>[] } | null, { recharges?: Record<string, unknown>[] } | null, unknown, unknown];
+  const list = (v: unknown, key?: string) => (Array.isArray(v) ? v : key && v && Array.isArray((v as Record<string, unknown>)[key]) ? ((v as Record<string, unknown>)[key] as unknown[]) : []) as Record<string, unknown>[];
+  const days = new Map<string, Day>();
+  const at = (d: string) => days.get(d) ?? (days.set(d, { workouts: [] }), days.get(d)!);
+  const inRange = (d: string) => d >= start;
+  // Times come in the watch's local time, so the first 10 characters are the local day.
+  for (const a of list(acts, 'activities')) {
+    const day = String(a.start_time ?? a.date ?? '').slice(0, 10);
+    if (!inRange(day)) continue;
+    Object.assign(at(day), { steps: num(a.steps), active_kcal: num(a.active_calories) });
+  }
+  for (const n of sleep?.nights ?? []) {
+    const end = String(n.sleep_end_time ?? '');
+    const day = end ? end.slice(0, 10) : String(n.date ?? '');
+    if (!inRange(day)) continue;
+    const secs = (num(n.light_sleep) ?? 0) + (num(n.deep_sleep) ?? 0) + (num(n.rem_sleep) ?? 0);
+    const bed = n.sleep_start_time && end ? (Date.parse(end) - Date.parse(String(n.sleep_start_time))) / 3.6e6 : null;
+    Object.assign(at(day), {
+      sleep_h: secs ? r1(secs / 3600) : null,
+      in_bed_h: bed != null && bed > 0 ? r1(bed) : null,
+      sleep_eff: secs && bed ? Math.min(100, Math.round((secs / 3600 / bed) * 100)) : null,
+      sleep_score: num(n.sleep_score) != null ? Math.round(n.sleep_score as number) : null,
+    });
+  }
+  // Nightly Recharge: HRV and heart rate while asleep (Polar has no daily resting heart rate; this is the closest).
+  for (const r of recharge?.recharges ?? []) {
+    const day = String(r.date ?? '');
+    if (!inRange(day)) continue;
+    Object.assign(at(day), { hrv: num(r.heart_rate_variability_avg) != null ? r1(r.heart_rate_variability_avg as number) : null, hr_rest: num(r.heart_rate_avg) != null ? Math.round(r.heart_rate_avg as number) : null });
+  }
+  for (const e of list(ex)) {
+    const day = String(e.start_time ?? '').slice(0, 10);
+    const minutes = isoMinutes(String(e.duration ?? ''));
+    if (!inRange(day) || !(minutes > 0)) continue;
+    at(day).workouts!.push({ type: String(e.detailed_sport_info ?? e.sport ?? 'Workout').toLowerCase(), minutes, kcal: Math.round(num(e.calories) ?? 0) });
+  }
+  for (const t of list(skin)) {
+    const day = String(t.sleep_date ?? '');
+    const dev = num(t.deviation_from_baseline_celsius);
+    if (inRange(day) && dev != null) at(day).temp_dev = r1(dev);
+  }
+  return days;
+}
+
 /** Pull the last `n` days from one wearable and save them. Returns how many days were saved. */
 async function syncLink(db: SupabaseClient, l: Link, n: number) {
   const token = await accessToken(db, l);
   const from = new Date(Date.now() - n * 864e5);
   let days: Map<string, Day>;
   try {
-    days = l.provider === 'whoop' ? await whoopDays(token, from) : await ouraDays(token, from);
+    days = l.provider === 'whoop' ? await whoopDays(token, from) : l.provider === 'oura' ? await ouraDays(token, from) : await polarDays(token, from);
   } catch (e) {
     // Access taken back on the wearable's side: the person has to connect again.
     const expired = (e as Error).message === 'unauthorized';
@@ -280,12 +369,18 @@ async function callback(url: URL) {
   try {
     const t = await tokenRequest(st.provider, { grant_type: 'authorization_code', code, redirect_uri: SELF });
     // Who this is on the wearable's side (to spot the same band linked twice later).
-    let who: string | null = null;
-    try {
-      const r = await fetch(st.provider === 'whoop' ? `${PROVIDERS.whoop.api}/v2/user/profile/basic` : `${PROVIDERS.oura.api}/v2/usercollection/personal_info`, { headers: { Authorization: `Bearer ${t.access_token}` } });
-      const j = await r.json();
-      who = String(j.user_id ?? j.id ?? '') || null;
-    } catch {}
+    let who: string | null = t.x_user_id != null ? String(t.x_user_id) : null;
+    if (st.provider === 'polar') {
+      // Polar needs the person registered with Gymi's app before any data comes (409: already registered).
+      const r = await fetch(`${PROVIDERS.polar.api}/v3/users`, { method: 'POST', headers: { Authorization: `Bearer ${t.access_token}`, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ 'member-id': st.user_id }) });
+      if (!r.ok && r.status !== 409) throw new Error(`polar register ${r.status}`);
+    } else {
+      try {
+        const r = await fetch(st.provider === 'whoop' ? `${PROVIDERS.whoop.api}/v2/user/profile/basic` : `${PROVIDERS.oura.api}/v2/usercollection/personal_info`, { headers: { Authorization: `Bearer ${t.access_token}` } });
+        const j = await r.json();
+        who = String(j.user_id ?? j.id ?? '') || null;
+      } catch {}
+    }
     const link = { user_id: st.user_id, provider: st.provider, provider_user: who, access_token: t.access_token, refresh_token: t.refresh_token ?? null, expires_at: expiry(t.expires_in), scopes: t.scope ?? PROVIDERS[st.provider].scope, status: 'ok', last_error: null };
     const { error } = await db.from('device_links').upsert(link, { onConflict: 'user_id,provider' });
     if (error) throw new Error(error.message);
@@ -302,7 +397,7 @@ async function callback(url: URL) {
 // The app's requests
 // ---------------------------------------------------------------------------
 // Tests import this file to check the mapping (WEARABLES_TEST=1), without starting the server.
-export { localDay, ouraDays, whoopDays };
+export { isoMinutes, localDay, ouraDays, polarDays, whoopDays };
 if (!Deno.env.get('WEARABLES_TEST')) Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   const url = new URL(req.url);
@@ -321,7 +416,7 @@ if (!Deno.env.get('WEARABLES_TEST')) Deno.serve(async (req) => {
 
     if (body.action === 'status') {
       const { data } = await db.from('device_links').select('provider,status,last_sync,created_at').eq('user_id', uid);
-      return json({ configured: { whoop: configured('whoop'), oura: configured('oura') }, links: data ?? [] });
+      return json({ configured: { whoop: configured('whoop'), oura: configured('oura'), polar: configured('polar') }, links: data ?? [] });
     }
 
     if (body.action === 'start') {
@@ -358,9 +453,9 @@ if (!Deno.env.get('WEARABLES_TEST')) Deno.serve(async (req) => {
 
     if (body.action === 'disconnect') {
       if (!isProvider(body.provider)) return json({ error: 'provider' }, 400);
-      const { data: l } = await db.from('device_links').select('access_token').eq('user_id', uid).eq('provider', body.provider).maybeSingle();
+      const { data: l } = await db.from('device_links').select('access_token,provider_user').eq('user_id', uid).eq('provider', body.provider).maybeSingle();
       // Tell the wearable too (best effort), then forget the keys and the data that came from it.
-      if (l?.access_token) await PROVIDERS[body.provider as Provider].revoke?.(l.access_token).catch(() => {});
+      if (l?.access_token) await PROVIDERS[body.provider as Provider].revoke?.(l.access_token, l.provider_user ?? null).catch(() => {});
       await db.from('device_links').delete().eq('user_id', uid).eq('provider', body.provider);
       await db.from('wearable_days').delete().eq('user_id', uid).eq('provider', body.provider);
       return json({ ok: true });

@@ -93,7 +93,7 @@ export default function Connections() {
     { id: 'whoop', name: 'WHOOP', art: 'whoop', state: wearState('whoop'), on: linkOf('whoop')?.status === 'ok', go: () => tapWearable('whoop') },
     { id: 'oura', name: 'Oura Ring', art: 'oura', state: wearState('oura'), on: linkOf('oura')?.status === 'ok', go: () => tapWearable('oura') },
     { id: 'fitbitair', name: 'Google Fitbit Air', art: 'fitbitair', state: 'Coming soon', go: () => soon('Google Fitbit Air') },
-    { id: 'polar', name: 'Polar', art: 'polar', state: 'Coming soon', go: () => soon('Polar') },
+    { id: 'polar', name: 'Polar', art: 'polar', state: wearState('polar'), on: linkOf('polar')?.status === 'ok', go: () => tapWearable('polar') },
     { id: 'fitbit', name: 'Fitbit', art: 'fitbit', state: 'Coming soon', go: () => soon('Fitbit') },
   ];
 

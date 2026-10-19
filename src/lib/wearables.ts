@@ -1,4 +1,4 @@
-// Wearables linked straight to their makers (WHOOP, Oura) through their own sign-in. The server
+// Wearables linked straight to their makers (WHOOP, Oura, Polar) through their own sign-in. The server
 // (functions/wearables) keeps the keys and pulls one summary per day into "wearable_days"; the app only asks it
 // to start a sign-in, sync, or disconnect, and reads the days.
 import * as Linking from 'expo-linking';
@@ -6,7 +6,7 @@ import { Platform } from 'react-native';
 
 import { supabase } from './supabase';
 
-export type WearableProvider = 'whoop' | 'oura';
+export type WearableProvider = 'whoop' | 'oura' | 'polar';
 export type WearableLink = { provider: WearableProvider; status: 'ok' | 'expired' | 'error'; last_sync: string | null };
 export type WearableStatus = { configured: Record<WearableProvider, boolean>; links: WearableLink[] };
 export type WearableDay = {
@@ -32,6 +32,7 @@ export type WearableDay = {
 export const WEARABLES: [WearableProvider, string, string][] = [
   ['whoop', 'WHOOP', 'Recovery, strain, sleep and HRV'],
   ['oura', 'Oura Ring', 'Readiness, sleep, HRV and activity'],
+  ['polar', 'Polar', 'Training, sleep, HRV and activity'],
 ];
 export const wearableName = (p: string) => WEARABLES.find(([k]) => k === p)?.[1] ?? p;
 
