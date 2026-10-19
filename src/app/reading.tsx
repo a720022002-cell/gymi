@@ -33,7 +33,7 @@ export default function Reading() {
   const { k: raw } = useLocalSearchParams<{ k: string }>();
   const k: ReadingKey = raw && raw in INFO ? (raw as ReadingKey) : 'steps';
   const info = INFO[k];
-  const [pickRange, setRange] = useState<'day' | 'week' | 'month'>('week');
+  const [pickRange, setRange] = useState<'day' | 'week' | 'month' | '3m'>('week');
   const [fetched, setFetched] = useState<{ k: ReadingKey; rows: Rows } | null>(null);
   const today = food.today;
   // Steps and heart rate by hour, when the watch or phone sent them for today.
@@ -41,13 +41,14 @@ export default function Reading() {
   const hourly = k === 'steps' ? devToday?.hours?.steps : k === 'hr' ? devToday?.hours?.hr : null;
   const hasDay = !!hourly && hourly.some((x) => x != null && x > 0);
   const range = pickRange === 'day' && !hasDay ? 'week' : pickRange;
-  const days = Array.from({ length: range === 'week' ? 7 : 30 }, (_, i) => addDays(today, i - (range === 'week' ? 6 : 29)));
+  const span = range === 'week' ? 7 : range === '3m' ? 91 : 30;
+  const days = Array.from({ length: span }, (_, i) => addDays(today, i - span + 1));
 
   // Steps, exercise calories and workouts are loaded here; the rest is already in the health store.
   useEffect(() => {
     if (k !== 'steps' && k !== 'burned' && k !== 'workouts') return;
     let alive = true;
-    const from = addDays(today, -29);
+    const from = addDays(today, -90);
     (async () => {
       let rows: Rows = [];
       if (k === 'steps') {
@@ -91,7 +92,15 @@ export default function Reading() {
   }
   // Counted days (steps, calories, minutes) are 0 when nothing was logged; measured ones are blank.
   const counted = k === 'steps' || k === 'burned' || k === 'workouts';
-  const series = days.map((d) => by.get(d) ?? (counted ? 0 : null));
+  const daily = days.map((d) => by.get(d) ?? (counted ? 0 : null));
+  // Three months: one point a week (the average of the days that have a reading).
+  const series =
+    range === '3m'
+      ? Array.from({ length: 13 }, (_, w) => {
+          const v = daily.slice(w * 7, w * 7 + 7).filter((x): x is number => x != null);
+          return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+        })
+      : daily;
   const last7 = Array.from({ length: 7 }, (_, i) => by.get(addDays(today, i - 6)) ?? (counted ? 0 : null)).filter((x): x is number => x != null);
   const latest = [...(rows ?? [])].sort((a, b) => a.day.localeCompare(b.day)).at(-1);
   const now = by.get(today) ?? (counted ? 0 : (latest?.v ?? null));
@@ -105,7 +114,7 @@ export default function Reading() {
   const vals = (range === 'day' ? dayVals : series).filter((x): x is number => x != null);
   const show = (v: number) => (info.dec ? fx(v) : fmt(v));
   const locale = lang === 'ar' ? 'ar-u-nu-latn' : 'en-US';
-  const labels = range === 'day' ? hours.map((_, h) => (h % 3 === 0 ? ['12a', '3a', '6a', '9a', '12p', '3p', '6p', '9p'][h / 3] : '')) : range === 'week' ? days.map((d) => new Intl.DateTimeFormat(locale, { weekday: 'narrow' }).format(new Date(`${d}T12:00:00`))) : days.map((d, i) => (i % 5 === 0 ? String(Number(d.slice(8))) : ''));
+  const labels = range === 'day' ? hours.map((_, h) => (h % 3 === 0 ? ['12a', '3a', '6a', '9a', '12p', '3p', '6p', '9p'][h / 3] : '')) : range === 'week' ? days.map((d) => new Intl.DateTimeFormat(locale, { weekday: 'narrow' }).format(new Date(`${d}T12:00:00`))) : range === '3m' ? series.map((_, w) => (w < 12 && w % 4 === 0 ? new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' }).format(new Date(`${days[w * 7]}T12:00:00`)) : '')) : days.map((d, i) => (i % 5 === 0 ? String(Number(d.slice(8))) : ''));
   const enough = vals.length > (info.bar ? 0 : 1);
   const open: Partial<Record<ReadingKey, [string, () => void]>> = {
     steps: ['Log cardio or steps', () => router.push('/cardio')],
@@ -154,12 +163,13 @@ export default function Reading() {
           )}
         </Row>
       </Card>
-      <Segmented<'day' | 'week' | 'month'>
+      <Segmented<'day' | 'week' | 'month' | '3m'>
         value={range}
         options={[
           ...(hasDay ? [{ value: 'day' as const, label: t('Day') }] : []),
           { value: 'week' as const, label: t('Week') },
           { value: 'month' as const, label: t('Month') },
+          { value: '3m' as const, label: t('3 months') },
         ]}
         onChange={setRange}
       />

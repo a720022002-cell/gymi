@@ -4121,4 +4121,9 @@ export const AR: Record<string, string> = {
   "After you wake up: how ready you are today, from last night.": "بعد ما تصحى: جاهزيتك اليوم حسب ليلة أمس.",
   "Illness warning": "إنذار المرض",
   "When your temperature, breathing or oxygen and your heart show signs of getting sick.": "لما حرارتك أو تنفسك أو الأكسجين ونبضك يبينون علامات مرض.",
+  "Automatic": "تلقائي",
+  "Main device for sleep and heart": "الجهاز الأساسي للنوم والقلب",
+  "When two devices send the same reading, this one counts. Automatic: a band or ring worn all night wins.": "إذا جهازين أرسلوا نفس القراءة، نعتمد هذا. التلقائي: السوار أو الخاتم اللي تلبسه طول الليل هو اللي يُعتمد.",
+  "Gymi picks the best reading again.": "Gymi يختار أفضل قراءة من جديد.",
+  "Sleep and heart readings now come from {n}.": "قراءات النوم والقلب الحين تجي من {n}.",
 };

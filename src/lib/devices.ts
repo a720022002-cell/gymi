@@ -51,7 +51,8 @@ export type DeviceDay = {
   /** The linked wearable whose numbers are in this day. */
   wearable?: WearableProvider;
 };
-export type DevicePrefs = { source: DeviceSource | null; connected: boolean; card_order: string[]; last_sync: string | null; /** Gymi also writes its workouts, meals, water and weight to the phone's health app. */ write_back?: boolean };
+export type DevicePrefs = { source: DeviceSource | null; connected: boolean; card_order: string[]; last_sync: string | null; /** Gymi also writes its workouts, meals, water and weight to the phone's health app. */ write_back?: boolean; /** Whose sleep and heart readings win when two devices send them. */ primary?: DevicePrimary };
+export type DevicePrimary = 'auto' | 'phone' | WearableProvider;
 
 /** Raw samples read from the phone, before they're summed into days. */
 export type Span = { start: Date; end: Date; v: number };
@@ -197,9 +198,9 @@ function clean(rows: Record<string, unknown>[] | null): DeviceDay[] {
   });
 }
 
-export async function loadDeviceDays(from: string): Promise<DeviceDay[]> {
+export async function loadDeviceDays(from: string, primary: DevicePrimary = state.prefs.primary ?? 'auto'): Promise<DeviceDay[]> {
   const [{ data }, wear] = await Promise.all([supabase.from('device_readings').select(COLS).gte('day', from).order('day'), loadWearableDays(from).catch(() => [] as WearableDay[])]);
-  return mergeWearables(clean(data as Record<string, unknown>[] | null), wear);
+  return mergeWearables(clean(data as Record<string, unknown>[] | null), wear, primary);
 }
 
 /**
@@ -207,13 +208,19 @@ export async function loadDeviceDays(from: string): Promise<DeviceDay[]> {
  * band worn all night measures them better than a phone), and it fills steps, calories and workouts the phone
  * didn't have. A day only the wearable has becomes a day of its own.
  */
-export function mergeWearables(days: DeviceDay[], wear: WearableDay[]): DeviceDay[] {
+export function mergeWearables(days: DeviceDay[], wear: WearableDay[], primary: DevicePrimary = 'auto'): DeviceDay[] {
   if (!wear.length) return days;
   const byDay = new Map(days.map((d) => [d.day, { ...d }]));
-  for (const w of wear) {
+  // The main wearable you picked goes first, so its numbers win. Otherwise the same order every day (made for
+  // all-night wear first), so one night isn't from one device and the next from another.
+  const rank = (p: string) => (p === primary ? -1 : ['whoop', 'oura', 'polar'].indexOf(p));
+  const ordered = [...wear].sort((x, y) => rank(x.provider) - rank(y.provider));
+  for (const w of ordered) {
     const d: DeviceDay = byDay.get(w.day) ?? { day: w.day, source: w.provider, steps: null, active_kcal: null, hr_avg: null, hr_rest: null, hrv: null, sleep_h: null, in_bed_h: null, sleep_eff: null, weight: null, vo2: null, workouts: [], hours: null };
-    // Two wearables on one day: the first one (in the order they come) keeps its numbers.
-    const first = !d.wearable;
+    // Two wearables on one day: the first one (in the order above) keeps its numbers. With the phone as your main
+    // device, a wearable only fills in what the phone didn't send.
+    const firstWear = !d.wearable;
+    const first = firstWear && primary !== 'phone';
     const win = <K extends 'hrv' | 'hr_rest' | 'sleep_h' | 'in_bed_h' | 'sleep_eff'>(k: K, v: number | null) => {
       if (v != null && (first || d[k] == null)) d[k] = v;
     };
@@ -227,7 +234,7 @@ export function mergeWearables(days: DeviceDay[], wear: WearableDay[]): DeviceDa
     if (d.hr_avg == null && w.hr_avg != null) d.hr_avg = w.hr_avg;
     if (!d.workouts.length && w.workouts.length) d.workouts = w.workouts;
     for (const k of ['recovery', 'strain', 'sleep_score', 'spo2', 'temp_dev'] as const) if (w[k] != null && (first || d[k] == null)) d[k] = w[k];
-    if (first) d.wearable = w.provider;
+    if (firstWear) d.wearable = w.provider;
     byDay.set(w.day, d);
   }
   return [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day));
@@ -473,7 +480,7 @@ export async function loadDeviceBrief(): Promise<DeviceBrief | null> {
 }
 
 export async function loadDevicePrefs(): Promise<DevicePrefs> {
-  const { data } = await supabase.from('device_prefs').select('source,connected,card_order,last_sync,write_back').maybeSingle();
+  const { data } = await supabase.from('device_prefs').select('source,connected,card_order,last_sync,write_back,primary').maybeSingle();
   return (data as DevicePrefs | null) ?? EMPTY_PREFS;
 }
 
@@ -507,7 +514,8 @@ let loading: string | null = null;
 async function load(uid: string) {
   if (loading === uid) return;
   loading = uid;
-  const [prefs, days] = await Promise.all([loadDevicePrefs(), loadDeviceDays(addDays(localDay(), -59))]);
+  const prefs = await loadDevicePrefs();
+  const days = await loadDeviceDays(addDays(localDay(), -90), prefs.primary ?? 'auto');
   set({ uid, ready: true, prefs, days });
   // Phones refresh by themselves at most every 30 minutes. Once after the steps fix (they used to count twice when the
   // phone and the watch both recorded a walk), the whole last month is read again.
@@ -523,7 +531,7 @@ async function load(uid: string) {
       const due = (s?.links ?? []).some((l) => l.status === 'ok' && (!l.last_sync || Date.now() - new Date(l.last_sync).getTime() > 3 * 36e5));
       if (!due) return;
       await syncWearables();
-      if (state.uid === uid) set({ days: await loadDeviceDays(addDays(localDay(), -59)) });
+      if (state.uid === uid) set({ days: await loadDeviceDays(addDays(localDay(), -90)) });
     })
     .catch(() => {});
 }
@@ -624,11 +632,17 @@ export async function workoutHeart(start: Date, end: Date): Promise<{ avg: numbe
 export async function reloadDeviceDays() {
   if (!state.uid) return;
   const uid = state.uid;
-  const days = await loadDeviceDays(addDays(localDay(), -59));
+  const days = await loadDeviceDays(addDays(localDay(), -90));
   if (state.uid === uid) set({ days });
 }
 
 export const saveCardOrder = (order: string[]) => savePrefs({ card_order: order });
+
+/** Pick whose sleep and heart readings win, then load the days again with that choice. */
+export async function setPrimaryDevice(primary: DevicePrimary) {
+  await savePrefs({ primary });
+  await reloadDeviceDays();
+}
 
 /** Phone health data for the signed-in person: prefs, daily summaries, and actions. */
 export function useDevices(uid: string | undefined) {

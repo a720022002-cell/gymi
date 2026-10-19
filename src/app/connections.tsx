@@ -7,10 +7,10 @@ import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
-import { Button, Card, Row, Toggle } from '@/components/ui';
+import { Button, Card, Chip, Row, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
-import { connectDevice, disconnectDevice, phoneSource, reloadDeviceDays, setWriteBack, sourceName, syncDevice, useDevices } from '@/lib/devices';
+import { connectDevice, type DevicePrimary, disconnectDevice, phoneSource, reloadDeviceDays, setPrimaryDevice, setWriteBack, sourceName, syncDevice, useDevices } from '@/lib/devices';
 import { linkWearable, syncWearables, unlinkWearable, wearableName, type WearableProvider, wearableStatus, type WearableStatus } from '@/lib/wearables';
 import { useWatchPrefs } from '@/lib/watchPrefs';
 import { useSettings } from '@/theme/settings';
@@ -52,6 +52,10 @@ export default function Connections() {
   const linkOf = (p: WearableProvider) => ws?.links.find((l) => l.provider === p);
   const anyLinked = phoneLinked || (ws?.links ?? []).some((l) => l.status === 'ok');
   const { watch, set: setWatch } = useWatchPrefs(session?.user.id);
+  // With two or more sources, you pick whose sleep and heart readings count.
+  const okWear = (ws?.links ?? []).filter((l) => l.status === 'ok').map((l) => l.provider);
+  const mains: [DevicePrimary, string][] = [['auto', t('Automatic')], ...(phoneLinked ? [['phone', native ?? hub] as [DevicePrimary, string]] : []), ...okWear.map((p) => [p, wearableName(p)] as [DevicePrimary, string])];
+  const primary = dev.prefs.primary ?? 'auto';
 
   const tapPhone = async () => {
     if (!phoneSource) return toast(t('{n} connects in the phone app. Your steps, sleep and heart rate will then come in by themselves.', { n: hub }), { icon: 'heart' });
@@ -206,6 +210,28 @@ export default function Connections() {
                 <Toggle value={watch[k]} onChange={(v) => setWatch({ [k]: v })} />
               </Row>
             ))}
+            {mains.length > 2 ? (
+              <View style={{ marginTop: 14 }}>
+                <Text weight={700}>{t('Main device for sleep and heart')}</Text>
+                <Text variant="small" color="sec" style={{ marginTop: 2 }}>
+                  {t('When two devices send the same reading, this one counts. Automatic: a band or ring worn all night wins.')}
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                  {mains.map(([k, name]) => (
+                    <Chip
+                      key={k}
+                      title={name}
+                      on={primary === k}
+                      onPress={async () => {
+                        if (k === primary) return;
+                        await setPrimaryDevice(k);
+                        toast(k === 'auto' ? t('Gymi picks the best reading again.') : t('Sleep and heart readings now come from {n}.', { n: name }), { icon: 'check' });
+                      }}
+                    />
+                  ))}
+                </View>
+              </View>
+            ) : null}
           </Card>
         </>
       ) : null}
