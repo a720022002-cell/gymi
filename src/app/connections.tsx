@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import { Platform, View } from 'react-native';
 
 import { type ArtKind, DeviceArt } from '@/components/DeviceArt';
@@ -43,6 +43,9 @@ export default function Connections() {
   }, [back.wearable, back.status, t, toast]);
 
   const hub = Platform.OS === 'android' ? 'Health Connect' : 'Apple Health';
+  // The four steps need about 325 points at 11 pt text; narrower cards get slightly smaller text.
+  const [flowW, setFlowW] = useState(325);
+  const flowFont = Math.max(8, Math.min(11, Math.floor((11 * flowW) / 330 * 2) / 2));
   const native = phoneSource ? sourceName(phoneSource) : null;
   const phoneLinked = dev.connected && dev.prefs.source === phoneSource;
   const linkOf = (p: WearableProvider) => ws?.links.find((l) => l.provider === p);
@@ -173,16 +176,17 @@ export default function Connections() {
           </View>
           <Icon name="chev" size={18} color={c.sec} />
         </Row>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 14 }}>
+        {/* The way data travels, on one line: the text is sized to the card's width so all four steps fit. */}
+        <View onLayout={(e) => setFlowW(e.nativeEvent.layout.width)} style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 14 }}>
           {[t('Your device'), t('Its own app'), hub, 'Gymi'].map((s, i, a) => (
-            <Row key={s} gap={6} style={{ alignItems: 'center' }}>
-              <View style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, backgroundColor: i === a.length - 1 ? c.cobalt : c.inset }}>
-                <Text variant="xs" weight={700} color={i === a.length - 1 ? '#FFFFFF' : c.sec}>
+            <Fragment key={s}>
+              <View style={{ flexShrink: 1, paddingHorizontal: 5, paddingVertical: 6, borderRadius: 11, backgroundColor: i === a.length - 1 ? c.cobalt : c.inset }}>
+                <Text size={flowFont} weight={700} color={i === a.length - 1 ? '#FFFFFF' : c.sec} numberOfLines={1}>
                   {s}
                 </Text>
               </View>
-              {i < a.length - 1 ? <Icon name={lang === 'ar' ? 'back' : 'chev'} size={12} color={c.sec} /> : null}
-            </Row>
+              {i < a.length - 1 ? <Icon name={lang === 'ar' ? 'back' : 'chev'} size={9} color={c.sec} /> : null}
+            </Fragment>
           ))}
         </View>
         <Text variant="xs" color="sec" style={{ marginTop: 12 }}>
