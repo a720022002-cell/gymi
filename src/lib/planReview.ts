@@ -1,5 +1,6 @@
 // The weekly plan check: the AI reads how your last weeks went and changes the plan only where the results say so.
 import { askAI } from './ai';
+import { loadDeviceBrief } from './devices';
 import type { PlanChange } from './coach';
 import { applyPlanChanges, prepareSuggestions } from './coachPlan';
 import type { Checkin } from './health';
@@ -67,7 +68,7 @@ export async function runReview(plan: TrainPlan, logs: WorkoutLog[], checkins: C
   if (running) return null;
   running = true;
   try {
-    const { result } = await askAI<{ summary: string; changes: Record<string, unknown>[] }>('plan_review', { data: reviewData(plan, logs, checkins, today, goal), lang });
+    const { result } = await askAI<{ summary: string; changes: Record<string, unknown>[] }>('plan_review', { data: { ...reviewData(plan, logs, checkins, today, goal), devices: await loadDeviceBrief() }, lang });
     if (!result) return null;
     const summary = String(result.summary ?? '').slice(0, 400);
     const [sug] = await prepareSuggestions([{ type: 'plan', title: summary, changes: (result.changes ?? []).slice(0, 4) }], plan);

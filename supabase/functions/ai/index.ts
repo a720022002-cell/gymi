@@ -440,6 +440,18 @@ function goodPlan(result: unknown, b: Record<string, unknown>) {
   });
 }
 
+// How every coach task reads the watch, ring or band ("devices" in the data). Shared so they all decide the same way.
+const DEVICE_RULES = `Device data ("devices", when present) comes from the person's watch, ring or band (Apple Health, Health Connect, WHOOP, Oura). It is measured, so it beats a guess: use it to decide, and name the device and the number when you do (like "your WHOOP recovery is 31%" or "your HRV is 22% below your usual").
+- "readiness" and "signals" are already worked out from their own usual numbers ("usual30d"): trust them, don't redo the maths. "latest" is last night and today.
+- readiness "low" (low recovery, HRV well under usual, resting heart rate up, short sleep, raised skin temperature): today goes lighter or becomes a walk, mobility or rest day. Offer {"op":"light"} (or a "deload" when it has been low for several days in "last14Days"). Never push a hard session or a heavier weight that day.
+- readiness "good": fine to train hard or try a heavier weight as planned.
+- Short sleep or sleep debt: protect sleep first (earlier bedtime, less caffeine after 2 pm), and expect more hunger: point to protein and fiber.
+- Steps and active calories: a lot fewer steps than usual means less burned (nudge a walk); many more steps on a cut is a reason to eat enough protein, not to cut more.
+- Workouts the device recorded count as training even if not logged in Gymi; use them for how much they trained.
+- Raised skin temperature together with HRV down and resting heart rate up can mean getting sick: suggest rest and fluids, and a doctor if they feel ill. Low blood oxygen that repeats: suggest a doctor. Never diagnose.
+- If the device and the person's own check-in disagree, say both kindly and ask how they feel; how they feel wins for today.
+- No "devices" in the data means nothing is connected: never invent watch numbers; if useful, mention they can connect one in Devices.`;
+
 async function run(task: string, b: Record<string, unknown>) {
   const lang = String(b.lang ?? 'en');
   const img = (k = 'image'): Part => ({ image: String(b[k]), mime: String(b.mime ?? 'image/jpeg') });
@@ -452,6 +464,7 @@ Keep answers short (2 to 5 sentences), practical and kind. Use local foods when 
 Use the user's real numbers below (weight trend, sleep, recovery, calories, protein, workouts, commitment, coach targets, cycle phase, watch data) and say them plainly. The data is in English: say its words (like "very sore" or "tired") in the reply language, but keep workout names as they are. Never invent numbers that are not in the data.
 Food allergies ("foodAllergies" in the data): never suggest a meal, food or recipe that contains them (also hidden in sauces, bread, ghee or desserts), and if the person asks about a food with one of them, warn them kindly. If a human coach set calorie or protein targets ("coachTargets"), follow those targets. If "cycle" is present, take the phase into account (hunger, water weight, energy) without being dramatic.
 You are not a doctor: for pain, injury or medical questions, suggest seeing a doctor.
+${DEVICE_RULES}
 What you remember about this user from earlier chats: ${memory || 'nothing yet'}
 The user's data (JSON): ${ctx}
 If the user says they ate, drank, walked/ran/cycled/swam, slept, or weighed themselves, add actions so the app can log it:
@@ -692,6 +705,7 @@ Weights already go up on their own after each session when the person reaches th
 - Low recovery (under about 50) or short sleep (under 6 h) most days: one set less on the hardest workout, or a "deload" week if they have trained hard for 5 or more weeks.
 - A muscle that gets clearly too little work: "add" one exercise for it (sets 3, reps as a range).
 - Things going well (most lifts going up, good adherence): no changes.
+- Device data ("devices"): HRV under usual, resting heart rate up, low recovery or readiness, or sleep debt for many of the last 14 days count as low recovery even when check-ins look fine; strong device recovery with stalled lifts means push (swap or rep change), not rest. Name the device number in the "why".
 Use the exact workout names and exercise ids from the plan. At most 4 changes; fewer is better; "changes" can be empty.
 "summary": 1 or 2 short sentences for the person, with their real numbers (like "Bench press went up 5 kg; the leg press stayed at 120 kg for 4 sessions, so I swapped it"). Each change has a short "why".`;
       return ask(task, system, [{ role: 'user', parts: [{ text: JSON.stringify(b.data ?? {}).slice(0, 30000) }] }], {
@@ -719,7 +733,8 @@ Use the exact workout names and exercise ids from the plan. At most 4 changes; f
       const system = `You are Gymi, a warm, honest fitness coach writing a short weekly recap that is shown as a story on the phone. ${LANG(lang)}
 Food allergies ("foodAllergies"): no meal idea or tip may contain them, also hidden ones (sauces, bread, ghee, desserts).
 You get last week's real numbers ("week"), the week before for comparison ("weekBefore"), which goals were hit ("goals"), the training plan, food targets, the goal, level and injuries.
-Use only these numbers and say them plainly (for example "you trained 2 of 4 days", "protein averaged 98 g of 150"). Never invent numbers. Every sentence is short and simple. Never give medical advice.
+Use only these numbers and say them plainly (for example "you trained 2 of 4 days", "protein averaged 98 g of 150"). Never invent numbers.
+"devices" (when present) is the watch, ring or band: use its sleep, HRV, resting heart rate, recovery, steps and recorded workouts in wins, problems, tips and suggestions (like a bedtime reminder for sleep debt, or a lighter week when recovery stayed low), and name the device. Every sentence is short and simple. Never give medical advice.
 - "headline": one short line to the person about their week (max 8 words). Celebrate if "allHit" is true; be kind and practical if not.
 - "wins": 1 to 3 real things that went well, even in a hard week.
 - "problems": only if not all goals were hit: up to 3 things that got in the way, each {"title","detail"}, found in the numbers (missed workout days and which weekdays, days far over or under calories, weekend vs weekdays, low protein, short sleep, low recovery). Otherwise [].

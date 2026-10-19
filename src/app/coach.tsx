@@ -19,7 +19,7 @@ import { useRecovery } from '@/components/train/RecoveryCard';
 import { type ChatAction, type ChatMsg, cleanCard, groupChats, guessCard, loadChats, loadMemory, newId, saveMemory, saveMsg, updateActions } from '@/lib/coach';
 import { isAnon } from '@/lib/cycle';
 import { useCycleToday } from '@/lib/cyclePhase';
-import { useDevices } from '@/lib/devices';
+import { deviceBrief, useDevices } from '@/lib/devices';
 import { useFood } from '@/lib/food';
 import { MEAS, useHealth } from '@/lib/health';
 import { addDays, fmt, GOALS, localDay } from '@/lib/nutrition';
@@ -115,8 +115,8 @@ export default function Coach() {
   const context = () => {
     const c = fullContext();
     // What must never be cut (the server keeps the first 20,000 characters) goes first.
-    const { foodAllergies, coachManagesFood, coachTargets, ...rest } = c;
-    return { foodAllergies, coachManagesFood, coachTargets, ...rest };
+    const { foodAllergies, coachManagesFood, coachTargets, devices: dv, ...rest } = c;
+    return { foodAllergies, coachManagesFood, coachTargets, devices: dv, ...rest };
   };
   const fullContext = () => {
     const today = food.today;
@@ -131,7 +131,6 @@ export default function Coach() {
       const [a, b] = streaks.c7.parts[k];
       return b ? `${a} of ${b} days` : null;
     };
-    const dev = devices.days.filter((d) => d.day >= week[0]);
     return {
       name: profile?.name ?? '',
       gender: profile?.gender ?? null,
@@ -171,8 +170,8 @@ export default function Coach() {
       workoutsThisWeek: { done: train.doneIdx.size, planned: train.week.filter((d) => d.w).length },
       workoutsLast7Days: train.logs.filter((l) => l.day >= week[0]).map((l) => `${l.name} (${l.day}, ${l.minutes} min)`),
       cycle: cycle ? { day: cycle.day, phase: cycle.phase, nextPeriod: cycle.next, late: cycle.late } : null,
-      watch: dev.length ? dev.map((d) => ({ day: d.day, steps: d.steps, restingHr: d.hr_rest, hrvMs: d.hrv, sleepH: d.sleep_h, activeKcal: d.active_kcal })) : null,
-      watchConnected: devices.days.length > 0,
+      // Watch, ring or band (Apple Health, Health Connect, WHOOP, Oura): usual numbers, last night, what stands out, 14 days.
+      devices: deviceBrief(devices.days, today),
       stepsToday: food.isToday ? food.steps : null,
       checkinToday: health.todayCheckin
         ? {

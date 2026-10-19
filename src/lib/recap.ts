@@ -1,5 +1,6 @@
 // The weekly recap: a story about last week (Sunday to Saturday), shown on the first open of a new week.
 import { askAI } from './ai';
+import { loadDeviceBrief } from './devices';
 import { allergensIn, allergiesText, noteHit } from './allergies';
 import type { ChatAction } from './coach';
 import { prepareSuggestions } from './coachPlan';
@@ -133,7 +134,8 @@ export async function writeRecap(
     injuries: p?.injuries ?? [],
     exercises: p && !p.coach ? Object.values(EX).filter((e) => !(e.stress ?? []).some((s) => p.injuries.includes(s))).map((e) => ({ id: e.id, name: e.en, muscle: e.m })) : [],
   };
-  const { result } = await askAI<{ headline?: string; wins?: unknown[]; problems?: unknown[]; tips?: unknown[]; suggest?: unknown[] }>('recap', { data, lang: x.lang });
+  const devices = await loadDeviceBrief();
+  const { result } = await askAI<{ headline?: string; wins?: unknown[]; problems?: unknown[]; tips?: unknown[]; suggest?: unknown[] }>('recap', { data: { ...data, devices }, lang: x.lang });
   if (!result) return null;
   const str = (v: unknown, n: number) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
   const notes = (v: unknown, max: number) =>

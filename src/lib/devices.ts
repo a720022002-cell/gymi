@@ -4,7 +4,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 
 import { connectSource, nativeSource, readRaw } from './healthSource';
 import { addDays, localDay } from './nutrition';
-import { loadWearableDays, syncWearables, type WearableDay, type WearableProvider, wearableStatus } from './wearables';
+import { loadWearableDays, syncWearables, type WearableDay, wearableName, type WearableProvider, wearableStatus } from './wearables';
 import { supabase } from './supabase';
 
 export type DeviceSource = 'apple' | 'health_connect';
@@ -28,6 +28,11 @@ export type DeviceDay = {
   hours: DeviceHours | null;
   /** WHOOP recovery or Oura readiness (0–100), when a wearable is linked. */
   recovery?: number | null;
+  /** WHOOP strain (0–21) or Oura activity score; the wearable's sleep score; blood oxygen; skin temperature vs normal (°C). */
+  strain?: number | null;
+  sleep_score?: number | null;
+  spo2?: number | null;
+  temp_dev?: number | null;
   /** The linked wearable whose numbers are in this day. */
   wearable?: WearableProvider;
 };
@@ -164,11 +169,113 @@ export function mergeWearables(days: DeviceDay[], wear: WearableDay[]): DeviceDa
     if (d.active_kcal == null && w.active_kcal != null) d.active_kcal = w.active_kcal;
     if (d.hr_avg == null && w.hr_avg != null) d.hr_avg = w.hr_avg;
     if (!d.workouts.length && w.workouts.length) d.workouts = w.workouts;
-    if (w.recovery != null && (first || d.recovery == null)) d.recovery = w.recovery;
+    for (const k of ['recovery', 'strain', 'sleep_score', 'spo2', 'temp_dev'] as const) if (w[k] != null && (first || d[k] == null)) d[k] = w[k];
     if (first) d.wearable = w.provider;
     byDay.set(w.day, d);
   }
   return [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day));
+}
+
+type Num = 'steps' | 'active_kcal' | 'hr_rest' | 'hrv' | 'sleep_h' | 'sleep_eff' | 'recovery' | 'strain' | 'sleep_score' | 'spo2' | 'temp_dev';
+export type DeviceBrief = {
+  sources: string[];
+  /** Your normal: the average of the 30 days before today (needs 3 days or more). */
+  usual30d: Partial<Record<Num, number>>;
+  /** The newest day with night readings (sleep, HRV, resting heart rate, recovery). */
+  latest: ({ day: string; source: string } & Partial<Record<Num, number>>) | null;
+  /** Worked out from the readings: low = take it easy today, good = fine to push. */
+  readiness: 'low' | 'ok' | 'good' | null;
+  /** What stands out, in plain words, so the coach uses it instead of doing the maths. */
+  signals: string[];
+  last14Days: Record<string, unknown>[];
+};
+
+/**
+ * What the coach needs from the watch, ring or band: where it comes from, your usual numbers, the newest night next
+ * to them, the last 14 days, and what stands out. Null when nothing came from a device.
+ */
+export function deviceBrief(days: DeviceDay[], today = localDay()): DeviceBrief | null {
+  const all = days.filter((d) => d.day <= today);
+  if (!all.length) return null;
+  const src = (d: DeviceDay) => (d.wearable ? wearableName(d.wearable) : d.source === 'apple' || d.source === 'health_connect' ? sourceName(d.source) : wearableName(d.source));
+  const vals = (k: Num, xs: DeviceDay[]) => xs.map((d) => d[k]).filter((v): v is number => v != null);
+  const base = all.filter((d) => d.day < today && d.day >= addDays(today, -30));
+  const usual: Partial<Record<Num, number>> = {};
+  for (const k of ['steps', 'active_kcal', 'hr_rest', 'hrv', 'sleep_h', 'sleep_eff', 'recovery', 'strain', 'sleep_score'] as Num[]) {
+    const xs = vals(k, base);
+    if (xs.length >= 3) usual[k] = k === 'steps' || k === 'active_kcal' ? Math.round(avg(xs) as number) : r1(avg(xs) as number);
+  }
+  const night = [...all].reverse().find((d) => d.day >= addDays(today, -1) && (d.hrv != null || d.hr_rest != null || d.sleep_h != null || d.recovery != null));
+  const pick = (d: DeviceDay) => Object.fromEntries((['recovery', 'sleep_h', 'sleep_eff', 'sleep_score', 'hrv', 'hr_rest', 'spo2', 'temp_dev', 'strain', 'steps', 'active_kcal'] as Num[]).filter((k) => d[k] != null).map((k) => [k, d[k] as number]));
+  const latest = night ? { day: night.day, source: src(night), ...pick(night) } : null;
+
+  const signals: string[] = [];
+  let low = 0;
+  let good = 0;
+  const pct = (v: number, u: number) => Math.round(((v - u) / u) * 100);
+  if (night?.recovery != null) {
+    const v = night.recovery;
+    const whoop = night.wearable === 'whoop' || night.source === 'whoop';
+    const zone = whoop ? (v >= 67 ? 'green' : v >= 34 ? 'yellow' : 'red') : v >= 85 ? 'optimal' : v >= 70 ? 'good' : 'pay attention';
+    signals.push(`${src(night)} ${whoop ? 'recovery' : 'readiness'} ${v}% (${zone})${usual.recovery != null ? `, usual ${usual.recovery}%` : ''}`);
+    if (whoop ? v < 34 : v < 70) low++;
+    else if (whoop ? v >= 67 : v >= 85) good++;
+  }
+  if (night?.hrv != null && usual.hrv) {
+    const p = pct(night.hrv, usual.hrv);
+    if (p <= -15) {
+      signals.push(`HRV ${night.hrv} ms is ${-p}% below usual (${usual.hrv} ms): the body is under strain (hard training, short sleep, illness, stress or a late heavy meal)`);
+      low++;
+    } else if (p >= 10) {
+      signals.push(`HRV ${night.hrv} ms is ${p}% above usual (${usual.hrv} ms): well recovered`);
+      good++;
+    }
+  }
+  if (night?.hr_rest != null && usual.hr_rest) {
+    const diff = Math.round(night.hr_rest - usual.hr_rest);
+    if (diff >= 5) {
+      signals.push(`Resting heart rate ${night.hr_rest} bpm is ${diff} above usual (${usual.hr_rest}): tired, getting sick, low on water or stressed`);
+      low++;
+    } else if (diff <= -3) good++;
+  }
+  if (night?.sleep_h != null) {
+    if (night.sleep_h < 6) {
+      signals.push(`Short sleep last night: ${r1(night.sleep_h)} h`);
+      low++;
+    } else if (night.sleep_h >= 7.5) good++;
+  }
+  const week = all.filter((d) => d.day >= addDays(today, -6));
+  const short = week.filter((d) => d.sleep_h != null && d.sleep_h < 6).length;
+  const wSleep = avg(vals('sleep_h', week));
+  if (short >= 3) signals.push(`Slept under 6 h on ${short} of the last 7 nights (sleep debt)`);
+  else if (wSleep != null && wSleep < 6.5) signals.push(`Sleep average this week ${r1(wSleep)} h`);
+  if (night?.sleep_eff != null && night.sleep_eff < 80) signals.push(`Restless night: ${night.sleep_eff}% of time in bed asleep`);
+  if (night?.spo2 != null && night.spo2 < 94) signals.push(`Blood oxygen at night ${night.spo2}% (low; if it keeps happening, see a doctor)`);
+  if (night?.temp_dev != null && night.temp_dev >= 0.5) {
+    signals.push(`Skin temperature +${r1(night.temp_dev)} °C above normal: could be getting sick (or the cycle phase)`);
+    low++;
+  }
+  const yest = all.find((d) => d.day === addDays(today, -1));
+  if (yest?.strain != null && (yest.wearable ?? yest.source) === 'whoop' && yest.strain >= 16) signals.push(`High strain yesterday: ${yest.strain} of 21`);
+  const wSteps = avg(vals('steps', week.filter((d) => d.day < today)));
+  if (wSteps != null && usual.steps) {
+    const p = pct(wSteps, usual.steps);
+    if (Math.abs(p) >= 25) signals.push(`Steps this week ${Math.round(wSteps)} a day, ${Math.abs(p)}% ${p < 0 ? 'less' : 'more'} than usual (${usual.steps})`);
+  }
+  const hasNight = !!night && (night.hrv != null || night.hr_rest != null || night.recovery != null || night.sleep_h != null);
+  const readiness = !hasNight ? null : low >= 2 || (night?.recovery != null && low >= 1 && (night.wearable === 'whoop' ? night.recovery < 34 : night.recovery < 60)) ? 'low' : low === 0 && good >= 2 ? 'good' : 'ok';
+
+  const last14Days = all
+    .filter((d) => d.day >= addDays(today, -13))
+    .map((d) => ({ day: d.day, source: src(d), ...pick(d), ...(d.workouts.length ? { workouts: d.workouts.map((w) => `${w.type} ${w.minutes} min${w.kcal ? `, ${w.kcal} kcal` : ''}`) } : {}) }));
+  return { sources: [...new Set(all.slice(-30).map(src))], usual30d: usual, latest, readiness, signals, last14Days };
+}
+
+/** The same, read fresh (for the weekly recap and the weekly plan check). */
+export async function loadDeviceBrief(): Promise<DeviceBrief | null> {
+  return loadDeviceDays(addDays(localDay(), -44))
+    .then((d) => deviceBrief(d))
+    .catch(() => null);
 }
 
 export async function loadDevicePrefs(): Promise<DevicePrefs> {
