@@ -19,7 +19,8 @@
       "package": "com.adro.app",
       "adaptiveIcon": {
         "backgroundColor": "#3355FF",
-        "foregroundImage": "./assets/images/android-icon-foreground.png"
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
