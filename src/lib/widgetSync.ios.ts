@@ -47,7 +47,7 @@ export function syncWorkoutActivity(p: WorkoutActivityProps | null) {
   }
 }
 
-const ACTIONS: string[] = ['w-', 'w+', 'r-', 'r+', 'done', 'skip'];
+const ACTIONS: string[] = ['w-', 'w+', 'r-', 'r+', 'done', 'skip', 'water'];
 
 /** A button on the workout Live Activity was tapped (iOS 17 and later). Returns a function that stops listening. */
 export function onWorkoutAction(fn: (a: WorkoutAction) => void) {

@@ -31,6 +31,8 @@ export type WorkoutActivityProps = {
   /** The set coach's tip for this exercise ("+2.5 kg next set"), or empty; its tone colors it. */
   tip: string;
   tipTone: 'up' | 'ok' | 'down';
+  /** Today's water ("1.25 L"), or empty when it isn't known. The drop button adds 250 ml. */
+  water: string;
   startedAt: number;
   /** When the rest ends, or null when not resting. */
   restEnd: number | null;
@@ -41,12 +43,12 @@ export type WorkoutActivityProps = {
 };
 
 /** The buttons send these to the app (lib/widgetSync onWorkoutAction), which changes the set and updates this. */
-export type WorkoutAction = 'w-' | 'w+' | 'r-' | 'r+' | 'done' | 'skip';
+export type WorkoutAction = 'w-' | 'w+' | 'r-' | 'r+' | 'done' | 'skip' | 'water';
 
 /**
  * The workout on the Lock Screen and in the Dynamic Island: the clock counts by itself (no updates needed), and the
  * rest countdown takes its place while you rest. With a set to do, − and + change its weight and reps, and Done logs
- * it (Skip ends the rest), without opening the app.
+ * it (Skip ends the rest), and the drop adds 250 ml of water, without opening the app.
  */
 const WorkoutActivity = (p: WorkoutActivityProps, env: LiveActivityEnvironment) => {
   'widget';
@@ -71,7 +73,7 @@ const WorkoutActivity = (p: WorkoutActivityProps, env: LiveActivityEnvironment) 
     <Button target={target} label={sign === 'minus' ? '−' : '+'} systemImage={sign} modifiers={[labelStyle('iconOnly'), buttonStyle('bordered'), buttonBorderShape('circle'), controlSize('small'), tint('#FFFFFF')]} />
   );
   const value = (text: string) => <Text modifiers={[font({ size: 15, weight: 'bold', design: 'rounded' }), monospacedDigit(), foregroundStyle('#FFFFFF'), lineLimit(1), minimumScaleFactor(0.7)]}>{text}</Text>;
-  // − 80 kg +   − × 10 +   ✓ Done (Skip while resting).
+  // − 80 kg +   − × 10 +   water   ✓ Done (Skip while resting).
   const controls = (
     <HStack spacing={6}>
       {p.wText ? step('w-', 'minus') : null}
@@ -82,6 +84,7 @@ const WorkoutActivity = (p: WorkoutActivityProps, env: LiveActivityEnvironment) 
       {value(p.rText)}
       {step('r+', 'plus')}
       <Spacer />
+      <Button target="water" label="+250" systemImage="drop.fill" modifiers={[labelStyle('iconOnly'), buttonStyle('bordered'), buttonBorderShape('circle'), controlSize('small'), tint('#38BDF8')]} />
       {resting ? (
         <Button target="skip" label={p.L.skip} systemImage="forward.fill" modifiers={[buttonStyle('bordered'), buttonBorderShape('capsule'), controlSize('small'), tint(LIGHT)]} />
       ) : (
@@ -98,7 +101,10 @@ const WorkoutActivity = (p: WorkoutActivityProps, env: LiveActivityEnvironment) 
         {p.canLog ? p.tip || p.set : line}
       </Text>
       <Spacer />
-      <Text modifiers={[font({ size: 12 }), monospacedDigit(), foregroundStyle('#A1A1AA')]}>{`${p.done}/${p.total}`}</Text>
+      <VStack alignment="trailing" spacing={2}>
+        <Text modifiers={[font({ size: 12 }), monospacedDigit(), foregroundStyle('#A1A1AA')]}>{`${p.done}/${p.total}`}</Text>
+        {p.water ? <Text modifiers={[font({ size: 12 }), monospacedDigit(), foregroundStyle('#38BDF8'), lineLimit(1)]}>{p.water}</Text> : null}
+      </VStack>
     </HStack>
   );
 

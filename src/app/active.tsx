@@ -179,6 +179,7 @@ export default function Active() {
       // "+2.5 kg" kept as one left-to-right piece, so Arabic doesn't show it as "2.5+".
       tip: (adv?.text ?? '').replace(/[+−-]\d[\d.,]*/g, (m) => `\u2066${m}\u2069`),
       tipTone: adv?.tone ?? 'ok',
+      water: food.day === food.today ? `${Math.round(food.water / 50) / 20} ${t('L')}` : '',
       startedAt: s.start,
       restEnd: rest?.end ?? null,
       restStart: rest ? rest.end - rest.total * 1000 : null,
@@ -186,19 +187,21 @@ export default function Active() {
       total: s.ex.reduce((a, e) => a + e.sets.length, 0),
       L: { rest: t('Rest'), next: t('Next'), sets: t('sets'), done: t('Done'), skip: t('Skip') },
     });
-  }, [s, rest, lang, t, W, train.logs, train.plan]);
+  }, [s, rest, lang, t, W, train.logs, train.plan, food.day, food.today, food.water]);
 
   // The buttons on the Live Activity (iPhone, iOS 17+): change the set you're on, log it, or skip the rest, without
   // opening the app. They read the latest workout from a ref, so the listener is set up once.
-  const latest = useRef({ s, train, W, lang, toast, t });
+  const latest = useRef({ s, train, W, lang, toast, t, food });
   useEffect(() => {
-    latest.current = { s, train, W, lang, toast, t };
+    latest.current = { s, train, W, lang, toast, t, food };
   });
   useEffect(
     () =>
       onWorkoutAction((a: WorkoutAction) => {
-        const { s, train, W, lang, toast, t } = latest.current;
+        const { s, train, W, lang, toast, t, food } = latest.current;
         if (!s) return;
+        // A glass of water goes to today's water, like the water button on the workout screen.
+        if (a === 'water') return void food.addWater(250, 'Water', food.today);
         if (a === 'skip') return setRest(null);
         const cur = currentSet(s);
         if (!cur) return;
