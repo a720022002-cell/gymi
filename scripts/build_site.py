@@ -169,7 +169,7 @@ def page(title_en, title_ar, desc, body, path, dark=False):
 <body{' class="dk"' if dark else ''}>
 <nav class="top{" dark" if dark else ""}"><div class="wrap nav">
 <a href="/site" aria-label="Adro">{logo(24)}</a>
-<div class="links"><a href="/site#bento">{t('Features', 'المميزات')}</a><a href="/site#devices">{t('Watches', 'الساعات')}</a><a href="/site#pricing">{t('Pricing', 'الأسعار')}</a><a href="/site#faq">{t('FAQ', 'الأسئلة')}</a></div>
+<div class="links"><a href="/site#all">{t('Features', 'المميزات')}</a><a href="/site#devices">{t('Watches', 'الساعات')}</a><a href="/site#pricing">{t('Pricing', 'الأسعار')}</a><a href="/site#faq">{t('FAQ', 'الأسئلة')}</a></div>
 <button class="lang" type="button" onclick="setLang(document.documentElement.lang==='ar'?'en':'ar')" aria-label="Change language">{t('ع', 'EN')}</button>
 <a class="btn dark" href="{APP_URL}">{t('Open Adro', 'افتح ادرو')}</a>
 </div></nav>
@@ -198,7 +198,7 @@ HOME_CSS = '''
 /* ---------- home: Apple-style ---------- */
 body.dk{background:#000}body.dk footer{color:#86868B}body.dk .foot{border-top-color:#27272A}body.dk .foot a:hover{color:#fff}body.dk footer .logo{color:#F5F5F7}
 body.dk main section:not(.blk):not(.gry){background:#fff}
-nav.top.dark{background:rgba(0,0,0,.72);color:#fff}nav.top.dark .logo{color:#fff}nav.top.dark .links a{color:#A1A1AA}nav.top.dark .links a:hover{color:#fff}
+nav.top.dark{background:rgba(0,0,0,.84);color:#fff}nav.top.dark .logo{color:#fff}nav.top.dark .links a{color:#A1A1AA}nav.top.dark .links a:hover{color:#fff}
 nav.top.dark .lang{background:transparent;color:#fff;border-color:#3F3F46}nav.top.dark .btn.dark{background:#fff;color:var(--ink)}nav.top.dark.scrolled{border-bottom-color:#27272A}
 .blk{background:#000;color:#F5F5F7}.blk .sub2{color:#86868B}.gry{background:#F5F5F7}
 .center{text-align:center}.sub2{color:#6E6E73;font-size:clamp(18px,2.2vw,24px);line-height:1.45;max-width:720px;margin:18px auto 0;font-weight:500}
@@ -255,7 +255,7 @@ html[lang=ar] .step h3{letter-spacing:0}.step p{font-size:clamp(18px,1.8vw,21px)
 .devs span{color:#3A3A3C}.devs span.on{color:#fff}.devs span.on:after{content:"";display:inline-block;width:.32em;height:.32em;border-radius:50%;background:var(--blue);margin-inline-start:.18em;vertical-align:.5em}
 /* pricing */
 .plans{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:900px;margin:56px auto 0}
-.plan{background:#fff;border-radius:30px;padding:36px;text-align:start}.plan.pro{background:#000;color:#F5F5F7}
+.plan{background:#F5F5F7;border-radius:30px;padding:36px;text-align:start}.plan.pro{background:#000;color:#F5F5F7}
 .plan .amount{font:700 56px Sora;letter-spacing:-.03em;margin:16px 0 0}.plan .amount small{font:600 17px Manrope;color:#6E6E73}
 .plan.pro .amount small,.plan.pro .per{color:#86868B}.plan .per{color:#6E6E73;font-size:15px}
 .plan ul{list-style:none;padding:0;margin:26px 0 0;display:grid;gap:12px}.plan li{display:flex;gap:10px;font-size:16px}
@@ -263,6 +263,12 @@ html[lang=ar] .step h3{letter-spacing:0}.step p{font-size:clamp(18px,1.8vw,21px)
 @media(max-width:700px){.plans{grid-template-columns:1fr}}
 /* end */
 .end{padding:140px 0}.end .ctas{justify-content:center;margin-top:34px}.end .btn.store{background:#1D1D1F;color:#fff}
+/* all features */
+.cats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:56px}
+.cat{background:#fff;border-radius:28px;padding:28px}.cat .ic{width:44px;height:44px;border-radius:14px;background:var(--soft);display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+.cat h3{font-size:22px;margin-bottom:14px}.cat ul{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.cat li{display:flex;gap:10px;font-size:15px;line-height:1.45;color:#3A3A3C}.cat li:before{content:"";flex:none;width:6px;height:6px;border-radius:3px;background:var(--blue);margin-top:8px}
+@media(max-width:960px){.cats{grid-template-columns:1fr 1fr}}@media(max-width:620px){.cats{grid-template-columns:1fr}.cat{padding:24px}}
 /* reveal */
 .rv{opacity:0;transform:translateY(36px);transition:opacity .9s ease,transform .9s cubic-bezier(.2,.7,.2,1)}.rv.in{opacity:1;transform:none}
 .rv.d1{transition-delay:.08s}.rv.d2{transition-delay:.16s}.rv.d3{transition-delay:.24s}
@@ -295,6 +301,117 @@ if(steps.length&&img){var cur='';var o4=new IntersectionObserver(function(es){es
 })();
 </script>'''
 
+
+
+CAT_ICON = {
+    'train': '<path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/>',
+    'food': '<path d="M5 3v8a2 2 0 0 0 2 2v8M9 3v8M7 3v8M17 21V3c-2 1-3 4-3 8h3"/>',
+    'health': '<path d="M20.8 8.6a5 5 0 0 0-8.8-3.2A5 5 0 0 0 3.2 8.6c0 5.4 8.8 10.9 8.8 10.9s8.8-5.5 8.8-10.9z"/><path d="M3.5 12h4l2-3 3 6 2-3h6"/>',
+    'watch': '<rect x="6" y="6" width="12" height="12" rx="3"/><path d="M9 6l1-4h4l1 4M9 18l1 4h4l1-4M12 9v3l2 1"/>',
+    'ai': '<path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
+    'women': '<circle cx="12" cy="9" r="5"/><path d="M12 14v7M9 18h6"/>',
+    'friends': '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6.5 6.5 0 0 1 3.5 6"/>',
+    'coach': '<circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/><path d="M15.5 13.5l2 2 3.5-3.5"/>',
+    'privacy': '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
+}
+
+ALL = [
+    ('train', 'Training', 'التمرين', [
+        ('AI plan builder for your goal, days, equipment and injuries', 'خطة بالذكاء الاصطناعي حسب هدفك وأيامك وأدواتك وإصاباتك'),
+        ('Live workout with rest timer', 'تمرين مباشر مع مؤقت الراحة'),
+        ('Set coach: the next weight, and when to hold', 'مدرب المجموعات: الوزن الجاي، ومتى تثبت'),
+        ('Exercise library with pictures and how-to', 'مكتبة تمارين بالصور والشرح'),
+        ('Unknown machine? Take a photo and it finds it', 'جهاز ما تعرفه؟ صوّره ويعرفه لك'),
+        ('Log sets by voice', 'سجّل مجموعاتك بصوتك'),
+        ('Home or travel mode, no equipment', 'وضع البيت أو السفر بدون أدوات'),
+        ('Move or skip a missed day', 'انقل أو تخطّى اليوم اللي فاتك'),
+        ('Deload weeks when you need them', 'أسابيع تخفيف لما تحتاجها'),
+        ('Cardio, steps and a personal step goal', 'الكارديو والخطوات وهدف خطوات خاص فيك'),
+        ('Personal records and workout summary', 'أرقامك القياسية وملخص التمرين'),
+    ]),
+    ('food', 'Food', 'الأكل', [
+        ('Calorie and macro targets for your goal', 'هدف سعرات وماكروز حسب هدفك'),
+        ('Meal photo, nutrition label photo, or just say it', 'صورة الوجبة، صورة الملصق، أو قولها بصوتك'),
+        ('Barcode scanner with full nutrition facts', 'ماسح الباركود مع القيم الغذائية كاملة'),
+        ('Saudi and Gulf dishes, plus thousands of foods', 'أكلات سعودية وخليجية، وآلاف الأكلات'),
+        ('Meal plans, recipes and swaps', 'خطط أكل ووصفات وبدائل'),
+        ('Saved meals, and codes to share them', 'وجبات محفوظة، وأكواد تشاركها'),
+        ('Import a recipe and make it your own', 'استورد وصفة وخلها لك'),
+        ('Shopping list from your plan', 'قائمة مشتريات من خطتك'),
+        ('Allergy warnings on every product', 'تنبيه الحساسية على كل منتج'),
+        ('Water and caffeine tracking', 'تتبّع الماء والكافيين'),
+        ('Over or under? Balance it across the week', 'زدت أو نقصت؟ وازنها على الأسبوع'),
+    ]),
+    ('health', 'Health and recovery', 'الصحة والاستشفاء', [
+        ('30-second daily check-in', 'تسجيل يومي بـ 30 ثانية'),
+        ('Recovery score every morning', 'درجة الاستشفاء كل صباح'),
+        ('Sleep, sleep stages and bedtime reminder', 'النوم ومراحله وتذكير وقت النوم'),
+        ('Early illness warning', 'تنبيه مبكر إذا ممكن تمرض'),
+        ('VO2 max for your age', 'VO2 max حسب عمرك'),
+        ('Weight history and body measurements', 'سجل الوزن وقياسات الجسم'),
+        ('Blood tests read for you', 'تحاليل الدم مقروءة لك'),
+        ('Vitamins and supplements reminders', 'تذكير الفيتامينات والمكملات'),
+        ('Progress charts up to 3 months', 'رسوم التقدّم لين 3 شهور'),
+    ]),
+    ('watch', 'Watches and rings', 'الساعات والخواتم', [
+        ('Apple Health and Health Connect', 'Apple Health و Health Connect'),
+        ('WHOOP, Oura and Polar, connected directly', 'WHOOP و Oura و Polar بربط مباشر'),
+        ('Steps, heart rate, HRV, sleep and workouts', 'الخطوات والنبض و HRV والنوم والتمارين'),
+        ('Heart-rate zones and training load', 'مناطق النبض وحمل التمرين'),
+        ('Smart scale weigh-ins come in by themselves', 'وزن الميزان الذكي يوصل لحاله'),
+        ('Morning readiness note', 'ملاحظة الجاهزية كل صباح'),
+        ('Your workouts fill your Apple Watch rings', 'تمارينك تعبّي حلقات Apple Watch'),
+        ('Choose your main device', 'اختر جهازك الأساسي'),
+    ]),
+    ('ai', 'AI coach', 'المدرب الذكي', [
+        ('Chat by text or voice, in Arabic or English', 'كلّمه كتابة أو صوت، بالعربي أو الإنجليزي'),
+        ('Logs your food and workouts from the chat', 'يسجّل أكلك وتمارينك من المحادثة'),
+        ('Suggests plan changes you apply with one tap', 'يقترح تعديلات وتطبّقها بضغطة'),
+        ('Reads your watch and your week', 'يقرأ ساعتك وأسبوعك'),
+        ('Weekly recap, told like a story', 'ملخص أسبوعي على شكل قصة'),
+        ('Reports and PDFs for your doctor or coach', 'تقارير و PDF لدكتورك أو مدربك'),
+    ]),
+    ('women', 'Women’s health', 'صحة المرأة', [
+        ('Cycle tracking with period predictions', 'تتبّع الدورة وتوقّع موعدها'),
+        ('Training that follows your cycle phase', 'تمارين تمشي مع مرحلة دورتك'),
+        ('Pregnancy-safe workouts', 'تمارين آمنة للحمل'),
+        ('Private mode, kept on your phone', 'وضع خاص يبقى على جوالك'),
+        ('Lock it with Face ID', 'اقفله بـ Face ID'),
+    ]),
+    ('friends', 'Gym Bros', 'Gym Bros', [
+        ('Friends, and you choose what they see', 'أصحابك، وأنت تختار وش يشوفون'),
+        ('Challenges and groups', 'تحديات ومجموعات'),
+        ('Train together: one workout, the right sets for each', 'تمرّنوا مع بعض: تمرين واحد ومجموعات تناسب كل واحد'),
+        ('Streaks and workout stickers to share', 'سلاسل الاستمرار وملصقات تشاركها'),
+        ('Invite friends and earn free months', 'ادعُ أصحابك واكسب شهور مجانية'),
+    ]),
+    ('coach', 'Real coaches', 'مدربين حقيقيين', [
+        ('Find a coach checked by our team', 'لقِ مدرب راجعه فريقنا'),
+        ('Packages, programs and meal plans from your coach', 'باقات وبرامج وخطط أكل من مدربك'),
+        ('Chat and book a call', 'محادثة وحجز مكالمة'),
+        ('For coaches: clients, inbox and gym hours', 'للمدربين: العملاء والرسائل وساعات الجم'),
+    ]),
+    ('privacy', 'Privacy and you', 'خصوصيتك وإعداداتك', [
+        ('No ads. Your data is never sold', 'بدون إعلانات. بياناتك ما تنباع'),
+        ('Download or delete everything, any time', 'نزّل أو احذف كل شي متى ما تبي'),
+        ('Reminders with quiet hours', 'تذكيرات مع ساعات هدوء'),
+        ('Arabic and English, light and dark', 'عربي وإنجليزي، فاتح وداكن'),
+        ('kg or lb, and a home screen you arrange', 'كيلو أو باوند، وشاشة رئيسية ترتبها'),
+    ]),
+]
+
+
+def all_features():
+    cards = ''
+    for i, (k, en, ar, items) in enumerate(ALL):
+        li = ''.join(f'<li>{t(a, b)}</li>' for a, b in items)
+        cards += (f'<div class="cat rv d{i % 3}"><div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" '
+                  f'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{CAT_ICON[k]}</svg></div><h3>{t(en, ar)}</h3><ul>{li}</ul></div>')
+    n = sum(len(x[3]) for x in ALL)
+    return (f'<section id="all" class="gry" style="padding:130px 0"><div class="wrap"><div class="center">'
+            f'<h2 class="big rv">{t("And so much more.", "وأكثر بكثير.")}</h2>'
+            f'<p class="sub2 rv d1">{t(f"{n} features in one app, and every one of them works in Arabic.", f"{n} ميزة في تطبيق واحد، وكلها تشتغل بالعربي.")}</p></div>'
+            f'<div class="cats">{cards}</div></div></section>')
 
 def home():
     rr = 42
@@ -389,7 +506,9 @@ def home():
 <div class="devs rv d2">{devs}</div>
 </div></section>
 
-<section id="pricing" class="gry center" style="padding:120px 0"><div class="wrap">
+{all_features()}
+
+<section id="pricing" class="center" style="padding:120px 0"><div class="wrap">
 <h2 class="big rv">{t('Start free.', 'ابدأ مجاناً.')}</h2>
 <p class="sub2 rv d1">{t('Go Pro when you want more.', 'واشترك في Pro لما تبي أكثر.')}</p>
 <div class="plans">
