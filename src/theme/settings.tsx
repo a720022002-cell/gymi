@@ -46,7 +46,7 @@ type Settings = {
   setUnit: (u: WeightUnit) => void;
 };
 
-const KEY = 'gymi.settings.v1';
+const KEY = 'adro.settings.v1';
 const DEFAULTS: Stored = { theme: 'system', lang: null, reduce: false, unit: 'kg', reduceReset: true };
 
 const Ctx = createContext<Settings | null>(null);

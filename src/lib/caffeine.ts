@@ -88,7 +88,7 @@ export function caffeineCheck(once: number, before: number, late: boolean, max =
 let current: CaffeineAlert | null = null;
 const listeners = new Set<() => void>();
 // "Don't remind me today": the day it was tapped, kept on the device.
-const MUTE_KEY = 'gymi.caffeineMuted';
+const MUTE_KEY = 'adro.caffeineMuted';
 let mutedDay: string | null = null;
 AsyncStorage.getItem(MUTE_KEY)
   .then((d) => (mutedDay = d))

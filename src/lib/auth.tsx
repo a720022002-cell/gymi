@@ -8,7 +8,7 @@ import { EMAIL_CODES, siteUrl } from './config';
 import { friendlyAuthError, supabase, supabaseConfigured } from './supabase';
 
 /** Your profile, kept on this phone for when there's no connection. */
-const PROFILE_KEY = (uid: string) => `gymi.profile.v1.${uid}`;
+const PROFILE_KEY = (uid: string) => `adro.profile.v1.${uid}`;
 
 // Opened from a "Reset password" email link? Then the new-password screen doesn't ask for the old one.
 // Read before Supabase clears the link from the address.
@@ -49,7 +49,7 @@ export const profileComplete = (p: Profile | null) =>
  */
 export const LOGIN_CODES = EMAIL_CODES;
 
-const TRUST_KEY = 'gymi.trusted.v1';
+const TRUST_KEY = 'adro.trusted.v1';
 /** Phones where you said "Don't ask for a code on this phone again" (user ids, this device only). */
 async function trustedIds(): Promise<string[]> {
   try {
@@ -316,7 +316,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         // Your reminders and the copies kept for offline use stay with you, not on this phone.
         const uid = session?.user.id;
         await cancelAllReminders();
-        if (uid) await AsyncStorage.multiRemove([PROFILE_KEY(uid), `gymi.trainplan.v1.${uid}`]).catch(() => {});
+        if (uid) await AsyncStorage.multiRemove([PROFILE_KEY(uid), `adro.trainplan.v1.${uid}`]).catch(() => {});
         await supabase.auth.signOut();
         setProfile(null);
       },

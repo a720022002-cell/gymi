@@ -40,7 +40,7 @@ import { useSettings } from '@/theme/settings';
 import { CommitValue, Medal } from './Commit';
 import { InviteSheet } from './Invite';
 
-const HIDE_START = 'gymi.coachStart.hidden.v1';
+const HIDE_START = 'adro.coachStart.hidden.v1';
 const nowMs = () => Date.now();
 const daysSince = (day: string | null, now: number) => (day ? Math.floor((now - new Date(`${day}T12:00:00`).getTime()) / 864e5) : 999);
 

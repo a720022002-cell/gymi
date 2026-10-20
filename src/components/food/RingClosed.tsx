@@ -11,7 +11,7 @@ import { Ring } from '../Ring';
 import { Text } from '../Text';
 import { Button } from '../ui';
 
-const KEY = 'gymi.ringClosed';
+const KEY = 'adro.ringClosed';
 const COLORS = ['#3355FF', '#22C55E', '#F59E0B', '#EF4444', '#A855F7', '#06B6D4', '#FFFFFF'];
 const CHEERS = ['Ring closed!', 'Nailed it!', 'Goal hit!', 'Right on target!'];
 

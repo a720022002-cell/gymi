@@ -365,7 +365,7 @@ html.dark .okchip{color:var(--link);background:rgba(112,136,255,.14)}
 <div class="drawer" id="drawer"><div class="scrim" onclick="closeDrawer()"></div><div class="dpanel" id="dpanel"></div></div>
 <script>
 /* =====================================================
-   GYMI PROTOTYPE · core
+   ADRO PROTOTYPE · core
 ===================================================== */
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -472,7 +472,7 @@ function setLang(k){S.settings.lang=k;applyLang();refresh()}
 
 /* brand ring mark: ~80% closed, rounded ends, gap at top-left */
 function mark(size=28,color='var(--cobalt)',sw){sw=sw||size*.2;const r=(size-sw)/2,C=2*Math.PI*r;return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${C*.8} ${C}" transform="rotate(-90 ${size/2} ${size/2})"/></svg>`}
-function logo(h=30,textColor='var(--text)'){return `<div class="row" style="gap:${h*.3}px"><span style="display:grid">${mark(h*1.02,'var(--cobalt)',h*.22)}</span><span class="sora" style="font-size:${h*1.28}px;line-height:1;color:${textColor};letter-spacing:-.045em;font-weight:600;margin-top:-${h*.12}px">gymi</span></div>`}
+function logo(h=30,textColor='var(--text)'){return `<div class="row" style="gap:${h*.3}px"><span style="display:grid">${mark(h*1.02,'var(--cobalt)',h*.22)}</span><span class="sora" style="font-size:${h*1.28}px;line-height:1;color:${textColor};letter-spacing:-.045em;font-weight:600;margin-top:-${h*.12}px">adro</span></div>`}
 function spinner(size=44){return `<span class="spin" style="display:inline-grid">${mark(size,'var(--cobalt)',size*.18)}</span>`}
 
 /* progress ring with value memory so it animates from the last value */
@@ -819,9 +819,9 @@ var GW=window.GW||{};window.GW=GW;
 GW.dob=([m,d,y])=>{m=+m;y=+y;d=Math.min(+d,daysIn(m,y));F.dob={m,d,y};const v=$('#dobV'),a=$('#dobAge');if(v){v.textContent=fmtDob(F.dob);v.className='grow b'}if(a)a.textContent=ageFrom(F.dob)+' years old'};
 
 /* ---------- usernames ---------- */
-const TAKEN=['omar','ahmed','faisal','sara','khalid','gymi','admin','coach','support','omar_fit','ahmed.lifts','faisal_fit','sara.moves','khalid99','noura.lifts','abdullah_gym','m7md.fit','yousef_22','reem.runs'];
+const TAKEN=['omar','ahmed','faisal','sara','khalid','adro','admin','coach','support','omar_fit','ahmed.lifts','faisal_fit','sara.moves','khalid99','noura.lifts','abdullah_gym','m7md.fit','yousef_22','reem.runs'];
 function userError(u){if(!u)return 'Pick a username. Friends use it to find you.';if(u.length<3)return 'Use at least 3 characters.';if(u.length>20)return 'Use 20 characters or fewer.';if(!/^[a-z]/.test(u))return 'Start with a letter.';if(/[._]$/.test(u))return 'Don\u2019t end with a dot or underscore.';if(/[._]{2}/.test(u))return 'Don\u2019t use two dots or underscores in a row.';if(TAKEN.includes(u))return 'taken';return ''}
-function userSuggest(u){const b=u.replace(/[._]+$/,'')||'gymi';return [b+'_fit',b+'.gym',b+(26)].filter(x=>!TAKEN.includes(x)).slice(0,3)}
+function userSuggest(u){const b=u.replace(/[._]+$/,'')||'adro';return [b+'_fit',b+'.gym',b+(26)].filter(x=>!TAKEN.includes(x)).slice(0,3)}
 function userMsgHTML(u,err){if(!u&&!err)return `<span class="sec" style="font-weight:600">This is how friends find you in Gym Bros. You can change it later.</span>`;
   const r=userError(u);if(r==='taken')return `<span class="down">@${esc(u)} is taken. Try:</span> ${userSuggest(u).map(x=>`<button class="chip" style="min-height:32px;height:28px;padding:0 10px;font-size:13px;margin:4px 4px 0 0" onclick="pickUser('${x}')">@${x}</button>`).join('')}`;
   if(r)return `<span class="${err?'down':'sec'}">${r}</span>`;return `<span class="up row" style="gap:4px;display:inline-flex">${ic('check',15,2.6)}@${esc(u)} is available</span>`}
@@ -983,7 +983,7 @@ function loginSwitch(){const p=P();p.via=p.via==='email'?'phone':'email';OTP.sta
 function doLogin(){const e=$('#loginErr');if(!(F.lid||'').trim()){e.textContent='Enter your email or username.';return}if(!(F.lpw||'')){e.textContent='Enter your password.';return}e.textContent='';if(S.trusted){toast('Welcome back',{icon:'check'});finishSignup();return}const p=P();p.step=1;p.via='email';OTP.start();refresh();setTimeout(()=>{const i=$('#otpIn');i&&i.focus()},400)}
 
 SH.invitecode=p=>`<div class="center"><span class="cob">${ic('key',34,2)}</span><div class="h2 mt8">Got an invite code?</div><p class="sec small mt4">From a friend or a coach. You can skip this.</p></div>
-  <input id="icIn" class="field num center mt16" placeholder="NOURA-2K8 or GYMI-XXXX" autocapitalize="characters" style="letter-spacing:.06em;font-size:18px" value="${esc(p.v)}" oninput="this.value=this.value.toUpperCase();SHEET.p.v=this.value;$('#icErr').textContent=''" onkeydown="if(event.key==='Enter')useInvite()">
+  <input id="icIn" class="field num center mt16" placeholder="NOURA-2K8 or ADRO-XXXX" autocapitalize="characters" style="letter-spacing:.06em;font-size:18px" value="${esc(p.v)}" oninput="this.value=this.value.toUpperCase();SHEET.p.v=this.value;$('#icErr').textContent=''" onkeydown="if(event.key==='Enter')useInvite()">
   <div class="err center" id="icErr"></div>
   <div class="mt16"><button class="btn" onclick="useInvite()">Connect</button></div><button class="btn soft mt8" style="background:transparent" onclick="closeSheet();setTimeout(()=>sheet('checkin'),350)">Skip</button>`;
 function useInvite(){const code=(SHEET.p.v||'').trim().toUpperCase();if(!code){$('#icErr').textContent='Type a code or tap Skip.';return}const c=S.coach.clients.find(x=>x.code===code&&x.status==='pending'),fr=REF_CODES[code];if(!c&&!fr){$('#icErr').textContent='That code doesn\u2019t match. Check it with the person who sent it.';return}
@@ -2104,7 +2104,7 @@ function setRepMode(i){S.rep.mode=['week','month','custom'][i];S.rep.open=null;r
 function repQuick(n){const end=toD(TODAY_DATE);S.rep.to={...TODAY_DATE};S.rep.from=n?fromD(new Date(end-(n-1)*864e5)):{y:TODAY_DATE.y,m:1,d:1};S.rep.open=null;refresh()}
 S.exp={weight:true,food:true,train:true,sleep:true,health:false};
 def('export',{title:'Export report',body:p=>{const E=S.exp;return `<p class="sec" style="margin-top:-8px">A clean summary to show your doctor or coach.</p>
-  <div class="paper mt16"><div class="row between"><div class="row" style="gap:6px">${mark(18,'#3355FF',3.6)}<b style="font-family:Sora">gymi</b></div><span style="font-size:11px;color:#52525B">${repLabel()}</span></div><div style="font-family:Sora;font-weight:600;font-size:17px;margin-top:10px">${esc(S.user.name)}, progress report</div>
+  <div class="paper mt16"><div class="row between"><div class="row" style="gap:6px">${mark(18,'#3355FF',3.6)}<b style="font-family:Sora">adro</b></div><span style="font-size:11px;color:#52525B">${repLabel()}</span></div><div style="font-family:Sora;font-weight:600;font-size:17px;margin-top:10px">${esc(S.user.name)}, progress report</div>
    ${E.weight?`<div style="font-size:11px;color:#52525B;margin-top:10px">Weight (kg)</div><div style="height:70px">${lineChart(S.weights.map(x=>x.v),{h:70,id:'pdf',dots:false}).replace(/var\(--bg\)/g,'#fff')}</div>`:''}
    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;font-size:11px">${E.food?`<div>Avg calories: <b>2,390</b></div><div>Protein goal met: <b>82%</b></div>`:''}${E.train?`<div>Workouts: <b>12 of 13</b></div><div>Bench press: <b>80 kg × 10</b></div>`:''}${E.sleep?`<div>Avg sleep: <b>7.0 h</b></div>`:''}${E.health?`<div>Vitamin D: <b>18 ng/mL</b></div>`:''}</div></div>
   ${secHead('Include')}<div class="list">${[['weight','Weight and body'],['food','Food and protein'],['train','Training'],['sleep','Sleep'],['health','Vitamins and blood tests']].map(([k,n])=>`<div class="li noic"><span class="grow b">${n}</span>${tgl(E[k],`S.exp.${k}=!S.exp.${k};refresh()`)}</div>`).join('')}</div>
@@ -2564,7 +2564,7 @@ SH.cymode=()=>`<div class="h2">What are you tracking?</div><div class="mt12">${O
 function cysetHTML(){const P2=S.period,n=P2.notif,pa=P2.partner;return `<div class="h2">Cycle settings</div>
   <span class="label">Reminders</span><div class="list">${[['period','Period coming','2 days before'],['fertile','Fertile window','When it starts'],['log','Daily log reminder','Every evening at 9:00 PM']].map(([k,a,b])=>`<div class="li noic"><span class="grow"><b style="display:block">${a}</b><span class="sec xs">${b}</span></span>${tgl(n[k],`S.period.notif.${k}=!S.period.notif.${k};refresh()`)}</div>`).join('')}</div>
   <span class="label">Share with my partner</span><div class="card"><div class="row"><span class="grow small"><b>Partner sharing</b><div class="sec xs">They see only what you choose. Never your notes.</div></span>${tgl(pa.on,'S.period.partner.on=!S.period.partner.on;refresh()')}</div>
-   ${pa.on?`<div class="chips mt12">${[['phase','Phase'],['period','Period dates'],['fertile','Fertile window'],['mood','Mood'],['sym','Symptoms']].map(([k,l])=>`<button class="chip ${pa.share[k]?'on':''}" onclick="S.period.partner.share.${k}=!S.period.partner.share.${k};refresh()">${pa.share[k]?ic('check',13,2.6):''}${l}</button>`).join('')}</div><button class="btn sm glass gb mt12" onclick="navigator.clipboard&&navigator.clipboard.writeText('https://gymi.app/p/inv8K2');toast('Invite link copied',{icon:'copy'})">${ic('copy',16)}Copy invite link</button>`:''}</div>
+   ${pa.on?`<div class="chips mt12">${[['phase','Phase'],['period','Period dates'],['fertile','Fertile window'],['mood','Mood'],['sym','Symptoms']].map(([k,l])=>`<button class="chip ${pa.share[k]?'on':''}" onclick="S.period.partner.share.${k}=!S.period.partner.share.${k};refresh()">${pa.share[k]?ic('check',13,2.6):''}${l}</button>`).join('')}</div><button class="btn sm glass gb mt12" onclick="navigator.clipboard&&navigator.clipboard.writeText('https://adro.app/p/inv8K2');toast('Invite link copied',{icon:'copy'})">${ic('copy',16)}Copy invite link</button>`:''}</div>
   <span class="label">Privacy</span><div class="list">
    <div class="li noic"><span class="grow"><b style="display:block">Anonymous mode</b><span class="sec xs">Your cycle data isn\u2019t linked to your name or email. Turns off syncing with watches.</span></span>${tgl(P2.anon,'S.period.anon=!S.period.anon;if(S.period.anon)S.period.temp=false;refresh()')}</div>
    <div class="li noic"><span class="grow"><b style="display:block">Lock with Face ID</b><span class="sec xs">Ask for Face ID to open cycle tracking</span></span>${tgl(P2.lock,'S.period.lock=!S.period.lock;refresh()')}</div>
@@ -2604,7 +2604,7 @@ S.coach={name:'Coach Faisal',gym:'Fitness Time, Olaya',spec:['Fat loss','Strengt
   {id:'c4',n:'Abdullah',c:'#15803D',g:'Male',age:35,goal:'Lose fat',w:mkW(98,94.8),commit:72,trend:-5,streak:4,last:'Yesterday',status:'active',prog:'p1',meal:'m1',kT:2200,pT:180,eat:[['Shawarma','Lunch',820,40]],work:[['Full body C','3 days ago',45,'']],h:{sleep:6.1,rhr:68,hrv:44,steps:5200,rec:55,water:1.8}},
   {id:'c5',n:'Reem',c:'#DB2777',g:'Female',age:29,goal:'Build muscle',w:mkW(55,55.6),commit:58,trend:-9,streak:0,last:'4 days ago',status:'active',prog:'p2',meal:null,kT:2100,pT:110,eat:[],work:[['Push','5 days ago',50,'']],h:{sleep:5.9,rhr:66,hrv:49,steps:4100,rec:48,water:1.2}},
   {id:'c6',n:'Majed',c:'#0EA5E9',g:'Male',age:22,goal:'Get fit',w:mkW(70,70.4),commit:41,trend:-12,streak:0,last:'1 week ago',status:'active',prog:'p3',meal:null,kT:2400,pT:130,eat:[],work:[],h:{sleep:6.3,rhr:70,hrv:41,steps:3500,rec:44,water:1.0}},
-  {id:'c7',n:'Yousef',c:'#A16207',g:'Male',age:26,goal:'Build muscle',w:[75],commit:0,trend:0,streak:0,last:'Not joined yet',status:'pending',code:'GYMI-7K2Q',prog:'p2',meal:'m2',kT:2800,pT:150,eat:[],work:[],h:{}}],
+  {id:'c7',n:'Yousef',c:'#A16207',g:'Male',age:26,goal:'Build muscle',w:[75],commit:0,trend:0,streak:0,last:'Not joined yet',status:'pending',code:'ADRO-7K2Q',prog:'p2',meal:'m2',kT:2800,pT:150,eat:[],work:[],h:{}}],
  msgs:{c1:[{f:'them',t:'Hit a squat PR today!',w:'1 h ago'}],c5:[{f:'me',t:'Haven\u2019t seen you log this week. Everything okay?',w:'2 days ago'}],c2:[{f:'them',t:'Can I swap rows for cable rows?',w:'3 h ago'}]}};
 const cl=id=>S.coach.clients.find(c=>c.id===id);
 const prog=id=>S.coach.programs.find(p=>p.id===id);
@@ -2663,7 +2663,7 @@ SH.assign=p=>{const c=cl(p.id),isP=p.k==='prog',list=isP?S.coach.programs:S.coac
   <button class="btn sm glass gb mt8" style="width:100%" onclick="closeSheet();${isP?`newProg('${c.id}')`:`newMeal('${c.id}')`}">${ic('plus',16,2.2)}Make a new one</button>`};
 function assignTo(cid,k,id){const c=cl(cid);if(k==='prog')c.prog=id||null;else c.meal=id||null;if(S.myCoach&&S.myCoach.cid===cid){if(k==='prog')S.myCoach.prog=id||null;else S.myCoach.meal=id||null;applyCoachPlans()}closeSheet();refresh();toast(id?`Sent to ${c.n}`:`${c.n} will get AI plans`,{icon:'check'})}
 /* --- Add client + code --- */
-def('addclient',{title:'Invite a client',large:false,body:p=>{if(!p.cid){const code='GYMI-'+Math.random().toString(36).slice(2,6).toUpperCase().replace(/[O0I1]/g,'7'),id='c'+Date.now();
+def('addclient',{title:'Invite a client',large:false,body:p=>{if(!p.cid){const code='ADRO-'+Math.random().toString(36).slice(2,6).toUpperCase().replace(/[O0I1]/g,'7'),id='c'+Date.now();
     S.coach.start.invite=true;S.coach.clients.push({id,n:'New invite',c:['#3355FF','#15803D','#C2410C','#7C3AED','#0EA5E9'][S.coach.clients.length%5],g:'',age:'',goal:'',w:[],commit:0,trend:0,streak:0,last:'Not joined yet',status:'pending',code,prog:null,meal:null,kT:2200,pT:140,eat:[],work:[],h:{},invited:true});p.cid=id}
   const c=cl(p.cid);return `<div class="center" style="padding-top:8px"><span class="cob">${ic('key',34,2)}</span><div class="h1 mt8">Their sign-up code</div><p class="sec mt8">Give this code to your client. They type it when they create their Adro account, fill in their own details, and show up in your list.</p>
    <div class="card mt16" style="padding:24px"><div class="kbd num" style="letter-spacing:.08em">${c.code}</div><div class="sec xs b mt8">One person per code</div></div>
@@ -2790,8 +2790,8 @@ def('adminapps',{title:'Coach applications',large:false,body:()=>{const list=[..
 SH.adminreject=p=>`<div class="h2">Why not approved?</div><p class="sec small mt4">The applicant sees this.</p><div class="chips mt12">${['Certificate not readable','Certificate not recognized','Missing gym details','Not enough experience'].map(r=>`<button class="chip ${p.r===r?'on':''}" onclick="SHEET.p.r='${r}';renderSheet()">${r}</button>`).join('')}</div><textarea class="field mt12" rows="2" placeholder="Add a note (optional)" oninput="SHEET.p.n=this.value"></textarea><div class="mt12"><button class="btn danger" ${p.r?'':'disabled'} onclick="adminDecide('${p.id}','rejected',SHEET.p.r+(SHEET.p.n?'. '+SHEET.p.n:''));closeSheet()">Reject</button></div>`;
 
 /* ---------- coach notifications ---------- */
-S.cn={on:true,msgs:true,low:{on:true,th:50},join:true,meet:true,missed:{on:true,n:2},nofood:{on:true,n:2},prs:true,weight:{on:false,kg:2},daily:{on:true,t:'20:00'},weekly:{on:true,day:0,t:'09:00'},gymi:true,quiet:{on:false,from:'23:00',to:'07:00'}};
-function cnotifSummary(){const n=S.cn;if(!n.on)return 'Off';const c=['msgs','join','meet','prs','gymi'].filter(k=>n[k]).length+['low','missed','nofood','weight','daily','weekly'].filter(k=>n[k].on).length;return `${c} of 11 on`}
+S.cn={on:true,msgs:true,low:{on:true,th:50},join:true,meet:true,missed:{on:true,n:2},nofood:{on:true,n:2},prs:true,weight:{on:false,kg:2},daily:{on:true,t:'20:00'},weekly:{on:true,day:0,t:'09:00'},adro:true,quiet:{on:false,from:'23:00',to:'07:00'}};
+function cnotifSummary(){const n=S.cn;if(!n.on)return 'Off';const c=['msgs','join','meet','prs','adro'].filter(k=>n[k]).length+['low','missed','nofood','weight','daily','weekly'].filter(k=>n[k].on).length;return `${c} of 11 on`}
 const cnTgl=(path,on)=>tgl(on,`${path}=!${path};refresh()`);
 function cnRow(i,t,sub,path,on,extra=''){return `<div class="li noic" style="flex-wrap:wrap;align-items:flex-start"><span class="ico" style="flex:none">${ic(i,18)}</span><span class="grow" style="min-width:0"><b style="display:block">${t}</b><span class="sec small">${sub}</span></span>${cnTgl(path,on)}${on&&extra?`<div style="flex-basis:100%;padding:10px 0 2px 52px">${extra}</div>`:''}</div>`}
 const cnChips=(path,vals,cur,fmtf=v=>v)=>`<div class="chips">${vals.map(v=>`<button class="chip ${cur===v?'on':''}" style="height:32px" onclick="${path}=${typeof v==='string'?`'${v}'`:v};refresh()">${fmtf(v)}</button>`).join('')}</div>`;
@@ -2809,7 +2809,7 @@ def('cnotif',{title:'Notifications',body:()=>{const n=S.cn;return `<div class="c
   <div class="sec small b" style="margin:18px 4px 8px">Summaries</div><div class="list">
    ${cnRow('chart','Daily summary',`Every day at ${fmtTime(n.daily.t)}: who trained, who logged food`,'S.cn.daily.on',n.daily.on,cnTime('S.cn.daily.t',n.daily.t))}
    ${cnRow('star','Weekly ranking',`${DAYSL[n.weekly.day]} at ${fmtTime(n.weekly.t)}: your clients ranked by commitment`,'S.cn.weekly.on',n.weekly.on,`${cnChips('S.cn.weekly.day',[0,1,2,3,4,5,6],n.weekly.day,v=>DSHORT[v])}<div class="mt8">${cnTime('S.cn.weekly.t',n.weekly.t)}</div>`)}
-   ${cnRow('info','Adro updates','News and tips for coaches','S.cn.gymi',n.gymi)}</div>
+   ${cnRow('info','Adro updates','News and tips for coaches','S.cn.adro',n.adro)}</div>
   <div class="sec small b" style="margin:18px 4px 8px">Quiet hours</div><div class="list">${cnRow('moon','Don\u2019t disturb me',n.quiet.on?`${fmtTime(n.quiet.from)} to ${fmtTime(n.quiet.to)}. Alerts wait until morning.`:'Off','S.cn.quiet.on',n.quiet.on,`<div class="row" style="gap:8px"><span class="sec xs b">From</span>${cnTime('S.cn.quiet.from',n.quiet.from)}<span class="sec xs b">to</span>${cnTime('S.cn.quiet.to',n.quiet.to)}</div>`)}</div>
   </div>`}});
 /* ---------- per-client to-do list ---------- */
@@ -2911,7 +2911,7 @@ def('acctype',{title:'Create account',large:false,body:()=>`<div class="h1">How 
 
 /* ---------- invite friends: personal code + reward every 5 ---------- */
 const REF_CODES={'NOURA-2K8':{u:'noura.lifts',n:'Noura',c:'#B45309',lvl:'Intermediate'},'AHMED-4F9':{u:'ahmed.lifts',n:'Ahmed',c:'#3355FF',lvl:'Advanced'},'REEM-7Q3':{u:'reem.runs',n:'Reem',c:'#DC2626',lvl:'Intermediate'}};
-const myRef=()=>((S.user.username||'me').split(/[._\d]/)[0]||'GYMI').toUpperCase().slice(0,8)+'-7K2';S.refs=[{n:'Khalid',w:'Sep 12'},{n:'Sara',w:'Sep 20'},{n:'Faisal',w:'Sep 26'}];S.freeMonths=0;
+const myRef=()=>((S.user.username||'me').split(/[._\d]/)[0]||'ADRO').toUpperCase().slice(0,8)+'-7K2';S.refs=[{n:'Khalid',w:'Sep 12'},{n:'Sara',w:'Sep 20'},{n:'Faisal',w:'Sep 26'}];S.freeMonths=0;
 const REF_GOAL=5;
 def('invite',{title:'Invite friends',large:false,body:()=>{const n=S.refs.length,toNext=REF_GOAL-(n%REF_GOAL),earned=Math.floor(n/REF_GOAL);
   return `<div class="card center" style="padding:22px;background:var(--g-ai)"><div class="sec small b">Your invite code</div><div class="kbd num mt8" style="letter-spacing:.08em">${myRef()}</div><p class="sec small mt8">Friends type it when they sign up. You\u2019re added as Gym Bros right away.</p>

@@ -19,7 +19,7 @@ export const RING_INFO: Record<RingKey, { icon: 'food' | 'check' | 'drop' | 'wal
   commit: { icon: 'flame', desc: 'How well you stuck to your plan this week' },
 };
 export type HomeLayout = { order: HomeCard[]; hidden: HomeCard[]; rings: RingKey[] };
-const KEY = 'gymi.home.v1';
+const KEY = 'adro.home.v1';
 const DEFAULT: HomeLayout = { order: [...HOME_CARDS], hidden: [], rings: ['calories'] };
 
 let cache: HomeLayout | null = null;

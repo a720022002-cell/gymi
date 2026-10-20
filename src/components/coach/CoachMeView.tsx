@@ -46,7 +46,7 @@ export function CoachMeView() {
     ? null
     : !n.on
       ? t('Off')
-      : t('{n} of 11 on', { n: [n.msgs, n.meet, n.prs, n.join, n.gymi, n.low.on, n.missed.on, n.nofood.on, n.weight.on, n.daily.on, n.weekly.on].filter(Boolean).length });
+      : t('{n} of 11 on', { n: [n.msgs, n.meet, n.prs, n.join, n.adro, n.low.on, n.missed.on, n.nofood.on, n.weight.on, n.daily.on, n.weekly.on].filter(Boolean).length });
   const item = (icon: IconName, title: string, sub: string | null, onPress: () => void, first?: boolean) => (
     <ListRow first={first} onPress={onPress}>
       <Icon name={icon} size={20} />

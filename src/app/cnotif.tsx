@@ -166,7 +166,7 @@ export default function CoachNotifScreen() {
               {time(n.weekly.t, (v) => set({ weekly: { ...n.weekly, t: v } }), t('Time'))}
             </View>,
           )}
-          {row('info', t('Adro updates'), t('News and tips for coaches'), n.gymi, (v) => set({ gymi: v }))}
+          {row('info', t('Adro updates'), t('News and tips for coaches'), n.adro, (v) => set({ adro: v }))}
         </List>
         {head(t('Quiet hours'))}
         <List>

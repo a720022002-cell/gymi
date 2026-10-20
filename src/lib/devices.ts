@@ -502,7 +502,7 @@ export async function latestDeviceReadings(): Promise<{ days: DeviceDay[]; today
 // A small shared store so every screen sees the same data
 // ---------------------------------------------------------------------------
 type State = { uid: string | null; ready: boolean; prefs: DevicePrefs; days: DeviceDay[]; syncing: boolean };
-const STEPS_FIX = 'gymi.stepsDedupe.v1';
+const STEPS_FIX = 'adro.stepsDedupe.v1';
 let state: State = { uid: null, ready: false, prefs: EMPTY_PREFS, days: [], syncing: false };
 const subs = new Set<() => void>();
 const set = (patch: Partial<State>) => {

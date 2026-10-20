@@ -10,7 +10,7 @@ Notifications.setNotificationHandler({
 });
 
 export const remindersSupported = true;
-const PREFIX = 'gymi-rem-';
+const PREFIX = 'adro-rem-';
 // Older versions scheduled reminders with random ids; clear those once too.
 const LEGACY = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;
 const OUR_ROUTES = ['/home', '/water', '/food', '/train', '/vitamins'];

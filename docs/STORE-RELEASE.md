@@ -8,7 +8,7 @@ Everything in the code is ready for the phone apps. The steps below need **your*
 - Daily reminders (check-in, water, meals, training, vitamins) are scheduled on the phone.
 - Delete account and download data (Apple and Google require this). Deleting runs on the server only.
 - Privacy policy and terms pages inside the app (You → Account).
-- App settings for the stores: app name, icons, splash, bundle id `com.gymi.app`, camera and photo permission texts, and build profiles in `eas.json`.
+- App settings for the stores: app name, icons, splash, bundle id `com.adro.app`, camera and photo permission texts, and build profiles in `eas.json`.
 
 ## What you need to do
 
@@ -22,7 +22,7 @@ Everything in the code is ready for the phone apps. The steps below need **your*
    - Then tell me "build the phone apps". I will run the cloud builds (`eas build`) for iPhone and Android.
    - **Status (18 Oct 2026):** done. The token works (account `ahmed.2002`) and the Expo project is linked.
 3b. **Add the database settings to Expo** (needed before the first phone build) — **done 18 Oct 2026** for production, preview and development.
-   - On expo.dev: project **gymi** → Environment variables. Add these two to **production**, **preview** and **development**, with visibility "Plain text":
+   - On expo.dev: project **adro** → Environment variables. Add these two to **production**, **preview** and **development**, with visibility "Plain text":
      - `EXPO_PUBLIC_SUPABASE_URL` = `https://utvhvzwkwhocdbiutavg.supabase.co`
      - `EXPO_PUBLIC_SUPABASE_ANON_KEY` = the same "anon" key you put in Vercel (Supabase → Project settings → API keys)
    - Both are public values (they're already inside the website). Without them the phone app opens but can't load anything.

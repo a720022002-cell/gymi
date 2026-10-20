@@ -86,7 +86,7 @@ export type Reminder = { title: string; body: string; time: string; route?: stri
 /** The one day a weekly or monthly vitamin reminds: w = weekday (1 = Sunday … 7), m = day of the month (1–28). */
 export type VitDay = { w?: number; m?: number };
 export type VitReminder = { id?: string; name: string; time: string; freq?: string };
-const VIT_KEY = (uid: string) => `gymi.vitDays.v1.${uid}`;
+const VIT_KEY = (uid: string) => `adro.vitDays.v1.${uid}`;
 const vitSubs = new Set<() => void>();
 
 /** Days picked for weekly and monthly vitamins. Kept on this phone, like the reminders themselves. */
@@ -131,7 +131,7 @@ export async function vitaminDays(uid: string, vits: VitReminder[]) {
   return all;
 }
 
-const KEY = (uid: string) => `gymi.reminders.v1.${uid}`;
+const KEY = (uid: string) => `adro.reminders.v1.${uid}`;
 const subs = new Set<(p: Prefs) => void>();
 
 /** Settings saved by older versions had fewer options; fill in the rest. */

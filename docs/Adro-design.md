@@ -12,7 +12,7 @@ The final app design: brand, style, navigation, and every screen.
 
 ## 1. Brand
 
-- **Logo:** a thick ring about 80% closed with rounded ends, like a progress ring close to its goal. Next to it, "gymi" in lowercase. The ring alone is the app icon and the AI coach avatar.
+- **Logo:** a thick ring about 80% closed with rounded ends, like a progress ring close to its goal. Next to it, "adro" in lowercase. The ring alone is the app icon and the AI coach avatar.
 - **Tagline:** "Your AI gym coach."
 - **Feeling:** clean, simple, modern, calm but motivating.
 
@@ -47,7 +47,7 @@ The final app design: brand, style, navigation, and every screen.
 - Numbers line up (tabular figures).
 
 ### App icon
-- White ring on Cobalt. Files: `gymi-icon-1024.png` (iPhone, App Store), `gymi-adaptive-foreground-1024.png` (Android, background `#3355FF`), `gymi-play-store-512.png` (Google Play).
+- White ring on Cobalt. Files: `adro-icon-1024.png` (iPhone, App Store), `adro-adaptive-foreground-1024.png` (Android, background `#3355FF`), `adro-play-store-512.png` (Google Play).
 
 ---
 

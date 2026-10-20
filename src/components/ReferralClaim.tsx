@@ -7,7 +7,7 @@ import { claimInvite } from '@/lib/invites';
 
 import { useToast } from './Toast';
 
-export const REF_KEY = 'gymi.ref.v1';
+export const REF_KEY = 'adro.ref.v1';
 
 /** If you opened someone's invite link before signing up, use their code once your account is ready (you become Gym Bros). */
 export function ReferralClaim() {

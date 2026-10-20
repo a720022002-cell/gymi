@@ -18,7 +18,7 @@ export const SOUNDS: { id: string; name: string }[] = [
   { id: 'none', name: 'None (silent)' },
 ];
 
-const KEY = 'gymi.sounds.v1';
+const KEY = 'adro.sounds.v1';
 const DEFAULT: SoundPrefs = { rest: true, sound: 'lightweight' };
 let prefs: SoundPrefs | null = null;
 

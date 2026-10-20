@@ -126,8 +126,8 @@ export function dayInfo(date: string, periods: Period[], s: CycleSettings, today
 // Storage: on our server, or only on this device when anonymous mode is on.
 // ---------------------------------------------------------------------------
 type Local = { settings: CycleSettings; periods: Period[]; logs: Record<string, CycleLog> };
-const ANON_KEY = (uid: string) => `gymi.cycleAnon.v1.${uid}`;
-const LOCAL_KEY = (uid: string) => `gymi.cycleLocal.v1.${uid}`;
+const ANON_KEY = (uid: string) => `adro.cycleAnon.v1.${uid}`;
+const LOCAL_KEY = (uid: string) => `adro.cycleLocal.v1.${uid}`;
 let cur: { uid: string; anon: boolean } | null = null;
 
 async function readLocal(uid: string): Promise<Local> {
@@ -238,7 +238,7 @@ export async function startPeriod(day: string): Promise<Period | null> {
  * when you chose that. Returns how many periods were added.
  */
 export async function importPeriods(uid: string, flowDays: string[], today: string) {
-  const key = `gymi.cyclePeriodImport.v1.${uid}`;
+  const key = `adro.cyclePeriodImport.v1.${uid}`;
   const last = await AsyncStorage.getItem(key).catch(() => null);
   const days = [...new Set(flowDays)].filter((d) => d <= today && (!last || d > last)).sort();
   if (!days.length) return 0;

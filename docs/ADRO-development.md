@@ -1,10 +1,10 @@
-# GYMI development
+# ADRO development
 
-Gymi's technical plan: tools, AI, cloud, iPhone, app identity, branding, costs, wristband, and how we build it.
+Adro's technical plan: tools, AI, cloud, iPhone, app identity, branding, costs, wristband, and how we build it.
 
 > Updated October 2026. Prices and limits may change.
 
-Related files: **Gymi-features** (what the app does) and **Gymi-design** (brand and every screen).
+Related files: **Adro-features** (what the app does) and **Adro-design** (brand and every screen).
 
 ---
 
@@ -18,8 +18,8 @@ Related files: **Gymi-features** (what the app does) and **Gymi-design** (brand 
 | Languages | English and Arabic (right-to-left), both in the design. |
 | Target users | Everyone: beginners to advanced. |
 | Pricing | Free at the start, subscription plans later. |
-| Account types | Member and Coach (coaches are approved by the Gymi team). |
-| Wristband | Our own branded band (Gymi Band) later, from a white-label maker. |
+| Account types | Member and Coach (coaches are approved by the Adro team). |
+| Wristband | Our own branded band (Adro Band) later, from a white-label maker. |
 
 ---
 
@@ -86,11 +86,11 @@ Related files: **Gymi-features** (what the app does) and **Gymi-design** (brand 
 ## 6. App identity (Bundle ID)
 
 - A fixed ID for the app on the App Store and Google Play. Users don't see it.
-- **Suggested:** `com.gymi.app` for both iPhone and Android.
-- If the domain is different (like gymiapp.com), it becomes `com.gymiapp.app`.
+- **Suggested:** `com.adro.app` for both iPhone and Android.
+- If the domain is different (like adroapp.com), it becomes `com.adroapp.app`.
 - **It can never change after publishing.** Changing it makes a new app, and you lose users and reviews.
 - It must not already be used by anyone else.
-- **Before locking it in:** check that the name Gymi is free on the App Store, Google Play, and as a domain.
+- **Before locking it in:** check that the name Adro is free on the App Store, Google Play, and as a domain.
 
 ---
 
@@ -98,10 +98,10 @@ Related files: **Gymi-features** (what the app does) and **Gymi-design** (brand 
 
 - Brand canvas (edit here): https://claude.ai/artifact/DXEY36gJr7AoVVyhvDHCMp
 - Brand guide (easy to view on phone): https://claude.ai/artifact/UrABNb9xUd5RaZZG6evfip
-- A PDF copy is saved as `Gymi-brand.pdf`.
+- A PDF copy is saved as `Adro-brand.pdf`.
 
 ### Idea
-- **Logo:** a blue ring that's almost closed, like a progress ring close to its goal. Next to it, the word "gymi" in lowercase.
+- **Logo:** a blue ring that's almost closed, like a progress ring close to its goal. Next to it, the word "adro" in lowercase.
 - **Tagline:** "Your AI gym coach."
 - **Feeling:** clean, simple, and modern.
 
@@ -142,9 +142,9 @@ Based on the blue ring logo: a white ring on Cobalt blue.
 
 | File | Use | Specs |
 |---|---|---|
-| `gymi-icon-1024.png` | iPhone and App Store | 1024×1024, full square, no transparency, no rounded corners (Apple rounds them) |
-| `gymi-adaptive-foreground-1024.png` | Android icon | 1024×1024, transparent background; set the background color to Cobalt `#3355FF` in Expo |
-| `gymi-play-store-512.png` | Google Play listing | 512×512 |
+| `adro-icon-1024.png` | iPhone and App Store | 1024×1024, full square, no transparency, no rounded corners (Apple rounds them) |
+| `adro-adaptive-foreground-1024.png` | Android icon | 1024×1024, transparent background; set the background color to Cobalt `#3355FF` in Expo |
+| `adro-play-store-512.png` | Google Play listing | 512×512 |
 
 ---
 
@@ -153,7 +153,7 @@ Based on the blue ring logo: a white ring on Cobalt blue.
 - The design is finished: about 116 screens, light and dark, English and Arabic, Liquid Glass style.
 - Interactive design (open on phone): https://claude.ai/artifact/CNzP12h7Q6sVe69tVomBKm
 - Earlier prototype on Vercel: https://founders-ei29.vercel.app/
-- Full details in **Gymi-design**.
+- Full details in **Adro-design**.
 
 ---
 
@@ -232,13 +232,13 @@ About **$60 to $70 a month** (~250 SAR), plus ~$140 one time at launch.
 
 ---
 
-## 12. Wearables and the Gymi Band
+## 12. Wearables and the Adro Band
 
 ### Now: connect existing devices (free)
 - Apple Health, WHOOP, and Polar (Polar has a free official SDK for iPhone and Android, with heart rate and HRV data).
 
-### Later: our own Gymi Band
-A screenless band with our name on it, made by a white-label factory, with an SDK so only the Gymi app reads it.
+### Later: our own Adro Band
+A screenless band with our name on it, made by a white-label factory, with an SDK so only the Adro app reads it.
 
 | Option | Price per band | Minimum order | Notes |
 |---|---|---|---|
@@ -247,7 +247,7 @@ A screenless band with our name on it, made by a white-label factory, with an SD
 | JCVital V8 (J-Style) | ~$60 to $100 (estimate) | Often 500 | Closest to WHOOP; recovery score can be customized |
 
 - **Recommended:** the ~$15 band with HRV, after testing samples.
-- **Questions for every factory:** iPhone and Android SDK? Raw heart data (beat-to-beat)? Does any data go to their servers? Can the Bluetooth name be "Gymi Band"? Battery and water resistance? CE and FCC certificates, and help with Saudi certificates? Warranty and lead time? A custom color or strap so it's not the same as other brands?
+- **Questions for every factory:** iPhone and Android SDK? Raw heart data (beat-to-beat)? Does any data go to their servers? Can the Bluetooth name be "Adro Band"? Battery and water resistance? CE and FCC certificates, and help with Saudi certificates? Warranty and lead time? A custom color or strap so it's not the same as other brands?
 - **Rules:** test samples for a week next to an Apple Watch or WHOOP. Never market blood pressure or any medical claim. Check Saudi certification before selling.
 - **Business idea:** include the band with the yearly Pro subscription, like WHOOP.
 
@@ -256,9 +256,9 @@ A screenless band with our name on it, made by a white-label factory, with an SD
 ## 13. How we build it (with Claude Code)
 
 ### Setup
-1. Create free accounts: GitHub, Supabase (project "gymi"), Google AI Studio (Gemini key), Expo, Vercel (already have).
+1. Create free accounts: GitHub, Supabase (project "adro"), Google AI Studio (Gemini key), Expo, Vercel (already have).
 2. Install Node.js (LTS), Git, and the Claude desktop app (Code tab). Install Expo Go on your phone.
-3. Make a folder `gymi` with a `docs` folder inside. Put in it: `index.html` (design), `Gymi-features.md`, `Gymi-design.md`, and `GYMI development.md`.
+3. Make a folder `adro` with a `docs` folder inside. Put in it: `index.html` (design), `Adro-features.md`, `Adro-design.md`, and `ADRO development.md`.
 4. Open the folder in Claude Code and give it the Phase 1 prompt.
 
 ### Rules for Claude Code
@@ -279,7 +279,7 @@ A screenless band with our name on it, made by a white-label factory, with an SD
 
 ## 14. Next steps
 
-1. Check that the name Gymi is free on the App Store, Google Play, and as a domain.
-2. Fix the two small design issues (see Gymi-design).
+1. Check that the name Adro is free on the App Store, Google Play, and as a domain.
+2. Fix the two small design issues (see Adro-design).
 3. Set up the accounts and the project, then start Phase 1 with Claude Code.
 4. Order band samples to test while building.

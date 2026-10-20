@@ -259,7 +259,7 @@ export function HealthProvider({ children }: PropsWithChildren) {
   // after the last import (the first time: the last 2 weeks), and never over one you typed, so a day you deleted
   // stays deleted. The newest one updates your targets like a typed weigh-in.
   const dev = useDevices(userId);
-  const scaleKey = userId ? `gymi.scale.${userId}` : null;
+  const scaleKey = userId ? `adro.scale.${userId}` : null;
   useEffect(() => {
     if (!ready || !scaleKey || !dev.ready || !dev.connected) return;
     const fromScale = dev.days.filter((d) => d.weight != null && d.day <= today);

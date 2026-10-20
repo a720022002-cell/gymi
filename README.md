@@ -1,11 +1,11 @@
-# Gymi
+# Adro
 
 Your AI gym coach. One Expo (React Native) codebase for web, iPhone and Android. The web version deploys on Vercel.
 
 - Design (source of truth): `docs/index.html`
-- Features: `docs/Gymi-features.md`
-- Design rules and screen map: `docs/Gymi-design.md`
-- Tech plan and phases: `docs/GYMI-development.md`
+- Features: `docs/Adro-features.md`
+- Design rules and screen map: `docs/Adro-design.md`
+- Tech plan and phases: `docs/ADRO-development.md`
 
 ## Stack
 

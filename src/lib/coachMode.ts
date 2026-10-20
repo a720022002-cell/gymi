@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
 
-const KEY = 'gymi.coachMode.v1';
+const KEY = 'adro.coachMode.v1';
 let cache: boolean | null = null;
 const subs = new Set<(v: boolean) => void>();
 

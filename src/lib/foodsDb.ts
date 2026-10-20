@@ -4,7 +4,7 @@ export type Part = { key: string; en: string; ar: string; g: number; k: number; 
 
 export type DbFood = {
   id: string;
-  source: 'usda' | 'gymi' | 'off' | 'user';
+  source: 'usda' | 'adro' | 'off' | 'user';
   category: 'basic' | 'gulf' | 'rest' | 'usda' | 'product' | 'fix';
   name_en: string;
   name_ar: string | null;

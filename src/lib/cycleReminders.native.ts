@@ -8,7 +8,7 @@ export type CyclePlan = { next: string; fertileFrom: string; cycle: number } | n
 export type CycleReminderTexts = { period: string; fertile: string; log: string; visit: string; title: string };
 
 export const cycleRemindersSupported = true;
-const PREFIX = 'gymi-cycle-';
+const PREFIX = 'adro-cycle-';
 
 /** 9:00 in the morning on a day, if it's still ahead. */
 const morning = (day: string) => {

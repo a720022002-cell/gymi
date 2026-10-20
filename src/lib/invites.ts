@@ -35,7 +35,7 @@ export const inviteText = (code: string, t: (s: string, v?: Record<string, strin
   t('Join me on Adro, the AI fitness coach. Use my code {c} when you sign up to send me a friend request.', { c: code }) + ` ${inviteLink(code)}`;
 
 /** Free months you've already been told about, so "You earned a free month!" shows once. */
-const SEEN = (uid: string) => `gymi.freemonths.seen.v1.${uid}`;
+const SEEN = (uid: string) => `adro.freemonths.seen.v1.${uid}`;
 export async function newFreeMonths(uid: string, months: number) {
   try {
     const seen = Number((await AsyncStorage.getItem(SEEN(uid))) ?? '-1');

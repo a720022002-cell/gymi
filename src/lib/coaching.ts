@@ -298,7 +298,7 @@ export type CoachNotif = {
   join: boolean;
   daily: { on: boolean; t: string };
   weekly: { on: boolean; day: number; t: string };
-  gymi: boolean;
+  adro: boolean;
   quiet: { on: boolean; from: string; to: string };
 };
 export const COACH_NOTIF: CoachNotif = {
@@ -313,7 +313,7 @@ export const COACH_NOTIF: CoachNotif = {
   join: true,
   daily: { on: true, t: '20:00' },
   weekly: { on: true, day: 0, t: '09:00' },
-  gymi: true,
+  adro: true,
   quiet: { on: false, from: '23:00', to: '07:00' },
 };
 export async function getCoachNotif(): Promise<CoachNotif> {

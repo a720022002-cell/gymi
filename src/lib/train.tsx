@@ -105,11 +105,11 @@ type Train = {
 };
 
 const Ctx = createContext<Train | null>(null);
-const SESSION_KEY = 'gymi.session.v1';
+const SESSION_KEY = 'adro.session.v1';
 /** Your plan, kept on this phone for when there's no connection. */
-const PLAN_KEY = (uid: string) => `gymi.trainplan.v1.${uid}`;
+const PLAN_KEY = (uid: string) => `adro.trainplan.v1.${uid}`;
 /** A plan change not saved to your account yet (no connection): sent when it can be, even after the app restarts. */
-const PENDING_KEY = (uid: string) => `gymi.trainplan.pending.v1.${uid}`;
+const PENDING_KEY = (uid: string) => `adro.trainplan.pending.v1.${uid}`;
 
 export function TrainProvider({ children }: PropsWithChildren) {
   const { session: auth, profile } = useAuth();

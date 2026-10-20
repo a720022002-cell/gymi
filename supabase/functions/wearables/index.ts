@@ -59,7 +59,7 @@ const isProvider = (p: unknown): p is Provider => p === 'whoop' || p === 'oura' 
 const configured = (p: Provider) => !!env(PROVIDERS[p].id) && !!env(PROVIDERS[p].secret);
 
 // Where the browser may be sent back after signing in: the Adro website, the phone app, or a local test server.
-const RETURN_OK = /^(https:\/\/gymi-inky\.vercel\.app|https:\/\/[a-z0-9-]+\.vercel\.app|gymi:\/\/|exp\+gymi:\/\/|adro:\/\/|exp\+adro:\/\/|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)(\/|$)/;
+const RETURN_OK = /^(https:\/\/gymi-inky\.vercel\.app|https:\/\/[a-z0-9-]+\.vercel\.app|adro:\/\/|exp\+adro:\/\/|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)(\/|$)/;
 
 const ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
 const randomState = (n: number) => Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) => ABC[b % ABC.length]).join('');

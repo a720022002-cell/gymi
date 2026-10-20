@@ -91,7 +91,7 @@ function ReportBody({ stats: s, label, a, b, c }: { stats: ReportStats; label: s
   const { t, lang } = useT();
   const W = useWeight();
   const { profile } = useAuth();
-  const key = `gymi.report.${profile?.id ?? ''}.${a}.${b}.${lang}`;
+  const key = `adro.report.${profile?.id ?? ''}.${a}.${b}.${lang}`;
   // null v: checked, nothing saved for this period yet.
   const [coach, setCoach] = useState<{ key: string; v: Coach | null } | null>(null);
   const [busy, setBusy] = useState(false);

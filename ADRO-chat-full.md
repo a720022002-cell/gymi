@@ -1,4 +1,4 @@
-# Gymi: المحادثة كاملة
+# Adro: المحادثة كاملة
 
 سجل كامل لجلسة Claude Code هذي: كل رسائلك وكل ردود Claude بالترتيب.
 
@@ -19,11 +19,11 @@
 
 ### 👤 أنت
 
-You are building "Gymi", an AI fitness coach app. Before anything else, read every file in /docs:
+You are building "Adro", an AI fitness coach app. Before anything else, read every file in /docs:
 - docs/index.html = the final interactive design. It is the source of truth for every screen, color, font, spacing, and interaction.
-- docs/Gymi-features.md = all features
-- docs/Gymi-design.md = brand, design rules, navigation, and the full screen map
-- docs/GYMI-development.md = tech stack, decisions, and the build phases
+- docs/Adro-features.md = all features
+- docs/Adro-design.md = brand, design rules, navigation, and the full screen map
+- docs/ADRO-development.md = tech stack, decisions, and the build phases
 
 How we work:
 - We are using Claude Code on the web. There is no local computer.
@@ -48,7 +48,7 @@ Phase 1 only (do not start other phases):
 3. English and Arabic support, with Arabic switching the whole layout to right-to-left.
 4. Supabase login: sign up (email, phone, name, gender, age, height), verify code, log in, a profiles table, and row level security.
 5. Screens: Welcome, Account type, Sign up, Verify code, Language, Log in, and Home (with sample data), plus the floating glass tab bar (Home, Food, Train, Progress, Gym Bros) and the AI button. The other tabs can be simple placeholders for now.
-6. Make the website installable on the phone home screen (app name "Gymi", icon, theme color #3355FF).
+6. Make the website installable on the phone home screen (app name "Adro", icon, theme color #3355FF).
 
 Before writing any code: show me your plan for Phase 1, and a list of everything you need from me (like which keys and where to add them).
 
@@ -123,7 +123,7 @@ One more useful find: the design already has about 1,500 Arabic translations bui
 - If someone picks "Apply as a coach", I save them as a coach whose application is *pending*. The full coach application form comes in Phase 6.
 
 **6. Add to home screen**
-- App name "Gymi", the blue ring icon (white ring on Cobalt), theme color #3355FF, full screen with no browser bars. On iPhone: Safari → Share → Add to Home Screen.
+- App name "Adro", the blue ring icon (white ring on Cobalt), theme color #3355FF, full screen with no browser bars. On iPhone: Safari → Share → Add to Home Screen.
 
 **How you'll test:** I work on the branch `claude-leap/gracious-carson-1whqs3`. Each time I push, Vercel makes a **Preview link** for that branch, and you test that link on your phone. When you're happy, merging the pull request updates your main website.
 
@@ -134,7 +134,7 @@ One more useful find: the design already has about 1,500 Arabic translations bui
 You won't paste any keys in this chat. Everything goes into settings pages.
 
 **A. Supabase project**
-1. Create a free project at supabase.com called **gymi**. If you can, pick a region close to Saudi Arabia, like Frankfurt or Mumbai.
+1. Create a free project at supabase.com called **adro**. If you can, pick a region close to Saudi Arabia, like Frankfurt or Mumbai.
 2. Open **Project Settings → API**. You'll see a **Project URL** and an **anon / publishable key**. These two are meant to be used inside apps, so they're safe there. Add them in **Vercel → your project → Settings → Environment Variables**, checking both Production and Preview:
    - `EXPO_PUBLIC_SUPABASE_URL` = the Project URL
    - `EXPO_PUBLIC_SUPABASE_ANON_KEY` = the anon / publishable key
@@ -157,7 +157,7 @@ You won't paste any keys in this chat. Everything goes into settings pages.
 
 1. **Text-message (SMS) codes cost money.** Supabase needs a paid SMS service like Twilio. **My suggestion:** collect the phone number now, but send codes **by email only** in Phase 1, and add SMS before launch.
 2. **Who can get emails during testing.** Supabase's free built-in email only sends to members of your Supabase team, and only a few emails per hour. That's fine for testing with your own email. Before you invite friends to test, we'd connect a free email service like Resend. **My suggestion:** use the built-in email for now.
-3. **The app icon.** The docs mention `gymi-icon-1024.png`, but it isn't in the repo. **My suggestion:** I make the icon from the blue ring in the design. If you'd rather use your own file, upload it to the `docs` folder.
+3. **The app icon.** The docs mention `adro-icon-1024.png`, but it isn't in the repo. **My suggestion:** I make the icon from the blue ring in the design. If you'd rather use your own file, upload it to the `docs` folder.
 
 Reply with **OK** (and any changes to the three decisions), tell me which option you picked for **B**, and let me know once the Supabase project exists. Then I'll start building Phase 1.
 
@@ -180,7 +180,7 @@ I still haven't written any code. Before I start Phase 1, I need these from my p
    - Supabase's built-in email for testing?
    - Should I make the app icon from the blue ring in the design?
 3. **Database setup:** Option 1 (you add an access token and I do everything) or Option 2 (you paste one file into Supabase yourself)?
-4. **Tell me when the Supabase project "gymi" exists**, and add `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` in Vercel and in this Claude Code environment's settings.
+4. **Tell me when the Supabase project "adro" exists**, and add `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` in Vercel and in this Claude Code environment's settings.
 
 If you're not ready for step 4 yet, I can start now on the parts that don't need Supabase: project setup, Vercel settings, colors and fonts, light/dark, English/Arabic, the screens, the tab bar and the home-screen icon. I'll connect login once your Supabase project exists. Just say "start".
 
@@ -347,13 +347,13 @@ Phase 1 is built and checked here, but it hasn't reached GitHub yet, so your Ver
 
 ## 1. Fix GitHub access (needed first)
 - Open https://claude.ai/connect-github and reconnect your GitHub account.
-- If it asks, install the **Claude GitHub App** on the `gymi` repository.
+- If it asks, install the **Claude GitHub App** on the `adro` repository.
 - Then tell me "pushed?" and I'll push to `main`. Vercel updates by itself after that.
 
 You can do steps 2 and 3 while you wait.
 
 ## 2. Add the two values in Vercel
-I couldn't do this for you because the Vercel connector doesn't have permission for your team. In Vercel, open your **gymi** project → **Settings** → **Environment Variables**. Add these two, with **Production** and **Preview** both checked:
+I couldn't do this for you because the Vercel connector doesn't have permission for your team. In Vercel, open your **adro** project → **Settings** → **Environment Variables**. Add these two, with **Production** and **Preview** both checked:
 
 | Name | Value |
 |---|---|
@@ -365,8 +365,8 @@ Both are public by design, so they're safe here. Never add the secret key or the
 ## 3. Three Supabase settings
 1. **Authentication → Emails → "Confirm signup"**: replace the message with the text below. Do the same for **"Reset password"**. This makes the email show a 6-digit code instead of a link.
    ```
-   <h2>Your Gymi code</h2>
-   <p>Enter this code in Gymi: <strong>{{ .Token }}</strong></p>
+   <h2>Your Adro code</h2>
+   <p>Enter this code in Adro: <strong>{{ .Token }}</strong></p>
    ```
 2. **Authentication → Sign In / Providers → Email**: make sure **Confirm email** is on. If you see **Email OTP length**, set it to **6**.
 3. **Authentication → URL Configuration → Site URL**: paste your Vercel link.
@@ -398,7 +398,7 @@ I also checked everything here on an iPhone-sized screen, in light, dark, Arabic
    - Try **Dark** mode.
    - Turn on **Reduce transparency** and check the glass turns solid.
 5. On Home, **scroll down** and check the tab bar shrinks. Tap it to open it again.
-6. **Install it:** in Safari, tap Share → **Add to Home Screen**. It should show the blue ring icon, be named "Gymi", and open full screen.
+6. **Install it:** in Safari, tap Share → **Add to Home Screen**. It should show the blue ring icon, be named "Adro", and open full screen.
 
 I'll wait for your OK before starting Phase 2.
 
@@ -406,7 +406,7 @@ I tried to push again, and GitHub refused for the same reason: Claude's GitHub a
 
 To fix it:
 1. Reconnect GitHub at https://claude.ai/connect-github.
-2. If it asks, install the **Claude GitHub App** on the `gymi` repository at https://github.com/apps/claude/installations/select_target. If the repository belongs to an organization, the organization's owner has to approve this.
+2. If it asks, install the **Claude GitHub App** on the `adro` repository at https://github.com/apps/claude/installations/select_target. If the repository belongs to an organization, the organization's owner has to approve this.
 
 Then reply "try again" and I'll push to `main`.
 
@@ -439,20 +439,20 @@ I checked your two steps, and both worked:
 - **GitHub is connected.** Phase 1 is pushed to `main`, and Vercel built it without errors.
 - **The Vercel values work.** The live site is **https://gymi-inky.vercel.app**. It opens on the Welcome screen at phone size, with no errors, and it's connected to your Supabase project.
 
-The **database isn't set up yet**, so signing up won't work until it is. I just checked: Supabase says the Gymi tables don't exist yet.
+The **database isn't set up yet**, so signing up won't work until it is. I just checked: Supabase says the Adro tables don't exist yet.
 
 ## To let me do the database (and step 3) for you
 
 Once I have one key, I can create the tables and also change the Supabase settings from step 3 (the 6-digit code emails and your website link), so you don't have to.
 
-1. Go to **supabase.com**, tap your picture (top right), then **Account preferences → Access Tokens → Generate new token**. Name it "Claude Gymi" and copy it.
+1. Go to **supabase.com**, tap your picture (top right), then **Account preferences → Access Tokens → Generate new token**. Name it "Claude Adro" and copy it.
 2. Here in Claude Code, open the **environment menu** in this session's title bar, then **Edit**. Add the key under **Network secrets** (it's called **API credentials** in older versions of the app). If that section isn't there, add it as an environment variable. Use this name:
    - `SUPABASE_ACCESS_TOKEN`
 3. Don't paste the key in this chat.
 
 **One catch:** a new key only works in a **new session**. So after adding it, start a new Claude Code session on this repo and type:
 
-> Continue Gymi Phase 1: set up the Supabase database and auth settings using SUPABASE_ACCESS_TOKEN
+> Continue Adro Phase 1: set up the Supabase database and auth settings using SUPABASE_ACCESS_TOKEN
 
 Everything that session needs is saved in the repo, including the database file I tested earlier.
 
@@ -482,7 +482,7 @@ If it asks for anything else, tell me the field names (just the names, not the t
 
 Once you save it, start a **new session** on this repo and send this message:
 
-> Continue Gymi Phase 1: set up the Supabase database and auth settings using SUPABASE_ACCESS_TOKEN
+> Continue Adro Phase 1: set up the Supabase database and auth settings using SUPABASE_ACCESS_TOKEN
 
 That session will:
 - create the tables;
@@ -500,11 +500,11 @@ i did it
 
 I'll check whether the key already works in this session:
 
-It already works here, so no new session is needed. I can see your **gymi** project. Now I'll create the database:
+It already works here, so no new session is needed. I can see your **adro** project. Now I'll create the database:
 
 Your safety settings blocked me from writing to the database. They stop me from using a saved key to change an outside service unless you clearly approve it. I didn't try to get around that.
 
-**What I'd run:** the database file I tested earlier, sent to your **gymi** Supabase project. It creates the profiles table, the privacy rules, and the username and login helpers. Nothing else in your project is touched, and it's safe to run more than once.
+**What I'd run:** the database file I tested earlier, sent to your **adro** Supabase project. It creates the profiles table, the privacy rules, and the username and login helpers. Nothing else in your project is touched, and it's safe to run more than once.
 
 After that, I'd make the step 3 changes in your Supabase settings:
 - signup and password-reset emails show a 6-digit code;
@@ -528,20 +528,20 @@ The database works, and strangers can't read anyone's profile. In the auth setti
 
 Saved: the website link, 6-digit codes, and an 8-character minimum password. One decision is left, because the email can't show a code yet:
 
-Good choice. The simplest free option without your own website domain is a **Gmail account**. It can send codes to anyone, about 500 emails a day, at no cost. You can use your own Gmail, or make a new one like `gymi.app.team@gmail.com`; a new one looks more professional.
+Good choice. The simplest free option without your own website domain is a **Gmail account**. It can send codes to anyone, about 500 emails a day, at no cost. You can use your own Gmail, or make a new one like `adro.app.team@gmail.com`; a new one looks more professional.
 
 **Step A: make a Gmail "app password"** (a special password just for Supabase)
 1. Go to **myaccount.google.com → Security**, and turn on **2-Step Verification** if it isn't on.
-2. Open **myaccount.google.com/apppasswords**, type the name `Gymi Supabase`, and tap **Create**.
+2. Open **myaccount.google.com/apppasswords**, type the name `Adro Supabase`, and tap **Create**.
 3. Copy the 16-letter password it shows. Don't paste it here.
 
 **Step B: put it in Supabase**
-Go to **Supabase → your gymi project → Authentication → Emails → SMTP Settings** and turn on **Enable custom SMTP**. Fill it in like this:
+Go to **Supabase → your adro project → Authentication → Emails → SMTP Settings** and turn on **Enable custom SMTP**. Fill it in like this:
 
 | Field | Value |
 |---|---|
 | Sender email | your Gmail address |
-| Sender name | `Gymi` |
+| Sender name | `Adro` |
 | Host | `smtp.gmail.com` |
 | Port | `465` |
 | Username | your Gmail address |
@@ -559,11 +559,11 @@ Tell me **"done"** when it's saved. I'll then switch the emails to show the 6-di
 
 <!-- attach -->
 > Step B: put it in Supabase
-> Go to Supabase → your gymi project → Authentication → Emails → SMTP Settings and turn on Enable custom SMTP. Fill it in like this:
+> Go to Supabase → your adro project → Authentication → Emails → SMTP Settings and turn on Enable custom SMTP. Fill it in like this:
 > 
 > Field	Value
 > Sender email	your Gmail address
-> Sender name	Gymi
+> Sender name	Adro
 > Host	smtp.gmail.com
 > Port	465
 > Username	your Gmail address
@@ -579,7 +579,7 @@ I can fill in almost all of it for you, but there's one part only you can do:
 - **You type it into Supabase yourself.** Passwords should never be pasted in this chat, so I won't ask for it.
 
 So let's split it:
-1. **You:** do step A to create the 16-letter app password. Then send me just the **Gmail address** you want Gymi emails to come from. An email address isn't secret, so it's fine to send here.
+1. **You:** do step A to create the 16-letter app password. Then send me just the **Gmail address** you want Adro emails to come from. An email address isn't secret, so it's fine to send here.
 2. **Me:** I fill in the sender name, host, port, username and sender email in Supabase, and switch the emails to show the 6-digit code.
 3. **You:** open **Supabase → Authentication → Emails → SMTP Settings**, paste the app password into the one empty **Password** box, and tap **Save**.
 
@@ -595,7 +595,7 @@ That message comes from Google's **App passwords** page. It almost always means 
 
 **Try this first:**
 1. Open **myaccount.google.com/signinoptions/two-step-verification** and turn on 2-Step Verification. Follow Google's steps; adding your phone number is enough.
-2. Then open **myaccount.google.com/apppasswords** again. The page should now let you create one called `Gymi Supabase`.
+2. Then open **myaccount.google.com/apppasswords** again. The page should now let you create one called `Adro Supabase`.
 
 **If it still says "not available":** your Google account may be a work or school account, or have extra security that blocks app passwords. In that case, skip Gmail and use **Brevo** instead. It's free (300 emails a day), and you don't need your own website domain:
 1. Sign up free at **brevo.com** with any email and confirm that email.
@@ -614,12 +614,12 @@ Gmail is blocking app passwords for your account, so let's switch to **Brevo**. 
 
 **Step 1: make a Brevo account**
 - Go to **brevo.com → Sign up free** (you can sign up with your Gmail).
-- Confirm your email, then answer the short questions about yourself. For company name, `Gymi` is fine.
+- Confirm your email, then answer the short questions about yourself. For company name, `Adro` is fine.
 
 **Step 2: check your sender address**
 - Go to **Settings → Senders, Domains & Dedicated IPs → Senders**.
 - The email you signed up with is usually already there with a green check.
-- If it isn't: tap **Add a sender**, enter Name `Gymi` and your email, then tap the confirmation link Brevo emails you.
+- If it isn't: tap **Add a sender**, enter Name `Adro` and your email, then tap the confirmation link Brevo emails you.
 
 **Step 3: get the SMTP key**
 - Go to **SMTP & API** (in the menu under your name, top right) → **SMTP** tab → **Generate a new SMTP key**. Name it `Supabase`.
@@ -647,7 +647,7 @@ No problem, you can skip that step. Brevo usually approves the email you signed 
    - On the same page, find **Login** (it looks like `xxxxxx@smtp-brevo.com`) and send it to me.
 2. **Sender check (optional):** open **https://app.brevo.com/senders/list**
    - If your email is listed with a green check, you're done.
-   - If not, tap **Add a sender**, type `Gymi` and your email, then tap the link Brevo emails you.
+   - If not, tap **Add a sender**, type `Adro` and your email, then tap the link Brevo emails you.
 
 Send me:
 - the **Login** (`...@smtp-brevo.com`)
@@ -694,7 +694,7 @@ The app picks up the login from an email link: it immediately checked the (fake)
 
 Phase 1 is live and ready to test at **https://gymi-inky.vercel.app**.
 
-**What changed:** emails now contain a **link** instead of a 6-digit code. You tap it and it brings you back into Gymi. Later, when we connect an email sender, we can switch to codes by changing one setting in the app.
+**What changed:** emails now contain a **link** instead of a 6-digit code. You tap it and it brings you back into Adro. Later, when we connect an email sender, we can switch to codes by changing one setting in the app.
 
 **Two limits of Supabase's free email** (we'll remove both when we connect a sender, before friends join):
 - It only sends to the **email you use to log in to Supabase**, so sign up with that email.
@@ -705,7 +705,7 @@ Phase 1 is live and ready to test at **https://gymi-inky.vercel.app**.
 1. **Sign up**
    - Open the link in Safari, tap **Get started**, and fill in the form.
    - On "Verify your account", tap **Send link**.
-   - Open the email on the same phone and tap **Confirm email address**. Gymi opens on "A bit about you".
+   - Open the email on the same phone and tap **Confirm email address**. Adro opens on "A bit about you".
    - Fill it in. You should land on **Home**.
    - If the link opens a new tab, go back to the first tab and tap **I've confirmed my email**.
 2. **Log out and log in**
@@ -719,7 +719,7 @@ Phase 1 is live and ready to test at **https://gymi-inky.vercel.app**.
    - Try **Dark** mode.
    - Turn on **Reduce transparency**: the glass should turn solid.
 5. **Tab bar:** on Home, scroll down. The tab bar should shrink to one icon; tap it to open it again.
-6. **Install it:** in Safari, tap Share, then **Add to Home Screen**. You should get a blue ring icon named "Gymi" that opens full screen.
+6. **Install it:** in Safari, tap Share, then **Add to Home Screen**. You should get a blue ring icon named "Adro" that opens full screen.
 
 Tell me what works and what doesn't, and send screenshots if something looks wrong. When you're happy, say **OK** and I'll start Phase 2 (Food).
 
@@ -756,7 +756,7 @@ Here's what Phase 2 (Food) covers, based on your design files.
   - your body fat, picked from body drawings;
   - your work day (start and end times, shift type, whether you work in the sun);
   - an optional notes box.
-- Gymi then works out your daily calories, protein, water, meal times and best workout time.
+- Adro then works out your daily calories, protein, water, meal times and best workout time.
 
 **2. Results you can edit**
 - Raise or lower calories.
@@ -989,14 +989,14 @@ Phase 3 is the **Train** tab: your workout plan, doing a workout, and tracking y
 **1. Plan setup (first time you open Train)**
 - A few questions: how many days a week you train, your level, any injuries or pain, and whether you train at a gym or at home.
 - You only see the plan types that fit your number of days. For example, 3 days can be Push/Pull/Legs, Upper/Lower/Full body, or Full body three times.
-- Gymi builds your weekly plan from your answers.
+- Adro builds your weekly plan from your answers.
 
 **2. Train home and your week**
 - You see the whole week: which workout is on which day, and which days are rest.
 - You can move a workout to another day, or lock a day so it never moves.
 - Fixed plan means the same days every week. Flexible plan means you just do the next workout, with at least one rest day between.
 - **"Can't train today?"**: pick a reason (tired, busy, sore, sick, traveling), then move the workout to tomorrow, do a short 25-minute version, do a home workout with no equipment, or skip it.
-- If you missed a workout, Gymi suggests doing it today and moving the rest of the week back by one.
+- If you missed a workout, Adro suggests doing it today and moving the rest of the week back by one.
 
 **3. The workout itself**
 - **Before you start:** the warm-up, the list of exercises (sets, reps, machine), and stretching. If your gym doesn't have a machine, you can swap the exercise.
@@ -1029,7 +1029,7 @@ before you start there is one thing we need to fix it, when i want to log food w
 
 ### 🤖 Claude
 
-I'll add a camera button so you take a photo of the barcode and Gymi reads it, plus a "Choose a photo" option. Automatic scanning stays on in the background in case it catches the code first.
+I'll add a camera button so you take a photo of the barcode and Adro reads it, plus a "Choose a photo" option. Automatic scanning stays on in the background in case it catches the code first.
 
 Fixing a small code-check warning, then testing the photo reading.
 
@@ -1042,7 +1042,7 @@ I pushed the barcode photo change. Vercel is deploying it now; I'll tell you whe
 Taking a photo of a barcode now works, and it's live at **https://gymi-inky.vercel.app**. If you still see the old screen, close the app and open it again.
 
 **The barcode screen now has:**
-- **A big round camera button.** Put the barcode inside the box and tap it to take the photo. Gymi reads the code and opens the product.
+- **A big round camera button.** Put the barcode inside the box and tap it to take the photo. Adro reads the code and opens the product.
 - **Choose a photo**, for a barcode picture you already have in your photos.
 - **Type the code**, if the photo still can't be read.
 - The camera still tries to read the barcode on its own while you're pointing it.
@@ -1257,12 +1257,12 @@ Google couldn't make the project for you automatically, so we'll make it by hand
 1. Go to **console.cloud.google.com** and sign in with the same Google account.
 2. If it asks you to agree to the terms, pick your country, tick the box and continue.
 3. At the top left, click the project box (it may say "Select a project"), then **New Project**.
-4. Name it **gymi**, leave the rest as is, and click **Create**. Wait a few seconds.
+4. Name it **adro**, leave the rest as is, and click **Create**. Wait a few seconds.
 
 **Step 2: Create the key in that project**
 1. Go back to **aistudio.google.com/apikey**.
 2. Click **Create API key**.
-3. When it asks for a project, search for **gymi**, pick it, and click **Create API key in existing project**.
+3. When it asks for a project, search for **adro**, pick it, and click **Create API key in existing project**.
 4. Copy the key. Don't paste it here.
 
 **Step 3: Put it in Supabase** (same as before)
@@ -1292,7 +1292,7 @@ The key is in. Testing the AI for real with a temporary test account.
 
 The server now switches to the backup by itself. Checking which free Qwen model OpenRouter offers, so the backup works the moment you add a key.
 
-The key is saved in Supabase, but **Google is refusing it**. When I tested, Gemini answered: *"Your project has been denied access."* That's a block on Google's side, on this Google account or the new project, not something in Gymi. The code can't fix it. It often happens with brand-new projects, work or school accounts, or accounts Google flags. So the AI still says "AI isn't set up yet" in the app.
+The key is saved in Supabase, but **Google is refusing it**. When I tested, Gemini answered: *"Your project has been denied access."* That's a block on Google's side, on this Google account or the new project, not something in Adro. The code can't fix it. It often happens with brand-new projects, work or school accounts, or accounts Google flags. So the AI still says "AI isn't set up yet" in the app.
 
 I changed the server so that when Gemini refuses, it automatically tries a backup instead. I also cleaned up the test account. You have two options:
 
@@ -1301,14 +1301,14 @@ I changed the server so that when Gemini refuses, it automatically tries a backu
 2. Open **Keys**, then **Create Key**, and copy it. Don't paste it here.
 3. In Supabase, go to **Edge Functions**, then **Secrets**, and add a secret named **`OPENROUTER_API_KEY`** with the key as the value.
 
-Gymi will use a free model there (Google's Gemma), which reads photos too. I checked: Qwen isn't free on OpenRouter right now, and it needs about $5 of credit. If you add credit later, we can switch to Qwen with one setting.
+Adro will use a free model there (Google's Gemma), which reads photos too. I checked: Qwen isn't free on OpenRouter right now, and it needs about $5 of credit. If you add credit later, we can switch to Qwen with one setting.
 
 **Option B: Try Gemini again with another account**
 - Use a **personal Gmail** that isn't a work or school account, preferably an older one.
 - Make a new project and key the same way as before.
 - In Supabase, replace the value of **`GEMINI_API_KEY`** with the new key.
 
-You can also do both: Gymi tries Gemini first and uses OpenRouter if Gemini fails.
+You can also do both: Adro tries Gemini first and uses OpenRouter if Gemini fails.
 
 Tell me "done" after either one, and I'll test the AI right away before giving you the Phase 4 test list.
 
@@ -1317,14 +1317,14 @@ Tell me "done" after either one, and I'll test the AI right away before giving y
 <!-- attach -->
 > OpenRouter
 
-which is the best model for gymi and free
+which is the best model for adro and free
 
 ### 🤖 Claude
 
-**Gemma 4 31B (free)**, model ID `google/gemma-4-31b-it:free`, is the best free choice for Gymi, and it's already the app's default backup.
+**Gemma 4 31B (free)**, model ID `google/gemma-4-31b-it:free`, is the best free choice for Adro, and it's already the app's default backup.
 
 **Why I picked it:**
-- **It reads photos**, which Gymi needs for meal photos, nutrition labels and gym machines. Most free models only read text.
+- **It reads photos**, which Adro needs for meal photos, nutrition labels and gym machines. Most free models only read text.
 - **It's good at Arabic and English**, so replies sound natural in both.
 - **It gives the tidy answers the app needs**, like calories and grams, so they can be shown and saved.
 - **It's made by Google**, the same family as Gemini, so the answers should be close to what Gemini would give.
@@ -1337,7 +1337,7 @@ which is the best model for gymi and free
 
 **One thing to know about "free":** OpenRouter gives about **50 free requests per day for the whole app**, not per person. That's enough for you to test. If you add $10 of credit once, it goes up to about 1,000 per day. Before real users join, we can switch to Gemini or Qwen with one setting.
 
-**What to do now:** create the key on OpenRouter and add it in Supabase, under **Edge Functions**, then **Secrets**, named **`OPENROUTER_API_KEY`**. You don't need to pick a model anywhere; Gymi uses Gemma 4 31B automatically. Tell me "done" and I'll test it.
+**What to do now:** create the key on OpenRouter and add it in Supabase, under **Edge Functions**, then **Secrets**, named **`OPENROUTER_API_KEY`**. You don't need to pick a model anywhere; Adro uses Gemma 4 31B automatically. Tell me "done" and I'll test it.
 
 ### 👤 أنت
 
@@ -1348,7 +1348,7 @@ but isnt gonna be better?
 
 ### 🤖 Claude
 
-Probably not for Gymi, but it's close enough that the best way to decide is to test both.
+Probably not for Adro, but it's close enough that the best way to decide is to test both.
 
 **Why I still lean towards Gemma 4 31B:**
 - **Size:** Nemotron Nano Omni only uses about 3 billion "brain cells" per answer (that's what "Nano" and "a3b" mean). Gemma 4 31B uses all 31 billion, so it's usually smarter at food, coaching and natural Arabic.
@@ -1357,9 +1357,9 @@ Probably not for Gymi, but it's close enough that the best way to decide is to t
 
 **Where Nemotron could win:**
 - Math, such as adding up a meal's calories. Thinking step by step helps there.
-- It can also understand voice and video, but Gymi doesn't need that right now.
+- It can also understand voice and video, but Adro doesn't need that right now.
 
-**My suggestion:** once your OpenRouter key is in Supabase, I'll run both models on the same real Gymi tasks:
+**My suggestion:** once your OpenRouter key is in Supabase, I'll run both models on the same real Adro tasks:
 - a chat question in English and in Arabic
 - "I ate chicken kabsa"
 - a meal photo and a nutrition label
@@ -1410,13 +1410,13 @@ So it works, but sometimes slowly or not at all. To make it fast and reliable, p
 
 **Option 1: Add a little credit to OpenRouter (recommended).**
 - Put **$5–10** of credit on openrouter.ai, under Credits.
-- Then I switch Gymi to **Qwen3-VL**, the backup model planned in the docs. It's fast, good at Arabic and reads photos.
+- Then I switch Adro to **Qwen3-VL**, the backup model planned in the docs. It's fast, good at Arabic and reads photos.
 - It's very cheap: one meal photo costs about 0.03 halalas, so $5 lasts thousands of requests.
 - Credit also raises the daily limit, and you don't need to touch Supabase again.
 
 **Option 2: Try Gemini again with a different Google account. It's free and fast.**
 - Use a personal Gmail (not work or school), make a new project and key, and add it in Supabase as **`GEMINI_API_KEY`**.
-- If Google accepts it, Gymi uses Gemini first and OpenRouter only as backup.
+- If Google accepts it, Adro uses Gemini first and OpenRouter only as backup.
 
 **Option 3: Keep it free as it is now.** It's fine for trying things out, but expect waits and "busy" messages.
 
@@ -1430,7 +1430,7 @@ credit added, only use qwen and dont switch
 
 ### 🤖 Claude
 
-Switching Gymi to use only Qwen, with no switching to other models.
+Switching Adro to use only Qwen, with no switching to other models.
 
 Qwen is now the only model, and it's deployed. Testing all the AI features with it.
 
@@ -1592,7 +1592,7 @@ Phases 5, 6 and 7 are built and live at **https://gymi-inky.vercel.app**. Before
   - **Streaks:** your streak, commitment rate and badges.
 - The Streaks card on Home now uses your real numbers.
 - Reports for a week, a month or any dates, with an AI summary and a PDF export.
-- Health: a vitamins list with reminder times, and blood tests read from a photo. Values outside the normal range get the doctor warning, and Gymi never suggests treatment.
+- Health: a vitamins list with reminder times, and blood tests read from a photo. Values outside the normal range get the doctor warning, and Adro never suggests treatment.
 
 **Phase 6: Gym Bros, coaches, women's health**
 - **Friends:** add people by exact username only. Friends see only what you switch on.
@@ -1610,7 +1610,7 @@ Phases 5, 6 and 7 are built and live at **https://gymi-inky.vercel.app**. Before
 **Phase 7: devices, subscriptions, store prep**
 - In the phone app, barcodes scan with the camera and the photo features use the phone camera.
 - Daily reminders on the phone for check-in, water, meals, training and vitamins.
-- Your readings screen, a Gymi Pro plan screen, a privacy policy and terms.
+- Your readings screen, a Adro Pro plan screen, a privacy policy and terms.
 - Download my data, and Delete my account. The app stores require the delete option; it runs on the server and removes everything.
 - I also finished "Edit home": you can move and hide Home cards.
 
@@ -1651,8 +1651,8 @@ These things are not done, because they need your accounts or your OK:
    - an Expo token. Create it on expo.dev and add it to this Claude Code environment as a secret named **`EXPO_TOKEN`** (don't paste it in the chat). Then tell me "build the phone apps".
 
    The full steps are in `docs/STORE-RELEASE.md`.
-2. **Real payments for Gymi Pro.** The plan screen is there, but no one can be charged yet. This needs the store accounts first, then a payments service.
-3. **Apple Health, WHOOP and Garmin.** These can only connect after the phone app is live. Until then, Gymi uses what you log yourself.
+2. **Real payments for Adro Pro.** The plan screen is there, but no one can be charged yet. This needs the store accounts first, then a payments service.
+3. **Apple Health, WHOOP and Garmin.** These can only connect after the phone app is live. Until then, Adro uses what you log yourself.
 4. **Approving coaches.** New coaches wait "under review". For now I approve them for you when you ask.
 
 Next step for you: go through the phone test list from my last message on your phone. Tell me anything that looks wrong and I'll fix it.
@@ -1761,12 +1761,12 @@ Both test users are deleted. Next I'm checking that the live site has updated.
 All 12 missing parts are built, and your admin account and admin page are ready. The update is live at https://gymi-inky.vercel.app.
 
 ## Your admin account
-- **Username:** `gymi.admin` (or email `admin@gymi.app`)
-- **Password:** `Gymi-0DUHy950BaZm7a`
+- **Username:** `adro.admin` (or email `admin@adro.app`)
+- **Password:** `Adro-0DUHy950BaZm7a`
 
 To use it:
 1. Log in at https://gymi-inky.vercel.app/login.
-2. Go to **You → Gymi team → Admin**.
+2. Go to **You → Adro team → Admin**.
 3. Please change the password soon in **You → Account details**, because it's now written in this chat.
 
 ## The admin page
@@ -1817,13 +1817,13 @@ Give me the admin account
 
 These are the admin account details:
 
-- **Username:** `gymi.admin` (you can also log in with the email `admin@gymi.app`)
-- **Password:** `Gymi-0DUHy950BaZm7a`
+- **Username:** `adro.admin` (you can also log in with the email `admin@adro.app`)
+- **Password:** `Adro-0DUHy950BaZm7a`
 
 To open the admin page:
 1. Log in at https://gymi-inky.vercel.app/login.
 2. Go to the **You** tab.
-3. Under **Gymi team**, tap **Admin**.
+3. Under **Adro team**, tap **Admin**.
 
 The password is now written in this chat, so please change it after your first login. You can do that in **You → Account details → Password**.
 
@@ -2333,11 +2333,11 @@ Each of you has your own admin login, so the app knows who recorded what:
 
 | Person | Username | Password |
 |---|---|---|
-| Ali | `gymi.ali` | `Gymi-zEA85DcxLUiAXa` |
-| Hamdan | `gymi.hamdan` | `Gymi-V0Xi4CwvkFDC4O` |
-| Ahmed | `gymi.ahmed` | `Gymi-183xuOawy1RIvV` |
+| Ali | `adro.ali` | `Adro-zEA85DcxLUiAXa` |
+| Hamdan | `adro.hamdan` | `Adro-V0Xi4CwvkFDC4O` |
+| Ahmed | `adro.ahmed` | `Adro-183xuOawy1RIvV` |
 
-Log in at https://gymi-inky.vercel.app/login, then go to **You → Admin**. Because these passwords are now in this chat, each person should change theirs in **You → Account details**. The old `gymi.admin` login still works too.
+Log in at https://gymi-inky.vercel.app/login, then go to **You → Admin**. Because these passwords are now in this chat, each person should change theirs in **You → Account details**. The old `adro.admin` login still works too.
 
 **1. Accounting**
 - **Add a purchase** (the + button). You fill in:
@@ -2375,7 +2375,7 @@ Now whats next?
 
 ### 🤖 Claude
 
-The app and the website are done. What's next is getting Gymi onto real phones and into the App Store and Google Play. In order:
+The app and the website are done. What's next is getting Adro onto real phones and into the App Store and Google Play. In order:
 
 **1. Build the phone app** (this is the most important step)
 Everything so far was tested on the website. Apple Health, Health Connect, voice, the camera, PDFs, sounds and reminders only work in the phone app, and I couldn't test them on a phone.
@@ -2396,7 +2396,7 @@ Login codes and email-change codes are built but switched off, because Supabase'
 - Best to launch to a small test group first (TestFlight on iPhone, internal testing on Android), with friends and one or two real coaches.
 
 **5. After launch: money and notifications**
-- **Gymi Pro and coach payments:** real payments need the store accounts first, then a payments service called RevenueCat. When you get there, I'll tell you the exact key names and where to add them.
+- **Adro Pro and coach payments:** real payments need the store accounts first, then a payments service called RevenueCat. When you get there, I'll tell you the exact key names and where to add them.
 - **Phone notifications sent from the server:** for coach alerts (missed workouts, new records) and Gym Bros alerts when the app is closed. I can build this once the phone app exists.
 - **Before real users join:** a security review of the database rules, turning on database backups (this needs Supabase's paid plan), and watching the new Server and AI costs pages. Your OpenRouter balance is $4.99, so top it up before launch.
 
@@ -2428,11 +2428,11 @@ Mid-cut, the old and new screens fade over each other and look ghosted. The iPho
 
 The slide-in looks clean. Re-rendering the full video:
 
-I've made the ad and sent it to you above. It's 35 seconds, vertical 1080×1920, with music, and ready for Instagram Reels, TikTok, Snapchat and YouTube Shorts. I also saved it in the project as `docs/marketing/gymi-ad-vertical.mp4`.
+I've made the ad and sent it to you above. It's 35 seconds, vertical 1080×1920, with music, and ready for Instagram Reels, TikTok, Snapchat and YouTube Shorts. I also saved it in the project as `docs/marketing/adro-ad-vertical.mp4`.
 
 **What happens in it:**
 1. **0–3 s:** a black screen with "Meet your new coach." fading in from a blur.
-2. **3–6 s:** the screen turns white, the blue Gymi ring draws itself, then "gymi — Your AI gym coach."
+2. **3–6 s:** the screen turns white, the blue Adro ring draws itself, then "adro — Your AI gym coach."
 3. **6–31 s:** an iPhone rises up and the screens change with each headline:
    - "Everything. One place." over Home
    - "Eat smarter." over Food
@@ -2806,7 +2806,7 @@ Creat md file of this chat
 
 ### 🤖 Claude
 
-سوّيت ملف `GYMI-chat-log.md`، وهو ملخص للمحادثة وليس نسخة حرفية من كل رسالة. فيه:
+سوّيت ملف `ADRO-chat-log.md`، وهو ملخص للمحادثة وليس نسخة حرفية من كل رسالة. فيه:
 - معلومات المشروع والقواعد اللي حطيتها.
 - كل اللي انبنى بالترتيب.
 - طلباتك وكيف تنفذت.
@@ -2814,15 +2814,15 @@ Creat md file of this chat
 
 ما حطيت فيه أي كلمة سر أو مفتاح. الملف محفوظ في مجلد المشروع وما رفعته على GitHub. إذا تبيه هناك، قل لي وأرفعه.
 
-**English:** I made `GYMI-chat-log.md`, a summary of this chat rather than a word-for-word copy. It has no passwords or keys, and it's saved in the project folder but not uploaded to GitHub.
+**English:** I made `ADRO-chat-log.md`, a summary of this chat rather than a word-for-word copy. It has no passwords or keys, and it's saved in the project folder but not uploaded to GitHub.
 
-رفعت ملف ملخص المحادثة (`GYMI-chat-log.md`) على GitHub في فرع main. ما فيه أي تغيير على التطبيق نفسه.
+رفعت ملف ملخص المحادثة (`ADRO-chat-log.md`) على GitHub في فرع main. ما فيه أي تغيير على التطبيق نفسه.
 
-**English:** I pushed the chat summary file (`GYMI-chat-log.md`) to GitHub on main. The app itself is unchanged.
+**English:** I pushed the chat summary file (`ADRO-chat-log.md`) to GitHub on main. The app itself is unchanged.
 
 ### 👤 أنت
 
-Recommend me another name instead of gymi make as apple naming style
+Recommend me another name instead of adro make as apple naming style
 
 ### 🤖 Claude
 
@@ -3166,11 +3166,11 @@ Sources:
 
 ### 👤 أنت
 
-اقترح اشياء تشبه gymi
+اقترح اشياء تشبه adro
 
 ### 🤖 Claude
 
-هذي أسماء على نفس أسلوب **Gymi**: قصيرة ولطيفة، وتنتهي بحرف **i** أو **y**، وسهل ينطقها الناس.
+هذي أسماء على نفس أسلوب **Adro**: قصيرة ولطيفة، وتنتهي بحرف **i** أو **y**، وسهل ينطقها الناس.
 
 ## ✅ ما لقيت تطبيق بهذي الأسماء
 
@@ -3196,7 +3196,7 @@ Sources:
 
 1. **Coachi**
    - أقرب اسم لفكرة التطبيق، لأن التطبيق مدرب ذكي يعرفك.
-   - يشبه Gymi في الإحساس، ويوضّح أكثر وش يسوي التطبيق.
+   - يشبه Adro في الإحساس، ويوضّح أكثر وش يسوي التطبيق.
 2. **Fitti**
    - قصير جداً ومرح، وسهل يتذكره الكبير والصغير.
    - ما يركّز على الجيم بس، يشمل الأكل والصحة بعد.
@@ -3206,16 +3206,16 @@ Sources:
 
 ---
 
-**نصيحة:** إذا تحب اسم **Gymi** نفسه وتبي تحتفظ فيه، تقدر تطوره بأسلوب أبل بدل ما تغيّره:
-- **Gymi Coach**: المدرب الذكي.
-- **Gymi+**: الاشتراك.
-- **Gymi Together**: التمرين مع الأصحاب.
+**نصيحة:** إذا تحب اسم **Adro** نفسه وتبي تحتفظ فيه، تقدر تطوره بأسلوب أبل بدل ما تغيّره:
+- **Adro Coach**: المدرب الذكي.
+- **Adro+**: الاشتراك.
+- **Adro Together**: التمرين مع الأصحاب.
 
 بهذي الطريقة تحافظ على الاسم وتعطيه شكل احترافي.
 
 هذا بحث سريع على الإنترنت فقط، فلازم تتأكد بنفسك من المتاجر والعلامة التجارية والدومين قبل ما تعتمد اسم.
 
-**English:** These names follow Gymi's style. My quick search found no app named **Fitti**, **Lifti**, **Repi**, **Gaini**, **Movi**, **Coachi**, **Fitzi** or **Pumpi**. **Gymo**, **Gymly** and **Bodi** are already taken. My top picks are **Coachi**, **Fitti** and **Gaini**, or you could keep Gymi and grow it Apple-style (Gymi Coach, Gymi+, Gymi Together). This was only a quick web search, so the store, trademark and domain checks are still needed.
+**English:** These names follow Adro's style. My quick search found no app named **Fitti**, **Lifti**, **Repi**, **Gaini**, **Movi**, **Coachi**, **Fitzi** or **Pumpi**. **Gymo**, **Gymly** and **Bodi** are already taken. My top picks are **Coachi**, **Fitti** and **Gaini**, or you could keep Adro and grow it Apple-style (Adro Coach, Adro+, Adro Together). This was only a quick web search, so the store, trademark and domain checks are still needed.
 
 Sources:
 - [Gymo](https://apps.apple.com/app/id6767882116)
@@ -3236,7 +3236,7 @@ Sources:
 | السبب | الشرح |
 |---|---|
 | **سهل وكاتشي** | مقطعين بس: سترون + قو. يعلق في الذاكرة من أول مرة |
-| **يشبه Gymi** | نفس الروح المرحة والقريبة، لكنه أقوى وأوضح |
+| **يشبه Adro** | نفس الروح المرحة والقريبة، لكنه أقوى وأوضح |
 | **معناه واضح** | Strong يعني قوي، وأي شخص في العالم يفهمه |
 | **سهل بالعربي** | «سترونقو» تنقال بسهولة، وتصير كلمة متداولة: "شغّل سترونقو"، "سجّلت تمريني في سترونقو" |
 | **يشمل كل شي** | قوة الجسم، وقوة الإرادة، وقوة الصحة، مو بس الجيم |
@@ -3289,7 +3289,7 @@ Sources:
 
 إذا اعتمدته، قل لي وأغيّر الاسم في التطبيق كله: الشعار، والأيقونة، والعناوين، والنصوص العربية والإنجليزية.
 
-**English:** My pick is **Strongo**, a new name. It's short and catchy like Gymi, its meaning is clear everywhere, and it's easy to say in Arabic. I found no app with exactly this name, but STRONGU and STRNG are similar, so check trademarks first. It comes with a full identity: the slogan "Get Strongo / خلك سترونقو", sub-brands (Coach, +, Together, Score), a cobalt "S" icon, an orange energy colour, a friendly voice and an optional mascot.
+**English:** My pick is **Strongo**, a new name. It's short and catchy like Adro, its meaning is clear everywhere, and it's easy to say in Arabic. I found no app with exactly this name, but STRONGU and STRNG are similar, so check trademarks first. It comes with a full identity: the slogan "Get Strongo / خلك سترونقو", sub-brands (Coach, +, Together, Score), a cobalt "S" icon, an orange energy colour, a friendly voice and an optional mascot.
 
 Sources:
 - [STRONGU](https://apps.apple.com/md/app/strongu/id1634181482)
@@ -3313,7 +3313,7 @@ Next I'm writing the technical and legal section, including a data-protection po
 
 All sections are written. Last step: removing an empty line at the top of the document.
 
-دراسة الجدوى جاهزة في مستند: [دراسة جدوى تطبيق Strongo (Gymi)](https://claude.ai/code/artifact/8b962a62-4918-442b-8787-662a94d3421d). تقدر تعدّل فيه مباشرة أو تكتب ملاحظاتك عليه، وأنا أعدّل.
+دراسة الجدوى جاهزة في مستند: [دراسة جدوى تطبيق Strongo (Adro)](https://claude.ai/code/artifact/8b962a62-4918-442b-8787-662a94d3421d). تقدر تعدّل فيه مباشرة أو تكتب ملاحظاتك عليه، وأنا أعدّل.
 
 **الخلاصة:** المشروع مجدي إذا ضبطنا ميزانية التسويق.
 - **الاستثمار المطلوب:** تقريباً ١٥٠ إلى ٢٠٠ ألف ريال للسنتين الأوليين.
@@ -3333,7 +3333,7 @@ All sections are written. Last step: removing an empty line at the top of the do
 
 ### 👤 أنت
 
-خلي اسم التطبيق gymi وحدد ميزانية بدأ المشروع عشر الاف
+خلي اسم التطبيق adro وحدد ميزانية بدأ المشروع عشر الاف
 
 ### 🤖 Claude
 
@@ -3365,7 +3365,7 @@ The feasibility study is updated. Now the activity-level change in the app.
 حساب السعرات نفسه ما تغيّر، تغيّر بس الشرح عشان يختار المستخدم الخيار الصحيح. ما فتحت الشاشة أشوفها بعد التعديل، لكن فحص الكود نجح بدون أخطاء.
 
 **٢. دراسة الجدوى** ([المستند](https://claude.ai/code/artifact/8b962a62-4918-442b-8787-662a94d3421d))
-- الاسم صار **Gymi** في كل المستند، والباقة اسمها **Gymi+**. اسم الرابط نفسه (العنوان اللي يظهر في القائمة) باقي "Strongo (Gymi)"، ما قدرت أغيّره من هنا.
+- الاسم صار **Adro** في كل المستند، والباقة اسمها **Adro+**. اسم الرابط نفسه (العنوان اللي يظهر في القائمة) باقي "Strongo (Adro)"، ما قدرت أغيّره من هنا.
 - **ميزانية البداية ١٠,٠٠٠ ريال:**
   - التسويق: ٥,٤٠٠ ريال.
   - التسجيل والرسوم الحكومية: ١,٥٠٠ ريال تقريباً.
@@ -3381,7 +3381,7 @@ The feasibility study is updated. Now the activity-level change in the app.
 
 هذي الأرقام المالية تقديرات مني، تحتاج تتحدّث بالأرقام الحقيقية بعد الإطلاق.
 
-**English:** Each activity option now shows daily steps and workouts per week; calorie math is unchanged and it's live. I didn't re-check the screen visually, but the code checks passed. The study now uses Gymi throughout (the doc's link title still says "Strongo (Gymi)", which I couldn't rename from here) and is rebuilt around a 10,000 SAR start. Running costs are about 500 SAR a month, covered by roughly 35 paying subscribers around month 6–9, with estimated profit of about 3k, 26k and 91k SAR over the first three years.
+**English:** Each activity option now shows daily steps and workouts per week; calorie math is unchanged and it's live. I didn't re-check the screen visually, but the code checks passed. The study now uses Adro throughout (the doc's link title still says "Strongo (Adro)", which I couldn't rename from here) and is rebuilt around a 10,000 SAR start. Running costs are about 500 SAR a month, covered by roughly 35 paying subscribers around month 6–9, with estimated profit of about 3k, 26k and 91k SAR over the first three years.
 
 ### 👤 أنت
 
@@ -4213,7 +4213,7 @@ Delete works and updates the plan, and the update banner shows up. Deleting the 
 
 إذا كنت خلصت جولات في التمرين، ينبهك إنها ما راح تنحفظ. وما يطلع زر الحذف إذا باقي تمرين واحد بس في الجلسة.
 
-**3. تنبيه النسخة الجديدة:** أي مرة أرفع تحديث وأنت فاتح التطبيق، يطلع لك فوق شريط أزرق **"فيه نسخة جديدة من Gymi"** مع زر **"تحديث"**. التمرين اللي شغال ما يضيع، لأنه محفوظ ويرجع بعد التحديث. الشريط يغطي زر الرجوع وزر Finish فوق لين تحدّث أو تقفله بـ ✕.
+**3. تنبيه النسخة الجديدة:** أي مرة أرفع تحديث وأنت فاتح التطبيق، يطلع لك فوق شريط أزرق **"فيه نسخة جديدة من Adro"** مع زر **"تحديث"**. التمرين اللي شغال ما يضيع، لأنه محفوظ ويرجع بعد التحديث. الشريط يغطي زر الرجوع وزر Finish فوق لين تحدّث أو تقفله بـ ✕.
 
 جربت الحذف والتنبيه في المتصفح: حذفت Lateral raise من الجدول وانشال صح، وحذفت الحساب التجريبي.
 
@@ -4473,13 +4473,13 @@ It works: no level step, your level shows Advanced from your plan, and your frie
 - وإذا ما اختار، يحسبه من عدد تمارينه في آخر 6 شهور: 60 تمرين أو أكثر متقدم، و12 أو أكثر متوسط، وأقل من كذا مبتدئ.
 - ما عاد تطلع "المستوى غير معروف".
 
-**صديق مو موجود في Gymi:** هذا بس اللي تختار مستواه، لأن التطبيق ما عنده أي بيانات عنه.
+**صديق مو موجود في Adro:** هذا بس اللي تختار مستواه، لأن التطبيق ما عنده أي بيانات عنه.
 
 **ليش كان مكتوب "المستوى غير معروف" عند أحمد وحمدان في صورتك؟** لأنهم ما اختاروا مستوى في جدولهم وما عندهم تمارين مسجلة. الحين بيطلعون "مبتدئ"، ولما يسجلون تمارين أو يختارون مستواهم يتعدل تلقائيًا.
 
 جربته بحسابين أصحاب: مستواي طلع "متقدم" من جدولي، وصاحبي طلع "مبتدئ" تلقائيًا. حذفت الحسابات التجريبية.
 
-**English:** Train together no longer asks for anyone's level. Yours comes from your training plan. Each friend's comes from their plan, or from how many workouts they logged in the last 6 months, and a friend with no data shows as Beginner. Only a friend who isn't on Gymi still needs a level picked. Tested and live.
+**English:** Train together no longer asks for anyone's level. Yours comes from your training plan. Each friend's comes from their plan, or from how many workouts they logged in the last 6 months, and a friend with no data shows as Beginner. Only a friend who isn't on Adro still needs a level picked. Tested and live.
 
 ### 👤 أنت
 
@@ -4738,7 +4738,7 @@ Moving works too: Hamdan's Pull day moved from Tuesday to Wednesday (his next re
 - جربت حالة النقل: يوم الـ Pull حق حمدان انتقل من الثلاثاء للأربعاء (يوم راحته) لهالأسبوع بس.
 - حذفت الحسابات التجريبية.
 
-**ملاحظة:** صديقك اللي مو موجود في Gymi ما عنده جدول، فينحسب له التمرين كإضافي.
+**ملاحظة:** صديقك اللي مو موجود في Adro ما عنده جدول، فينحسب له التمرين كإضافي.
 
 **English:** Train together now has the AI merge everyone's own plan for the chosen day into one workout (for example Push + Pull becomes "Upper"), and it avoids anyone's injuries. Invites show the real workout name and tell each person, in their own language, what joining does to their plan: it counts as their planned day, moves that day to their next rest day this week, or is an extra session. Tapping Accept applies that change. Tested with two accounts, including the moved-day case, and it's live.
 
@@ -4798,14 +4798,14 @@ Cooked dishes came out about the same as before (kabsa, falafel, shakshuka), so 
 1. **المحتوى يحتاج مراقبة:** فيديوهات أجسام، معلومات غلط عن الأكل والمكملات، ونصايح خطيرة. Apple و Google يطلبون لأي محتوى ينشره المستخدمون نظام تبليغ وحظر ومراجعة، وإلا يرفضون التطبيق.
 2. **التكلفة:** تخزين الفيديو وتشغيله غالي، وميزانيتك 10 آلاف ريال. الريلز ممكن تاكل جزء كبير منها بسرعة.
 3. **البداية الفاضية:** الريلز تحتاج آلاف الناس ينشرون عشان تصير ممتعة. مع مستخدمين قليلين بتطلع فاضية وتعطي انطباع إن التطبيق ميت.
-4. **المنافسة:** المستخدم أصلًا يشوف ريلز الجم في تيك توك وإنستقرام، وما راح يترك المكانين عشان ريلز Gymi.
-5. **التركيز:** قوة Gymi إنه مدرب ذكي يعرف بياناتك، والريلز تشتت عن هالشي.
+4. **المنافسة:** المستخدم أصلًا يشوف ريلز الجم في تيك توك وإنستقرام، وما راح يترك المكانين عشان ريلز Adro.
+5. **التركيز:** قوة Adro إنه مدرب ذكي يعرف بياناتك، والريلز تشتت عن هالشي.
 
 **اللي أنصح فيه (نفس روح الفكرة بس أذكى):**
 
 | المرحلة | الفكرة | ليش |
 |---|---|---|
-| **1. الحين** | **فيديو "ملخص تمرينك"**: بعد ما تخلص التمرين يطلع لك فيديو قصير جاهز (الوقت، الحجم، الأرقام القياسية، شعار Gymi) تنشره في تيك توك وإنستقرام وسناب | تسويق مجاني: كل مستخدم ينشر يجيب لك ناس جدد، وبدون تكلفة تخزين أو مراقبة |
+| **1. الحين** | **فيديو "ملخص تمرينك"**: بعد ما تخلص التمرين يطلع لك فيديو قصير جاهز (الوقت، الحجم، الأرقام القياسية، شعار Adro) تنشره في تيك توك وإنستقرام وسناب | تسويق مجاني: كل مستخدم ينشر يجيب لك ناس جدد، وبدون تكلفة تخزين أو مراقبة |
 | **2. بعدين** | **فيديوهات قصيرة من المدربين المعتمدين بس**: شرح أداء التمارين بدال الصور الحالية، ونصايح في صفحة المدرب | محتوى موثوق، والمدربين يسوقون لأنفسهم داخل التطبيق، والمراقبة سهلة لأن العدد قليل |
 | **3. لما يكبر التطبيق** | **ريلز للأصحاب والقروبات بس**: مقاطع تقدمك تشوفها أنت وأصحابك | تحفيز بدون مخاطر المحتوى العام |
 
@@ -4832,7 +4832,7 @@ Cooked dishes came out about the same as before (kabsa, falafel, shakshuka), so 
 2. أرقام التمرين تعدّ قدامك: السعرات والوقت والوزن الكلي والمجموعات والتمارين.
 3. رقم قياسي جديد: بنش برس ٩٠ كغ × ٦ 🏆
 4. "٥ تمارين ورا بعض" مع أيام الأسبوع.
-5. شعار Gymi و"تمرّن معي على Gymi".
+5. شعار Adro و"تمرّن معي على Adro".
 
 **طريقة الاستخدام:**
 - اضغط يمين أو يسار الفيديو تروح للمشهد اللي بعده أو اللي قبله.
@@ -4888,7 +4888,7 @@ Fix "a 11-second" → "an 11-second" and publish.
 - إيقاع جم حماسي (طبل وبيس) طول المقطع.
 - كل انتقال بين المشاهد يجي على ضربة الإيقاع، وقبله صوت "ووش".
 - لما يطلع الرقم القياسي تسمع رنّة نصر صغيرة 🏆
-- في بطاقة Gymi الأخيرة الإيقاع يهدا وتطلع نغمة ختام.
+- في بطاقة Adro الأخيرة الإيقاع يهدا وتطلع نغمة ختام.
 
 **مهم:** المتصفح ما يشغّل الصوت لحاله. اضغط زر **"اضغط للصوت"** فوق الفيديو، والمقطع يبدأ من أوله مع الصوت. وفيه زر سماعة تحت جنب زر التشغيل عشان تطفي الصوت أو تشغّله.
 
@@ -4906,8 +4906,8 @@ Making the MP4 now. The first render had the scenes out of order, so I'm fixing 
 
 أرسلت لك المقطع كفيديو MP4 تقدر تحمّله على جوالك 📱. فوق هذي الرسالة فيه ملفين:
 
-- **gymi-recap-ar.mp4**: النسخة العربية
-- **gymi-recap-en.mp4**: النسخة الإنجليزية
+- **adro-recap-ar.mp4**: النسخة العربية
+- **adro-recap-en.mp4**: النسخة الإنجليزية
 
 **مواصفات الفيديو:**
 - مقاس طولي 1080×1920، نفس مقاس تيك توك والريلز والسناب.
@@ -4941,7 +4941,7 @@ Fixing a small label in the Arabic version, then sending you the videos.
 3. **الوزن الكلي بالسيارات:** العداد يوصل ٣٬٧٤٧ كجم، وبعدها "كأنك رفعت سيارتين ونص" 🚗🚗. فكرة يفهمها أي أحد يشوف المقطع.
 4. **تقدّمك في ٦ أسابيع:** أعمدة تطلع واحد ورا الثاني، و"+٣٨٪".
 5. **رقم قياسي:** فلاش أبيض، ورقم ٨٥ ينشطب ويطلع ٩٠ بضربة.
-6. **النهاية:** "دورك." وزر "تمرّن معي على Gymi".
+6. **النهاية:** "دورك." وزر "تمرّن معي على Adro".
 
 **الفرق عن الأول:** ألوان جديدة (أسود وأخضر فسفوري)، وخط عريض ضخم، والشاشة تهتز مع كل ضربة. والموسيقى مختلفة: تبدأ بتصاعد وبعدين يجي الدروب، مع رنّة للرقم القياسي.
 
@@ -4957,7 +4957,7 @@ Fixing a small label in the Arabic version, then sending you the videos.
 
 The page is live, but saving needs one more permission. Adding it now.
 
-سوّيت لك قوالب تنحط على الصورة، بنفس فكرة Strava و Whoop لكن بستايل Gymi:
+سوّيت لك قوالب تنحط على الصورة، بنفس فكرة Strava و Whoop لكن بستايل Adro:
 
 👉 https://claude.ai/artifact/QApD3GjMxqSW6ekHHDPa7q
 
@@ -4981,7 +4981,7 @@ The page is live, but saving needs one more permission. Adding it now.
 
 **ما تغيّر شي في التطبيق.**
 
-*Four Gymi photo overlays (Stats, Rings, Record, Minimal). Add your own photo, then save a story image or a see-through sticker. The 4 samples are attached above. The app is unchanged.*
+*Four Adro photo overlays (Stats, Rings, Record, Minimal). Add your own photo, then save a story image or a see-through sticker. The 4 samples are attached above. The app is unchanged.*
 
 ### 👤 أنت
 
@@ -5157,7 +5157,7 @@ I can't read the Vercel logs from here (no access). Checking whether something w
 
 **⚠️ النشر:** Vercel رفض هالنسخة، مع إن نفس الكود يتبني عندي بدون أي خطأ، حتى من نسخة نظيفة. ما أقدر أشوف سجلات Vercel من هنا لأن ما عندي صلاحية، فما أعرف السبب بالضبط. غالبًا مشكلة مؤقتة عندهم، لأن كل النسخ اللي قبل انرفعت عادي. الكود محفوظ على main.
 
-**الحل:** ادخل Vercel على مشروع gymi، وافتح آخر deployment الفاشل، واضغط **Redeploy**. أو إذا رسلت لي شي ثاني أعدّله، الرفعة الجاية بتنشر هذا معها.
+**الحل:** ادخل Vercel على مشروع adro، وافتح آخر deployment الفاشل، واضغط **Redeploy**. أو إذا رسلت لي شي ثاني أعدّله، الرفعة الجاية بتنشر هذا معها.
 
 *Added a kg/lb switch under You → Gym weights. Weights are still saved in kg and shown in your unit, with 5 lb jumps. Tested end to end (45 lb saved as 20.41 kg). The Vercel deploy failed even though a clean local build passes, and I can't read Vercel's logs from here. Press Redeploy on the failed deployment in Vercel, or it will go out with the next push.*
 
@@ -5229,7 +5229,7 @@ I added both things and tested them in the app. But **the Vercel deploy failed a
 
 **⚠️ النشر:** Vercel رفض الرفعة مرة ثانية، مع إن البناء عندي ينجح. المرة اللي فاتت صار نفس الشي، وبعدها الرفعة اللي بعدها نجحت وفيها نفس الكود. يعني غالبًا مشكلة عند Vercel نفسه، بس ما أقدر أشوف السبب لأن ما عندي صلاحية على سجلات Vercel.
 
-**عشان ينزل الحين:** ادخل Vercel على مشروع gymi، وافتح آخر deployment الفاشل، واضغط **Redeploy**. أو بينزل مع أي تعديل جاي ترسله لي. وإذا تقدر، انسخ لي رسالة الخطأ اللي تطلع في Vercel، عشان أعرف السبب وأصلّحه من أساسه.
+**عشان ينزل الحين:** ادخل Vercel على مشروع adro، وافتح آخر deployment الفاشل، واضغط **Redeploy**. أو بينزل مع أي تعديل جاي ترسله لي. وإذا تقدر، انسخ لي رسالة الخطأ اللي تطلع في Vercel، عشان أعرف السبب وأصلّحه من أساسه.
 
 *Added both: every text box now turns Arabic digits into 0–9, and "Share on a photo" (4 styles, your own photo, share sheet or save, see-through sticker) works for any workout, past ones included. Tested end to end. The Vercel deploy failed again even though the build passes here, and I can't read Vercel's logs. Press Redeploy in Vercel, or it will go out with the next change. If you can, paste me Vercel's error message so I can find the real cause.*
 
@@ -6107,7 +6107,7 @@ All five audits are in. Checking the most serious claims myself before reporting
 - **الأوسمة والستريك** تشوف آخر ١٢٠ يوم بس، فوسام ٣٦٥ يوم مستحيل توصله.
 
 ### 🟡 أصغر
-- أي أحد يقدر يسمي حسابه "gymi" أو "admin".
+- أي أحد يقدر يسمي حسابه "adro" أو "admin".
 - ممكن تاخذ شهر Pro مجاني كذا مرة بحسابات وهمية.
 - لو صاحب القروب أو التحدي حذف حسابه، ينحذف القروب أو التحدي على الكل.
 - إطفاء مشاركة التمارين ما يخفي اللي انشارك قبل.

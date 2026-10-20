@@ -5,8 +5,8 @@ import type { CoachNotif } from './coaching';
 
 export type CoachAlertTexts = { dailyTitle: string; dailyBody: string; weeklyTitle: string; weeklyBody: string };
 
-const DAILY = 'gymi-coach-daily';
-const WEEKLY = 'gymi-coach-weekly';
+const DAILY = 'adro-coach-daily';
+const WEEKLY = 'adro-coach-weekly';
 const mins = (t: string) => {
   const [h, m] = t.split(':').map(Number);
   return (h || 0) * 60 + (m || 0);

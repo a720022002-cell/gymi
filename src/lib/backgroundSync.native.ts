@@ -12,7 +12,7 @@ import { localDay } from './nutrition';
 import { loadPrefs } from './reminders.shared';
 import { supabase } from './supabase';
 
-const TASK = 'gymi-health-sync';
+const TASK = 'adro-health-sync';
 
 // Defined when this file loads (the app's first import), so it also runs when the phone wakes Adro in the background.
 TaskManager.defineTask(TASK, async () => {
@@ -56,7 +56,7 @@ async function morningNote(uid: string, days: DeviceDay[]) {
   if (hour < 5 || hour >= 12) return;
   const night = days.find((d) => d.day === today && (d.hrv != null || d.hr_rest != null || d.sleep_h != null || d.recovery != null));
   if (!night) return;
-  const key = `gymi.morningNote.${uid}`;
+  const key = `adro.morningNote.${uid}`;
   if ((await AsyncStorage.getItem(key).catch(() => null)) === today) return;
   const prefs = await loadPrefs(uid);
   if (!prefs.on || !prefs.watch.morning) return;
@@ -67,7 +67,7 @@ async function morningNote(uid: string, days: DeviceDay[]) {
     if (a > b ? m >= a || m < b : m >= a && m < b) return;
   }
   if (!(await Notifications.getPermissionsAsync()).granted) return;
-  const settings = await AsyncStorage.getItem('gymi.settings.v1').catch(() => null);
+  const settings = await AsyncStorage.getItem('adro.settings.v1').catch(() => null);
   const lang: 'en' | 'ar' = settings && JSON.parse(settings).lang === 'ar' ? 'ar' : 'en';
   const t = (s: string, v?: Record<string, string | number>) => translate(lang, s, v);
   const brief = deviceBrief(days, today);
