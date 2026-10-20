@@ -1,23 +1,29 @@
-import { View } from 'react-native';
+import Svg, { Circle, Path } from 'react-native-svg';
 
 import { useSettings } from '@/theme/settings';
 
-import { Mark } from './Icon';
-import { Text } from './Text';
+import { WORDMARK } from './wordmark';
 
-/** Ring mark + "adro" in lowercase Sora (design: logo()). Never translated. */
-export function Logo({ height = 30, color }: { height?: number; color?: string }) {
+/** The adro wordmark: "adr" + the open ring as the o (design: docs/brand). Same in Arabic and English. */
+export function Logo({ height = 30, color, ring }: { height?: number; color?: string; ring?: string }) {
   const { colors: c } = useSettings();
+  const size = height * 1.28;
+  const { cx, cy, r, stroke } = WORDMARK.ring;
+  const C = 2 * Math.PI * r;
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: height * 0.3, direction: 'ltr' } as object}>
-      <Mark size={height * 1.02} color={c.cobalt} stroke={height * 0.22} />
-      <Text
-        num
-        size={height * 1.28}
-        color={color ?? c.text}
-        style={{ letterSpacing: -0.045 * height * 1.28, lineHeight: height * 1.4, marginTop: -height * 0.12 }}>
-        adro
-      </Text>
-    </View>
+    <Svg width={size * WORDMARK.w} height={size * WORDMARK.h} viewBox={WORDMARK.viewBox} accessibilityRole="image" accessibilityLabel="adro">
+      <Path d={WORDMARK.letters} fill={color ?? c.text} />
+      <Circle
+        cx={cx}
+        cy={cy}
+        r={r}
+        fill="none"
+        stroke={ring ?? c.cobalt}
+        strokeWidth={stroke}
+        strokeLinecap="round"
+        strokeDasharray={`${C * 0.8} ${C}`}
+        transform={`rotate(-90 ${cx} ${cy})`}
+      />
+    </Svg>
   );
 }

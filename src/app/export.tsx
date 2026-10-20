@@ -4,7 +4,7 @@ import { View } from 'react-native';
 
 import { LineChart } from '@/components/Charts';
 import { Thinking } from '@/components/food/Thinking';
-import { Mark } from '@/components/Icon';
+import { Logo } from '@/components/Logo';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
@@ -103,12 +103,7 @@ export default function ExportScreen() {
       </Text>
       <View style={{ backgroundColor: '#FFFFFF', borderRadius: 18, padding: 16, marginTop: 16, borderWidth: 1, borderColor: c.line }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Mark size={18} color="#3355FF" stroke={3.6} />
-            <Text weight={700} color="#0A0A0B">
-              adro
-            </Text>
-          </View>
+          <Logo height={14} color="#0A0A0B" ring="#3355FF" />
           <Text size={11} color="#52525B">
             {label}
           </Text>

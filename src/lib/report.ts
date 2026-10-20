@@ -4,6 +4,8 @@ import { useFood } from './food';
 import type { Checkin, DayTotals, Measure } from './health';
 import { addDays } from './nutrition';
 import { commitWindow, type ProgressInput } from './progress';
+import { WORDMARK } from '@/components/wordmark';
+
 import { supabase } from './supabase';
 import type { WorkoutLog } from './train';
 import { useTrain } from './train';
@@ -11,6 +13,13 @@ import { useTrain } from './train';
 export type ReportData = { days: Record<string, DayTotals>; logs: WorkoutLog[]; checkins: Checkin[]; weights: Measure[]; waist: Measure[] };
 
 /** Load everything between two days straight from the database (any range up to a year). */
+/** The adro wordmark as inline SVG for PDFs (the same shapes as the in-app logo). */
+function brandSvg() {
+  const { cx, cy, r, stroke } = WORDMARK.ring;
+  const C = 2 * Math.PI * r;
+  return `<svg class="brand" viewBox="${WORDMARK.viewBox}" xmlns="http://www.w3.org/2000/svg"><path d="${WORDMARK.letters}" fill="#0A0A0B"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#3355FF" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${C * 0.8} ${C}" transform="rotate(-90 ${cx} ${cy})"/></svg>`;
+}
+
 export function useReportData(from: string, to: string) {
   const key = `${from}|${to}`;
   const [state, setState] = useState<{ key: string; data: ReportData } | null>(null);
@@ -147,11 +156,11 @@ export function pdfPage(o: { lang: 'en' | 'ar'; title: string; sub: string; rang
   const dir = o.lang === 'ar' ? 'rtl' : 'ltr';
   return `<!doctype html><html dir="${dir}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escHtml(o.title)}</title><style>
     body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#0A0A0B;margin:32px}
-    .top{display:flex;justify-content:space-between;align-items:center}.brand{font-weight:700;font-size:20px;color:#3355FF}
+    .top{display:flex;justify-content:space-between;align-items:center}.brand{height:22px;width:auto;display:block}
     h1{font-size:22px;margin:16px 0 4px}h2{font-size:15px;margin:22px 0 6px}.sub{color:#52525B;font-size:13px}.lbl{color:#52525B;font-size:12px;margin-top:18px}
     table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}td{padding:8px 0;border-bottom:1px solid #E4E4E7;vertical-align:top}td:last-child{text-align:end;font-weight:600}
     .note{color:#52525B;font-size:11px;margin-top:24px}</style></head><body>
-    <div class="top"><span class="brand">adro</span><span class="sub">${escHtml(o.range)}</span></div>
+    <div class="top">${brandSvg()}<span class="sub">${escHtml(o.range)}</span></div>
     <h1>${escHtml(o.title)}</h1><div class="sub">${escHtml(o.sub)}</div>
     ${o.body}
     <div class="note">${escHtml(o.note)}</div></body></html>`;
