@@ -146,7 +146,7 @@ var nv=document.querySelector('nav.top');if(nv){var f=function(){nv.classList.to
 </script>'''
 
 
-def page(title_en, title_ar, desc, body, path):
+def page(title_en, title_ar, desc, body, path, dark=False):
     return f'''<!doctype html>
 <html lang="en" dir="ltr">
 <head>
@@ -154,7 +154,7 @@ def page(title_en, title_ar, desc, body, path):
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title data-en="{html.escape(title_en)}" data-ar="{html.escape(title_ar)}">{html.escape(title_en)}</title>
 <meta name="description" content="{html.escape(desc)}">
-<meta name="theme-color" content="#FFFFFF">
+<meta name="theme-color" content="{"#000000" if dark else "#FFFFFF"}">
 <meta property="og:title" content="{html.escape(title_en)}">
 <meta property="og:description" content="{html.escape(desc)}">
 <meta property="og:type" content="website">
@@ -163,13 +163,13 @@ def page(title_en, title_ar, desc, body, path):
 <link rel="icon" type="image/png" href="/icons/icon-192.png">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 {FONTS}
-<style>{CSS}</style>
+<style>{CSS}{HOME_CSS if dark else ""}</style>
 {LANG_JS}
 </head>
-<body>
-<nav class="top"><div class="wrap nav">
+<body{' class="dk"' if dark else ''}>
+<nav class="top{" dark" if dark else ""}"><div class="wrap nav">
 <a href="/site" aria-label="Adro">{logo(24)}</a>
-<div class="links"><a href="/site#features">{t('Features', 'المميزات')}</a><a href="/site#devices">{t('Watches', 'الساعات')}</a><a href="/site#pricing">{t('Pricing', 'الأسعار')}</a><a href="/site#faq">{t('FAQ', 'الأسئلة')}</a></div>
+<div class="links"><a href="/site#bento">{t('Features', 'المميزات')}</a><a href="/site#devices">{t('Watches', 'الساعات')}</a><a href="/site#pricing">{t('Pricing', 'الأسعار')}</a><a href="/site#faq">{t('FAQ', 'الأسئلة')}</a></div>
 <button class="lang" type="button" onclick="setLang(document.documentElement.lang==='ar'?'en':'ar')" aria-label="Change language">{t('ع', 'EN')}</button>
 <a class="btn dark" href="{APP_URL}">{t('Open Adro', 'افتح ادرو')}</a>
 </div></nav>
@@ -178,6 +178,7 @@ def page(title_en, title_ar, desc, body, path):
 <div style="display:flex;align-items:center;gap:14px">{logo(20)}<span>© 2026 Adro</span></div>
 <nav aria-label="Footer"><a href="/site/privacy">{t('Privacy', 'الخصوصية')}</a><a href="/site/terms">{t('Terms', 'الشروط')}</a><a href="/site/support">{t('Support', 'الدعم')}</a><a href="{APP_URL}">{t('Web app', 'نسخة الويب')}</a></nav>
 </div></footer>
+{HOME_JS if dark else ""}
 </body>
 </html>
 '''
@@ -193,69 +194,136 @@ def phone(name, alt_en, alt_ar, eager=False):
             f'width="585" height="1266" alt="{html.escape(alt_en)}" {"" if eager else "loading=\"lazy\""}></div>')
 
 
-ICON = {
-    'coach': '<path d="M4 6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-6l-4 4v-4a3 3 0 0 1-3-3z"/><path d="M9 10h.01M12 10h.01M15 10h.01"/>',
-    'plan': '<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 10h18M8 14l2 2 4-4"/>',
-    'food': '<path d="M5 3v8a2 2 0 0 0 2 2v8M9 3v8M7 3v8M17 21V3c-2 1-3 4-3 8h3"/>',
-    'watch': '<rect x="6" y="6" width="12" height="12" rx="3"/><path d="M9 6l1-4h4l1 4M9 18l1 4h4l1-4M12 9v3l2 1"/>',
-    'recap': '<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>',
-    'people': '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6.5 6.5 0 0 1 3.5 6"/>',
-}
+HOME_CSS = '''
+/* ---------- home: Apple-style ---------- */
+body.dk{background:#000}body.dk footer{color:#86868B}body.dk .foot{border-top-color:#27272A}body.dk .foot a:hover{color:#fff}body.dk footer .logo{color:#F5F5F7}
+body.dk main section:not(.blk):not(.gry){background:#fff}
+nav.top.dark{background:rgba(0,0,0,.72);color:#fff}nav.top.dark .logo{color:#fff}nav.top.dark .links a{color:#A1A1AA}nav.top.dark .links a:hover{color:#fff}
+nav.top.dark .lang{background:transparent;color:#fff;border-color:#3F3F46}nav.top.dark .btn.dark{background:#fff;color:var(--ink)}nav.top.dark.scrolled{border-bottom-color:#27272A}
+.blk{background:#000;color:#F5F5F7}.blk .sub2{color:#86868B}.gry{background:#F5F5F7}
+.center{text-align:center}.sub2{color:#6E6E73;font-size:clamp(18px,2.2vw,24px);line-height:1.45;max-width:720px;margin:18px auto 0;font-weight:500}
+html[lang=ar] .sub2{font-weight:400}
+.mega{font-size:clamp(44px,8.4vw,104px);letter-spacing:-.035em;line-height:1.02}
+html[lang=ar] .mega{letter-spacing:0;line-height:1.2}
+.big{font-size:clamp(36px,5.6vw,72px);letter-spacing:-.03em;line-height:1.05}
+html[lang=ar] .big{letter-spacing:0;line-height:1.25}
+.grad{background:linear-gradient(90deg,#7D93FF,#3355FF 55%,#9FB1FF);-webkit-background-clip:text;background-clip:text;color:transparent}
+/* hero */
+.h-hero{padding:120px 0 0;overflow:hidden;position:relative}
+.h-hero .ctas{justify-content:center;margin-top:30px}
+.h-hero .btn.store{background:#1D1D1F;color:#fff}.h-hero .note{color:#86868B;text-align:center}
+.h-stage{position:relative;height:clamp(420px,62vw,700px);margin-top:56px;display:flex;justify-content:center}
+.h-stage:before{content:"";position:absolute;width:min(900px,120vw);height:600px;top:12%;left:50%;transform:translateX(-50%);background:radial-gradient(closest-side,rgba(51,85,255,.55),transparent);filter:blur(30px)}
+.h-stage .phone{width:clamp(250px,30vw,360px);position:absolute;top:0;transform-origin:50% 0;will-change:transform}
+.h-stage .phone.side{width:clamp(200px,23vw,280px);top:18%;opacity:.9}
+.h-stage .phone.l{transform:translateX(-78%) rotate(-6deg)}.h-stage .phone.r{transform:translateX(78%) rotate(6deg)}
+@media(max-width:700px){.h-stage .phone.side{display:none}}
+/* readiness */
+.ready{padding:130px 0}.ring-big{width:min(340px,70vw);margin:56px auto 0;position:relative}
+.ring-big svg{width:100%;height:auto;display:block}.ring-big .val{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring-big .num{font:700 clamp(64px,11vw,104px) Sora;letter-spacing:-.04em;line-height:1}.ring-big .lbl{color:#6E6E73;font-weight:600;margin-top:6px}
+.ring-big circle.fill{transition:stroke-dashoffset 1.8s cubic-bezier(.2,.7,.2,1)}
+.pills{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:40px}
+.pill{background:#fff;border:1px solid var(--line);border-radius:22px;padding:10px 18px;font-weight:600;font-size:15px}
+/* bento */
+.bento{display:grid;grid-template-columns:repeat(6,1fr);grid-auto-rows:minmax(220px,auto);gap:16px;margin-top:56px}
+.tile{background:#fff;border-radius:30px;padding:30px;position:relative;overflow:hidden;display:flex;flex-direction:column}
+.tile.dk{background:#000;color:#F5F5F7}.tile.bl{background:var(--blue);color:#fff}
+.tile .t-k{font-weight:700;font-size:15px;color:#6E6E73}.tile.dk .t-k,.tile.bl .t-k{color:rgba(255,255,255,.7)}
+.tile .t-n{font:700 clamp(48px,6vw,76px) Sora;letter-spacing:-.04em;line-height:1;margin:8px 0}
+.tile .t-n{direction:ltr}html[dir=rtl] .tile .t-n{text-align:right}
+.tile .t-h{font-size:clamp(22px,2.4vw,28px);font-weight:700;line-height:1.2;margin-top:auto}
+.tile p{margin:8px 0 0;color:#6E6E73;font-size:16px}.tile.dk p{color:#A1A1AA}.tile.bl p{color:rgba(255,255,255,.85)}
+.s2{grid-column:span 2}.s3{grid-column:span 3}.s4{grid-column:span 4}.r2{grid-row:span 2}
+.tile .peek{position:absolute;inset-inline-end:-30px;bottom:-140px;width:58%;border-radius:30px;box-shadow:0 20px 50px rgba(0,0,0,.18)}
+.chat{display:flex;flex-direction:column;gap:8px;margin-top:18px}.bub{max-width:85%;padding:10px 14px;border-radius:18px;font-size:15px;line-height:1.4}
+.bub.me{align-self:flex-end;background:var(--blue);color:#fff;border-end-end-radius:6px}.bub.ai{align-self:flex-start;background:#1D1D1F;color:#F5F5F7;border-end-start-radius:6px}
+html[dir=rtl] .bub.me{align-self:flex-start}html[dir=rtl] .bub.ai{align-self:flex-end}
+@media(max-width:900px){.bento{grid-template-columns:repeat(2,1fr)}.s2,.s3,.s4{grid-column:span 2}.r2{grid-row:span 1}.tile.half{grid-column:span 1}}
+@media(max-width:520px){.tile{padding:24px;border-radius:24px}.tile.half{grid-column:span 2}}
+/* sticky story */
+.story{display:grid;grid-template-columns:1fr 1fr;gap:60px;margin-top:40px}
+.story .stick{position:sticky;top:90px;height:calc(100vh - 120px);display:flex;align-items:center;justify-content:center}
+.story .phone{width:min(300px,30vw,calc((100vh - 160px) * .462))}.story .phone img{transition:opacity .35s}
+.step{min-height:78vh;display:flex;flex-direction:column;justify-content:center;opacity:.25;transition:opacity .4s}
+.step.on{opacity:1}.step .k{margin-bottom:10px}.step h3{font-size:clamp(34px,4.4vw,56px);letter-spacing:-.03em}
+html[lang=ar] .step h3{letter-spacing:0}.step p{font-size:clamp(18px,1.8vw,21px);color:#6E6E73;margin:16px 0 0;max-width:440px}
+.step .inl{display:none}
+@media(max-width:860px){.story{grid-template-columns:1fr;gap:0}.story .stick{display:none}.step{min-height:auto;opacity:1;padding:40px 0;text-align:center;align-items:center}.step p{margin-inline:auto}.step .inl{display:block;margin-top:32px}.step .inl .phone{width:min(270px,72vw)}}
+/* devices */
+.devs{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 28px;margin-top:48px;font:700 clamp(26px,4vw,48px) Sora;letter-spacing:-.02em}
+.devs span{color:#3A3A3C}.devs span.on{color:#fff}.devs span.on:after{content:"";display:inline-block;width:.32em;height:.32em;border-radius:50%;background:var(--blue);margin-inline-start:.18em;vertical-align:.5em}
+/* pricing */
+.plans{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:900px;margin:56px auto 0}
+.plan{background:#fff;border-radius:30px;padding:36px;text-align:start}.plan.pro{background:#000;color:#F5F5F7}
+.plan .amount{font:700 56px Sora;letter-spacing:-.03em;margin:16px 0 0}.plan .amount small{font:600 17px Manrope;color:#6E6E73}
+.plan.pro .amount small,.plan.pro .per{color:#86868B}.plan .per{color:#6E6E73;font-size:15px}
+.plan ul{list-style:none;padding:0;margin:26px 0 0;display:grid;gap:12px}.plan li{display:flex;gap:10px;font-size:16px}
+.plan li:before{content:"✓";color:var(--blue);font-weight:800}.plan.pro li:before{color:#8FA3FF}
+@media(max-width:700px){.plans{grid-template-columns:1fr}}
+/* end */
+.end{padding:140px 0}.end .ctas{justify-content:center;margin-top:34px}.end .btn.store{background:#1D1D1F;color:#fff}
+/* reveal */
+.rv{opacity:0;transform:translateY(36px);transition:opacity .9s ease,transform .9s cubic-bezier(.2,.7,.2,1)}.rv.in{opacity:1;transform:none}
+.rv.d1{transition-delay:.08s}.rv.d2{transition-delay:.16s}.rv.d3{transition-delay:.24s}
+@media (prefers-reduced-motion:reduce){.rv{opacity:1;transform:none}.ring-big circle.fill{transition:none}}
+'''
 
-
-def icon(k):
-    return f'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{ICON[k]}</svg>'
+HOME_JS = '''<script>
+(function(){
+var red=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function lang(){return document.documentElement.lang}
+// fade sections in as they arrive
+var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.15});
+document.querySelectorAll('.rv').forEach(function(el){red?el.classList.add('in'):io.observe(el)});
+// the readiness ring fills and counts up once
+var rg=document.querySelector('.ring-big');if(rg){var f=rg.querySelector('circle.fill'),n=rg.querySelector('.num'),L=+f.dataset.len,to=+rg.dataset.to;
+ var go=function(){f.style.strokeDashoffset=L*(1-to/100);if(red){n.textContent=to;return}var s=performance.now();(function tick(t){var k=Math.min(1,(t-s)/1800);k=1-Math.pow(1-k,3);n.textContent=Math.round(to*k);if(k<1)requestAnimationFrame(tick)})(s)};
+ var o2=new IntersectionObserver(function(es){if(es[0].isIntersecting){go();o2.disconnect()}},{threshold:.5});o2.observe(rg)}
+// numbers in the tiles count up
+document.querySelectorAll('[data-count]').forEach(function(el){var to=+el.dataset.count,suf=el.dataset.suf||'';
+ var o3=new IntersectionObserver(function(es){if(!es[0].isIntersecting)return;o3.disconnect();if(red){el.textContent=to+suf;return}var s=performance.now(),d=1200;
+ (function tick(t){var k=Math.min(1,(t-s)/d);k=1-Math.pow(1-k,3);var v=to*k;el.textContent=(to%1?v.toFixed(1):Math.round(v))+suf;if(k<1)requestAnimationFrame(tick)})(s)},{threshold:.6});o3.observe(el)});
+// hero phones rise and settle while scrolling
+var hp=document.querySelector('.h-stage .phone.c');var sides=document.querySelectorAll('.h-stage .phone.side');
+if(hp&&!red){var raf=0;addEventListener('scroll',function(){if(raf)return;raf=requestAnimationFrame(function(){raf=0;var y=Math.min(1,scrollY/600);
+ hp.style.transform='translateY('+(-y*40)+'px) scale('+(1+y*.06)+')';sides.forEach(function(s){var l=s.classList.contains('l');s.style.transform='translateX('+(l?-1:1)*(78+y*14)+'%) rotate('+(l?-1:1)*(6+y*4)+'deg)'})})},{passive:true})}
+// sticky story: the phone shows the step you are reading
+var steps=document.querySelectorAll('.step'),img=document.querySelector('.story .stick img');
+if(steps.length&&img){var cur='';var o4=new IntersectionObserver(function(es){es.forEach(function(e){if(!e.isIntersecting)return;steps.forEach(function(s){s.classList.toggle('on',s===e.target)});
+ var nm=e.target.dataset.shot;if(nm===cur)return;cur=nm;img.style.opacity=0;setTimeout(function(){var l=lang();img.setAttribute('data-en','/site/img/'+nm+'-en.webp');img.setAttribute('data-ar','/site/img/'+nm+'-ar.webp');img.src='/site/img/'+nm+'-'+l+'.webp';img.onload=function(){img.style.opacity=1}},red?0:200)})},{rootMargin:'-45% 0px -45% 0px'});steps.forEach(function(s){o4.observe(s)})}
+})();
+</script>'''
 
 
 def home():
-    feats = [
-        ('coach', 'An AI coach that knows you', 'مدرب ذكي يعرفك',
-         'Ask anything in Arabic or English. It reads your food, training, sleep and watch, and answers with your real numbers.',
-         'اسأله أي شي بالعربي أو الإنجليزي. يقرأ أكلك وتمرينك ونومك وساعتك، ويجاوبك بأرقامك الحقيقية.'),
-        ('plan', 'A plan that adapts every week', 'خطة تتعدّل كل أسبوع',
-         'Ready-made workouts for your goal and equipment, with the right weight for every set. Slept badly? It goes lighter.',
-         'تمارين جاهزة حسب هدفك وأدواتك، مع الوزن المناسب لكل مجموعة. ما نمت زين؟ يخففها عليك.'),
-        ('food', 'Log food in seconds', 'سجّل أكلك بثواني',
-         'Snap a photo, scan a barcode or just say it. Knows kabsa, mandi, karak and the dishes you actually eat.',
-         'صوّر صحنك، أو امسح الباركود، أو قوله بصوتك. يعرف الكبسة والمندي والكرك والأكل اللي فعلاً تاكله.'),
-        ('watch', 'Your watch makes it smarter', 'ساعتك تخليه أذكى',
-         'Sleep, heart rate, HRV and steps from Apple Health, Health Connect, WHOOP, Oura and Polar shape your day.',
-         'النوم والنبض و HRV والخطوات من Apple Health و Health Connect و WHOOP و Oura و Polar تحدد يومك.'),
-        ('recap', 'A weekly recap', 'ملخص كل أسبوع',
-         'Every week, a short story of what went well, what didn’t, and one tap to apply the next step.',
-         'كل أسبوع، قصة قصيرة عن وش مشى زين ووش لا، وضغطة وحدة تطبّق الخطوة الجاية.'),
-        ('people', 'Friends and real coaches', 'أصحابك ومدربين حقيقيين',
-         'Train together with Gym Bros, join challenges, or find a certified coach who sees your progress.',
-         'تمرّن مع أصحابك في Gym Bros، ادخل تحديات، أو لقِ مدرب معتمد يتابع تقدّمك.'),
-    ]
-    cards = ''.join(f'<div class="card"><div class="ic">{icon(k)}</div><h3>{t(a, b)}</h3><p>{t(c, d)}</p></div>' for k, a, b, c, d in feats)
+    rr = 42
+    rc = 2 * math.pi * rr
+    ring_big = (f'<div class="ring-big rv" data-to="78"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="{rr}" fill="none" stroke="#E8E8ED" stroke-width="10"/>'
+                f'<circle class="fill" data-len="{rc:.1f}" cx="50" cy="50" r="{rr}" fill="none" stroke="var(--blue)" stroke-width="10" stroke-linecap="round" '
+                f'stroke-dasharray="{rc:.1f}" stroke-dashoffset="{rc:.1f}" transform="rotate(-90 50 50)"/></svg>'
+                f'<div class="val"><div class="num">0</div><div class="lbl">{t("% ready today", "٪ جاهزيتك اليوم")}</div></div></div>')
 
-    def show(name, k_en, k_ar, h_en, h_ar, p_en, p_ar, items, flip=False):
-        li = ''.join(f'<li>{t(a, b)}</li>' for a, b in items)
-        return (f'<div class="show{" flip" if flip else ""}"><div class="txt"><div class="k">{t(k_en, k_ar)}</div><h3>{t(h_en, h_ar)}</h3><p>{t(p_en, p_ar)}</p><ul>{li}</ul></div>'
-                f'<div class="shot">{phone(name, h_en, h_ar)}</div></div>')
+    def step(shot, k_en, k_ar, h_en, h_ar, p_en, p_ar):
+        return (f'<div class="step" data-shot="{shot}"><div class="k">{t(k_en, k_ar)}</div><h3>{t(h_en, h_ar)}</h3><p>{t(p_en, p_ar)}</p>'
+                f'<div class="inl">{phone(shot, h_en, h_ar)}</div></div>')
 
-    shows = ''.join([
-        show('train', 'Train', 'التمرين', 'Your week, planned for you.', 'أسبوعك، مخطط لك.',
-             'Pick your goal, days and equipment once. Adro builds the plan and keeps it moving.',
-             'اختر هدفك وأيامك وأدواتك مرة وحدة. ادرو يبني الخطة ويمشّيها معك.',
-             [('Missed a day? Move it with one tap', 'فوّت يوم؟ انقله بضغطة'), ('Home or travel mode, no equipment', 'وضع البيت أو السفر بدون أدوات'), ('The set coach tells you the next weight', 'مدرب المجموعات يقولك الوزن الجاي')]),
-        show('food', 'Food', 'الأكل', 'Calories that fit your day.', 'سعرات تناسب يومك.',
-             'Your target follows your goal, and moves with the steps and workouts you actually did.',
-             'هدفك يمشي حسب هدفك، ويتحرك مع خطواتك وتمارينك اللي فعلاً سويتها.',
-             [('Protein, carbs and fat at a glance', 'البروتين والكارب والدهون بنظرة'), ('Saved meals and meal plans', 'وجبات محفوظة وخطط أكل'), ('Allergy warnings on every product', 'تنبيه الحساسية على كل منتج')], flip=True),
-        show('recovery', 'Recovery', 'الاستشفاء', 'Know when to push, and when to rest.', 'اعرف متى تضغط ومتى ترتاح.',
-             'A daily score from your sleep, soreness, energy, training load and watch, with a clear plan for today.',
-             'درجة يومية من نومك وتعبك وطاقتك وحمل التمرين وساعتك، مع خطة واضحة لليوم.',
-             [('A morning note when you wake up', 'ملاحظة كل صباح أول ما تصحى'), ('An early warning when you might be getting sick', 'تنبيه مبكر إذا ممكن تمرض'), ('Sleep stages and bedtime steadiness', 'مراحل النوم وثبات وقت نومك')]),
-        show('coach', 'AI coach', 'المدرب الذكي', 'Ask, log, or change your plan in one chat.', 'اسأل، سجّل، أو غيّر خطتك من محادثة وحدة.',
-             '“I ate chicken and rice” logs your lunch. “Give me a break this week” offers the change; you tap Apply.',
-             '"أكلت دجاج ورز" يسجّل غداك. "أبي راحة هالأسبوع" يقترح التعديل، وأنت تضغط تطبيق.',
-             [('Answers in your language', 'يجاوب بلغتك'), ('Uses your real numbers, never made-up ones', 'يستخدم أرقامك الحقيقية، ما يخترع'), ('Health and fitness only, not medical advice', 'صحة ولياقة بس، مو استشارة طبية')], flip=True),
+    steps = ''.join([
+        step('train', 'Plan', 'خطّط', 'Your week. Planned.', 'أسبوعك. مخطط.',
+             'Pick your goal, days and equipment once. Every set comes with the right weight, and a missed day moves with one tap.',
+             'اختر هدفك وأيامك وأدواتك مرة وحدة. كل مجموعة معها الوزن المناسب، واليوم اللي يفوتك ينتقل بضغطة.'),
+        step('food', 'Log', 'سجّل', 'Snap. Scan. Say it.', 'صوّر. امسح. قول.',
+             'A photo of your plate, a barcode, or one sentence. It knows kabsa, mandi, karak and the food you actually eat.',
+             'صورة صحنك، أو باركود، أو جملة وحدة. يعرف الكبسة والمندي والكرك والأكل اللي فعلاً تاكله.'),
+        step('recovery', 'Recover', 'استشفِ', 'Push. Or rest.', 'اضغط. أو ارتاح.',
+             'One score every morning from your sleep, soreness, energy, training load and watch. And a clear plan for today.',
+             'درجة وحدة كل صباح من نومك وتعبك وطاقتك وحمل التمرين وساعتك. وخطة واضحة لليوم.'),
+        step('progress', 'Progress', 'تقدّم', 'See it working.', 'شوف النتيجة.',
+             'Weight, strength, sleep and streaks, with a weekly recap that tells you the next step.',
+             'الوزن والقوة والنوم والاستمرارية، مع ملخص أسبوعي يقولك الخطوة الجاية.'),
     ])
-    devices = ['Apple Health', 'Apple Watch', 'Health Connect', 'WHOOP', 'Oura', 'Polar', 'Galaxy Watch', 'Garmin', 'Fitbit', 'Smart scales']
-    direct = {'Apple Health', 'Health Connect', 'WHOOP', 'Oura', 'Polar'}
-    chips = ''.join(f'<span class="chip{" on" if d in direct else ""}">{d}</span>' for d in devices)
+    devices = [('Apple Health', 1), ('Apple Watch', 0), ('Health Connect', 1), ('WHOOP', 1), ('Oura', 1), ('Polar', 1), ('Galaxy Watch', 0), ('Garmin', 0), ('Fitbit', 0), ('Withings', 0)]
+    devs = ''.join(f'<span class="{"on" if on else ""}">{d}</span>' for d, on in devices)
     faqs = [
         ('Is Adro free?', 'هل ادرو مجاني؟', 'Yes. You can plan workouts, log food and track your progress for free. Adro Pro adds more AI and deeper watch insights.',
          'نعم. تقدر تخطط تمارينك وتسجّل أكلك وتتابع تقدّمك مجاناً. Adro Pro يضيف ذكاء اصطناعي أكثر وتحليل أعمق من ساعتك.'),
@@ -273,58 +341,78 @@ def home():
     faq = ''.join(f'<details><summary>{t(a, b)}</summary><p>{t(c, d)}</p></details>' for a, b, c, d in faqs)
     body = f'''
 <main>
-<header class="hero"><div class="wrap">
-<div>
-<span class="eyebrow">{ring(14, 'var(--blue)', 24)} {t('Made for the Gulf', 'مصمم للخليج')}</span>
-<h1>{t('Your AI gym coach.', 'مدربك الذكي في الجم.')}</h1>
-<p class="lead">{t('Training, food and recovery in one app. Ready-made for beginners, fully editable for pros.', 'التمرين والأكل والاستشفاء في تطبيق واحد. جاهز للمبتدئين، وقابل للتعديل كامل للمحترفين.')}</p>
-<div class="ctas"><a class="btn blue" href="{APP_URL}">{t('Start free on the web', 'ابدأ مجاناً من الويب')}</a>{store_buttons()}</div>
-<div class="note">{t('Free to start. Arabic and English.', 'مجاني للبداية. بالعربي والإنجليزي.')}</div>
-</div>
-<div class="stage"><div class="glow"></div>{phone('home', 'Adro home screen', 'الشاشة الرئيسية في ادرو', eager=True)}
-<div class="float f1">{ring(30)}<div><b>{t('78% recovered', 'جاهزيتك 78٪')}</b><span class="muted">{t('Ready for a normal session', 'جاهز لتمرين عادي')}</span></div></div>
-<div class="float f2"><div><b>{t('Chicken kabsa', 'كبسة دجاج')}</b><span class="muted">{t('810 kcal · logged by photo', '810 سعرة · من صورة')}</span></div></div>
+<header class="h-hero blk center"><div class="wrap">
+<div class="k rv" style="color:#8FA3FF">{t('Introducing Adro', 'نقدّم لك ادرو')}</div>
+<h1 class="mega rv d1" style="margin-top:14px">{t('Your AI<br><span class="grad">gym coach.</span>', 'مدربك <span class="grad">الذكي</span><br>في الجم.')}</h1>
+<p class="sub2 rv d2">{t('Training, food and recovery in one app. Built for the Gulf, in Arabic and English.', 'التمرين والأكل والاستشفاء في تطبيق واحد. مصمم للخليج، بالعربي والإنجليزي.')}</p>
+<div class="ctas rv d3"><a class="btn blue" href="{APP_URL}">{t('Start free', 'ابدأ مجاناً')}</a>{store_buttons()}</div>
+<div class="h-stage">
+<div class="phone side l"><img src="/site/img/food-en.webp" data-en="/site/img/food-en.webp" data-ar="/site/img/food-ar.webp" width="585" height="1266" alt=""></div>
+<div class="phone side r"><img src="/site/img/recovery-en.webp" data-en="/site/img/recovery-en.webp" data-ar="/site/img/recovery-ar.webp" width="585" height="1266" alt=""></div>
+<div class="phone c"><img src="/site/img/home-en.webp" data-en="/site/img/home-en.webp" data-ar="/site/img/home-ar.webp" width="585" height="1266" alt="{t('Adro home screen', 'الشاشة الرئيسية في ادرو')}"></div>
 </div>
 </div></header>
 
-<section id="features"><div class="wrap">
-<div class="sec-title"><div class="k">{t('Everything in one place', 'كل شي في مكان واحد')}</div><h2>{t('One app instead of five.', 'تطبيق واحد بدل خمسة.')}</h2>
-<p>{t('Adro joins your workouts, food, sleep and watch, so every answer and every plan fits your real day.', 'ادرو يجمع تمرينك وأكلك ونومك وساعتك، عشان كل جواب وكل خطة تناسب يومك الحقيقي.')}</p></div>
-<div class="grid">{cards}</div>
+<section class="ready center"><div class="wrap">
+<h2 class="big rv">{t('It knows your body.', 'يعرف جسمك.')}</h2>
+<p class="sub2 rv d1">{t('Sleep, soreness, energy, training load and your watch become one number every morning. Then Adro tells you to push, or to go easy.', 'نومك وتعبك وطاقتك وحمل التمرين وساعتك يصيرون رقم واحد كل صباح. وبعدها ادرو يقولك اضغط، أو خفّف.')}</p>
+{ring_big}
+<div class="pills rv">{''.join(f'<span class="pill">{t(a, b)}</span>' for a, b in [('Sleep', 'النوم'), ('HRV', 'HRV'), ('Resting heart rate', 'نبض الراحة'), ('Soreness', 'التعب'), ('Training load', 'حمل التمرين')])}</div>
 </div></section>
 
-<section style="padding-top:24px"><div class="wrap">{shows}</div></section>
+<section id="bento" class="gry"><div class="wrap">
+<div class="center"><h2 class="big rv">{t('Everything. In one place.', 'كل شي. في مكان واحد.')}</h2>
+<p class="sub2 rv d1">{t('One app instead of five, so every answer fits your real day.', 'تطبيق واحد بدل خمسة، عشان كل جواب يناسب يومك الحقيقي.')}</p></div>
+<div class="bento">
+<div class="tile dk s4 r2 rv"><div class="t-k">{t('AI coach', 'المدرب الذكي')}</div><div class="t-h" style="margin-top:6px">{t('Ask in Arabic or English. It answers with your numbers.', 'اسأله بالعربي أو الإنجليزي. يجاوبك بأرقامك.')}</div>
+<div class="chat"><div class="bub me">{t('I slept 5 hours. Should I still train legs?', 'نمت 5 ساعات. أتمرن رجل اليوم؟')}</div>
+<div class="bub ai">{t('Your HRV is 18% under your usual and you slept 2 hours less. Do legs, but drop one set each and keep it at RPE 7.', 'الـ HRV عندك أقل من عادتك بـ 18٪ ونمت أقل بساعتين. تمرّن رجل، بس نقّص مجموعة من كل تمرين وخلّه متوسط.')}</div>
+<div class="bub me">{t('I ate chicken kabsa for lunch', 'تغديت كبسة دجاج')}</div>
+<div class="bub ai">{t('Logged: chicken kabsa, 810 kcal, 52 g protein. You have 1,210 kcal left.', 'سجّلتها: كبسة دجاج، 810 سعرة، 52 جم بروتين. باقي لك 1,210 سعرة.')}</div></div></div>
+<div class="tile bl s2 rv d1"><div class="t-k">{t('From one photo', 'من صورة وحدة')}</div><div class="t-n" data-count="810">810</div><div class="t-h" style="margin-top:0">{t('kcal, protein, carbs and fat', 'سعرة، وبروتين، وكارب، ودهون')}</div></div>
+<div class="tile s2 rv d2"><div class="t-k">{t('Connect directly', 'ربط مباشر')}</div><div class="t-n" data-count="5">5</div><p>{t('Apple Health, Health Connect, WHOOP, Oura and Polar. Plus everything that syncs to them.', 'Apple Health و Health Connect و WHOOP و Oura و Polar. وكل شي يتزامن معهم.')}</p></div>
+<div class="tile s2 half rv"><div class="t-k">{t('Set coach', 'مدرب المجموعات')}</div><div class="t-n" data-count="2.5" data-suf=" kg">2.5 kg</div><p>{t('more on the bar, when you’re ready. Not before.', 'زيادة على البار لما تكون جاهز. مو قبل.')}</p></div>
+<div class="tile s2 half rv d1"><div class="t-k">{t('Missed a workout?', 'فوّت تمرين؟')}</div><div class="t-n" data-count="1">1</div><p>{t('tap moves it, and the rest of your week follows.', 'ضغطة تنقله، وباقي أسبوعك يمشي معه.')}</p></div>
+<div class="tile dk s2 rv d2"><div class="t-k">{t('Every week', 'كل أسبوع')}</div><div class="t-h">{t('A weekly recap, and one tap to apply the next step.', 'ملخص أسبوعي، وضغطة وحدة تطبّق الخطوة الجاية.')}</div></div>
+</div>
+</div></section>
 
-<section id="devices"><div class="wrap"><div class="band">
-<div class="sec-title"><div class="k">{t('Works with', 'يشتغل مع')}</div><h2>{t('Bring your watch, ring or scale.', 'جيب ساعتك أو خاتمك أو ميزانك.')}</h2>
-<p>{t('Highlighted ones connect straight to Adro. Everything else comes in through Apple Health or Health Connect.', 'المميّزة ترتبط مباشرة مع ادرو. والباقي يوصل عن طريق Apple Health أو Health Connect.')}</p></div>
-<div class="chips">{chips}</div>
-</div></div></section>
+<section><div class="wrap">
+<div class="center"><h2 class="big rv">{t('How it works.', 'كيف يشتغل.')}</h2></div>
+<div class="story"><div class="steps">{steps}</div>
+<div class="stick"><div class="phone"><img src="/site/img/train-en.webp" data-en="/site/img/train-en.webp" data-ar="/site/img/train-ar.webp" width="585" height="1266" alt=""></div></div></div>
+</div></section>
 
-<section id="pricing"><div class="wrap">
-<div class="sec-title"><div class="k">{t('Pricing', 'الأسعار')}</div><h2>{t('Start free. Go Pro when you’re ready.', 'ابدأ مجاناً. واشترك في Pro متى ما تبي.')}</h2></div>
-<div class="prices">
-<div class="price"><h3>{t('Free', 'مجاني')}</h3><div class="amount">0 <small>{t('SAR', 'ريال')}</small></div><div class="per">{t('Forever', 'للأبد')}</div>
+<section id="devices" class="blk center" style="padding:130px 0"><div class="wrap">
+<h2 class="big rv">{t('Your watch.<br>Your ring. Your scale.', 'ساعتك.<br>خاتمك. ميزانك.')}</h2>
+<p class="sub2 rv d1">{t('The blue ones connect straight to Adro. The rest come in through Apple Health or Health Connect.', 'اللي عليها نقطة زرقاء ترتبط مباشرة مع ادرو. والباقي يوصل عن طريق Apple Health أو Health Connect.')}</p>
+<div class="devs rv d2">{devs}</div>
+</div></section>
+
+<section id="pricing" class="gry center" style="padding:120px 0"><div class="wrap">
+<h2 class="big rv">{t('Start free.', 'ابدأ مجاناً.')}</h2>
+<p class="sub2 rv d1">{t('Go Pro when you want more.', 'واشترك في Pro لما تبي أكثر.')}</p>
+<div class="plans">
+<div class="plan rv"><h3>{t('Free', 'مجاني')}</h3><div class="amount">0 <small>{t('SAR', 'ريال')}</small></div><div class="per">{t('Forever', 'للأبد')}</div>
 <ul><li>{t('Workout plans and the set coach', 'خطط التمارين ومدرب المجموعات')}</li><li>{t('Food log, calories and macros', 'تسجيل الأكل والسعرات والماكروز')}</li><li>{t('Recovery score and progress', 'درجة الاستشفاء والتقدّم')}</li><li>{t('A taste of the AI coach every day', 'تجربة يومية للمدرب الذكي')}</li></ul></div>
-<div class="price pro"><h3>Adro Pro</h3><div class="amount">39 <small>{t('SAR / month', 'ريال / شهر')}</small></div><div class="per">{t('or 299 SAR a year', 'أو 299 ريال بالسنة')}</div>
+<div class="plan pro rv d1"><h3>Adro Pro</h3><div class="amount">39 <small>{t('SAR / month', 'ريال / شهر')}</small></div><div class="per">{t('or 299 SAR a year', 'أو 299 ريال بالسنة')}</div>
 <ul><li>{t('More AI coach and food photos', 'مدرب ذكي وصور أكل أكثر')}</li><li>{t('Morning readiness note from your watch', 'ملاحظة الجاهزية كل صباح من ساعتك')}</li><li>{t('3-month trends and PDF reports', 'رسوم 3 شهور وتقارير PDF')}</li><li>{t('Weekly recap with one-tap changes', 'ملخص أسبوعي وتعديل بضغطة')}</li></ul></div>
 </div>
 </div></section>
 
 <section id="faq"><div class="wrap" style="max-width:820px">
-<div class="sec-title"><div class="k">{t('FAQ', 'الأسئلة')}</div><h2>{t('Questions, answered.', 'أسئلة وأجوبتها.')}</h2></div>
+<h2 class="big rv" style="margin-bottom:30px">{t('Questions.', 'أسئلة.')}</h2>
 {faq}
 </div></section>
 
-<section style="padding-top:24px"><div class="wrap"><div class="final">
-{ring(44, '#fff', 20)}
-<h2>{t('Your next workout is ready.', 'تمرينك الجاي جاهز.')}</h2>
-<p>{t('Start free on the web today. The apps are coming soon.', 'ابدأ مجاناً من الويب اليوم. والتطبيق نازل قريب.')}</p>
-<div class="ctas"><a class="btn light" href="{APP_URL}">{t('Start free', 'ابدأ مجاناً')}</a>{store_buttons()}</div>
-</div></div></section>
+<section class="end blk center"><div class="wrap">
+{ring(64, 'var(--blue)', 20)}
+<h2 class="mega rv" style="margin-top:26px">{t('Your next workout<br>is ready.', 'تمرينك الجاي<br>جاهز.')}</h2>
+<div class="ctas rv d1"><a class="btn blue" href="{APP_URL}">{t('Start free', 'ابدأ مجاناً')}</a>{store_buttons()}</div>
+</div></section>
 </main>'''
     return page('Adro: your AI gym coach', 'ادرو: مدربك الذكي في الجم',
-                'Training, food and recovery in one app, in Arabic and English. Your AI gym coach that reads your watch.', body, '')
+                'Training, food and recovery in one app, in Arabic and English. Your AI gym coach that reads your watch.', body, '', dark=True)
 
 
 # ---------- privacy and terms, from the app ----------
