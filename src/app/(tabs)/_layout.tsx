@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 
 import { TabChromeContext } from '@/components/Screen';
 import { TabBar } from '@/components/TabBar';
+import { WidgetSync } from '@/components/WidgetSync';
 import { profileComplete, useAuth } from '@/lib/auth';
 import { useSettings } from '@/theme/settings';
 
@@ -18,6 +19,7 @@ export default function TabsLayout() {
 
   return (
     <TabChromeContext.Provider value={chrome}>
+      <WidgetSync />
       <Tabs
         tabBar={(props) => <TabBar {...props} mini={mini} setMini={setMini} />}
         screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: colors.bg } }}

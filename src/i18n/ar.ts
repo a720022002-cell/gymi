@@ -4151,4 +4151,12 @@ export const AR: Record<string, string> = {
   "Your history": "سجلك",
   "Last: {w}, {d}": "آخر تمرين: {w}، {d}",
   "Every workout, with every set": "كل تمرين، مع كل مجموعة",
+  "Next: {w} · {d}": "الجاي: {w} · {d}",
+  "Done. Nice work.": "خلصت. شغل حلو.",
+  "Ready when you are": "جاهز متى ما تبي",
+  "in a row": "ورا بعض",
+  "All sets done": "خلصت كل المجموعات",
+  "Set {a} of {b}": "المجموعة {a} من {b}",
+  "Tap Finish to save": "اضغط إنهاء عشان تحفظ",
+  "sets": "مجموعات",
 };

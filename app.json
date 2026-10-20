@@ -134,7 +134,39 @@
         }
       ],
       "expo-asset",
-      "expo-background-task"
+      "expo-background-task",
+      [
+        "expo-widgets",
+        {
+          "frequentUpdates": true,
+          "widgets": [
+            {
+              "name": "AdroToday",
+              "displayName": "Adro: Today",
+              "description": "Calories left, protein and steps for today.",
+              "ios": {
+                "supportedFamilies": [
+                  "systemSmall",
+                  "systemMedium",
+                  "accessoryCircular",
+                  "accessoryRectangular"
+                ]
+              }
+            },
+            {
+              "name": "AdroTrain",
+              "displayName": "Adro: Training",
+              "description": "Today’s workout, the next one and your streak.",
+              "ios": {
+                "supportedFamilies": [
+                  "systemSmall",
+                  "systemMedium"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

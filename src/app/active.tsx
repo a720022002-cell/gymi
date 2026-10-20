@@ -20,6 +20,7 @@ import { useFood } from '@/lib/food';
 import { coachSet, type SetIn } from '@/lib/setCoach';
 import { exInfo, isLightLog, type PlanEx, topReps } from '@/lib/training';
 import { useWeight } from '@/lib/units';
+import { syncWorkoutActivity } from '@/lib/widgetSync';
 import { useSettings } from '@/theme/settings';
 import { goBack } from '@/lib/nav';
 
@@ -128,6 +129,30 @@ export default function Active() {
     return () => clearInterval(id);
   }, [toast, t]);
   const left = rest ? Math.max(0, Math.ceil((rest.end - now) / 1000)) : 0;
+
+  // The workout on the Lock Screen and in the Dynamic Island (iPhone): the exercise you're on, the set and its
+  // target, the workout clock, and the rest countdown while you rest. Updates when a set or the rest changes.
+  useEffect(() => {
+    if (!s) return;
+    const ei = s.ex.findIndex((x) => x.sets.some((y) => !y.done));
+    const x = ei >= 0 ? s.ex[ei] : null;
+    const si = x ? x.sets.findIndex((y) => !y.done) : -1;
+    const st = x && si >= 0 ? x.sets[si] : null;
+    const w = st ? +(st.w || st.lw) || 0 : 0;
+    const r = st ? +(st.r || st.lr) || 0 : 0;
+    syncWorkoutActivity({
+      workout: s.home ? t('Home workout') : s.name === 'Together' ? t('Train together') : t('{w} workout', { w: t(s.name) }),
+      exercise: x ? exInfo(x, lang).name : t('All sets done'),
+      set: x && st ? (st.warm ? t('Warm-up') : t('Set {a} of {b}', { a: si + 1, b: x.sets.length })) : t('Tap Finish to save'),
+      target: st && r ? (w > 0 ? `${W.show(w)} ${W.label} × ${r}` : `× ${r}`) : '',
+      startedAt: s.start,
+      restEnd: rest?.end ?? null,
+      restStart: rest ? rest.end - rest.total * 1000 : null,
+      done: s.ex.reduce((a, e) => a + e.sets.filter((y) => y.done).length, 0),
+      total: s.ex.reduce((a, e) => a + e.sets.length, 0),
+      L: { rest: t('Rest'), next: t('Next'), sets: t('sets') },
+    });
+  }, [s, rest, lang, t, W]);
 
   if (!s)
     return (

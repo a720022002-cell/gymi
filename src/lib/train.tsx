@@ -10,6 +10,7 @@ import type { DayTotals } from './health';
 import { addDays, localDay } from './nutrition';
 import { shareWorkout } from './social';
 import { selectAll, supabase } from './supabase';
+import { syncWorkoutActivity } from './widgetSync';
 import { buildWorkout, type Day, effectiveWeek, EX, isLightLog, type LastSets, lowReps, nextWeight, orderWeek, type PlanEx, planFromProgram, plannedOn, rangePlan, setWeekMoves, topReps, type TrainPlan, weekdayOf, weekStart, workoutKcal, heartKcal } from './training';
 
 /** `light`: done as a lighter day or deload, so its weights don't set next time's numbers. */
@@ -287,6 +288,11 @@ export function TrainProvider({ children }: PropsWithChildren) {
       alive = false;
     };
   }, [userId, loadTry]);
+
+  // No workout running (finished, thrown away, or none): take it off the Lock Screen and the Dynamic Island.
+  useEffect(() => {
+    if (readyFor && !session) syncWorkoutActivity(null);
+  }, [readyFor, session]);
 
   // Keep the newest plan on this phone too.
   useEffect(() => {
