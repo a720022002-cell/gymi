@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>Adro: كيف نربح</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+<style>
+@page{size:A4;margin:0}
+:root{--blue:#3355FF;--ink:#0A0A0B;--sec:#52525B;--line:#E4E4E7;--soft:#F4F5FF;--green:#16A34A;--amber:#B45309;--red:#DC2626}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'IBM Plex Sans Arabic',sans-serif;color:var(--ink);font-size:11.5pt;line-height:1.75;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.n{font-family:'Sora',sans-serif;direction:ltr;unicode-bidi:isolate}
+.page{width:210mm;min-height:297mm;padding:18mm 18mm 16mm;page-break-after:always;position:relative}
+.page:last-child{page-break-after:auto}
+.foot{position:absolute;bottom:9mm;left:18mm;right:18mm;display:flex;justify-content:space-between;font-size:8.5pt;color:#A1A1AA}
+.cover{background:#0A0A0B;color:#fff;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:22mm 20mm}
+.cover img{height:15mm;align-self:flex-start}
+.cover h1{font-size:36pt;line-height:1.25;font-weight:700;margin-bottom:6mm}
+.cover p{color:#A1A1AA;font-size:13pt;max-width:140mm}
+.cover .meta{color:#71717A;font-size:10pt}
+.ring{position:absolute;left:-55mm;top:175mm;width:150mm;height:150mm;border-radius:50%;border:16mm solid var(--blue);border-right-color:transparent;opacity:.9;transform:rotate(-30deg)}
+h2{font-size:20pt;line-height:1.3;margin-bottom:2mm}
+h2 .num{color:var(--blue);font-family:'Sora';margin-left:2mm}
+.lead{color:var(--sec);margin-bottom:6mm}
+h3{font-size:13pt;margin:5mm 0 1.5mm}
+p{margin-bottom:2mm}
+ul,ol{padding-right:6mm;margin-bottom:2mm}
+li{margin-bottom:1mm}
+.card{border:1px solid var(--line);border-radius:4mm;padding:4.5mm 5mm;margin-bottom:4mm;break-inside:avoid}
+.card.blue{background:var(--soft);border-color:#D6DCFF}
+.tag{display:inline-block;font-size:8.5pt;font-weight:600;padding:.5mm 2.5mm;border-radius:10mm;margin-inline-start:2mm;vertical-align:middle}
+.t-fast{background:#DCFCE7;color:var(--green)}
+.t-big{background:#E0E7FF;color:var(--blue)}
+.t-later{background:#F4F4F5;color:var(--sec)}
+.t-no{background:#FEE2E2;color:var(--red)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:4mm}
+.kv{display:grid;grid-template-columns:28mm 1fr;gap:1mm 4mm;font-size:10.5pt}
+.kv b{color:var(--sec);font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:10.5pt;margin:2mm 0 4mm}
+th,td{border-bottom:1px solid var(--line);padding:2mm 2.5mm;text-align:right;vertical-align:top}
+th{font-weight:700;background:#FAFAFA}
+.note{font-size:9.5pt;color:var(--sec);border-right:3px solid var(--blue);padding:1mm 3mm;margin:3mm 0}
+.flow{display:flex;gap:2mm;align-items:stretch;margin:3mm 0}
+.flow div{flex:1;background:var(--soft);border-radius:3mm;padding:3mm;font-size:10pt;text-align:center}
+.flow span{align-self:center;color:var(--blue);font-weight:700}
+.big{font-family:'Sora';font-size:20pt;font-weight:700;color:var(--blue);line-height:1.2}
+</style>
+</head>
+<body>
+
+<!-- 1 Cover -->
+<section class="page cover">
+  <div class="ring"></div>
+  <img src="../brand/svg/adro-wordmark-white.svg" alt="adro">
+  <div style="position:relative">
+    <h1>كيف نربح<br>من Adro</h1>
+    <p>كل أفكار الربح في ملف واحد: من المشترك، ومن المستخدم المجاني، ومن الشركات. مع طريقة كل فكرة، وصعوباتها، ومن وين نبدأ.</p>
+  </div>
+  <div class="meta">أكتوبر 2026 · ملف داخلي</div>
+</section>
+
+<!-- 2 Summary -->
+<section class="page">
+  <h2>الخلاصة في صفحة</h2>
+  <p class="lead">14 فكرة في 4 مجموعات. الأرقام في الملف أمثلة للتوضيح، والأرقام الحقيقية تنتفق عليها مع كل شريك.</p>
+  <table>
+    <tr><th>المجموعة</th><th>الفكرة</th><th>متى</th></tr>
+    <tr><td rowspan="5"><b>أ. المستخدم يدفع لنا</b></td><td>1. التجربة المجانية وحدود المجاني (Pro)</td><td><span class="tag t-fast">الحين</span></td></tr>
+    <tr><td>2. باقات تصوير بدون اشتراك</td><td><span class="tag t-fast">الحين</span></td></tr>
+    <tr><td>3. برامج تُشترى مرة وحدة</td><td><span class="tag t-later">بعدين</span></td></tr>
+    <tr><td>4. هدية Pro</td><td><span class="tag t-fast">الحين</span></td></tr>
+    <tr><td>5. مكافأة الدعوات</td><td><span class="tag t-fast">الحين</span></td></tr>
+    <tr><td rowspan="5"><b>ب. عمولة من شريك</b></td><td>6. مطابخ الوجبات الجاهزة</td><td><span class="tag t-big">أكبر ربح للمستخدم</span></td></tr>
+    <tr><td>7. «اطلب قائمة المشتريات كلها»</td><td><span class="tag t-fast">نبدأ بخطوة بسيطة</span></td></tr>
+    <tr><td>8. حجز تحليل دم بالبيت</td><td><span class="tag t-fast">سريع</span></td></tr>
+    <tr><td>9. عمولة الكوتشات</td><td><span class="tag t-fast">موجود جزئيًا</span></td></tr>
+    <tr><td>10. روابط شراكة وتحديات برعاية</td><td><span class="tag t-later">بعد ما نكبر</span></td></tr>
+    <tr><td rowspan="3"><b>ج. شركة تدفع عن المستخدم</b></td><td>11. النوادي</td><td><span class="tag t-big">أكبر ربح</span></td></tr>
+    <tr><td>12. الشركات (صحة الموظفين)</td><td><span class="tag t-big">أكبر ربح</span></td></tr>
+    <tr><td>13. شركات التأمين</td><td><span class="tag t-later">بعدين</span></td></tr>
+    <tr><td><b>د. لا ننصح</b></td><td>14. الإعلانات، الرهان بالفلوس، بيع البيانات</td><td><span class="tag t-no">لا</span></td></tr>
+  </table>
+  <div class="card blue">
+    <h3 style="margin-top:0">لو بنختار 3 بس</h3>
+    <ol>
+      <li><b>التجربة المجانية وحدود المجاني:</b> أكبر أثر، ونقدر نبنيها الحين.</li>
+      <li><b>مطبخ شريك واحد في الرياض:</b> أعلى ربح من كل مستخدم.</li>
+      <li><b>النوادي:</b> عقد واحد يجيب مئات المستخدمين مرة وحدة.</li>
+    </ol>
+  </div>
+  <div class="foot"><span>Adro · كيف نربح</span><span class="n">2</span></div>
+</section>
+
+<!-- 3 Pro -->
+<section class="page">
+  <h2><span class="num">أ</span>المستخدم يدفع لنا</h2>
+  <p class="lead">الاشتراك: <span class="n">39</span> ريال بالشهر أو <span class="n">299</span> ريال بالسنة.</p>
+
+  <div class="card">
+    <h3 style="margin-top:0">1. التجربة المجانية وحدود المجاني <span class="tag t-fast">الحين</span></h3>
+    <p>المجاني يتعود على التطبيق، وبعدين يوصل لحد معين فيشترك.</p>
+    <ul>
+      <li><b>تجربة Pro كاملة 7 أيام</b> أول ما يسجّل. اللي يتعود على المميزات يصعب عليه يتركها.</li>
+      <li><b>نحد الأشياء اللي تكلفنا فلوس</b> (الذكاء الاصطناعي)، ونخلي الباقي مجاني عشان يفتح التطبيق كل يوم.</li>
+      <li><b>نعرض الاشتراك وهو مبسوط:</b> لما يخلص حده، أو يكسر رقم قياسي، أو يكمل أسبوعين ورا بعض.</li>
+    </ul>
+    <table>
+      <tr><th>الميزة</th><th>المجاني (اقتراح)</th><th>Pro</th></tr>
+      <tr><td>تصوير الأكل بالذكاء الاصطناعي</td><td><span class="n">3</span> باليوم</td><td>بدون حد</td></tr>
+      <tr><td>الكوتش AI</td><td><span class="n">5</span> رسائل باليوم</td><td>بدون حد</td></tr>
+      <tr><td>تصوير الجهاز المجهول</td><td>مرتين بالأسبوع</td><td>بدون حد</td></tr>
+      <tr><td>ملخص الأسبوع</td><td>أول صفحة</td><td>كامل مع التعديلات</td></tr>
+      <tr><td>تسجيل التمارين والأكل يدوي، الماي، السجل، الودجتس</td><td>مجاني</td><td>مجاني</td></tr>
+    </table>
+    <p class="note">الحدود اقتراح، وتحتاج موافقتك قبل ما نبنيها. نربطها مع RevenueCat للدفع.</p>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3 style="margin-top:0">2. باقات تصوير <span class="tag t-fast">الحين</span></h3>
+      <p>للي ما يحب الاشتراكات: يشتري مرة وحدة، مثلًا <span class="n">30</span> تصويرة أكل بـ <span class="n">9</span> ريال. تنفع لما يخلص حده اليومي.</p>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">3. برامج تُشترى مرة وحدة <span class="tag t-later">بعدين</span></h3>
+      <p>«تنشيف رمضان 4 أسابيع»، «تجهيز للعرس 12 أسبوع»، «برنامج المبتدئ». يسويها كوتش أو مشهور، ونتقاسم الربح معه.</p>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">4. هدية Pro <span class="tag t-fast">الحين</span></h3>
+      <p>يشتري اشتراك لصديقه أو أهله. أقوى وقت لها: رمضان والعيد وبداية السنة.</p>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">5. مكافأة الدعوات <span class="tag t-fast">الحين</span></h3>
+      <p>نظام الدعوات موجود. نخلي المكافأة شهر Pro مجاني لكل صديق يشترك. تسويق ببلاش.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Adro · كيف نربح</span><span class="n">3</span></div>
+</section>
+
+<!-- 4 Kitchens -->
+<section class="page">
+  <h2><span class="num">ب</span>عمولة من شريك</h2>
+  <p class="lead">إحنا نعرف وش يحتاج المستخدم ياكل ويسوي، والشريك يبيعه له، وإحنا ناخذ نسبة.</p>
+
+  <div class="card blue">
+    <h3 style="margin-top:0">6. مطابخ الوجبات الجاهزة <span class="tag t-big">أكبر ربح للمستخدم</span></h3>
+    <p><b>الفكرة:</b> مطبخ شريك يطبخ للمستخدم خطته من Adro بالضبط ويوصلها كل يوم.</p>
+    <div class="flow">
+      <div>Adro يعرف أرقامه: السعرات، البروتين، الحساسية، عدد الوجبات</div><span>←</span>
+      <div>يضغط «خل مطبخ يطبخ لي خطتي»</div><span>←</span>
+      <div>المطبخ يطبخ على أرقامه ويوصّل</div><span>←</span>
+      <div>الوجبات مسجلة في Adro جاهزة، يضغط «أكلتها» بس</div>
+    </div>
+    <p><b>الميزة اللي ما عند أحد:</b> المستخدم ما يحتاج يصوّر ولا يسجّل. الوجبة مسجلة بسعراتها الصحيحة.</p>
+    <div class="grid" style="margin-top:2mm">
+      <div>
+        <p><b>كيف نربح:</b> نسبة من اشتراك المطبخ. الاشتراكات عادة غالية، فحتى نسبة صغيرة تطلع مبلغ زين.</p>
+        <p class="note">مثال للتوضيح: <span class="n">10%</span> من اشتراك <span class="n">2,000</span> ريال = <span class="n">200</span> ريال بالشهر من كل مستخدم. هذا أكثر من <span class="n">5</span> أضعاف اشتراك Pro.</p>
+      </div>
+      <div>
+        <p><b>نموذجين:</b></p>
+        <ul>
+          <li><b>مطبخ كبير واحد:</b> مثل Calo أو غيره، يغطي مدن كثيرة. أسهل بداية.</li>
+          <li><b>سوق مطابخ محلية:</b> كل مطبخ يضيف قائمته بالسعرات والمستخدم يختار. أوسع، وشغله أكثر.</li>
+        </ul>
+      </div>
+    </div>
+    <p><b>الصعوبات:</b> إحنا ما نطبخ ولا نوصّل. المطبخ مسؤول عن الأكل ورخصه (هيئة الغذاء والدواء والبلدية) والدفع. لازم نتأكد من جودته، لأن أي تجربة سيئة تنحسب على Adro.</p>
+    <p><b>البداية:</b> مطبخ واحد في الرياض كتجربة. المطابخ تبي عملاء، فبيكونون متحمسين.</p>
+  </div>
+
+  <div class="foot"><span>Adro · كيف نربح</span><span class="n">4</span></div>
+</section>
+
+<!-- 5 Groceries -->
+<section class="page">
+  <div class="card">
+    <h3 style="margin-top:0">7. «اطلب قائمة المشتريات كلها» <span class="tag t-fast">نبدأ بخطوة بسيطة</span></h3>
+    <div class="flow">
+      <div>قائمة المشتريات من خطة الأكل</div><span>←</span>
+      <div>يضغط «اطلبها من نعناع» مثلًا</div><span>←</span>
+      <div>تنفتح السلة جاهزة ويدفع هناك</div><span>←</span>
+      <div>المتجر يعطينا نسبة</div>
+    </div>
+    <p class="note">مثال للتوضيح: سلة أسبوعية بـ <span class="n">400</span> ريال × <span class="n">5%</span> = <span class="n">20</span> ريال لكل طلب.</p>
+    <p><b>الصعوبات:</b></p>
+    <ul>
+      <li>السلة الجاهزة تحتاج شراكة رسمية. ما نعرف إذا نعناع أو الدانوب أو كريم كويك عندهم ربط مفتوح أو برنامج عمولة.</li>
+      <li>مطابقة المنتجات: «رز 2 كجم» مقابل 20 نوع رز بأحجام مختلفة.</li>
+      <li>السعر والتوفر يختلفون من مدينة لمدينة.</li>
+    </ul>
+    <p><b>على مرحلتين:</b></p>
+    <ol>
+      <li><b>الحين، بدون شراكة:</b> زر يرسل القائمة مرتبة للمتجر أو الواتساب، ونحسب كم واحد ضغطه.</li>
+      <li><b>بعدين، مع شراكة:</b> نروح للمتجر بالأرقام: «عندنا كذا مستخدم يطلبون مشترياتهم كل أسبوع».</li>
+    </ol>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">8. حجز تحليل دم بالبيت <span class="tag t-fast">سريع</span></h3>
+    <p>عندنا صفحة تحاليل الدم. نضيف زر «احجز تحليل بالبيت» مع مختبر مثل البرج أو بيولاب، وناخذ عمولة على كل حجز. بعدها التطبيق يقرأ النتيجة ويعدّل الخطة (مثل: الحديد ناقص، فيزيد أكل غني بالحديد).</p>
+    <p><b>ليش قوية:</b> الناس أصلًا يسوون تحاليل، وإحنا نعطيهم سبب يسوونها من Adro.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">9. عمولة الكوتشات <span class="tag t-fast">موجود جزئيًا</span></h3>
+    <p>قسم الكوتشات الحقيقيين موجود. المستخدم اللي ما يشترك Pro ممكن يدفع لكوتش، وناخذ عمولة <span class="n">15</span> إلى <span class="n">20%</span> من كل اشتراك كوتش.</p>
+  </div>
+
+  <div class="foot"><span>Adro · كيف نربح</span><span class="n">5</span></div>
+</section>
+
+<!-- 6 -->
+<section class="page">
+  <div class="card">
+    <h3 style="margin-top:0">10. روابط شراكة وتحديات برعاية <span class="tag t-later">بعد ما نكبر</span></h3>
+    <ul>
+      <li><b>تحديات برعاية:</b> براند مكملات أو نادي أو مطعم صحي يرعى تحدي، مثل «تحدي 30 يوم من براند كذا»، ويدفع لنا.</li>
+      <li><b>روابط شراكة (Affiliate):</b> المكملات والأكل الصحي اللي يطلع في الخطة، ونسبة من كل شراء.</li>
+      <li>بدون بيع بيانات، وبدون إعلانات مزعجة. الشركات تبي هذا لما يكون عندنا مستخدمين كثير.</li>
+    </ul>
+  </div>
+
+  <h2 style="margin-top:8mm"><span class="num">ج</span>شركة تدفع عن المستخدم</h2>
+  <p class="lead">هنا الفلوس الكبيرة: عقد واحد = مئات المستخدمين.</p>
+
+  <div class="card blue">
+    <h3 style="margin-top:0">11. النوادي <span class="tag t-big">أكبر ربح</span></h3>
+    <p>النادي يدفع اشتراك شهري، ويعطي أعضاءه Adro بشعاره، فيه:</p>
+    <ul>
+      <li>قائمة أجهزة النادي نفسه (التطبيق يعرف الأجهزة اللي عندهم).</li>
+      <li>ترتيب الأعضاء وتحديات بينهم.</li>
+      <li>صفحة للنادي يشوف فيها نشاط أعضائه بشكل عام.</li>
+    </ul>
+    <p><b>ليش النادي يدفع:</b> الأعضاء اللي يتابعون تقدّمهم يستمرون في اشتراك النادي أكثر.</p>
+  </div>
+  <div class="foot"><span>Adro · كيف نربح</span><span class="n">6</span></div>
+</section>
+
+<!-- 6 B2B + avoid -->
+<section class="page">
+  <div class="card blue">
+    <h3 style="margin-top:0">12. الشركات: صحة الموظفين <span class="tag t-big">أكبر ربح</span></h3>
+    <p>الشركة تدفع عن موظفيها، وتاخذ:</p>
+    <ul>
+      <li>تحديات بين الأقسام (خطوات، تمارين، ماي).</li>
+      <li>لوحة للموارد البشرية بأرقام عامة، بدون أي بيانات شخصية.</li>
+    </ul>
+    <p>يمشي مع برنامج جودة الحياة في رؤية 2030، والشركات الكبيرة تدوّر على برامج لصحة موظفيها.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">13. شركات التأمين <span class="tag t-later">بعدين</span></h3>
+    <p>شركات التأمين مثل بوبا والتعاونية تكافئ المؤمَّن عليه النشيط. المستخدم يشترك عن طريقهم وهم يدفعون لنا. تحتاج موافقة المستخدم على مشاركة نشاطه، وتحتاج أرقام وثقة قبل ما نروح لهم.</p>
+  </div>
+
+  <h2 style="margin-top:8mm"><span class="num">د</span>لا ننصح فيها</h2>
+  <div class="card">
+    <h3 style="margin-top:0">14. أشياء نبعد عنها <span class="tag t-no">لا</span></h3>
+    <ul>
+      <li><b>الإعلانات:</b> تطبيق صحي فيه إعلانات يبان رخيص. الاستثناء: إعلان اختياري مقابل تصويرة إضافية بعد ما يخلص حده.</li>
+      <li><b>تحديات فيها رهان أو جوائز فلوس:</b> فيها شبهة قمار ومشاكل قانونية.</li>
+      <li><b>بيع بيانات المستخدمين:</b> حتى لو مجهولة. تخرّب الثقة، وبيانات الصحة حساسة.</li>
+    </ul>
+  </div>
+  <div class="foot"><span>Adro · كيف نربح</span><span class="n">7</span></div>
+</section>
+
+<!-- 7 Plan -->
+<section class="page">
+  <h2>الخطة: من وين نبدأ</h2>
+  <p class="lead">بالترتيب. كل خطوة تعطينا أرقام تساعدنا في اللي بعدها.</p>
+  <table>
+    <tr><th style="width:22%">متى</th><th>وش نسوي</th><th style="width:30%">مين يسويه</th></tr>
+    <tr><td><b>قبل النشر</b></td><td>التجربة المجانية 7 أيام، حدود المجاني، الاشتراك مع RevenueCat، مكافأة الدعوات، هدية Pro</td><td>أنا أبنيها، وأنت توافق على الحدود والأسعار</td></tr>
+    <tr><td><b>أول شهر</b></td><td>زر «اطلب» في قائمة المشتريات (إرسال وقياس)، وصفحة «مطبخ يطبخ خطتك» تجمع المهتمين</td><td>أنا أبنيها</td></tr>
+    <tr><td><b>أول شهرين</b></td><td>شراكة مع مطبخ واحد في الرياض، وباقات التصوير</td><td>أنت تتواصل مع المطبخ، وأنا أجهّز العرض والربط</td></tr>
+    <tr><td><b>3 إلى 6 شهور</b></td><td>حجز التحاليل مع مختبر، وأول نادي شريك</td><td>أنت تتواصل، وأنا أبني صفحات النادي</td></tr>
+    <tr><td><b>بعد 6 شهور</b></td><td>الشركات، والبرامج المدفوعة مع المشاهير، والتحديات برعاية</td><td>نحتاج أرقام مستخدمين قوية</td></tr>
+  </table>
+
+  <div class="card blue">
+    <h3 style="margin-top:0">وش أحتاج منك الحين</h3>
+    <ol>
+      <li>توافق على حدود المجاني (أو تعدّل الأرقام).</li>
+      <li>تتأكد إن حساب Apple Developer مفعّل، عشان نسوي الاشتراك ونجرب على الجوال.</li>
+      <li>تختار مطبخ أو اثنين في الرياض نتواصل معهم.</li>
+    </ol>
+  </div>
+
+  <div class="grid" style="margin-top:4mm">
+    <div class="card"><div class="big">7 أيام</div><p>تجربة Pro لكل مستخدم جديد</p></div>
+    <div class="card"><div class="big">1 مطبخ</div><p>شريك واحد في الرياض يكفي كبداية</p></div>
+  </div>
+  <p class="note">كل الأرقام والنسب في الملف أمثلة للتوضيح. النسب الحقيقية تنتفق عليها مع كل شريك، والأسعار ممكن تتغير بعد ما نشوف تصرف المستخدمين.</p>
+  <div class="foot"><span>Adro · كيف نربح</span><span class="n">8</span></div>
+</section>
+
+</body>
+</html>
