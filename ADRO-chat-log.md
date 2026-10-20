@@ -151,6 +151,7 @@ Passwords and keys are left out on purpose.
 - **Log sets from the Lock Screen (21 Oct):** the workout Live Activity (Lock Screen and Dynamic Island when held open) now has buttons: − and + for the weight (2.5 kg or 5 lb) and reps (5 s for timed moves) of the set you're on, Done to log it and start the rest, and Skip to end the rest. No need to open the app. iOS 17 and later; needs the new iPhone build.
 - **Coach tip on the Lock Screen (21 Oct):** the workout Live Activity shows the set coach's tip for the exercise you're on (the same one under it in the app), green to go heavier, amber to rest or hold back, white otherwise. The set number moved to the top line. "+2.5 kg" stays in the right order in Arabic.
 - **Water on the Lock Screen (21 Oct):** a blue drop button on the workout Live Activity adds 250 ml to today's water, and today's total shows under the set count.
+- **Widgets page (21 Oct):** You → App → Widgets (iPhone and web, hidden on Android): the Today and Training widgets drawn with your own numbers (small and medium, light or dark like the app), the Lock Screen widgets, and the workout card, with steps to add each one (Home Screen and Lock Screen). A switch "Show my workout on the Lock Screen" turns the Live Activity off or on (on by default). Widget numbers now come from one place (`lib/widgetData`). Done and Skip on the Live Activity are now round icon buttons so the row fits the narrowest iPhone.
 ---
 
 ## Still waiting on you

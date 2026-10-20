@@ -156,8 +156,11 @@ export default function Active() {
 
   // The workout on the Lock Screen and in the Dynamic Island (iPhone): the exercise you're on, the set and its
   // target, the workout clock, and the rest countdown while you rest. Updates when a set or the rest changes.
+  const { liveActivity } = useSettings();
   useEffect(() => {
     if (!s) return;
+    // Turned off in You → Widgets.
+    if (!liveActivity) return syncWorkoutActivity(null);
     const cur = currentSet(s);
     const x = cur ? s.ex[cur.ei] : null;
     const st = x && cur ? x.sets[cur.si] : null;
@@ -187,7 +190,7 @@ export default function Active() {
       total: s.ex.reduce((a, e) => a + e.sets.length, 0),
       L: { rest: t('Rest'), next: t('Next'), sets: t('sets'), done: t('Done'), skip: t('Skip') },
     });
-  }, [s, rest, lang, t, W, train.logs, train.plan, food.day, food.today, food.water]);
+  }, [s, rest, lang, t, W, train.logs, train.plan, food.day, food.today, food.water, liveActivity]);
 
   // The buttons on the Live Activity (iPhone, iOS 17+): change the set you're on, log it, or skip the rest, without
   // opening the app. They read the latest workout from a ref, so the listener is set up once.

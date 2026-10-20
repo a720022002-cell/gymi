@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import { router, useFocusEffect } from 'expo-router';
 import { type ReactNode, useCallback, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
@@ -128,6 +128,7 @@ export default function You() {
       <List>
         <Item icon="heart" title={t('Your readings')} sub={t('Steps, sleep, weight and devices')} onPress={() => router.push('/devices')} chevron />
         <Item icon="watch" title={t('Connections')} sub={t('Devices, apps and your health records')} onPress={() => router.push('/connections')} chevron />
+        {Platform.OS !== 'android' ? <Item icon="grid" title={t('Widgets')} sub={t('Home Screen, Lock Screen and workouts')} onPress={() => router.push('/widgets')} chevron /> : null}
         <Item icon="bell" title={t('Notifications')} value={notifSummary(np, t)} onPress={() => router.push('/notifications')} chevron />
         <Item icon="star" title={t('Subscription')} value={t('Free plan')} onPress={() => router.push('/subscription')} chevron />
       </List>

@@ -26,6 +26,8 @@ type Stored = {
   unit: WeightUnit;
   /** Reduce transparency was switched off once for everyone (it's off by default now). */
   reduceReset?: boolean;
+  /** Show the workout on the Lock Screen and in the Dynamic Island (iPhone). On unless turned off. */
+  liveActivity?: boolean;
 };
 
 type Settings = {
@@ -44,6 +46,8 @@ type Settings = {
   setReduce: (r: boolean) => void;
   unit: WeightUnit;
   setUnit: (u: WeightUnit) => void;
+  liveActivity: boolean;
+  setLiveActivity: (on: boolean) => void;
 };
 
 const KEY = 'adro.settings.v1';
@@ -164,6 +168,8 @@ export function SettingsProvider({ children }: PropsWithChildren) {
       setReduce: (reduce) => save({ reduce }),
       unit: stored.unit === 'lb' ? 'lb' : 'kg',
       setUnit: (unit) => save({ unit }),
+      liveActivity: stored.liveActivity !== false,
+      setLiveActivity: (liveActivity) => save({ liveActivity }),
     }),
     [ready, stored, isDark, lang, isRTL, systemReduce, save],
   );

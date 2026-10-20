@@ -73,9 +73,9 @@ const WorkoutActivity = (p: WorkoutActivityProps, env: LiveActivityEnvironment) 
     <Button target={target} label={sign === 'minus' ? '−' : '+'} systemImage={sign} modifiers={[labelStyle('iconOnly'), buttonStyle('bordered'), buttonBorderShape('circle'), controlSize('small'), tint('#FFFFFF')]} />
   );
   const value = (text: string) => <Text modifiers={[font({ size: 15, weight: 'bold', design: 'rounded' }), monospacedDigit(), foregroundStyle('#FFFFFF'), lineLimit(1), minimumScaleFactor(0.7)]}>{text}</Text>;
-  // − 80 kg +   − × 10 +   water   ✓ Done (Skip while resting).
+  // − 80 kg +   − × 10 +   water   ✓ (⏭ while resting). Round buttons only, so it fits the narrowest iPhone.
   const controls = (
-    <HStack spacing={6}>
+    <HStack spacing={4}>
       {p.wText ? step('w-', 'minus') : null}
       {p.wText ? value(p.wText) : null}
       {p.wText ? step('w+', 'plus') : null}
@@ -86,9 +86,9 @@ const WorkoutActivity = (p: WorkoutActivityProps, env: LiveActivityEnvironment) 
       <Spacer />
       <Button target="water" label="+250" systemImage="drop.fill" modifiers={[labelStyle('iconOnly'), buttonStyle('bordered'), buttonBorderShape('circle'), controlSize('small'), tint('#38BDF8')]} />
       {resting ? (
-        <Button target="skip" label={p.L.skip} systemImage="forward.fill" modifiers={[buttonStyle('bordered'), buttonBorderShape('capsule'), controlSize('small'), tint(LIGHT)]} />
+        <Button target="skip" label={p.L.skip} systemImage="forward.fill" modifiers={[labelStyle('iconOnly'), buttonStyle('bordered'), buttonBorderShape('circle'), controlSize('small'), tint(LIGHT)]} />
       ) : (
-        <Button target="done" label={p.L.done} systemImage="checkmark" modifiers={[buttonStyle('borderedProminent'), buttonBorderShape('capsule'), controlSize('small'), tint(BLUE)]} />
+        <Button target="done" label={p.L.done} systemImage="checkmark" modifiers={[labelStyle('iconOnly'), buttonStyle('borderedProminent'), buttonBorderShape('circle'), controlSize('small'), tint(BLUE)]} />
       )}
     </HStack>
   );
