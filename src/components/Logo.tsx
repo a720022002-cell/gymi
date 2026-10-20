@@ -5,7 +5,7 @@ import { useSettings } from '@/theme/settings';
 import { Mark } from './Icon';
 import { Text } from './Text';
 
-/** Ring mark + "gymi" in lowercase Sora (design: logo()). Never translated. */
+/** Ring mark + "adro" in lowercase Sora (design: logo()). Never translated. */
 export function Logo({ height = 30, color }: { height?: number; color?: string }) {
   const { colors: c } = useSettings();
   return (
@@ -16,7 +16,7 @@ export function Logo({ height = 30, color }: { height?: number; color?: string }
         size={height * 1.28}
         color={color ?? c.text}
         style={{ letterSpacing: -0.045 * height * 1.28, lineHeight: height * 1.4, marginTop: -height * 0.12 }}>
-        gymi
+        adro
       </Text>
     </View>
   );

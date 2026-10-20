@@ -51,7 +51,7 @@ export type DeviceDay = {
   /** The linked wearable whose numbers are in this day. */
   wearable?: WearableProvider;
 };
-export type DevicePrefs = { source: DeviceSource | null; connected: boolean; card_order: string[]; last_sync: string | null; /** Gymi also writes its workouts, meals, water and weight to the phone's health app. */ write_back?: boolean; /** Whose sleep and heart readings win when two devices send them. */ primary?: DevicePrimary };
+export type DevicePrefs = { source: DeviceSource | null; connected: boolean; card_order: string[]; last_sync: string | null; /** Adro also writes its workouts, meals, water and weight to the phone's health app. */ write_back?: boolean; /** Whose sleep and heart readings win when two devices send them. */ primary?: DevicePrimary };
 export type DevicePrimary = 'auto' | 'phone' | WearableProvider;
 
 /** Raw samples read from the phone, before they're summed into days. */
@@ -242,7 +242,7 @@ export function mergeWearables(days: DeviceDay[], wear: WearableDay[], primary: 
 
 export type WatchCardio = { kind: 'Walk' | 'Run' | 'Bike' | 'Swim' | 'Other'; name: string | null; minutes: number; kcal: number; avg_hr?: number | null; max_hr?: number | null };
 
-/** What kind of cardio a workout from the watch is. Null: strength or an unnamed workout (those are logged in Gymi). */
+/** What kind of cardio a workout from the watch is. Null: strength or an unnamed workout (those are logged in Adro). */
 export function cardioKind(type: string): WatchCardio['kind'] | 'skip' {
   const s = type.toLowerCase();
   if (/strength|weight|lift|functional|crossfit|powerlift|^workout$/.test(s)) return 'skip';
@@ -591,7 +591,7 @@ export async function syncInBackground(uid: string): Promise<DeviceDay[] | null>
 }
 
 /**
- * Turn on or off writing Gymi's own workouts, meals, water and weight to the phone's health app. Turning it on asks
+ * Turn on or off writing Adro's own workouts, meals, water and weight to the phone's health app. Turning it on asks
  * the phone for permission to write first.
  */
 export async function setWriteBack(on: boolean): Promise<'ok' | 'denied' | 'unavailable'> {
@@ -607,12 +607,12 @@ export async function setWriteBack(on: boolean): Promise<'ok' | 'denied' | 'unav
 
 const writing = () => !!phoneSource && state.prefs.connected && state.prefs.source === phoneSource && !!state.prefs.write_back;
 
-/** A copy of something logged in Gymi, for the phone's health app (only when the person turned it on). */
+/** A copy of something logged in Adro, for the phone's health app (only when the person turned it on). */
 export function pushHealth(x: HealthItem) {
   if (writing()) writeHealth(x).catch(() => {});
 }
 
-/** Take back a copy after it was deleted in Gymi. */
+/** Take back a copy after it was deleted in Adro. */
 export function pullHealth(type: HealthItem['type'], id: string) {
   if (writing()) removeHealth(type, id).catch(() => {});
 }

@@ -88,7 +88,7 @@ export default function Shopping() {
   const done = all.filter(([n]) => checked[n]).length;
   const scopeName = [t('today'), t('this week'), t('this month')][shop.scope];
   const text = () =>
-    `${t('Gymi shopping list ({x})', { x: scopeName })}\n` +
+    `${t('Adro shopping list ({x})', { x: scopeName })}\n` +
     CATS.filter((k) => cats[k])
       .map((k) => `\n${t(k)}\n` + cats[k].map(([n, q]) => `${checked[n] ? '✓' : '-'} ${t(n)}${q ? `: ${q}` : ''}`).join('\n'))
       .join('\n');

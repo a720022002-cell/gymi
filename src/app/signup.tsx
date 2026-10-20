@@ -452,7 +452,7 @@ function About({ onDone }: { onDone: () => void }) {
     });
     setBusy(false);
     if (r.error) return setE({ save: r.error });
-    toast(t('Welcome to Gymi'), { icon: 'check' });
+    toast(t('Welcome to Adro'), { icon: 'check' });
     // Next: connect a health app and a device; then Home asks "Got an invite code?" and opens the daily check-in.
     onDone();
   };
@@ -563,7 +563,7 @@ const COACH_TYPES: { k: string; name: string; desc: string; icon: 'user' | 'glob
   { k: 'Online', name: 'Online coach', desc: 'Plans and check-ins in the app', icon: 'globe' },
   { k: 'Both', name: 'Both', desc: 'In person and online', icon: 'users' },
 ];
-// Same choices as the coach application screen (the Gymi team's review reads these).
+// Same choices as the coach application screen (the Adro team's review reads these).
 const YEARS = ['Under 1', '1 to 2', '3 to 5', '6 to 10', 'Over 10'];
 
 function CoachApplication() {
@@ -638,7 +638,7 @@ function CoachApplication() {
           <Card style={{ marginTop: 16, flexDirection: 'row', gap: 12, alignItems: 'flex-start', padding: 14 }}>
             <Icon name="info" size={18} color={c.cobalt} />
             <Text variant="small" style={{ flex: 1 }}>
-              {t('Our team checks every coach before they can take clients. You can use Gymi for your own training while you wait.')}
+              {t('Our team checks every coach before they can take clients. You can use Adro for your own training while you wait.')}
             </Text>
           </Card>
           <Label>{t('How do you coach?')}</Label>

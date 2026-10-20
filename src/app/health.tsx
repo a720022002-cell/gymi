@@ -67,7 +67,7 @@ export default function HealthScreen() {
       <Row gap={8} style={{ alignItems: 'flex-start', marginTop: 8, paddingHorizontal: 4 }}>
         <Icon name="info" size={18} color={c.sec} />
         <Text variant="small" color="sec" style={{ flex: 1 }}>
-          {t('Gymi logs your health data. It never suggests treatment or doses. Ask your doctor before starting anything new.')}
+          {t('Adro logs your health data. It never suggests treatment or doses. Ask your doctor before starting anything new.')}
         </Text>
       </Row>
     </Screen>

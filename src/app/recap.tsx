@@ -151,7 +151,7 @@ export default function Recap() {
           {t('Your first recap comes on {day}', { day: first })}
         </Text>
         <Text center style={{ color: K.sec, marginTop: 8 }}>
-          {t('It covers a whole week in Gymi, so keep logging this week.')}
+          {t('It covers a whole week in Adro, so keep logging this week.')}
         </Text>
         <Button title={t('Close')} style={{ marginTop: 24, alignSelf: 'stretch' }} onPress={() => (goBack())} />
       </View>
@@ -384,7 +384,7 @@ function Thinking({ t, failed }: { t: T; failed: boolean }) {
     <View style={{ alignItems: 'center', gap: 10, paddingVertical: 30 }}>
       {failed ? <Icon name="warn" size={24} color={K.sec} /> : <ActivityIndicator color={K.text} />}
       <Text variant="small" color={K.sec} center>
-        {t(failed ? 'Gymi AI couldn’t read your week right now. Your numbers are above.' : 'Gymi AI is reading your week…')}
+        {t(failed ? 'Adro AI couldn’t read your week right now. Your numbers are above.' : 'Adro AI is reading your week…')}
       </Text>
     </View>
   );
@@ -504,7 +504,7 @@ function SlideBody(p: BodyProps) {
     return (
       <Stack style={{ gap: 14 }} pointerEvents="none">
         <Eyebrow>{t('What got in the way')}</Eyebrow>
-        <AiTag t={t} label="Gymi AI reading" />
+        <AiTag t={t} label="Adro AI reading" />
         <H>{p.goals.length ? t('You hit {a} of {b} goals', { a: p.goals.filter((g) => g.ok).length, b: p.goals.length }) : t('Not enough was logged last week to score your goals')}</H>
         <Goals t={t} goals={p.goals} />
         {p.aiState !== 'ready' ? <Thinking t={t} failed={p.aiState === 'failed'} /> : (ai?.problems ?? []).map((n, j) => <Note key={j} icon={(['cal', 'food', 'moon'] as const)[j % 3]} title={n.title} detail={n.detail} />)}
@@ -514,7 +514,7 @@ function SlideBody(p: BodyProps) {
     return (
       <Stack style={{ gap: 14 }} pointerEvents="none">
         <Eyebrow>{t(p.allHit ? 'Keep it going' : 'How to get there')}</Eyebrow>
-        <AiTag t={t} label="Gymi AI suggestions" />
+        <AiTag t={t} label="Adro AI suggestions" />
         <H>{t(p.allHit ? 'What could get you even better results' : 'What will help next week')}</H>
         {p.aiState !== 'ready' ? <Thinking t={t} failed={p.aiState === 'failed'} /> : (ai?.tips ?? []).map((n, j) => <Note key={j} icon={(['train', 'food', 'up'] as const)[j % 3]} title={n.title} detail={n.detail} />)}
       </Stack>
@@ -561,8 +561,8 @@ function ApplySlide(p: BodyProps) {
   return (
     <View style={{ gap: 14, flex: 1 }}>
       <Eyebrow>{t(sug.length ? 'Want me to apply them?' : 'See you next week')}</Eyebrow>
-      {sug.length ? <AiTag t={t} label="Gymi AI suggestions" /> : null}
-      <H>{p.aiState === 'loading' ? t('Gymi AI is reading your week…') : sug.length ? t('Pick what to apply to your plan') : t(p.allHit ? 'Keep doing what you’re doing' : 'Small steps, every day')}</H>
+      {sug.length ? <AiTag t={t} label="Adro AI suggestions" /> : null}
+      <H>{p.aiState === 'loading' ? t('Adro AI is reading your week…') : sug.length ? t('Pick what to apply to your plan') : t(p.allHit ? 'Keep doing what you’re doing' : 'Small steps, every day')}</H>
       {p.aiState === 'loading' ? <Thinking t={t} failed={false} /> : null}
       {sug.map((s, j) => {
         const on = done ? (p.applied ?? []).includes(j) : picked.includes(j);

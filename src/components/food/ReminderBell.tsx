@@ -58,7 +58,7 @@ export function useReminder(kind: Kind) {
       buildReminders(next, { meals: food.setupDone ? food.plan.meals : [], vitamins: health.supplements.filter((x) => x.active && x.remind), workoutToday: null }, t),
       next[kind].on,
     );
-    if (r === 'denied') toast(t('Turn on notifications for Gymi in your phone settings.'), { icon: 'bell' });
+    if (r === 'denied') toast(t('Turn on notifications for Adro in your phone settings.'), { icon: 'bell' });
   };
 
   return { on, prefs, summary: prefs ? summary(prefs) : '', toggle };

@@ -21,7 +21,7 @@ import { fx } from '@/lib/progress';
 import { useTrain } from '@/lib/train';
 import { useSettings } from '@/theme/settings';
 
-/** Your readings: what Gymi knows today, in your own order. Closed and blurred until a device is connected in Connections. */
+/** Your readings: what Adro knows today, in your own order. Closed and blurred until a device is connected in Connections. */
 export default function Devices() {
   const { t } = useT();
   const { colors: c } = useSettings();
@@ -33,7 +33,7 @@ export default function Devices() {
   const { r } = useRecovery();
   const dev = useDevices(session?.user.id);
   const [editing, setEditing] = useState<ReadingKey[] | null>(null);
-  // Wearables linked straight to Gymi (WHOOP, Oura) also unlock the page.
+  // Wearables linked straight to Adro (WHOOP, Oura) also unlock the page.
   const [ws, setWs] = useState<WearableStatus | null>(null);
   useEffect(() => {
     wearableStatus().then(setWs);
@@ -108,7 +108,7 @@ export default function Devices() {
             <Text variant="small" weight={700}>
               {t('{n} connected.', { n: sources.join(' · ') })}
             </Text>{' '}
-            {t('When your readings say you’re tired, Gymi asks if you want a lighter workout.')}
+            {t('When your readings say you’re tired, Adro asks if you want a lighter workout.')}
           </Text>
         </Card>
       )}

@@ -1,4 +1,4 @@
-# Gymi design
+# Adro design
 
 The final app design: brand, style, navigation, and every screen.
 
@@ -196,7 +196,7 @@ The final app design: brand, style, navigation, and every screen.
 
 - Account type
 - Coach application (pending)
-- Gymi team: review coaches
+- Adro team: review coaches
 - Coach: clients ranking
 - Coach: client detail
 - Coach: client food

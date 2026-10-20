@@ -253,7 +253,7 @@ export default function NotifDetail() {
               {toggleRow(t('Someone cheers you on'), null, p.friends.cheers, (v) => set('friends', { cheers: v }))}
             </List>
             <Text variant="xs" color="sec" style={{ marginHorizontal: 4 }}>
-              {t('These show while Gymi is open.')}
+              {t('These show while Adro is open.')}
             </Text>
           </>
         ) : null}
@@ -291,7 +291,7 @@ export default function NotifDetail() {
           style={{ marginTop: 12 }}
           onPress={() => {
             (k === 'workout' ? previewSound : playTone)(curSound);
-            showBanner({ title: 'Gymi', body: t(info.sample), icon: info.icon, route: `/notif?type=${k}` });
+            showBanner({ title: 'Adro', body: t(info.sample), icon: info.icon, route: `/notif?type=${k}` });
           }}
         />
       </View>

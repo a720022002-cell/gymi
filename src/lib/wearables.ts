@@ -28,7 +28,7 @@ export type WearableDay = {
   workouts: { type: string; minutes: number; kcal: number }[];
 };
 
-/** The wearables Gymi links to directly: name and what each one brings. */
+/** The wearables Adro links to directly: name and what each one brings. */
 export const WEARABLES: [WearableProvider, string, string][] = [
   ['whoop', 'WHOOP', 'Recovery, strain, sleep and HRV'],
   ['oura', 'Oura Ring', 'Readiness, sleep, HRV and activity'],

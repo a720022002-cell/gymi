@@ -97,7 +97,7 @@ export default function CoachPage() {
           <Row gap={4}>
             <Icon name="check" size={14} color={c.up} strokeWidth={2.6} />
             <Text variant="small" weight={700} color="up">
-              {t('Checked by Gymi')}
+              {t('Checked by Adro')}
             </Text>
           </Row>
           <Text variant="small" weight={700} color={left <= 2 ? 'down' : 'up'}>

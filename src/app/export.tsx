@@ -80,9 +80,9 @@ export default function ExportScreen() {
       body: `${svg}<table>${rows(s)
         .map(([k, v]) => `<tr><td>${escHtml(k)}</td><td>${escHtml(v)}</td></tr>`)
         .join('')}</table>`,
-      note: t('Made with Gymi. Values are logged by the user. Not medical advice.'),
+      note: t('Made with Adro. Values are logged by the user. Not medical advice.'),
     });
-    const r = await sharePdf(html, `Gymi report ${a} to ${b}.pdf`);
+    const r = await sharePdf(html, `Adro report ${a} to ${b}.pdf`);
     setMaking(false);
     if (r === 'failed') return toast(t('Couldn’t make the PDF. Please try again.'), { icon: 'warn' });
     if (pdfIsPrint) toast(t('Choose “Save as PDF” to keep it or share it.'), { icon: 'doc' });
@@ -106,7 +106,7 @@ export default function ExportScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Mark size={18} color="#3355FF" stroke={3.6} />
             <Text weight={700} color="#0A0A0B">
-              gymi
+              adro
             </Text>
           </View>
           <Text size={11} color="#52525B">

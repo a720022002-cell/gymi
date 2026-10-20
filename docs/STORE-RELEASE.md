@@ -1,4 +1,4 @@
-# Putting Gymi on the App Store and Google Play
+# Putting Adro on the App Store and Google Play
 
 Everything in the code is ready for the phone apps. The steps below need **your** accounts, so only you can do them.
 
@@ -34,6 +34,6 @@ Everything in the code is ready for the phone apps. The steps below need **your*
 
 ## Things that come after launch
 
-- **Paid plans (Gymi Pro)**: the plan screen is ready. Real payments need the store accounts first, then a payments service (RevenueCat). When you get there, I'll tell you the exact key names and where to add them.
-- **Apple Health, Health Connect, WHOOP, Garmin**: these need the phone app to be live first. The Your readings screen already shows what Gymi tracks from your own logs.
+- **Paid plans (Adro Pro)**: the plan screen is ready. Real payments need the store accounts first, then a payments service (RevenueCat). When you get there, I'll tell you the exact key names and where to add them.
+- **Apple Health, Health Connect, WHOOP, Garmin**: these need the phone app to be live first. The Your readings screen already shows what Adro tracks from your own logs.
 - **Coach approval**: new coaches wait as "under review". Approving them is done by our team in the database for now. Ask me and I'll approve a coach for you.

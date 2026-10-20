@@ -1,4 +1,4 @@
-// Gymi account: delete your own account and all your data. Runs on the server only.
+// Adro account: delete your own account and all your data. Runs on the server only.
 // SUPABASE_SERVICE_ROLE_KEY is provided by Supabase to Edge Functions; it never reaches the app.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 

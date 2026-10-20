@@ -16,7 +16,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
-// Defines the background health sync first thing, so it also exists when the phone starts Gymi in the background.
+// Defines the background health sync first thing, so it also exists when the phone starts Adro in the background.
 import '@/lib/backgroundSync';
 import { ErrorScreen } from '@/components/ErrorScreen';
 import { BalanceSheet } from '@/components/food/BalanceSheet';

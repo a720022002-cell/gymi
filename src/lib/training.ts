@@ -2,7 +2,7 @@ import EXERCISES from '@/data/exercises.json';
 
 import { localDay } from './nutrition';
 
-/** A common Gymi exercise (src/data/exercises.json). Pictures and full steps live in the database. */
+/** A common Adro exercise (src/data/exercises.json). Pictures and full steps live in the database. */
 export type Ex = {
   id: string;
   fedb: string;

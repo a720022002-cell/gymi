@@ -1,16 +1,16 @@
-# صفحة Gymi في المتاجر
+# صفحة Adro في المتاجر
 
 **التاريخ:** 18 أكتوبر 2026
 
 **وش في هالملف:** نصوص صفحة التطبيق في App Store و Google Play بالعربي والإنجليزي، إجابات أسئلة الخصوصية، وقائمة الأشياء اللي Apple و Google يرفضون عليها عادة.
 
-**ملاحظة:** الاسم المكتوب هنا **Gymi**. إذا غيرت الاسم، أغيره في كل مكان قبل النشر.
+**ملاحظة:** الاسم المكتوب هنا **Adro**. إذا غيرت الاسم، أغيره في كل مكان قبل النشر.
 
 ## 1. الاسم والكلمات
 
 | الحقل | الحد | English | العربي |
 |---|---|---|---|
-| **App name** (Apple) | 30 حرف | Gymi: AI Fitness Coach | Gymi: مدربك الذكي |
+| **App name** (Apple) | 30 حرف | Adro: AI Fitness Coach | Adro: مدربك الذكي |
 | **Subtitle** (Apple) | 30 حرف | Workouts, meals, recovery | تمارين، أكل، واستشفاء |
 | **Short description** (Google) | 80 حرف | Your AI coach for training and Gulf food, in Arabic and English. | مدربك الذكي للتمرين والأكل الخليجي، بالعربي والإنجليزي. |
 | **Keywords** (Apple) | 100 حرف | gym,workout,fitness,calories,diet,protein,meal plan,coach,ai,arabic,ramadan,kabsa,macros | جيم,تمارين,رياضة,سعرات,دايت,بروتين,خطة وجبات,مدرب,رمضان,رجيم,لياقة,تنشيف,تضخيم |
@@ -20,16 +20,16 @@
 
 **Promotional text** (Apple, 170 حرف, تقدر تغيره بدون مراجعة):
 
-Train smarter, eat right, and see your progress. Gymi is your AI fitness coach that speaks Arabic and English and knows Gulf food.
+Train smarter, eat right, and see your progress. Adro is your AI fitness coach that speaks Arabic and English and knows Gulf food.
 
 **Description:**
 
-Gymi is a fitness coach in your pocket. It builds your training plan, plans your meals around food you actually eat, and adjusts both as you go.
+Adro is a fitness coach in your pocket. It builds your training plan, plans your meals around food you actually eat, and adjusts both as you go.
 
 TRAIN
 - A training plan made for your goal, level, days and injuries
 - A smart set coach: it reads your sets and tells you when to go heavier, when to rest, and when you've been stuck on a weight too long
-- Snap a photo of a gym machine you don't know: Gymi names it and adds it to your workout
+- Snap a photo of a gym machine you don't know: Adro names it and adds it to your workout
 - Home and travel mode, lighter days and deload weeks
 - Pregnancy-safe workouts (optional)
 
@@ -56,22 +56,22 @@ FRIENDS AND COACHES
 - Add friends, start challenges and train together
 - Connect with a human coach who can see your progress and set your targets
 
-Gymi gives general fitness and nutrition guidance. It is not medical advice. Talk to a doctor before starting a new diet or training plan, especially if you are pregnant or have a health condition.
+Adro gives general fitness and nutrition guidance. It is not medical advice. Talk to a doctor before starting a new diet or training plan, especially if you are pregnant or have a health condition.
 
 ## 3. الوصف بالعربي
 
 **النص الترويجي:**
 
-تمرّن بذكاء، كل صح، وشوف تقدمك. Gymi مدربك الذكي اللي يتكلم عربي وإنجليزي ويعرف الأكل الخليجي.
+تمرّن بذكاء، كل صح، وشوف تقدمك. Adro مدربك الذكي اللي يتكلم عربي وإنجليزي ويعرف الأكل الخليجي.
 
 **الوصف:**
 
-Gymi مدرب لياقة في جيبك. يسوي لك خطة تمرين، ويخطط وجباتك من الأكل اللي تاكله فعلاً، ويعدلهم معك أول بأول.
+Adro مدرب لياقة في جيبك. يسوي لك خطة تمرين، ويخطط وجباتك من الأكل اللي تاكله فعلاً، ويعدلهم معك أول بأول.
 
 التمرين
 - خطة تمرين حسب هدفك ومستواك وأيامك وإصاباتك
 - مدرب ذكي للجولات: يقرأ جولاتك ويقولك متى تزيد الوزن، ومتى ترتاح، ومتى صار لك فترة على نفس الوزن
-- صوّر أي جهاز ما تعرفه، و Gymi يقولك وش هو ويضيفه لتمرينك
+- صوّر أي جهاز ما تعرفه، و Adro يقولك وش هو ويضيفه لتمرينك
 - وضع البيت والسفر، أيام خفيفة وأسابيع راحة
 - تمارين آمنة للحمل (اختياري)
 
@@ -98,7 +98,7 @@ Gymi مدرب لياقة في جيبك. يسوي لك خطة تمرين، ويخ
 - أضف أصحابك، ابدأ تحديات، وتمرنوا سوا
 - تواصل مع مدرب حقيقي يشوف تقدمك ويحط لك أهدافك
 
-Gymi يعطي إرشادات عامة للياقة والتغذية، وهو مو نصيحة طبية. استشر طبيب قبل ما تبدأ نظام أكل أو تمرين جديد، خصوصاً إذا كنتِ حامل أو عندك حالة صحية.
+Adro يعطي إرشادات عامة للياقة والتغذية، وهو مو نصيحة طبية. استشر طبيب قبل ما تبدأ نظام أكل أو تمرين جديد، خصوصاً إذا كنتِ حامل أو عندك حالة صحية.
 
 ## 4. أسئلة الخصوصية في Apple (Privacy Labels)
 
@@ -135,7 +135,7 @@ Gymi يعطي إرشادات عامة للياقة والتغذية، وهو م�
 | Audio | Voice: اختياري، يتحول لنص على الجهاز أو عبر خدمة الجوال، وما نحفظ الصوت |
 | App activity | App interactions: للحد اليومي للذكاء الاصطناعي |
 
-**Health Connect:** Google يطلب نموذج خاص يشرح ليش تقرا كل نوع بيانات صحية. الجواب الموحد: "To show the user's own activity, sleep, heart rate, breathing, blood oxygen, temperature, weight, body fat and cycle in the app and adjust their training and recovery plan. Write access (exercise, nutrition, hydration, weight) is optional and only copies what the user logs in Gymi."
+**Health Connect:** Google يطلب نموذج خاص يشرح ليش تقرا كل نوع بيانات صحية. الجواب الموحد: "To show the user's own activity, sleep, heart rate, breathing, blood oxygen, temperature, weight, body fat and cycle in the app and adjust their training and recovery plan. Write access (exercise, nutrition, hydration, weight) is optional and only copies what the user logs in Adro."
 
 ## 6. قائمة المراجعة (أشياء يرفضون عليها)
 
@@ -156,4 +156,4 @@ Gymi يعطي إرشادات عامة للياقة والتغذية، وهو م�
 
 نص جاهز تحطه في App Store Connect:
 
-Gymi is a fitness and nutrition coach. Demo account: [email] / [password] (has a training plan, a meal plan and a week of logs). AI features (meal photos, chat, weekly recap) need an internet connection. Health data is used only inside the app and never for advertising. Account deletion: You → Privacy and data → Delete account.
+Adro is a fitness and nutrition coach. Demo account: [email] / [password] (has a training plan, a meal plan and a week of logs). AI features (meal photos, chat, weekly recap) need an internet connection. Health data is used only inside the app and never for advertising. Account deletion: You → Privacy and data → Delete account.

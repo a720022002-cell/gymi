@@ -6,7 +6,7 @@ import { supabase } from './supabase';
 /** A free month of Pro for every 5 friends who join with your code (design: REF_GOAL). */
 export const REF_GOAL = 5;
 
-/** `count`: friends who joined and have used Gymi on 2 days (they count toward free months); `waiting`: joined, not yet. */
+/** `count`: friends who joined and have used Adro on 2 days (they count toward free months); `waiting`: joined, not yet. */
 export type MyInvite = { code: string | null; count: number; waiting?: number; months: number };
 /** 'slow': too many wrong codes in the last hour (they're limited, so codes can't be guessed). */
 export type ClaimResult = { status: 'ok' | 'friends' | 'requested' | 'bad' | 'self' | 'auth' | 'failed' | 'slow'; name?: string | null; username?: string; referral?: boolean };
@@ -32,7 +32,7 @@ export const inviteLink = (code: string) => `${siteUrl()}/welcome?ref=${encodeUR
 
 /** Text for Share invite (design: shareInvite). */
 export const inviteText = (code: string, t: (s: string, v?: Record<string, string | number>) => string) =>
-  t('Join me on Gymi, the AI fitness coach. Use my code {c} when you sign up to send me a friend request.', { c: code }) + ` ${inviteLink(code)}`;
+  t('Join me on Adro, the AI fitness coach. Use my code {c} when you sign up to send me a friend request.', { c: code }) + ` ${inviteLink(code)}`;
 
 /** Free months you've already been told about, so "You earned a free month!" shows once. */
 const SEEN = (uid: string) => `gymi.freemonths.seen.v1.${uid}`;

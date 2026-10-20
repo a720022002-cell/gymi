@@ -69,7 +69,7 @@ export type Move = { id: string; day: string; kcal: number };
 
 export type WaterLog = { id: string; ml: number; kind: string; created_at: string };
 
-export type Cardio = { id: string; kind: 'Walk' | 'Run' | 'Bike' | 'Swim' | 'Other'; name?: string | null; minutes: number; intensity: number; kcal: number; created_at: string; /** Recorded by the watch (not saved in Gymi, can't be deleted here), with its heart rate when measured. */ watch?: boolean; avg_hr?: number | null; max_hr?: number | null };
+export type Cardio = { id: string; kind: 'Walk' | 'Run' | 'Bike' | 'Swim' | 'Other'; name?: string | null; minutes: number; intensity: number; kcal: number; created_at: string; /** Recorded by the watch (not saved in Adro, can't be deleted here), with its heart rate when measured. */ watch?: boolean; avg_hr?: number | null; max_hr?: number | null };
 
 export type NewLog = {
   name: string;
@@ -553,7 +553,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       const { data, error } = await supabase.from('cardio_logs').insert({ ...c, day: d }).select('id,kind,name,minutes,intensity,kcal,created_at').single();
       if (error || !data) return null;
       if (d === day) setCardio((xs) => [...xs, data as Cardio]);
-      // Cardio typed into Gymi goes to the health app as a workout that ended when it was logged.
+      // Cardio typed into Adro goes to the health app as a workout that ended when it was logged.
       const end = loggedAt(d, (data as Cardio).created_at);
       pushHealth({ type: 'workout', id: (data as Cardio).id, start: new Date(end.getTime() - c.minutes * 6e4), end, kind: c.kind, kcal: c.kcal });
       return data as Cardio;

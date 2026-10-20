@@ -76,7 +76,7 @@ export default function Together() {
   const all: P[] = [{ name: t('You'), level: myLevel, me: true }, ...people];
   const appFriends = people.filter((p) => p.id);
   const date = addDays(train.today, day);
-  // Who's in, as keys: "me", a friend's id, or "local-<n>" for a friend who isn't on Gymi.
+  // Who's in, as keys: "me", a friend's id, or "local-<n>" for a friend who isn't on Adro.
   const keyOf = (p: P, i: number) => (p.me ? 'me' : (p.id ?? `local-${i}`));
   const buildKey = `${date}|${all.map(keyOf).join(',')}`;
   useEffect(() => {
@@ -239,7 +239,7 @@ export default function Together() {
           </View>
         ) : null}
         <Card style={{ marginTop: 16 }}>
-          <Field label={t('Friend not on Gymi?')} value={name} onChangeText={setName} onSubmitEditing={addPerson} placeholder={t('Ahmed')} maxLength={20} />
+          <Field label={t('Friend not on Adro?')} value={name} onChangeText={setName} onSubmitEditing={addPerson} placeholder={t('Ahmed')} maxLength={20} />
           <Row gap={8} style={{ flexWrap: 'wrap', marginTop: 10 }}>
             {LEVELS.map((l) => (
               <Chip key={l} title={t(l)} on={level === l} onPress={() => setLevel(l)} />

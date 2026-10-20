@@ -14,7 +14,7 @@ export type Banner = {
   /** Already translated. */
   title: string;
   body: string;
-  /** 'ring' shows the Gymi mark. */
+  /** 'ring' shows the Adro mark. */
   icon?: IconName | 'ring';
   /** Screen to open when tapped, e.g. '/friends' or '/notif?type=water'. */
   route?: string;
@@ -25,7 +25,7 @@ let listener: ((b: Banner) => void) | null = null;
 
 /**
  * Show an in-app notification that drops from the top (design: notify()). Tapping it opens `route`.
- * Use it anywhere, e.g. "Preview a reminder" buttons: showBanner({ title: 'Gymi', body: t('…'), icon: 'drop', route: '/water' }).
+ * Use it anywhere, e.g. "Preview a reminder" buttons: showBanner({ title: 'Adro', body: t('…'), icon: 'drop', route: '/water' }).
  */
 export function showBanner(b: Banner) {
   listener?.(b);

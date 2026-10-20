@@ -1,4 +1,4 @@
-// Caffeine guessed from what you log, so Gymi can warn you about a big dose. Numbers are typical servings (mg).
+// Caffeine guessed from what you log, so Adro can warn you about a big dose. Numbers are typical servings (mg).
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSyncExternalStore } from 'react';
 

@@ -98,7 +98,7 @@ export function InsightsTab({ st }: { st: State }) {
           disabled={!st.periods.length}
           onPress={async () => {
             setMaking(true);
-            const ok = await shareCyclePdf(cycleReport(st, today, t, lang, profile?.name ?? ''), `gymi-cycle-report-${today}.pdf`);
+            const ok = await shareCyclePdf(cycleReport(st, today, t, lang, profile?.name ?? ''), `adro-cycle-report-${today}.pdf`);
             setMaking(false);
             toast(ok ? t('Report ready to share') : t('Couldn’t create the report. Please try again.'), { icon: ok ? 'doc' : 'warn' });
           }}
@@ -144,7 +144,7 @@ function cycleReport(st: State, today: string, t: ReturnType<typeof useT>['t'], 
 body{font-family:-apple-system,Helvetica,Arial,sans-serif;color:#111;margin:32px;font-size:13px}h1{font-size:22px;margin:0}h2{font-size:15px;margin:22px 0 8px}
 .sec{color:#666}table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid #ddd;padding:6px;text-align:start;vertical-align:top}th{font-size:12px;color:#666}
 .grid{display:flex;gap:12px}.box{flex:1;border:1px solid #ddd;border-radius:10px;padding:10px}.big{font-size:18px;font-weight:700}</style></head><body>
-<h1>${esc(t('Cycle health report'))}</h1><div class="sec">${esc(name)}${name ? ' · ' : ''}${esc(t('Made with Gymi on {d}', { d: date(today) }))}</div>
+<h1>${esc(t('Cycle health report'))}</h1><div class="sec">${esc(name)}${name ? ' · ' : ''}${esc(t('Made with Adro on {d}', { d: date(today) }))}</div>
 <h2>${esc(t('Summary'))}</h2><div class="grid">
 <div class="box"><div class="big">${t('{n} days', { n: av.cycle })}</div><div class="sec">${esc(t('Average cycle'))}</div></div>
 <div class="box"><div class="big">${t('{n} days', { n: av.bleed })}</div><div class="sec">${esc(t('Average period'))}</div></div>
@@ -152,5 +152,5 @@ body{font-family:-apple-system,Helvetica,Arial,sans-serif;color:#111;margin:32px
 <h2>${esc(t('Periods'))}</h2><table><tr><th>${esc(t('Started'))}</th><th>${esc(t('Period days'))}</th><th>${esc(t('Cycle length (days)'))}</th></tr>${rows}</table>
 ${top ? `<h2>${esc(t('Most logged symptoms and moods (last 6 months)'))}</h2><ul>${top}</ul>` : ''}
 ${logRows ? `<h2>${esc(t('Daily logs'))}</h2><table><tr><th>${esc(t('Date'))}</th><th>${esc(t('Flow'))}</th><th>${esc(t('Symptoms'))}</th><th>${esc(t('Mood'))}</th></tr>${logRows}</table>` : ''}
-<p class="sec" style="margin-top:24px">${esc(t('Logged by the user in Gymi. Predictions are estimates. This is not a diagnosis.'))}</p></body></html>`;
+<p class="sec" style="margin-top:24px">${esc(t('Logged by the user in Adro. Predictions are estimates. This is not a diagnosis.'))}</p></body></html>`;
 }

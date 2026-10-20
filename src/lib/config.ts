@@ -1,6 +1,6 @@
 /**
  * How emails verify people.
- * - false: the email has a "Confirm" link that brings you back into Gymi (works with
+ * - false: the email has a "Confirm" link that brings you back into Adro (works with
  *   Supabase's free built-in email, which can't show codes).
  * - true: the email shows a 6-digit code (needs a custom email sender in Supabase, plus
  *   the code email templates). Flip this once the sender is connected.

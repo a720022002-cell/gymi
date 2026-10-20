@@ -19,7 +19,7 @@ import { useSettings } from '@/theme/settings';
 
 const YEARS = ['Under 1', '1 to 2', '3 to 5', '6 to 10', 'Over 10'];
 
-/** Apply as a coach: the Gymi team checks it, then you can take clients (design: coachapply). */
+/** Apply as a coach: the Adro team checks it, then you can take clients (design: coachapply). */
 export default function CoachApply() {
   const { t } = useT();
   const toast = useToast();

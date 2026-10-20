@@ -14,7 +14,7 @@ import { supabase } from './supabase';
 
 const TASK = 'gymi-health-sync';
 
-// Defined when this file loads (the app's first import), so it also runs when the phone wakes Gymi in the background.
+// Defined when this file loads (the app's first import), so it also runs when the phone wakes Adro in the background.
 TaskManager.defineTask(TASK, async () => {
   try {
     const { data } = await supabase.auth.getSession();
@@ -74,9 +74,9 @@ async function morningNote(uid: string, days: DeviceDay[]) {
   const sick = illnessCheck(days, today);
   const sleep = night.sleep_h != null ? t('You slept {h} h.', { h: Math.round(night.sleep_h * 10) / 10 }) : '';
   const [title, body] = sick
-    ? [t('Your body may be fighting something'), t('Rest, drink water and sleep early. Open Gymi to see why.')]
+    ? [t('Your body may be fighting something'), t('Rest, drink water and sleep early. Open Adro to see why.')]
     : brief?.readiness === 'low'
-      ? [t('Take it easier today'), `${sleep} ${t('Your watch says you haven’t fully recovered. Open Gymi to make today’s workout lighter.')}`.trim()]
+      ? [t('Take it easier today'), `${sleep} ${t('Your watch says you haven’t fully recovered. Open Adro to make today’s workout lighter.')}`.trim()]
       : brief?.readiness === 'good'
         ? [t('Ready to train hard'), `${sleep} ${t('Your watch says you recovered well. A good day to push.')}`.trim()]
         : [t('Good morning'), `${sleep} ${t('Your readings look normal today.')}`.trim()];

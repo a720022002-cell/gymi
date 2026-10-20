@@ -38,7 +38,7 @@ export function InviteCode({ code, coach }: { code: string; coach: string }) {
           title={t('Share')}
           style={{ flex: 1 }}
           onPress={async () => {
-            const r = await shareText(t('{c} invited you to coaching on Gymi. Open Gymi, go to Find a coach and enter this code: {k}', { c: coach, k: code }));
+            const r = await shareText(t('{c} invited you to coaching on Adro. Open Adro, go to Find a coach and enter this code: {k}', { c: coach, k: code }));
             if (r === 'copied') toast(t('Invite text copied'), { icon: 'copy' });
           }}
         />
@@ -110,7 +110,7 @@ export function InviteSheet({ link, coach, progs, meals, onChange, onClose }: { 
               {t('Their sign-up code')}
             </Text>
             <Text variant="small" color="sec" center style={{ marginTop: 6 }}>
-              {t('Send this code to your client. They enter it in Gymi under You, then Find a coach. It works once.')}
+              {t('Send this code to your client. They enter it in Adro under You, then Find a coach. It works once.')}
             </Text>
           </View>
           <InviteCode code={link.code ?? ''} coach={coach} />

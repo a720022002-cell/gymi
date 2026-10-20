@@ -60,7 +60,7 @@ export function SettingsSheet({ st, uid, onDone }: { st: State; uid: string; onD
     <View>
       <Text variant="h2">{t('Cycle settings')}</Text>
       <Text variant="small" color="sec" style={{ marginTop: 4 }}>
-        {t('Used until you have a few periods logged. Then Gymi uses your real averages.')}
+        {t('Used until you have a few periods logged. Then Adro uses your real averages.')}
       </Text>
       <Text weight={700} style={{ marginTop: 16 }}>
         {t('Usual cycle length (days)')}
@@ -107,7 +107,7 @@ export function SettingsSheet({ st, uid, onDone }: { st: State; uid: string; onD
                     if (!v) return;
                     const n = cycleNow(st.periods, s, today);
                     const res = await scheduleCycleReminders(r, n ? { next: n.next, fertileFrom: n.fertileFrom, cycle: n.cycle } : null, reminderTexts(t), null, true);
-                    if (res === 'denied') toast(t('Turn on notifications for Gymi in your phone settings.'), { icon: 'bell' });
+                    if (res === 'denied') toast(t('Turn on notifications for Adro in your phone settings.'), { icon: 'bell' });
                   }}
                 />
               </ListRow>
@@ -115,7 +115,7 @@ export function SettingsSheet({ st, uid, onDone }: { st: State; uid: string; onD
           </List>
           {!cycleRemindersSupported ? (
             <Text variant="xs" color="sec" style={{ marginHorizontal: 4, marginTop: -4 }}>
-              {t('Reminders work in the Gymi phone app.')}
+              {t('Reminders work in the Adro phone app.')}
             </Text>
           ) : null}
         </>
@@ -156,7 +156,7 @@ export function SettingsSheet({ st, uid, onDone }: { st: State; uid: string; onD
         <View style={{ flex: 1 }}>
           <Text weight={700}>{t('Use temperature from my watch')}</Text>
           <Text variant="xs" color="sec">
-            {anon ? t('Not available in anonymous mode') : t('Apple Watch or Oura. Makes ovulation predictions better. Needs the Gymi phone app and a connected device.')}
+            {anon ? t('Not available in anonymous mode') : t('Apple Watch or Oura. Makes ovulation predictions better. Needs the Adro phone app and a connected device.')}
           </Text>
         </View>
         {anon ? null : <Toggle value={!!s.temp_watch} onChange={(v) => setS({ ...s, temp_watch: v })} label={t('Use temperature from my watch')} />}
@@ -198,7 +198,7 @@ export function SettingsSheet({ st, uid, onDone }: { st: State; uid: string; onD
             ) : null}
             <View style={{ height: 1, backgroundColor: c.line, marginVertical: 12 }} />
             <Text variant="small" color="sec">
-              {t('Partner not on Gymi yet? Send them a link. After they join, add each other as friends and pick them here.')}
+              {t('Partner not on Adro yet? Send them a link. After they join, add each other as friends and pick them here.')}
             </Text>
             <Button
               small
@@ -208,7 +208,7 @@ export function SettingsSheet({ st, uid, onDone }: { st: State; uid: string; onD
               style={{ marginTop: 10, alignSelf: 'flex-start' }}
               onPress={async () => {
                 const u = profile?.username ?? '';
-                const msg = t('Join me on Gymi and add me as a friend: @{u} {link}', { u, link: `${INVITE_BASE}${encodeURIComponent(u)}` });
+                const msg = t('Join me on Adro and add me as a friend: @{u} {link}', { u, link: `${INVITE_BASE}${encodeURIComponent(u)}` });
                 try {
                   await Clipboard.setStringAsync(msg);
                   toast(t('Invite link copied'), { icon: 'copy' });

@@ -15,7 +15,7 @@ import { useSettings } from '@/theme/settings';
 
 const hub = Platform.OS === 'android' ? 'Health Connect' : 'Apple Health';
 
-/** Sign-up step 4: let Gymi read the phone's health app (Apple Health or Health Connect). Can be skipped. */
+/** Sign-up step 4: let Adro read the phone's health app (Apple Health or Health Connect). Can be skipped. */
 export function HealthStep({ onNext }: { onNext: () => void }) {
   const { t } = useT();
   const { colors: c } = useSettings();
@@ -38,7 +38,7 @@ export function HealthStep({ onNext }: { onNext: () => void }) {
       toast(t('{n} connected', { n: name }), { icon: 'check' });
       return onNext();
     }
-    if (res === 'denied') toast(t('Gymi wasn’t allowed to read {n}. You can allow it in Settings.', { n: name }), { icon: 'warn' });
+    if (res === 'denied') toast(t('Adro wasn’t allowed to read {n}. You can allow it in Settings.', { n: name }), { icon: 'warn' });
     else toast(phoneSource === 'health_connect' ? t('Install or update Health Connect from Google Play, then try again.') : t('Apple Health isn’t available on this phone.'), { icon: 'info' });
   };
 
@@ -57,7 +57,7 @@ export function HealthStep({ onNext }: { onNext: () => void }) {
         {t('Connect {n}', { n: name })}
       </Text>
       <Text color="sec" center style={{ marginTop: 4 }}>
-        {t('Gymi reads your health data to make your plan fit your real day.')}
+        {t('Adro reads your health data to make your plan fit your real day.')}
       </Text>
       <Card style={{ marginTop: 18 }}>
         {rows.map(([icon, line], i) => (
@@ -80,7 +80,7 @@ export function HealthStep({ onNext }: { onNext: () => void }) {
   );
 }
 
-/** Sign-up step 5: a band or ring that links straight to Gymi (WHOOP, Oura, Polar). Can be skipped. */
+/** Sign-up step 5: a band or ring that links straight to Adro (WHOOP, Oura, Polar). Can be skipped. */
 export function DeviceStep({ onDone }: { onDone: () => void }) {
   const { t } = useT();
   const toast = useToast();
@@ -110,7 +110,7 @@ export function DeviceStep({ onDone }: { onDone: () => void }) {
     setBusy(p);
     const r = await linkWearable(p, '/signup?step=devices');
     setBusy(null);
-    if (r === 'not_set_up') toast(t('{n} is almost ready. It opens as soon as Gymi’s {n} account is approved.', { n: wearableName(p) }), { icon: 'watch' });
+    if (r === 'not_set_up') toast(t('{n} is almost ready. It opens as soon as Adro’s {n} account is approved.', { n: wearableName(p) }), { icon: 'watch' });
     else if (r === 'offline') toast(t('You’re offline. Check your connection and try again.'), { icon: 'warn' });
     else if (r === 'failed') toast(t('Couldn’t connect {n}. Please try again.', { n: wearableName(p) }), { icon: 'warn' });
   };
@@ -125,7 +125,7 @@ export function DeviceStep({ onDone }: { onDone: () => void }) {
     <View>
       <Text variant="h1">{t('Do you wear a band or ring?')}</Text>
       <Text color="sec" style={{ marginTop: 4 }}>
-        {t('These connect straight to Gymi. Sign in once and your sleep, recovery and workouts come in by themselves.')}
+        {t('These connect straight to Adro. Sign in once and your sleep, recovery and workouts come in by themselves.')}
       </Text>
       <View style={{ marginTop: 18, gap: 10 }}>
         {cards.map(([p, art, name]) => {

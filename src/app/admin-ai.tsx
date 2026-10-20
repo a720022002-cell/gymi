@@ -56,7 +56,7 @@ export default function AdminAi() {
   if (!admin)
     return (
       <Screen title={t('AI costs')} back>
-        <Text color="sec">{t('Only the Gymi team can open this page.')}</Text>
+        <Text color="sec">{t('Only the Adro team can open this page.')}</Text>
       </Screen>
     );
   const k = d?.range === range ? d.costs : undefined;

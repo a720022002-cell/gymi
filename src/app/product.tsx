@@ -231,7 +231,7 @@ function Found({ x, code, onFix }: { x: Product; code: string; onFix: () => void
       <Row gap={6} style={{ alignItems: 'flex-start', paddingHorizontal: 4 }}>
         <Icon name="info" size={16} color={c.sec} />
         <Text variant="small" color="sec" style={{ flex: 1 }}>
-          {t(x.src === 'fix' ? 'These are the numbers you fixed.' : x.src === 'user' ? 'Typed from the label by a Gymi user. Check the label if a number looks wrong.' : 'Data from Open Food Facts. Check the label if a number looks wrong.')}
+          {t(x.src === 'fix' ? 'These are the numbers you fixed.' : x.src === 'user' ? 'Typed from the label by a Adro user. Check the label if a number looks wrong.' : 'Data from Open Food Facts. Check the label if a number looks wrong.')}
         </Text>
       </Row>
       <Button kind="soft" icon="edit" title={t('Numbers wrong? Fix them')} color={c.text} style={{ marginTop: 12 }} onPress={onFix} />

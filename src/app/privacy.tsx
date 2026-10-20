@@ -47,11 +47,11 @@ export default function Privacy() {
       const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
       const a = document.createElement('a');
       a.href = url;
-      a.download = `gymi-data-${localDay()}.json`;
+      a.download = `adro-data-${localDay()}.json`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
       toast(t('Your data file is downloading'), { icon: 'download' });
-    } else await Share.share({ message: text, title: 'Gymi data' });
+    } else await Share.share({ message: text, title: 'Adro data' });
   };
 
   const del = async () => {
@@ -100,7 +100,7 @@ export default function Privacy() {
         <Button kind="danger" title={t('Delete my account')} style={{ marginTop: 12 }} onPress={() => (setTyped(''), setPw(''), setStep(1))} />
       </Card>
       <Text variant="xs" color="sec" style={{ marginHorizontal: 4 }}>
-        {t('AI photos are sent to the AI to read them and are not kept by Gymi. Progress photos are private to you.')}
+        {t('AI photos are sent to the AI to read them and are not kept by Adro. Progress photos are private to you.')}
       </Text>
       <Sheet open={step > 0} onClose={() => setStep(0)}>
         {step === 1 ? (

@@ -51,7 +51,7 @@ export function UpdateBanner() {
       <View accessibilityRole="alert" style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: c.cobalt, borderRadius: 18, paddingVertical: 8, paddingStart: 14, paddingEnd: 6 }}>
         <Icon name="sparkle" size={20} color="#FFFFFF" strokeWidth={2} />
         <Text variant="small" weight={600} color="#FFFFFF" style={{ flex: 1 }}>
-          {t('A new version of Gymi is ready.')}
+          {t('A new version of Adro is ready.')}
         </Text>
         <Pressable onPress={() => window.location.reload()} style={{ paddingHorizontal: 12, height: 34, borderRadius: 17, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
           <Text variant="small" weight={700} style={{ color: c.cobalt }}>

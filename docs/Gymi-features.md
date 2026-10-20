@@ -1,8 +1,8 @@
-# Gymi: Features
+# Adro: Features
 
 A smart AI fitness coach. Food, training, and health in one place. It starts as a website, then becomes an iPhone and Android app.
 
-**Goal:** the only app a person needs to track their health and gym progress. For people without a coach, the AI is the coach. For people with a coach, Gymi helps the coach and the client work together.
+**Goal:** the only app a person needs to track their health and gym progress. For people without a coach, the AI is the coach. For people with a coach, Adro helps the coach and the client work together.
 
 > This file matches the final design (October 2026). The interactive design is the source of truth for every screen.
 
@@ -15,10 +15,10 @@ A smart AI fitness coach. Food, training, and health in one place. It starts as 
 | First version | Design every feature in this file. Build in stages: the basics first, then the rest. |
 | Languages | English and Arabic, both fully designed. Arabic switches the layout to right-to-left. |
 | Target users | Everyone: beginners to advanced. Ready-made for beginners, fully editable for pros. |
-| Account types | Member (training) and Coach. Coaches apply and the Gymi team approves them. |
+| Account types | Member (training) and Coach. Coaches apply and the Adro team approves them. |
 | Navigation | Floating glass tab bar with 5 tabs: Home, Food, Train, Progress, Gym Bros. Plus a floating AI coach button. |
 | Pricing | Free at the start, then subscription plans (Free and Pro). |
-| Branding | Done. See "Gymi design". |
+| Branding | Done. See "Adro design". |
 
 ---
 
@@ -220,8 +220,8 @@ The 5th tab. Tabs inside: **Friends, Groups, Activity**.
 
 ### Becoming a coach
 - Choose "Apply as a coach" when signing up.
-- Send an application. The Gymi team reviews it, usually within 2 days.
-- Gymi team screen to review and approve coaches.
+- Send an application. The Adro team reviews it, usually within 2 days.
+- Adro team screen to review and approve coaches.
 - Coach profile: photo, bio, gym, specialties (e.g. fat loss, strength), Instagram, and hours at the gym.
 - Future idea: a "Licensed coach" badge for coaches who upload a valid license.
 
@@ -236,7 +236,7 @@ The coach has their own tabs: **Clients, Programs, Messages, Me**.
 - **Messages:** chat with clients.
 - **Notifications** for the coach.
 - **Listing and packages:** set the maximum number of clients (spots), show or hide in "Find a coach", and show again when a spot opens.
-- A coach can also switch to their own training and use Gymi as a member.
+- A coach can also switch to their own training and use Adro as a member.
 
 ### Member side
 - **Find a coach:** browse listed coaches.
@@ -247,7 +247,7 @@ The coach has their own tabs: **Clients, Programs, Messages, Me**.
 
 ## 12. Devices and readings
 
-- Connect Apple Health or WHOOP (and later Polar and the Gymi Band).
+- Connect Apple Health or WHOOP (and later Polar and the Adro Band).
 - Readings: calories burned, average heart rate, steps, VO2 max, stress, strain and recovery, day strain, sleep efficiency, weight, and time in bed.
 - Before connecting: grey cards with "Connect Apple Health or WHOOP".
 - After connecting: drag cards into any order, open a reading for its chart, and show readings on Home.

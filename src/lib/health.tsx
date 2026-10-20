@@ -202,7 +202,7 @@ export function HealthProvider({ children }: PropsWithChildren) {
   const logWeight = useCallback(
     async (kg: number, on = today, fromDevice = false) => {
       const ok = await putMeasures({ weight: kg }, on);
-      // A weigh-in typed into Gymi is copied to the phone's health app (when that's on); one that came from there isn't.
+      // A weigh-in typed into Adro is copied to the phone's health app (when that's on); one that came from there isn't.
       if (ok && !fromDevice) {
         pullHealth('weight', `weight-${on}`);
         pushHealth({ type: 'weight', id: `weight-${on}`, at: on === today ? new Date() : new Date(`${on}T08:00:00`), kg });
@@ -255,7 +255,7 @@ export function HealthProvider({ children }: PropsWithChildren) {
     [measures, putMeasures, applyWeight, updateProfile],
   );
 
-  // Smart scale: weigh-ins (and body fat) from the phone's health app become Gymi weigh-ins by themselves. Only days
+  // Smart scale: weigh-ins (and body fat) from the phone's health app become Adro weigh-ins by themselves. Only days
   // after the last import (the first time: the last 2 weeks), and never over one you typed, so a day you deleted
   // stays deleted. The newest one updates your targets like a typed weigh-in.
   const dev = useDevices(userId);

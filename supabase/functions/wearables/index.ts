@@ -1,4 +1,4 @@
-// Gymi wearables: connect WHOOP, Oura or Polar with their own sign-in (OAuth), then pull daily summaries into
+// Adro wearables: connect WHOOP, Oura or Polar with their own sign-in (OAuth), then pull daily summaries into
 // wearable_days. Runs on the server only: the keys the wearable gives us are kept in device_links and never
 // reach the app. Client ids and secrets are Edge Function secrets (WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET,
 // OURA_CLIENT_ID, OURA_CLIENT_SECRET, POLAR_CLIENT_ID, POLAR_CLIENT_SECRET); without them a wearable shows as
@@ -58,8 +58,8 @@ const PROVIDERS: Record<Provider, { auth: string; token: string; api: string; sc
 const isProvider = (p: unknown): p is Provider => p === 'whoop' || p === 'oura' || p === 'polar';
 const configured = (p: Provider) => !!env(PROVIDERS[p].id) && !!env(PROVIDERS[p].secret);
 
-// Where the browser may be sent back after signing in: the Gymi website, the phone app, or a local test server.
-const RETURN_OK = /^(https:\/\/gymi-inky\.vercel\.app|https:\/\/[a-z0-9-]+\.vercel\.app|gymi:\/\/|exp\+gymi:\/\/|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)(\/|$)/;
+// Where the browser may be sent back after signing in: the Adro website, the phone app, or a local test server.
+const RETURN_OK = /^(https:\/\/gymi-inky\.vercel\.app|https:\/\/[a-z0-9-]+\.vercel\.app|gymi:\/\/|exp\+gymi:\/\/|adro:\/\/|exp\+adro:\/\/|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)(\/|$)/;
 
 const ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
 const randomState = (n: number) => Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) => ABC[b % ABC.length]).join('');
@@ -364,7 +364,7 @@ async function callback(url: URL) {
     for (const [k, v] of Object.entries(q)) u.searchParams.set(k, v);
     return new Response(null, { status: 302, headers: { Location: u.toString() } });
   };
-  if (!st || !isProvider(st.provider)) return new Response('This sign-in link has expired. Go back to Gymi and try again.', { status: 400 });
+  if (!st || !isProvider(st.provider)) return new Response('This sign-in link has expired. Go back to Adro and try again.', { status: 400 });
   if (Date.now() - new Date(st.created_at).getTime() > 10 * 60_000) return back(st.return_to, { wearable: st.provider, status: 'expired' });
   const code = url.searchParams.get('code');
   if (!code) return back(st.return_to, { wearable: st.provider, status: url.searchParams.get('error') === 'access_denied' ? 'denied' : 'error' });
@@ -373,7 +373,7 @@ async function callback(url: URL) {
     // Who this is on the wearable's side (to spot the same band linked twice later).
     let who: string | null = t.x_user_id != null ? String(t.x_user_id) : null;
     if (st.provider === 'polar') {
-      // Polar needs the person registered with Gymi's app before any data comes (409: already registered).
+      // Polar needs the person registered with Adro's app before any data comes (409: already registered).
       const r = await fetch(`${PROVIDERS.polar.api}/v3/users`, { method: 'POST', headers: { Authorization: `Bearer ${t.access_token}`, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ 'member-id': st.user_id }) });
       if (!r.ok && r.status !== 409) throw new Error(`polar register ${r.status}`);
     } else {

@@ -3,7 +3,7 @@ import { type DeviceSource, EMPTY_RAW, type RawHealth } from './devices';
 
 export const nativeSource: DeviceSource | null = null;
 
-/** Something Gymi writes to the phone's health app (phones only). */
+/** Something Adro writes to the phone's health app (phones only). */
 export type HealthItem =
   | { type: 'workout'; id: string; start: Date; end: Date; kind: 'Strength' | 'Run' | 'Walk' | 'Bike' | 'Swim' | 'Other'; kcal: number }
   | { type: 'meal'; id: string; at: Date; kcal: number; protein: number; carbs: number; fat: number }

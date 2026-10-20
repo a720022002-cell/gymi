@@ -554,7 +554,7 @@ function FoodHome() {
         ))}
       </View>
       <Text variant="xs" color="sec" center style={{ marginTop: 16 }}>
-        {t('Food data: USDA FoodData Central and Open Food Facts. Saudi dishes are Gymi estimates.')}
+        {t('Food data: USDA FoodData Central and Open Food Facts. Saudi dishes are Adro estimates.')}
       </Text>
 
       <MealMenu meal={menuFor} logged={!!menuFor && loggedKeys.has(menuFor.key)} onClose={() => setMenuFor(null)} />

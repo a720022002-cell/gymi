@@ -18,7 +18,7 @@ const ART: Record<Exclude<ArtKind, 'health_connect'>, number> = {
   fitbit: require('../../assets/devices/fitbit.png'),
 };
 
-/** The device's picture for the Connections cards. Health Connect (Android) keeps Gymi's heart icon. */
+/** The device's picture for the Connections cards. Health Connect (Android) keeps Adro's heart icon. */
 export function DeviceArt({ kind, size = 64 }: { kind: ArtKind; size?: number }) {
   const { colors: c } = useSettings();
   if (kind === 'health_connect')

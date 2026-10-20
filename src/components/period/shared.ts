@@ -5,7 +5,7 @@ export const ROSE = '#E11D48';
 export type State = { settings: CycleSettings; periods: Period[]; logs: Record<string, CycleLog>; anon: boolean };
 
 export const reminderTexts = (t: ReturnType<typeof useT>['t']) => ({
-  title: 'Gymi',
+  title: 'Adro',
   period: t('Your period may start in about 2 days.'),
   fertile: t('Your fertile window starts today.'),
   log: t('Take a moment to log how you feel today.'),

@@ -31,7 +31,7 @@ export default function AdminReports() {
   if (!admin)
     return (
       <Screen title={t('User reports')} back>
-        <Text color="sec">{t('Only the Gymi team can open this page.')}</Text>
+        <Text color="sec">{t('Only the Adro team can open this page.')}</Text>
       </Screen>
     );
   if (list === undefined)

@@ -113,7 +113,7 @@ export function CoachMeView() {
         {t('App')}
       </Text>
       <List>
-        {item('train', t('Switch to my own training'), t('Use Gymi as a member too'), () => {
+        {item('train', t('Switch to my own training'), t('Use Adro as a member too'), () => {
           setCoachMode(false);
           router.replace('/home');
         }, true)}

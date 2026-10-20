@@ -50,7 +50,7 @@ export default function CoachApplication() {
         <Card style={{ alignItems: 'center', paddingVertical: 24 }}>
           <Icon name="coach" size={34} color={c.cobalt} />
           <Text variant="h3" center style={{ marginTop: 8 }}>
-            {t('Coach clients on Gymi')}
+            {t('Coach clients on Adro')}
           </Text>
           <Text variant="small" color="sec" center style={{ marginTop: 4 }}>
             {t('Send their plans, check their progress and message them. Our team checks every coach first.')}
@@ -72,7 +72,7 @@ export default function CoachApplication() {
           {t(status === 'approved' ? 'You’re approved' : status === 'rejected' ? 'Not approved this time' : 'We’re reviewing it')}
         </Text>
         <Text variant="small" color="sec" center style={{ marginTop: 4 }}>
-          {t(status === 'pending' ? 'We check your details. You’ll see the answer here.' : status === 'approved' ? 'Welcome to Gymi coaches.' : 'You can fix the issue and send it again.')}
+          {t(status === 'pending' ? 'We check your details. You’ll see the answer here.' : status === 'approved' ? 'Welcome to Adro coaches.' : 'You can fix the issue and send it again.')}
         </Text>
       </View>
       <Card style={{ marginTop: 16 }}>

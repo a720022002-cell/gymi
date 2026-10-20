@@ -126,7 +126,7 @@ export default function FindCoach() {
         </Card>
       )}
       <Text variant="xs" color="sec" center style={{ marginTop: 12 }}>
-        {t('Only coaches checked by the Gymi team are listed. Full coaches are hidden until a spot opens.')}
+        {t('Only coaches checked by the Adro team are listed. Full coaches are hidden until a spot opens.')}
       </Text>
       <CodeSheet open={code} onClose={() => setCode(false)} />
     </Screen>
@@ -154,7 +154,7 @@ export function CodeSheet({ open, onClose }: { open: boolean; onClose: () => voi
       <TextInput
         value={v}
         onChangeText={(x) => (setV(x.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 13)), setErr(null))}
-        placeholder="GYMI-XXXXXXXX"
+        placeholder="ADRO-XXXXXXXX"
         placeholderTextColor={c.sec}
         autoCapitalize="characters"
         autoCorrect={false}

@@ -77,7 +77,7 @@ export default function You() {
 
       {admin ? (
         <>
-          <Label>{t('Gymi team')}</Label>
+          <Label>{t('Adro team')}</Label>
           <List>
             <Item icon="key" title={t('Admin')} sub={t('Coach approvals, users and numbers')} onPress={() => router.push('/admin')} chevron />
           </List>
@@ -208,7 +208,7 @@ export default function You() {
         <Button title={t('Cancel')} kind="ghost" style={{ marginTop: 8 }} onPress={() => setConfirm(false)} />
       </Sheet>
       <Text variant="xs" color="sec" center style={{ marginTop: 16 }}>
-        {`Gymi ${Constants.expoConfig?.version ?? '1.0.0'}`}
+        {`Adro ${Constants.expoConfig?.version ?? '1.0.0'}`}
       </Text>
     </Screen>
   );

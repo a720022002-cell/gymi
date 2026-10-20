@@ -244,7 +244,7 @@ export async function uploadCert(uid: string, f: { name: string; uri: string; mi
     return null;
   }
 }
-/** A short-lived link to open a certificate (owner or Gymi team). */
+/** A short-lived link to open a certificate (owner or Adro team). */
 export async function certUrl(path: string) {
   const { data } = await supabase.storage.from('coach-certs').createSignedUrl(path, 600);
   return data?.signedUrl ?? null;

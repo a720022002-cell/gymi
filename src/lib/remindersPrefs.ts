@@ -30,7 +30,7 @@ export function useReminderPrefs() {
 
   const prefs = p && p.uid === uid ? p.v : DEFAULT_PREFS;
 
-  /** Save; ask = also ask the phone for permission. Answers 'denied' when notifications are off for Gymi. */
+  /** Save; ask = also ask the phone for permission. Answers 'denied' when notifications are off for Adro. */
   const save = useCallback(
     async (next: Prefs, ask = false) => {
       if (!uid) return 'ok';

@@ -22,7 +22,7 @@ import { useSettings } from '@/theme/settings';
 
 type Tab = 'overview' | 'coaches' | 'users';
 
-/** Gymi team page: numbers, coach applications and users. Only admins can open it (checked on the server too). */
+/** Adro team page: numbers, coach applications and users. Only admins can open it (checked on the server too). */
 export default function Admin() {
   const { t } = useT();
   const { colors: c } = useSettings();
@@ -34,7 +34,7 @@ export default function Admin() {
         <Card style={{ alignItems: 'center', paddingVertical: 24 }}>
           <Icon name="lock" size={30} color={c.sec} />
           <Text color="sec" center style={{ marginTop: 8 }}>
-            {t('Only the Gymi team can open this page.')}
+            {t('Only the Adro team can open this page.')}
           </Text>
           <Button small kind="soft" title={t('Go home')} style={{ marginTop: 12, alignSelf: 'center' }} onPress={() => router.replace('/home')} />
         </Card>

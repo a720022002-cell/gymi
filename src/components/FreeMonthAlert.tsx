@@ -39,7 +39,7 @@ export function FreeMonthAlert({ months }: { months?: number }) {
           {t('You earned a free month!')}
         </Text>
         <Text color="sec" center style={{ marginTop: 6 }}>
-          {t('{n} friends joined with your code. 1 month of Gymi Premium is added to your account.', { n: REF_GOAL })}
+          {t('{n} friends joined with your code. 1 month of Adro Premium is added to your account.', { n: REF_GOAL })}
         </Text>
       </View>
       <Button title={t('Nice')} style={{ marginTop: 16 }} onPress={() => setOpen(false)} />

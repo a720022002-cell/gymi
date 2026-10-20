@@ -183,7 +183,7 @@ function UsernameSheet({ onClose }: { onClose: () => void }) {
       if (latest.current !== u) return;
       if (ok !== false) return setState(ok ? 'free' : 'idle');
       setState('taken');
-      const b = u.replace(/[._]+$/, '') || 'gymi';
+      const b = u.replace(/[._]+$/, '') || 'adro';
       const tries = [`${b}_fit`, `${b}.gym`, `${b}26`].filter((x) => !usernameError(x));
       const free = await Promise.all(tries.map(async (x) => ((await usernameAvailable(x)) ? x : null)));
       if (latest.current === u) setSugg(free.filter(Boolean).slice(0, 3) as string[]);

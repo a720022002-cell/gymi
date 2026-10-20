@@ -158,7 +158,7 @@ function MealDetail({ m, onClose, onEdit }: { m: SavedMeal; onClose: () => void;
   const food = useFood();
   const logFood = useLogFood();
   const share = async () => {
-    const txt = t('Try my meal on Gymi: {n} ({k} kcal, {p} g protein). Add it with code {c}', { n: m.name, k: fmt(m.kcal), p: Math.round(m.protein), c: m.code });
+    const txt = t('Try my meal on Adro: {n} ({k} kcal, {p} g protein). Add it with code {c}', { n: m.name, k: fmt(m.kcal), p: Math.round(m.protein), c: m.code });
     try {
       if (Platform.OS === 'web' && typeof navigator !== 'undefined' && !navigator.share) {
         await Clipboard.setStringAsync(txt);

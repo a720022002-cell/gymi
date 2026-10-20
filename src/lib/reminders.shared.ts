@@ -64,7 +64,7 @@ export const NSOUNDS: Record<NCat, string[]> = {
   friends: ['yeahbuddy', 'default', 'horn', 'none'],
 };
 export const SOUND_NAMES: Record<string, string> = {
-  default: 'Gymi ding',
+  default: 'Adro ding',
   drop: 'Water drop',
   pour: 'Pouring water',
   crunch: 'Crunchy bite',

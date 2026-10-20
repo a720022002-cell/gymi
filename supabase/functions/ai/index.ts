@@ -1,4 +1,4 @@
-// Gymi AI: the only place that talks to an AI model. The app sends a task; keys never leave the server.
+// Adro AI: the only place that talks to an AI model. The app sends a task; keys never leave the server.
 //
 // Every AI answer in the app comes from Claude Haiku 5.5 (through OpenRouter). No other model, no backup model.
 // Secrets (Supabase > Edge Functions > Secrets):
@@ -17,7 +17,7 @@ const cors = {
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 const env = (k: string, d = '') => Deno.env.get(k) ?? d;
 /** The OpenRouter key; also accepted under the name "OpenRouter". */
-/** The model Gymi uses: Claude Haiku (reads photos and PDFs, good Arabic, follows the JSON shape). */
+/** The model Adro uses: Claude Haiku (reads photos and PDFs, good Arabic, follows the JSON shape). */
 const HAIKU = 'anthropic/claude-haiku-5.5';
 /** Settings and results of one request. Each request has its own, so requests running at the same time never mix
  * (model, temperature, cost). */
@@ -447,7 +447,7 @@ const DEVICE_RULES = `Device data ("devices", when present) comes from the perso
 - readiness "good": fine to train hard or try a heavier weight as planned.
 - Short sleep or sleep debt: protect sleep first (earlier bedtime, less caffeine after 2 pm), and expect more hunger: point to protein and fiber.
 - Steps and active calories: a lot fewer steps than usual means less burned (nudge a walk); many more steps on a cut is a reason to eat enough protein, not to cut more.
-- Workouts the device recorded count as training even if not logged in Gymi; use them for how much they trained.
+- Workouts the device recorded count as training even if not logged in Adro; use them for how much they trained.
 - Raised skin temperature together with HRV down and resting heart rate up can mean getting sick: suggest rest and fluids, and a doctor if they feel ill. Low blood oxygen that repeats: suggest a doctor. Never diagnose.
 - If the device and the person's own check-in disagree, say both kindly and ask how they feel; how they feel wins for today.
 - Sleep stages and bedtime ("deep_h", "rem_h", "bed_min" = minutes from midnight, negative before it): little deep sleep or a bedtime that moves a lot is a reason to suggest a steady bedtime (and a bedtime reminder where you can suggest one), less caffeine late, and no heavy meal late.
@@ -462,7 +462,7 @@ async function run(task: string, b: Record<string, unknown>) {
     case 'chat': {
       const ctx = JSON.stringify(b.context ?? {}).slice(0, 20000);
       const memory = String(b.memory ?? '').slice(0, 1500);
-      const system = `You are Gymi, a friendly AI fitness coach for people in Saudi Arabia and the Gulf. ${LANG(lang)}
+      const system = `You are Adro, a friendly AI fitness coach for people in Saudi Arabia and the Gulf. ${LANG(lang)}
 Keep answers short (2 to 5 sentences), practical and kind. Use local foods when helpful (kabsa, mandi, laban, dates, shawarma).
 Use the user's real numbers below (weight trend, sleep, recovery, calories, protein, workouts, commitment, coach targets, cycle phase, watch data) and say them plainly. The data is in English: say its words (like "very sore" or "tired") in the reply language, but keep workout names as they are. Never invent numbers that are not in the data.
 Food allergies ("foodAllergies" in the data): never suggest a meal, food or recipe that contains them (also hidden in sauces, bread, ghee or desserts), and if the person asks about a food with one of them, warn them kindly. If a human coach set calorie or protein targets ("coachTargets"), follow those targets. If "cycle" is present, take the phase into account (hunger, water weight, energy) without being dramatic.
@@ -733,7 +733,7 @@ Use the exact workout names and exercise ids from the plan. At most 4 changes; f
     }
     case 'recap': {
       // The weekly recap story: what went well, what got in the way, tips, and up to 3 changes the person can apply.
-      const system = `You are Gymi, a warm, honest fitness coach writing a short weekly recap that is shown as a story on the phone. ${LANG(lang)}
+      const system = `You are Adro, a warm, honest fitness coach writing a short weekly recap that is shown as a story on the phone. ${LANG(lang)}
 Food allergies ("foodAllergies"): no meal idea or tip may contain them, also hidden ones (sauces, bread, ghee, desserts).
 You get last week's real numbers ("week"), the week before for comparison ("weekBefore"), which goals were hit ("goals"), the training plan, food targets, the goal, level and injuries.
 Use only these numbers and say them plainly (for example "you trained 2 of 4 days", "protein averaged 98 g of 150"). Never invent numbers.

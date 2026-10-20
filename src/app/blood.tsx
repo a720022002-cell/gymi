@@ -182,7 +182,7 @@ export default function BloodScreen() {
         </>
       ) : null}
       <Text variant="xs" color="sec" center style={{ marginTop: 16 }}>
-        {t('Gymi reads and tracks your results to guide your training and food. It doesn’t diagnose or treat anything. Talk to your doctor about your results. Not medical advice.')}
+        {t('Adro reads and tracks your results to guide your training and food. It doesn’t diagnose or treat anything. Talk to your doctor about your results. Not medical advice.')}
       </Text>
     </Screen>
   );
@@ -266,7 +266,7 @@ function Report({ b }: { b: BloodTest }) {
         ))}
       </View>
       <Text variant="xs" color="sec">
-        {t('Gymi reads values only. It never suggests treatment or doses. Check the numbers against your report.')}
+        {t('Adro reads values only. It never suggests treatment or doses. Check the numbers against your report.')}
       </Text>
     </View>
   );

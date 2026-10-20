@@ -1,22 +1,22 @@
 {
   "expo": {
-    "name": "Gymi",
+    "name": "Adro",
     "slug": "gymi",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "gymi",
+    "scheme": "adro",
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#FFFFFF",
     "ios": {
-      "bundleIdentifier": "com.gymi.app",
+      "bundleIdentifier": "com.adro.app",
       "supportsTablet": false,
       "config": {
         "usesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "com.gymi.app",
+      "package": "com.adro.app",
       "adaptiveIcon": {
         "backgroundColor": "#3355FF",
         "foregroundImage": "./assets/images/android-icon-foreground.png"
@@ -50,8 +50,8 @@
     "web": {
       "output": "single",
       "bundler": "metro",
-      "name": "Gymi",
-      "shortName": "Gymi",
+      "name": "Adro",
+      "shortName": "Adro",
       "lang": "en",
       "themeColor": "#3355FF",
       "backgroundColor": "#FFFFFF",
@@ -72,7 +72,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Gymi uses the camera to scan food barcodes and take photos of meals, labels and gym machines.",
+          "cameraPermission": "Adro uses the camera to scan food barcodes and take photos of meals, labels and gym machines.",
           "microphonePermission": false,
           "recordAudioAndroid": false
         }
@@ -80,8 +80,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Gymi lets you pick a photo of a meal, a label, a lab report or your progress.",
-          "cameraPermission": "Gymi uses the camera to take photos of meals, labels and gym machines.",
+          "photosPermission": "Adro lets you pick a photo of a meal, a label, a lab report or your progress.",
+          "cameraPermission": "Adro uses the camera to take photos of meals, labels and gym machines.",
           "microphonePermission": false
         }
       ],
@@ -94,7 +94,7 @@
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Gymi uses Face ID to lock your cycle tracking if you turn that on."
+          "faceIDPermission": "Adro uses Face ID to lock your cycle tracking if you turn that on."
         }
       ],
       "expo-sharing",
@@ -107,8 +107,8 @@
       [
         "expo-speech-recognition",
         {
-          "microphonePermission": "Gymi uses the microphone so you can log food, sets and questions by voice.",
-          "speechRecognitionPermission": "Gymi turns your voice into text to log food, sets and questions.",
+          "microphonePermission": "Adro uses the microphone so you can log food, sets and questions by voice.",
+          "speechRecognitionPermission": "Adro turns your voice into text to log food, sets and questions.",
           "androidSpeechServicePackages": [
             "com.google.android.googlequicksearchbox"
           ]
@@ -117,8 +117,8 @@
       [
         "@kingstinct/react-native-healthkit",
         {
-          "NSHealthShareUsageDescription": "Gymi reads your steps, heart rate, sleep, weight, body fat, breathing, blood oxygen, temperature, cycle and workouts so your coach can adjust your plan.",
-          "NSHealthUpdateUsageDescription": "If you turn it on, Gymi saves your workouts, meals, water and weight to Apple Health.",
+          "NSHealthShareUsageDescription": "Adro reads your steps, heart rate, sleep, weight, body fat, breathing, blood oxygen, temperature, cycle and workouts so your coach can adjust your plan.",
+          "NSHealthUpdateUsageDescription": "If you turn it on, Adro saves your workouts, meals, water and weight to Apple Health.",
           "background": false
         }
       ],

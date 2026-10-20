@@ -288,7 +288,7 @@ export const REPORT_REASONS: [ReportReason, string][] = [
   ['other', 'Something else'],
 ];
 
-/** Report a person (or a coach page, group or challenge). Only the Gymi team reads reports. */
+/** Report a person (or a coach page, group or challenge). Only the Adro team reads reports. */
 export async function sendReport(r: { reported: string | null; kind?: 'user' | 'coach' | 'group' | 'challenge'; ref?: string; reason: ReportReason; note?: string }) {
   const { error } = await supabase.from('user_reports').insert({ reported: r.reported, kind: r.kind ?? 'user', ref: r.ref ?? null, reason: r.reason, note: r.note?.trim().slice(0, 500) || null });
   return !error;

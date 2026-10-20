@@ -25,7 +25,7 @@ export const coachQueue = async () => (await rpc<CoachQueueRow[]>('admin_coach_q
 export const decideCoach = async (user: string, approve: boolean, reason?: string) => !!(await rpc<boolean>('admin_decide_coach', { p_user: user, p_approve: approve, p_reason: reason ?? null }));
 export const adminUsers = async (q: string) => (await rpc<AdminUser[]>('admin_users', { p_q: q })) ?? [];
 
-/** Is the logged-in person a Gymi admin? (checked on the server) */
+/** Is the logged-in person a Adro admin? (checked on the server) */
 export function useIsAdmin() {
   const { session } = useAuth();
   const uid = session?.user.id;

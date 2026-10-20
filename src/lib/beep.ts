@@ -14,7 +14,7 @@ export const SOUNDS: { id: string; name: string }[] = [
   { id: 'yeahbuddy', name: '“Yeah buddy!” voice' },
   { id: 'gymbell', name: 'Gym bell' },
   { id: 'horn', name: 'Air horn' },
-  { id: 'default', name: 'Gymi ding' },
+  { id: 'default', name: 'Adro ding' },
   { id: 'none', name: 'None (silent)' },
 ];
 

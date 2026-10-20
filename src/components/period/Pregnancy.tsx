@@ -146,7 +146,7 @@ export function Pregnancy({ s, save }: { s: CycleSettings; save: (next: CycleSet
       </List>
       {daily.visit && daily.visitRemind && !cycleRemindersSupported ? (
         <Text variant="xs" color="sec" style={{ marginHorizontal: 4, marginBottom: 8 }}>
-          {t('Reminders work in the Gymi phone app.')}
+          {t('Reminders work in the Adro phone app.')}
         </Text>
       ) : null}
       <Text variant="xs" color="sec" center>

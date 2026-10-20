@@ -166,7 +166,7 @@ export default function CoachNotifScreen() {
               {time(n.weekly.t, (v) => set({ weekly: { ...n.weekly, t: v } }), t('Time'))}
             </View>,
           )}
-          {row('info', t('Gymi updates'), t('News and tips for coaches'), n.gymi, (v) => set({ gymi: v }))}
+          {row('info', t('Adro updates'), t('News and tips for coaches'), n.gymi, (v) => set({ gymi: v }))}
         </List>
         {head(t('Quiet hours'))}
         <List>
@@ -208,7 +208,7 @@ export default function CoachNotifScreen() {
               { dailyTitle: t('Daily summary'), dailyBody: t('See who trained and who logged food today.'), weeklyTitle: t('Weekly ranking'), weeklyBody: t('Your clients ranked by commitment this week.') },
               true,
             ).catch(() => 'unsupported' as const);
-            if (r === 'denied') toast(t('Turn on notifications for Gymi in your phone settings.'), { icon: 'bell' });
+            if (r === 'denied') toast(t('Turn on notifications for Adro in your phone settings.'), { icon: 'bell' });
           }
           setBusy(false);
           if (ok) setDirty(false);

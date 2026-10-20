@@ -122,7 +122,7 @@ export function Icon({ name, size = 22, color, strokeWidth = 1.8 }: Props) {
   );
 }
 
-/** The Gymi brand ring: about 80% closed, rounded ends. Also the AI coach avatar. */
+/** The Adro brand ring: about 80% closed, rounded ends. Also the AI coach avatar. */
 export function Mark({ size = 28, color = '#3355FF', stroke }: { size?: number; color?: string; stroke?: number }) {
   const sw = stroke ?? size * 0.2;
   const r = (size - sw) / 2;

@@ -1,5 +1,5 @@
 // Phones: read health data from Apple Health (iPhone) or Health Connect (Android), and, only when the person turns
-// it on, write Gymi's own workouts, meals, water and weight back. What Gymi wrote is skipped when reading, so it's
+// it on, write Adro's own workouts, meals, water and weight back. What Adro wrote is skipped when reading, so it's
 // never counted twice.
 import * as HK from '@kingstinct/react-native-healthkit';
 import Constants from 'expo-constants';
@@ -10,7 +10,7 @@ import { type DeviceSource, EMPTY_RAW, type Point, type RawHealth, type Span } f
 
 export const nativeSource: DeviceSource | null = Platform.OS === 'ios' ? 'apple' : Platform.OS === 'android' ? 'health_connect' : null;
 
-/** Something Gymi writes to the phone's health app. The id is Gymi's own, so it can be found again to delete. */
+/** Something Adro writes to the phone's health app. The id is Adro's own, so it can be found again to delete. */
 export type HealthItem =
   | { type: 'workout'; id: string; start: Date; end: Date; kind: 'Strength' | 'Run' | 'Walk' | 'Bike' | 'Swim' | 'Other'; kcal: number }
   | { type: 'meal'; id: string; at: Date; kcal: number; protein: number; carbs: number; fat: number }
@@ -52,12 +52,12 @@ const HK_KIND: Record<string, number> = { Strength: 50, Run: 37, Walk: 52, Bike:
 // Apple's own key for "the id this record has in the app that wrote it".
 const EXT = 'HKExternalUUID';
 
-/** Gymi's own app in Apple Health, so what it wrote can be left out when reading. */
+/** Adro's own app in Apple Health, so what it wrote can be left out when reading. */
 const hkSelf = () => {
   try {
     return HK.currentAppSource().bundleIdentifier;
   } catch {
-    return Constants.expoConfig?.ios?.bundleIdentifier ?? 'com.gymi.app';
+    return Constants.expoConfig?.ios?.bundleIdentifier ?? 'com.adro.app';
   }
 };
 const notMine = (self: string) => (s: { sourceRevision?: { source?: { bundleIdentifier?: string } } }) => s.sourceRevision?.source?.bundleIdentifier !== self;
@@ -84,7 +84,7 @@ async function hkRead(from: Date, to: Date): Promise<RawHealth> {
   };
   /**
    * Steps and active calories as hourly totals worked out by Apple Health itself, so the iPhone and the Apple Watch
-   * (or two apps) counting the same walk count once, like in the Health app. What Gymi wrote is left out.
+   * (or two apps) counting the same walk count once, like in the Health app. What Adro wrote is left out.
    */
   const hourly = async (id: 'HKQuantityTypeIdentifierStepCount' | 'HKQuantityTypeIdentifierActiveEnergyBurned', unit: string): Promise<Span[]> => {
     try {
@@ -204,7 +204,7 @@ const HC_TYPES = [
 const HC_WRITE = ['ExerciseSession', 'ActiveCaloriesBurned', 'Nutrition', 'Hydration', 'Weight'] as const;
 const HC_WORKOUT: Record<number, string> = { 56: 'Run', 79: 'Walk', 8: 'Bike', 74: 'Swim', 73: 'Swim', 70: 'Strength', 81: 'Strength', 36: 'HIIT', 83: 'Yoga' };
 const HC_KIND: Record<string, number> = { Strength: 70, Run: 56, Walk: 79, Bike: 8, Swim: 74, Other: 0 };
-const HC_SELF = Constants.expoConfig?.android?.package ?? 'com.gymi.app';
+const HC_SELF = Constants.expoConfig?.android?.package ?? 'com.adro.app';
 
 async function hcReady() {
   const status = await HC.getSdkStatus();
@@ -235,7 +235,7 @@ async function hcAll<T extends (typeof HC_TYPES)[number]>(type: T, from: Date, t
       if (!pageToken) break;
     }
   } catch {}
-  // What Gymi wrote itself is left out.
+  // What Adro wrote itself is left out.
   return out.filter((r) => (r as { metadata?: { dataOrigin?: string } }).metadata?.dataOrigin !== HC_SELF);
 }
 
@@ -259,7 +259,7 @@ async function hcRead(from: Date, to: Date): Promise<RawHealth> {
     hcAll('ExerciseSession', from, to),
   ]);
   // Daily totals: hourly sums worked out by Health Connect, which counts a walk once even when the phone and a watch
-  // (or two apps) both recorded it. Gymi's own calories (written when you turned that on) are taken back out.
+  // (or two apps) both recorded it. Adro's own calories (written when you turned that on) are taken back out.
   const range = { operator: 'between' as const, startTime: from.toISOString(), endTime: to.toISOString() };
   const slicer = { duration: 'HOURS' as const, length: 1 };
   const [aSteps, aKcal, mine] = await Promise.all([
@@ -274,7 +274,7 @@ async function hcRead(from: Date, to: Date): Promise<RawHealth> {
   out.kcal = aKcal
     ? aKcal.map((g) => ({ start: new Date(g.startTime), end: new Date(g.endTime), v: Math.max(0, (g.result.ACTIVE_CALORIES_TOTAL?.inKilocalories ?? 0) - (own.get(g.startTime) ?? 0)) })).filter((x) => x.v > 0)
     : kcal.map((r) => ({ start: new Date(r.startTime), end: new Date(r.endTime), v: r.energy.inKilocalories }));
-  // Calories inside a workout come from the records themselves (Gymi's own already left out).
+  // Calories inside a workout come from the records themselves (Adro's own already left out).
   const kcalRecs = kcal.map((r) => ({ start: new Date(r.startTime), v: r.energy.inKilocalories }));
   out.hr = hr.flatMap((r) => r.samples.map((s) => ({ t: new Date(s.time), v: s.beatsPerMinute })));
   out.rest = rest.map((r) => ({ t: new Date(r.time), v: r.beatsPerMinute }));
@@ -317,7 +317,7 @@ async function hcWrite(x: HealthItem) {
   if (x.type === 'workout') {
     const kcal = Math.max(0, Math.round(x.kcal));
     await HC.insertRecords([
-      { recordType: 'ExerciseSession', exerciseType: HC_KIND[x.kind] ?? 0, title: 'Gymi', startTime: iso(x.start), endTime: iso(x.end), metadata: meta(x.id) },
+      { recordType: 'ExerciseSession', exerciseType: HC_KIND[x.kind] ?? 0, title: 'Adro', startTime: iso(x.start), endTime: iso(x.end), metadata: meta(x.id) },
       ...(kcal ? [{ recordType: 'ActiveCaloriesBurned' as const, energy: { value: kcal, unit: 'kilocalories' as const }, startTime: iso(x.start), endTime: iso(x.end), metadata: meta(`${x.id}:kcal`) }] : []),
     ]);
   } else if (x.type === 'meal')
@@ -377,7 +377,7 @@ export async function readHeartRate(from: Date, to: Date): Promise<number[]> {
   return [];
 }
 
-/** Write one of Gymi's own records to the health app. Errors are swallowed: it's a copy, Gymi keeps the original. */
+/** Write one of Adro's own records to the health app. Errors are swallowed: it's a copy, Adro keeps the original. */
 export async function writeHealth(x: HealthItem): Promise<void> {
   try {
     if (nativeSource === 'apple') await hkWrite(x);
@@ -385,7 +385,7 @@ export async function writeHealth(x: HealthItem): Promise<void> {
   } catch {}
 }
 
-/** Remove a record Gymi wrote earlier (after it was deleted in Gymi). */
+/** Remove a record Adro wrote earlier (after it was deleted in Adro). */
 export async function removeHealth(type: HealthItem['type'], id: string): Promise<void> {
   try {
     if (nativeSource === 'apple') await hkRemove(type, id);

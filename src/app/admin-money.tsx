@@ -35,7 +35,7 @@ export default function AdminMoney() {
   if (!admin)
     return (
       <Screen title={t('Accounting')} back>
-        <Text color="sec">{t('Only the Gymi team can open this page.')}</Text>
+        <Text color="sec">{t('Only the Adro team can open this page.')}</Text>
       </Screen>
     );
   return (
@@ -71,7 +71,7 @@ function Purchases({ partners, list }: { partners: Partner[]; list: Expense[] })
           {t('No purchases yet')}
         </Text>
         <Text variant="small" color="sec" center style={{ marginTop: 4 }}>
-          {t('Add what each of you bought for Gymi, and how you split it.')}
+          {t('Add what each of you bought for Adro, and how you split it.')}
         </Text>
         <Button small icon="plus" title={t('Add a purchase')} style={{ marginTop: 12, alignSelf: 'center' }} onPress={() => router.push('/admin-expense')} />
       </Card>

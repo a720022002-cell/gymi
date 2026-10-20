@@ -255,7 +255,7 @@ export async function importPeriods(uid: string, flowDays: string[], today: stri
   let added = 0;
   for (const r of runs) {
     if (data.periods.some((p) => r.start <= addDays(endOf(p), 2) && r.end >= addDays(p.start_day, -2))) continue;
-    // Still going (logged today or yesterday): an open period you end yourself, like one you start in Gymi.
+    // Still going (logged today or yesterday): an open period you end yourself, like one you start in Adro.
     if (r.end >= addDays(today, -1)) await startPeriod(r.start);
     else await addPastPeriod(r.start, Math.round((new Date(`${r.end}T12:00:00`).getTime() - new Date(`${r.start}T12:00:00`).getTime()) / 864e5) + 1);
     added++;

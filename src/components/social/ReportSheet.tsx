@@ -10,7 +10,7 @@ import { useT } from '@/i18n';
 import { blockUser, REPORT_REASONS, type ReportReason, sendReport } from '@/lib/social';
 
 /**
- * Report a person, a coach page, a group or a challenge to the Gymi team (they never learn who reported them).
+ * Report a person, a coach page, a group or a challenge to the Adro team (they never learn who reported them).
  * For a person you can block them in the same step. `onBlocked` runs after a block.
  */
 export function ReportSheet({
@@ -57,7 +57,7 @@ export function ReportSheet({
         {t('Report {n}', { n: name })}
       </Text>
       <Text color="sec" center style={{ marginTop: 4 }}>
-        {t('Only the Gymi team sees this. {n} won’t know who reported.', { n: name })}
+        {t('Only the Adro team sees this. {n} won’t know who reported.', { n: name })}
       </Text>
       <Row gap={8} style={{ flexWrap: 'wrap', marginTop: 16 }}>
         {REPORT_REASONS.map(([k, l]) => (

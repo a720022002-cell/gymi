@@ -131,7 +131,7 @@ export default function SharePhoto() {
     drawOverlay(ctx, style, data, photo);
     setBusy(false);
     if (!blob) return toast(t('Couldn’t make the picture. Please try again.'), { icon: 'warn' });
-    const name = sticker ? 'gymi-sticker.png' : 'gymi-workout.jpg';
+    const name = sticker ? 'adro-sticker.png' : 'adro-workout.jpg';
     const file = new File([blob], name, { type: blob.type });
     try {
       if (navigator.canShare?.({ files: [file] })) return await navigator.share({ files: [file] });

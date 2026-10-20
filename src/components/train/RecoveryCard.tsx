@@ -35,7 +35,7 @@ function watchBody(days: DeviceDay[], today: string): RecoveryInput['body'] {
 /**
  * Cardio the watch recorded in the last 4 weeks, as training work: heart-rate load (TRIMP / 10) when the watch
  * measured heart rate and a resting heart rate is known, otherwise a set per 8 minutes. Strength sessions are left out
- * (they're the Gymi workouts already counted).
+ * (they're the Adro workouts already counted).
  */
 function watchCardioLoad(days: DeviceDay[], today: string, dob: string | null | undefined, female: boolean) {
   const age = dob ? Math.max(14, Math.floor((Date.now() - new Date(dob).getTime()) / 3.15576e10)) : 30;

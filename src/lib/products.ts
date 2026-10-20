@@ -14,7 +14,7 @@ export type Product = {
   c: number;
   f: number;
   sugar: number;
-  /** Where the numbers come from: Open Food Facts, a Gymi user who typed the label, or your own fix. */
+  /** Where the numbers come from: Open Food Facts, a Adro user who typed the label, or your own fix. */
   src: 'off' | 'user' | 'fix';
   /** The product's id in our food database, when it came from there. */
   id?: string;

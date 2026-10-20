@@ -56,7 +56,7 @@ export default function VitaminsScreen() {
     const body = v ? t('{n}, {d}', { n: v.name, d: v.dose ? `${v.dose} ${v.unit}` : t(v.freq).toLowerCase() }) : t('Vitamin D, 50,000 IU');
     const r = await previewNotification(title, body).catch(() => 'unsupported' as const);
     if (r === 'ok') toast(t('A sample reminder is on its way.'), { icon: 'bell' });
-    else if (r === 'denied') toast(t('Allow notifications for Gymi to get reminders.'), { icon: 'bell' });
+    else if (r === 'denied') toast(t('Allow notifications for Adro to get reminders.'), { icon: 'bell' });
     else toast(`${title}: ${body}`, { icon: 'bell' });
   };
 
@@ -168,7 +168,7 @@ export default function VitaminsScreen() {
       <Row gap={8} style={{ alignItems: 'flex-start', marginTop: 8, paddingHorizontal: 4 }}>
         <Icon name="info" size={18} color={c.sec} />
         <Text variant="small" color="sec" style={{ flex: 1 }}>
-          {t('Gymi logs what you take. It doesn’t recommend doses. Ask your doctor before starting anything new.')}
+          {t('Adro logs what you take. It doesn’t recommend doses. Ask your doctor before starting anything new.')}
         </Text>
       </Row>
       <Button kind="glass" icon="bell" title={t('Preview a reminder')} style={{ marginTop: 16 }} onPress={preview} />

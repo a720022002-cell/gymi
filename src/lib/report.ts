@@ -142,7 +142,7 @@ export { pdfIsPrint, sharePdf } from './pdf';
 
 export const escHtml = (s: string) => s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch] as string);
 
-/** The page around every Gymi PDF: logo, title, date range, and a small note at the end. */
+/** The page around every Adro PDF: logo, title, date range, and a small note at the end. */
 export function pdfPage(o: { lang: 'en' | 'ar'; title: string; sub: string; range: string; body: string; note: string }) {
   const dir = o.lang === 'ar' ? 'rtl' : 'ltr';
   return `<!doctype html><html dir="${dir}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escHtml(o.title)}</title><style>
@@ -151,7 +151,7 @@ export function pdfPage(o: { lang: 'en' | 'ar'; title: string; sub: string; rang
     h1{font-size:22px;margin:16px 0 4px}h2{font-size:15px;margin:22px 0 6px}.sub{color:#52525B;font-size:13px}.lbl{color:#52525B;font-size:12px;margin-top:18px}
     table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}td{padding:8px 0;border-bottom:1px solid #E4E4E7;vertical-align:top}td:last-child{text-align:end;font-weight:600}
     .note{color:#52525B;font-size:11px;margin-top:24px}</style></head><body>
-    <div class="top"><span class="brand">gymi</span><span class="sub">${escHtml(o.range)}</span></div>
+    <div class="top"><span class="brand">adro</span><span class="sub">${escHtml(o.range)}</span></div>
     <h1>${escHtml(o.title)}</h1><div class="sub">${escHtml(o.sub)}</div>
     ${o.body}
     <div class="note">${escHtml(o.note)}</div></body></html>`;

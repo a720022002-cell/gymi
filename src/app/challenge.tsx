@@ -25,8 +25,8 @@ type Data = { id: string; info: ChallengeInfo | null; board: ChallengeRow[] };
 
 const NOTE: Record<ChallengeInfo['kind'], string> = {
   steps: 'Steps count from what each person logs in Cardio and steps.',
-  workouts: 'Counts workouts finished in Gymi during the challenge.',
-  volume: 'Counts workouts finished in Gymi during the challenge.',
+  workouts: 'Counts workouts finished in Adro during the challenge.',
+  volume: 'Counts workouts finished in Adro during the challenge.',
   exercise: 'Kilos added to your heaviest set, compared with your best in the 90 days before the challenge.',
   weight: 'Each person is scored by how far they got from their start weight toward their own goal. Goals stay private.',
   progress: 'How much stronger each person got, compared with their best lifts in the 60 days before the challenge.',

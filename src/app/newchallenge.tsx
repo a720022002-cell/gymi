@@ -88,7 +88,7 @@ export default function NewChallenge() {
             ))}
           </Row>
           <Text variant="xs" color="sec" style={{ marginTop: 8, marginHorizontal: 4 }}>
-            {t('Counts the heaviest set you log in Gymi, compared with your best before the challenge.')}
+            {t('Counts the heaviest set you log in Adro, compared with your best before the challenge.')}
           </Text>
         </>
       ) : k === 'weight' ? (

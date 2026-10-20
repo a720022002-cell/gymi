@@ -13,7 +13,7 @@ export default function AccountType() {
 
   return (
     <Screen title={t('Create account')} back>
-      <Text variant="h1">{t('How will you use Gymi?')}</Text>
+      <Text variant="h1">{t('How will you use Adro?')}</Text>
       <Text color="sec" style={{ marginTop: 4, marginBottom: 16 }}>
         {t('You can add the other one later.')}
       </Text>

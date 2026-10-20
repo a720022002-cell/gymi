@@ -15,7 +15,7 @@ import { linkWearable, syncWearables, unlinkWearable, wearableName, type Wearabl
 import { useWatchPrefs } from '@/lib/watchPrefs';
 import { useSettings } from '@/theme/settings';
 
-/** Connections: link, sync or disconnect what talks straight to Gymi, and what comes in through the phone's health app. */
+/** Connections: link, sync or disconnect what talks straight to Adro, and what comes in through the phone's health app. */
 export default function Connections() {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
@@ -68,7 +68,7 @@ export default function Connections() {
     const res = await connectDevice().catch(() => 'unavailable' as const);
     setBusy(null);
     if (res === 'ok') toast(t('{n} connected', { n: native ?? '' }), { icon: 'check' });
-    else if (res === 'denied') toast(t('Gymi wasn’t allowed to read {n}. You can allow it in Settings.', { n: native ?? '' }), { icon: 'warn' });
+    else if (res === 'denied') toast(t('Adro wasn’t allowed to read {n}. You can allow it in Settings.', { n: native ?? '' }), { icon: 'warn' });
     else toast(phoneSource === 'health_connect' ? t('Install or update Health Connect from Google Play, then try again.') : t('Apple Health isn’t available on this phone.'), { icon: 'info' });
   };
 
@@ -85,7 +85,7 @@ export default function Connections() {
     }
     const r = await linkWearable(p);
     setBusy(null);
-    if (r === 'not_set_up') toast(t('{n} is almost ready. It opens as soon as Gymi’s {n} account is approved.', { n: wearableName(p) }), { icon: 'watch' });
+    if (r === 'not_set_up') toast(t('{n} is almost ready. It opens as soon as Adro’s {n} account is approved.', { n: wearableName(p) }), { icon: 'watch' });
     else if (r === 'offline') toast(t('You’re offline. Check your connection and try again.'), { icon: 'warn' });
     else if (r === 'failed') toast(t('Couldn’t connect {n}. Please try again.', { n: wearableName(p) }), { icon: 'warn' });
   };
@@ -94,7 +94,7 @@ export default function Connections() {
     const l = linkOf(p);
     return l ? (l.status === 'ok' ? 'Connected' : 'Sign in again') : ws?.configured[p] ? 'Connect' : 'Coming soon';
   };
-  const soon = (n: string) => toast(t('{n} is coming soon. Until then, it reaches Gymi through {h}.', { n, h: hub }), { icon: 'watch' });
+  const soon = (n: string) => toast(t('{n} is coming soon. Until then, it reaches Adro through {h}.', { n, h: hub }), { icon: 'watch' });
   const direct: { id: string; name: string; art: ArtKind; state: string; on?: boolean; go: () => void }[] = [
     { id: 'phone', name: native ?? 'Apple Health', art: phoneSource === 'health_connect' ? 'health_connect' : 'health', state: phoneSource ? (phoneLinked ? 'Connected' : 'Connect') : 'Phone app', on: phoneLinked, go: tapPhone },
     { id: 'whoop', name: 'WHOOP', art: 'whoop', state: wearState('whoop'), on: linkOf('whoop')?.status === 'ok', go: () => tapWearable('whoop') },
@@ -120,9 +120,9 @@ export default function Connections() {
   return (
     <Screen title={t('Connections')} back>
       <Text color="sec" style={{ marginTop: -8 }}>
-        {t('Some things connect straight to Gymi. Everything else comes in through Apple Health or Health Connect.')}
+        {t('Some things connect straight to Adro. Everything else comes in through Apple Health or Health Connect.')}
       </Text>
-      {section(t('Connects straight to Gymi'), c.cobalt)}
+      {section(t('Connects straight to Adro'), c.cobalt)}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
         {direct.map((d) => (
           <Card key={d.id} onPress={busy ? undefined : d.go} style={{ width: '48%', flexGrow: 1, marginBottom: 0, minHeight: 150, justifyContent: 'space-between' }}>
@@ -142,17 +142,17 @@ export default function Connections() {
         <Card style={{ marginTop: 10, marginBottom: 0 }}>
           <Row style={{ alignItems: 'center' }}>
             <View style={{ flex: 1 }}>
-              <Text weight={700}>{t('Send Gymi data to {n}', { n: native ?? '' })}</Text>
+              <Text weight={700}>{t('Send Adro data to {n}', { n: native ?? '' })}</Text>
               <Text variant="small" color="sec" style={{ marginTop: 2 }}>
-                {t(phoneSource === 'apple' ? 'Your workouts, meals, water and weight. Gymi workouts then count toward your Apple Watch rings.' : 'Your workouts, meals, water and weight, so your other health apps see them too.')}
+                {t(phoneSource === 'apple' ? 'Your workouts, meals, water and weight. Adro workouts then count toward your Apple Watch rings.' : 'Your workouts, meals, water and weight, so your other health apps see them too.')}
               </Text>
             </View>
             <Toggle
               value={!!dev.prefs.write_back}
               onChange={async (on) => {
                 const r = await setWriteBack(on);
-                if (on && r === 'ok') toast(t('From now on, Gymi saves a copy in {n}.', { n: native ?? '' }), { icon: 'check' });
-                else if (on && r === 'denied') toast(t('Gymi wasn’t allowed to write to {n}. You can allow it in Settings.', { n: native ?? '' }), { icon: 'warn' });
+                if (on && r === 'ok') toast(t('From now on, Adro saves a copy in {n}.', { n: native ?? '' }), { icon: 'check' });
+                else if (on && r === 'denied') toast(t('Adro wasn’t allowed to write to {n}. You can allow it in Settings.', { n: native ?? '' }), { icon: 'warn' });
                 else if (on) toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
               }}
             />
@@ -182,7 +182,7 @@ export default function Connections() {
             if (!(await unlinkWearable(l.provider))) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
             loadWs();
             await reloadDeviceDays();
-            toast(t('{n} disconnected. Its data was deleted from Gymi.', { n: wearableName(l.provider) }), { icon: 'info' });
+            toast(t('{n} disconnected. Its data was deleted from Adro.', { n: wearableName(l.provider) }), { icon: 'info' });
           }}
         />
       ))}
@@ -225,7 +225,7 @@ export default function Connections() {
                       onPress={async () => {
                         if (k === primary) return;
                         await setPrimaryDevice(k);
-                        toast(k === 'auto' ? t('Gymi picks the best reading again.') : t('Sleep and heart readings now come from {n}.', { n: name }), { icon: 'check' });
+                        toast(k === 'auto' ? t('Adro picks the best reading again.') : t('Sleep and heart readings now come from {n}.', { n: name }), { icon: 'check' });
                       }}
                     />
                   ))}
@@ -236,7 +236,7 @@ export default function Connections() {
         </>
       ) : null}
 
-      {section(t('Everything else already works'), c.up, t('Most watches, rings, scales and fitness apps reach Gymi through {h}. Yours is almost surely one of them.', { h: hub }))}
+      {section(t('Everything else already works'), c.up, t('Most watches, rings, scales and fitness apps reach Adro through {h}. Yours is almost surely one of them.', { h: hub }))}
       <Card onPress={busy ? undefined : tapPhone}>
         <Row style={{ alignItems: 'center' }}>
           <Icon name="heart" size={26} color={c.down} />
@@ -252,7 +252,7 @@ export default function Connections() {
         </Row>
         {/* The way data travels, on one line: the text is sized to the card's width so all four steps fit. */}
         <View onLayout={(e) => setFlowW(e.nativeEvent.layout.width)} style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 14 }}>
-          {[t('Your device'), t('Its own app'), hub, 'Gymi'].map((s, i, a) => (
+          {[t('Your device'), t('Its own app'), hub, 'Adro'].map((s, i, a) => (
             <Fragment key={s}>
               <View style={{ flexShrink: 1, paddingHorizontal: 5, paddingVertical: 6, borderRadius: 11, backgroundColor: i === a.length - 1 ? c.cobalt : c.inset }}>
                 <Text size={flowFont} weight={700} color={i === a.length - 1 ? '#FFFFFF' : c.sec} numberOfLines={1}>

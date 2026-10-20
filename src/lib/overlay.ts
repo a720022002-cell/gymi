@@ -49,7 +49,7 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, style: OverlayStyle, 
   const logo = (x: number, y: number, size: number, align: 'left' | 'center' | 'right') => {
     ctx.save();
     ctx.font = font(false, 'display', 700, size);
-    const tw = ctx.measureText('Gymi').width;
+    const tw = ctx.measureText('Adro').width;
     const r = size * 0.42;
     const full = r * 2 + size * 0.3 + tw;
     const left = align === 'center' ? x - full / 2 : align === 'right' ? x - full : x;
@@ -64,7 +64,7 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, style: OverlayStyle, 
     ctx.fillStyle = '#fff';
     ctx.textAlign = 'left';
     ctx.direction = 'ltr';
-    ctx.fillText('Gymi', left + r * 2 + size * 0.3, y);
+    ctx.fillText('Adro', left + r * 2 + size * 0.3, y);
     ctx.restore();
   };
   const shade = (from: string, to: string, y0: number, y1: number) => {

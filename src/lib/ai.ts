@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 
 export type AiError = 'ai_off' | 'limit' | 'busy' | 'auth' | 'too_big' | 'failed' | 'offline';
 
-/** Ask the Gymi AI (Supabase Edge Function "ai"). The AI key lives only on the server. */
+/** Ask the Adro AI (Supabase Edge Function "ai"). The AI key lives only on the server. */
 export async function askAI<T>(task: string, body: Record<string, unknown>): Promise<{ result?: T; error?: AiError }> {
   try {
     const { data, error } = await supabase.functions.invoke('ai', { body: { task, ...body } });

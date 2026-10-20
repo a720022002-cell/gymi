@@ -22,7 +22,7 @@ export default function NotificationsScreen() {
 
   const put = async (next: typeof p, ask = false) => {
     const r = await save(next, ask);
-    if (r === 'denied' && ask) toast(t('Turn on notifications for Gymi in your phone settings.'), { icon: 'bell' });
+    if (r === 'denied' && ask) toast(t('Turn on notifications for Adro in your phone settings.'), { icon: 'bell' });
   };
 
   return (
