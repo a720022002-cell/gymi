@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Animated, Easing, View } from 'react-native';
 
 import { Tag } from '@/components/food/Chips';
+import { ExerciseHistory } from '@/components/train/ExerciseHistory';
 import { Glass } from '@/components/Glass';
 import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
@@ -128,6 +129,8 @@ export default function ExerciseScreen() {
         <Tag label={t(e.equipment)} />
         {e.level && LEVEL[e.level] ? <Tag label={t(LEVEL[e.level])} /> : null}
       </Row>
+
+      <ExerciseHistory id={e.id} />
 
       <Text variant="h3" style={{ marginTop: 22, marginBottom: 10, marginHorizontal: 2 }}>
         {t('How to do it')}

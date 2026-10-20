@@ -22,11 +22,12 @@ import { useAuth } from '@/lib/auth';
 import { useFood } from '@/lib/food';
 import { addDays, fmt } from '@/lib/nutrition';
 import { useTrain } from '@/lib/train';
-import { DAYS } from '@/lib/training';
+import { shortDate } from '@/lib/progress';
+import { DAYS, workoutTitle } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
 
 export default function Train() {
-  const { t } = useT();
+  const { t, lang } = useT();
   const { colors: c } = useSettings();
   const train = useTrain();
   const [redo, setRedo] = useState(false);
@@ -87,6 +88,7 @@ export default function Train() {
       <List
         rows={[
           ['cal', t('Weekly plan'), train.plan!.type === 'order' ? t('{split}, next workout in order', { split: t(train.plan!.split) }) : t('{split}, {n} days a week', { split: t(train.plan!.split), n: train.plan!.week.filter((d) => d.w).length }), () => router.push('/weekplan')],
+          ['clock', t('Workout history'), train.logs.length ? t('Last: {w}, {d}', { w: workoutTitle(train.logs[0].name, t), d: shortDate(train.logs[0].day, lang) }) : t('Every workout, with every set'), () => router.push('/history')],
           ['friends', t('Train together'), t('One workout, the right sets for each person'), () => router.push('/together')],
         ]}
       />

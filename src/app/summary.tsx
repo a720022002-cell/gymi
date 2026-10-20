@@ -6,6 +6,7 @@ import { Icon, Mark } from '@/components/Icon';
 import { Ring } from '@/components/Ring';
 import { Screen } from '@/components/Screen';
 import { ShareWorkoutSheet } from '@/components/social/ShareWorkoutSheet';
+import { LoggedExercises } from '@/components/train/LoggedExercises';
 import { Text } from '@/components/Text';
 import { Button, Card, Row } from '@/components/ui';
 import { useT } from '@/i18n';
@@ -80,6 +81,11 @@ export default function Summary() {
           </Card>
         ))}
       </View>
+
+      <Text variant="small" weight={700} color="sec" style={{ marginTop: 20, marginBottom: 8, marginHorizontal: 4 }}>
+        {t('Exercises, in the order you did them')}
+      </Text>
+      <LoggedExercises log={s} />
 
       <Text variant="small" weight={700} color="sec" style={{ marginTop: 20, marginBottom: 8, marginHorizontal: 4 }}>
         {t('Personal records')}
