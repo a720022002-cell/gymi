@@ -163,7 +163,11 @@ export default function Active() {
     const st = x && cur ? x.sets[cur.si] : null;
     const w = st ? +(st.w || st.lw) || 0 : 0;
     const r = st ? +(st.r || st.lr) || 0 : 0;
-    const timed = x ? exInfo(x, lang).timed : false;
+    const xi = x ? exInfo(x, lang) : null;
+    const timed = xi?.timed ?? false;
+    // The coach's tip under the exercise, the same one the workout screen shows.
+    const hist = x ? train.logs.filter((l) => !isLightLog(l, train.plan)).map((l) => (l.exercises ?? []).find((e) => e.id === x.id)?.sets ?? []).filter((y) => y.length).slice(0, 6) : [];
+    const adv = x && xi ? setAdvice(x, timed, xi.type === 'Bodyweight', hist, t, W) : null;
     syncWorkoutActivity({
       workout: s.home ? t('Home workout') : s.name === 'Together' ? t('Train together') : t('{w} workout', { w: t(s.name) }),
       exercise: x ? exInfo(x, lang).name : t('All sets done'),
@@ -172,6 +176,9 @@ export default function Active() {
       wText: st && w > 0 ? `${W.show(w)} ${W.label}` : '',
       rText: timed ? `${r} ${t('s')}` : `× ${r}`,
       canLog: !!st,
+      // "+2.5 kg" kept as one left-to-right piece, so Arabic doesn't show it as "2.5+".
+      tip: (adv?.text ?? '').replace(/[+−-]\d[\d.,]*/g, (m) => `\u2066${m}\u2069`),
+      tipTone: adv?.tone ?? 'ok',
       startedAt: s.start,
       restEnd: rest?.end ?? null,
       restStart: rest ? rest.end - rest.total * 1000 : null,
@@ -179,7 +186,7 @@ export default function Active() {
       total: s.ex.reduce((a, e) => a + e.sets.length, 0),
       L: { rest: t('Rest'), next: t('Next'), sets: t('sets'), done: t('Done'), skip: t('Skip') },
     });
-  }, [s, rest, lang, t, W]);
+  }, [s, rest, lang, t, W, train.logs, train.plan]);
 
   // The buttons on the Live Activity (iPhone, iOS 17+): change the set you're on, log it, or skip the rest, without
   // opening the app. They read the latest workout from a ref, so the listener is set up once.

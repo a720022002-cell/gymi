@@ -28,6 +28,9 @@ export type WorkoutActivityProps = {
   rText: string;
   /** There's a set to log: show the buttons (iOS 17 and later). */
   canLog: boolean;
+  /** The set coach's tip for this exercise ("+2.5 kg next set"), or empty; its tone colors it. */
+  tip: string;
+  tipTone: 'up' | 'ok' | 'down';
   startedAt: number;
   /** When the rest ends, or null when not resting. */
   restEnd: number | null;
@@ -86,11 +89,16 @@ const WorkoutActivity = (p: WorkoutActivityProps, env: LiveActivityEnvironment) 
       )}
     </HStack>
   );
+  // Under the bar: the coach's tip (green: go heavier, amber: rest or hold back), or the set when there's no tip.
+  const tipColor = p.tipTone === 'up' ? '#4ADE80' : p.tipTone === 'down' ? '#FBBF24' : '#D4D4D8';
   const status = (
-    <HStack>
-      <Text modifiers={[font({ size: 13 }), foregroundStyle('#D4D4D8'), lineLimit(1)]}>{p.canLog ? p.set : line}</Text>
+    <HStack spacing={6}>
+      {p.tip && p.canLog ? <Image systemName="sparkles" color={tipColor} size={12} /> : null}
+      <Text modifiers={[font({ size: 12, weight: p.tip && p.canLog ? 'medium' : 'regular' }), foregroundStyle(p.tip && p.canLog ? tipColor : '#D4D4D8'), lineLimit(2), minimumScaleFactor(0.8)]}>
+        {p.canLog ? p.tip || p.set : line}
+      </Text>
       <Spacer />
-      <Text modifiers={[font({ size: 13 }), monospacedDigit(), foregroundStyle('#A1A1AA')]}>{`${p.done}/${p.total} ${p.L.sets}`}</Text>
+      <Text modifiers={[font({ size: 12 }), monospacedDigit(), foregroundStyle('#A1A1AA')]}>{`${p.done}/${p.total}`}</Text>
     </HStack>
   );
 
@@ -100,7 +108,7 @@ const WorkoutActivity = (p: WorkoutActivityProps, env: LiveActivityEnvironment) 
         <HStack spacing={10}>
           <Image systemName={icon} color={accent} size={20} />
           <VStack alignment="leading" spacing={1}>
-            <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle('#A1A1AA'), lineLimit(1)]}>{resting ? `${p.L.rest} · ${p.workout}` : p.workout}</Text>
+            <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle('#A1A1AA'), lineLimit(1)]}>{p.canLog ? `${resting ? p.L.rest : p.workout} · ${p.set}` : resting ? `${p.L.rest} · ${p.workout}` : p.workout}</Text>
             <Text modifiers={[font({ size: 17, weight: 'bold' }), foregroundStyle('#FFFFFF'), lineLimit(1), minimumScaleFactor(0.7)]}>{resting ? `${p.L.next}: ${p.exercise}` : p.exercise}</Text>
           </VStack>
           <Spacer />
@@ -117,7 +125,7 @@ const WorkoutActivity = (p: WorkoutActivityProps, env: LiveActivityEnvironment) 
     expandedLeading: (
       <HStack spacing={6} modifiers={[padding({ leading: 4 })]}>
         <Image systemName={icon} color={accent} size={18} />
-        <Text modifiers={[font({ size: 14, weight: 'semibold' }), foregroundStyle('#FFFFFF'), lineLimit(1)]}>{resting ? p.L.rest : p.workout}</Text>
+        <Text modifiers={[font({ size: 14, weight: 'semibold' }), foregroundStyle('#FFFFFF'), lineLimit(1)]}>{resting ? p.L.rest : p.canLog ? p.set : p.workout}</Text>
       </HStack>
     ),
     expandedTrailing: <VStack modifiers={[padding({ trailing: 4 })]}>{clock(22, resting ? LIGHT : '#FFFFFF')}</VStack>,
