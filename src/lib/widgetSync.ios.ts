@@ -1,10 +1,10 @@
 // Sends the app's numbers to the home screen widgets and keeps the workout Live Activity (Lock Screen and Dynamic
 // Island) up to date. Widgets are only reloaded when what they show changes, so iOS doesn't run out of updates.
-import { type LiveActivity } from 'expo-widgets';
+import { addUserInteractionListener, type LiveActivity } from 'expo-widgets';
 
 import TodayWidget, { type TodayProps } from '@/widgets/TodayWidget';
 import TrainWidget, { type TrainProps } from '@/widgets/TrainWidget';
-import WorkoutActivity, { type WorkoutActivityProps } from '@/widgets/WorkoutActivity';
+import WorkoutActivity, { type WorkoutAction, type WorkoutActivityProps } from '@/widgets/WorkoutActivity';
 
 const sent: Record<string, string> = {};
 const changed = (key: string, p: unknown) => {
@@ -44,5 +44,19 @@ export function syncWorkoutActivity(p: WorkoutActivityProps | null) {
     else live = WorkoutActivity.start(p, 'adro://active');
   } catch {
     // Live Activities turned off in Settings, or an older iPhone: the workout screen works the same.
+  }
+}
+
+const ACTIONS: string[] = ['w-', 'w+', 'r-', 'r+', 'done', 'skip'];
+
+/** A button on the workout Live Activity was tapped (iOS 17 and later). Returns a function that stops listening. */
+export function onWorkoutAction(fn: (a: WorkoutAction) => void) {
+  try {
+    const sub = addUserInteractionListener((e) => {
+      if (ACTIONS.includes(e.target)) fn(e.target as WorkoutAction);
+    });
+    return () => sub.remove();
+  } catch {
+    return () => {};
   }
 }

@@ -20,7 +20,8 @@ import { useFood } from '@/lib/food';
 import { coachSet, type SetIn } from '@/lib/setCoach';
 import { exInfo, isLightLog, type PlanEx, topReps } from '@/lib/training';
 import { useWeight } from '@/lib/units';
-import { syncWorkoutActivity } from '@/lib/widgetSync';
+import { onWorkoutAction, syncWorkoutActivity } from '@/lib/widgetSync';
+import type { WorkoutAction } from '@/widgets/WorkoutActivity';
 import { useSettings } from '@/theme/settings';
 import { goBack } from '@/lib/nav';
 
@@ -86,6 +87,29 @@ function adviceKg(x: SessionEx, timed: boolean, bodyweight: boolean, hist: SetIn
   return { text: `${beat}${t(a.key, vars)}`, tone: a.tone };
 }
 
+/** The set you're on: the first one not done, or null when all are done. */
+function currentSet(s: Session): { ei: number; si: number } | null {
+  const ei = s.ex.findIndex((x) => x.sets.some((y) => !y.done));
+  return ei < 0 ? null : { ei, si: s.ex[ei].sets.findIndex((y) => !y.done) };
+}
+
+/** Logs a set (empty weight and reps take last time's) and says how long to rest after it, or null when it was the last. */
+function logSet(s: Session, ei: number, si: number, lang: Parameters<typeof exInfo>[1]): { next: Session; restFor: number | null } {
+  const x = s.ex[ei];
+  const st = x.sets[si];
+  const info = exInfo(x, lang);
+  const w = st.w === '' ? String(st.lw || 0) : st.w;
+  const r = st.r === '' ? String(st.lr) : st.r;
+  const easy = !st.warm && +r >= topReps(x.reps) && +w >= st.lw && info.type !== 'Bodyweight' && !info.timed && +w > 0;
+  const next: Session = {
+    ...s,
+    ex: s.ex.map((e, i) => (i !== ei ? e : { ...e, tip: e.tip || easy, sets: e.sets.map((y, j) => (j === si ? { ...y, w, r, done: true } : y)) })),
+  };
+  const more = next.ex.some((e) => e.sets.some((z) => !z.done));
+  // Shorter rest after a warm-up set.
+  return { next, restFor: more ? (st.warm ? 45 : REST) : null };
+}
+
 /** The workout in progress (design: active). */
 export default function Active() {
   const { t, lang } = useT();
@@ -134,25 +158,68 @@ export default function Active() {
   // target, the workout clock, and the rest countdown while you rest. Updates when a set or the rest changes.
   useEffect(() => {
     if (!s) return;
-    const ei = s.ex.findIndex((x) => x.sets.some((y) => !y.done));
-    const x = ei >= 0 ? s.ex[ei] : null;
-    const si = x ? x.sets.findIndex((y) => !y.done) : -1;
-    const st = x && si >= 0 ? x.sets[si] : null;
+    const cur = currentSet(s);
+    const x = cur ? s.ex[cur.ei] : null;
+    const st = x && cur ? x.sets[cur.si] : null;
     const w = st ? +(st.w || st.lw) || 0 : 0;
     const r = st ? +(st.r || st.lr) || 0 : 0;
+    const timed = x ? exInfo(x, lang).timed : false;
     syncWorkoutActivity({
       workout: s.home ? t('Home workout') : s.name === 'Together' ? t('Train together') : t('{w} workout', { w: t(s.name) }),
       exercise: x ? exInfo(x, lang).name : t('All sets done'),
-      set: x && st ? (st.warm ? t('Warm-up') : t('Set {a} of {b}', { a: si + 1, b: x.sets.length })) : t('Tap Finish to save'),
+      set: x && st && cur ? (st.warm ? t('Warm-up') : t('Set {a} of {b}', { a: cur.si + 1, b: x.sets.length })) : t('Tap Finish to save'),
       target: st && r ? (w > 0 ? `${W.show(w)} ${W.label} × ${r}` : `× ${r}`) : '',
+      wText: st && w > 0 ? `${W.show(w)} ${W.label}` : '',
+      rText: timed ? `${r} ${t('s')}` : `× ${r}`,
+      canLog: !!st,
       startedAt: s.start,
       restEnd: rest?.end ?? null,
       restStart: rest ? rest.end - rest.total * 1000 : null,
       done: s.ex.reduce((a, e) => a + e.sets.filter((y) => y.done).length, 0),
       total: s.ex.reduce((a, e) => a + e.sets.length, 0),
-      L: { rest: t('Rest'), next: t('Next'), sets: t('sets') },
+      L: { rest: t('Rest'), next: t('Next'), sets: t('sets'), done: t('Done'), skip: t('Skip') },
     });
   }, [s, rest, lang, t, W]);
+
+  // The buttons on the Live Activity (iPhone, iOS 17+): change the set you're on, log it, or skip the rest, without
+  // opening the app. They read the latest workout from a ref, so the listener is set up once.
+  const latest = useRef({ s, train, W, lang, toast, t });
+  useEffect(() => {
+    latest.current = { s, train, W, lang, toast, t };
+  });
+  useEffect(
+    () =>
+      onWorkoutAction((a: WorkoutAction) => {
+        const { s, train, W, lang, toast, t } = latest.current;
+        if (!s) return;
+        if (a === 'skip') return setRest(null);
+        const cur = currentSet(s);
+        if (!cur) return;
+        const x = s.ex[cur.ei];
+        const st = x.sets[cur.si];
+        if (a === 'done') {
+          const { next, restFor } = logSet(s, cur.ei, cur.si, lang);
+          train.setSession(next);
+          if (restFor) setRest({ end: Date.now() + restFor * 1000, total: restFor });
+          else toast(t('All sets done. Tap Finish.'), { ai: true });
+          return;
+        }
+        let k: 'w' | 'r';
+        let v: string;
+        if (a === 'w-' || a === 'w+') {
+          // One plate jump in your unit (2.5 kg or 5 lb), kept in kg.
+          const shown = W.num(+(st.w || st.lw) || 0) + (a === 'w+' ? 1 : -1) * (W.unit === 'lb' ? 5 : 2.5);
+          k = 'w';
+          v = String(W.toKg(Math.max(0, shown)));
+        } else {
+          const by = exInfo(x, lang).timed ? 5 : 1;
+          k = 'r';
+          v = String(Math.max(1, (+(st.r || st.lr) || 0) + (a === 'r+' ? by : -by)));
+        }
+        train.setSession({ ...s, ex: s.ex.map((e, i) => (i !== cur.ei ? e : { ...e, sets: e.sets.map((y, j) => (j === cur.si ? { ...y, [k]: v } : y)) })) });
+      }),
+    [],
+  );
 
   if (!s)
     return (
@@ -217,22 +284,11 @@ export default function Active() {
       return [...sets.slice(0, at), warmSet, ...sets.slice(at)];
     });
   const markSet = (ei: number, si: number) => {
-    const x = s.ex[ei];
-    const st = x.sets[si];
-    const info = exInfo(x, lang);
+    const st = s.ex[ei].sets[si];
     if (st.done) return update((ss) => ({ ...ss, ex: ss.ex.map((e, i) => (i !== ei ? e : { ...e, sets: e.sets.map((y, j) => (j === si ? { ...y, done: false } : y)) })) }));
-    const w = st.w === '' ? String(st.lw || 0) : st.w;
-    const r = st.r === '' ? String(st.lr) : st.r;
-    const easy = !st.warm && +r >= topReps(x.reps) && +w >= st.lw && info.type !== 'Bodyweight' && !info.timed && +w > 0;
-    const next: Session = {
-      ...s,
-      ex: s.ex.map((e, i) => (i !== ei ? e : { ...e, tip: e.tip || easy, sets: e.sets.map((y, j) => (j === si ? { ...y, w, r, done: true } : y)) })),
-    };
+    const { next, restFor } = logSet(s, ei, si, lang);
     train.setSession(next);
-    const more = next.ex.some((e) => e.sets.some((z) => !z.done));
-    // Shorter rest after a warm-up set.
-    const restFor = st.warm ? 45 : REST;
-    if (more) setRest({ end: Date.now() + restFor * 1000, total: restFor });
+    if (restFor) setRest({ end: Date.now() + restFor * 1000, total: restFor });
     else toast(t('All sets done. Tap Finish.'), { ai: true });
   };
 

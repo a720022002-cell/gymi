@@ -1,5 +1,19 @@
-import { HStack, Image, ProgressView, Spacer, Text, VStack } from '@expo/ui/swift-ui';
-import { activityBackgroundTint, font, foregroundStyle, frame, lineLimit, minimumScaleFactor, monospacedDigit, padding, tint } from '@expo/ui/swift-ui/modifiers';
+import { Button, HStack, Image, ProgressView, Spacer, Text, VStack } from '@expo/ui/swift-ui';
+import {
+  activityBackgroundTint,
+  buttonBorderShape,
+  buttonStyle,
+  controlSize,
+  font,
+  foregroundStyle,
+  frame,
+  labelStyle,
+  lineLimit,
+  minimumScaleFactor,
+  monospacedDigit,
+  padding,
+  tint,
+} from '@expo/ui/swift-ui/modifiers';
 import { createLiveActivity, type LiveActivityEnvironment } from 'expo-widgets';
 
 /** What the app sends while you train, already in your language. Times are milliseconds since 1970. */
@@ -9,18 +23,27 @@ export type WorkoutActivityProps = {
   exercise: string;
   set: string;
   target: string;
+  /** The set you're on, as shown with the − and + buttons ("80 كجم", "× 10"). wText is empty without a weight. */
+  wText: string;
+  rText: string;
+  /** There's a set to log: show the buttons (iOS 17 and later). */
+  canLog: boolean;
   startedAt: number;
   /** When the rest ends, or null when not resting. */
   restEnd: number | null;
   restStart: number | null;
   done: number;
   total: number;
-  L: { rest: string; next: string; sets: string };
+  L: { rest: string; next: string; sets: string; done: string; skip: string };
 };
+
+/** The buttons send these to the app (lib/widgetSync onWorkoutAction), which changes the set and updates this. */
+export type WorkoutAction = 'w-' | 'w+' | 'r-' | 'r+' | 'done' | 'skip';
 
 /**
  * The workout on the Lock Screen and in the Dynamic Island: the clock counts by itself (no updates needed), and the
- * rest countdown takes its place while you rest.
+ * rest countdown takes its place while you rest. With a set to do, − and + change its weight and reps, and Done logs
+ * it (Skip ends the rest), without opening the app.
  */
 const WorkoutActivity = (p: WorkoutActivityProps, env: LiveActivityEnvironment) => {
   'widget';
@@ -41,10 +64,39 @@ const WorkoutActivity = (p: WorkoutActivityProps, env: LiveActivityEnvironment) 
   const icon = resting ? 'timer' : 'dumbbell.fill';
   const accent = env.isLuminanceReduced ? '#FFFFFF' : LIGHT;
   const line = p.target ? `${p.set} · ${p.target}` : p.set;
+  const step = (target: string, sign: 'minus' | 'plus') => (
+    <Button target={target} label={sign === 'minus' ? '−' : '+'} systemImage={sign} modifiers={[labelStyle('iconOnly'), buttonStyle('bordered'), buttonBorderShape('circle'), controlSize('small'), tint('#FFFFFF')]} />
+  );
+  const value = (text: string) => <Text modifiers={[font({ size: 15, weight: 'bold', design: 'rounded' }), monospacedDigit(), foregroundStyle('#FFFFFF'), lineLimit(1), minimumScaleFactor(0.7)]}>{text}</Text>;
+  // − 80 kg +   − × 10 +   ✓ Done (Skip while resting).
+  const controls = (
+    <HStack spacing={6}>
+      {p.wText ? step('w-', 'minus') : null}
+      {p.wText ? value(p.wText) : null}
+      {p.wText ? step('w+', 'plus') : null}
+      {p.wText ? <Spacer /> : null}
+      {step('r-', 'minus')}
+      {value(p.rText)}
+      {step('r+', 'plus')}
+      <Spacer />
+      {resting ? (
+        <Button target="skip" label={p.L.skip} systemImage="forward.fill" modifiers={[buttonStyle('bordered'), buttonBorderShape('capsule'), controlSize('small'), tint(LIGHT)]} />
+      ) : (
+        <Button target="done" label={p.L.done} systemImage="checkmark" modifiers={[buttonStyle('borderedProminent'), buttonBorderShape('capsule'), controlSize('small'), tint(BLUE)]} />
+      )}
+    </HStack>
+  );
+  const status = (
+    <HStack>
+      <Text modifiers={[font({ size: 13 }), foregroundStyle('#D4D4D8'), lineLimit(1)]}>{p.canLog ? p.set : line}</Text>
+      <Spacer />
+      <Text modifiers={[font({ size: 13 }), monospacedDigit(), foregroundStyle('#A1A1AA')]}>{`${p.done}/${p.total} ${p.L.sets}`}</Text>
+    </HStack>
+  );
 
   return {
     banner: (
-      <VStack alignment="leading" spacing={8} modifiers={[padding({ all: 16 }), activityBackgroundTint('#0A0A0B')]}>
+      <VStack alignment="leading" spacing={p.canLog ? 6 : 8} modifiers={[padding({ all: p.canLog ? 14 : 16 }), activityBackgroundTint('#0A0A0B')]}>
         <HStack spacing={10}>
           <Image systemName={icon} color={accent} size={20} />
           <VStack alignment="leading" spacing={1}>
@@ -55,11 +107,8 @@ const WorkoutActivity = (p: WorkoutActivityProps, env: LiveActivityEnvironment) 
           {clock(26, resting ? LIGHT : '#FFFFFF')}
         </HStack>
         {bar}
-        <HStack>
-          <Text modifiers={[font({ size: 13 }), foregroundStyle('#D4D4D8'), lineLimit(1)]}>{line}</Text>
-          <Spacer />
-          <Text modifiers={[font({ size: 13 }), monospacedDigit(), foregroundStyle('#A1A1AA')]}>{`${p.done}/${p.total} ${p.L.sets}`}</Text>
-        </HStack>
+        {status}
+        {p.canLog ? controls : null}
       </VStack>
     ),
     compactLeading: <Image systemName={icon} color={accent} />,
@@ -75,12 +124,9 @@ const WorkoutActivity = (p: WorkoutActivityProps, env: LiveActivityEnvironment) 
     expandedBottom: (
       <VStack alignment="leading" spacing={6} modifiers={[padding({ horizontal: 4, bottom: 4 })]}>
         <Text modifiers={[font({ size: 16, weight: 'bold' }), foregroundStyle('#FFFFFF'), lineLimit(1)]}>{resting ? `${p.L.next}: ${p.exercise}` : p.exercise}</Text>
-        <HStack>
-          <Text modifiers={[font({ size: 13 }), foregroundStyle('#D4D4D8'), lineLimit(1)]}>{line}</Text>
-          <Spacer />
-          <Text modifiers={[font({ size: 13 }), monospacedDigit(), foregroundStyle('#A1A1AA')]}>{`${p.done}/${p.total}`}</Text>
-        </HStack>
+        {status}
         {bar}
+        {p.canLog ? controls : null}
       </VStack>
     ),
   };
