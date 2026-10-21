@@ -163,6 +163,7 @@ Passwords and keys are left out on purpose.
   - **App Store:** AI asks permission once before sending anything to the outside AI service (OpenRouter), with an on/off switch in Privacy and data (Apple 5.1.2(i)). The Subscription page is hidden until payments work (`PAID_PLANS_LIVE` in `src/lib/plans.ts`), and invite rewards say they start with Premium. The privacy policy now covers AI and WHOOP/Oura/Polar, on the app and the site. The store checklist is updated in `docs/STORE-LISTING.md`.
   - **Checks:** typecheck, lint, and the iPhone and web builds all pass. 17 pages tested on the web in Arabic and English with no errors.
 - **App Store package (21 Oct):** `docs/Adro-store-listing.pdf` rebuilt (8 pages) from `docs/STORE-LISTING.md` and `docs/STORE-RELEASE.md`: name, subtitle, keywords, the English and Arabic descriptions (now with watches and rings, widgets, Lock Screen logging and workout history), Apple privacy labels, Google data safety, the review checklist, review notes, and the release steps.
+- **App Store screenshots (21 Oct):** 6 screenshots in English and 6 in Arabic at Apple's 6.9-inch size (1320 × 2868), in `docs/store-screenshots/en` and `/ar`: your day in one ring (Home), a coach for every set (workout), Gulf food (Food), the AI coach, recovery, and progress. Taken from the real app with temporary test users (deleted afterwards), with a title on top and the screen in a phone frame.
 ---
 
 ## Still waiting on you
