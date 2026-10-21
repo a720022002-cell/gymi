@@ -48,7 +48,7 @@ export type WorkoutAction = 'w-' | 'w+' | 'r-' | 'r+' | 'done' | 'skip' | 'water
 /**
  * The workout on the Lock Screen and in the Dynamic Island: the clock counts by itself (no updates needed), and the
  * rest countdown takes its place while you rest. With a set to do, − and + change its weight and reps, and Done logs
- * it (Skip ends the rest), and the drop adds 250 ml of water, without opening the app.
+ * it (and ends any rest; Skip ends the rest too), and the drop adds 250 ml of water, without opening the app.
  */
 const WorkoutActivity = (p: WorkoutActivityProps, env: LiveActivityEnvironment) => {
   'widget';
@@ -73,9 +73,10 @@ const WorkoutActivity = (p: WorkoutActivityProps, env: LiveActivityEnvironment) 
     <Button target={target} label={sign === 'minus' ? '−' : '+'} systemImage={sign} modifiers={[labelStyle('iconOnly'), buttonStyle('bordered'), buttonBorderShape('circle'), controlSize('small'), tint('#FFFFFF')]} />
   );
   const value = (text: string) => <Text modifiers={[font({ size: 15, weight: 'bold', design: 'rounded' }), monospacedDigit(), foregroundStyle('#FFFFFF'), lineLimit(1), minimumScaleFactor(0.7)]}>{text}</Text>;
-  // − 80 kg +   − × 10 +   water   ✓ (⏭ while resting). Round buttons only, so it fits the narrowest iPhone.
+  // − 80 kg +   − × 10 +   water   (⏭ while resting)   ✓. Done is always there: a locked phone may still show a rest
+  // that already ended. Round buttons only (closer together while resting), so it fits the narrowest iPhone.
   const controls = (
-    <HStack spacing={4}>
+    <HStack spacing={resting ? 2 : 4}>
       {p.wText ? step('w-', 'minus') : null}
       {p.wText ? value(p.wText) : null}
       {p.wText ? step('w+', 'plus') : null}
@@ -85,11 +86,8 @@ const WorkoutActivity = (p: WorkoutActivityProps, env: LiveActivityEnvironment) 
       {step('r+', 'plus')}
       <Spacer />
       <Button target="water" label="+250" systemImage="drop.fill" modifiers={[labelStyle('iconOnly'), buttonStyle('bordered'), buttonBorderShape('circle'), controlSize('small'), tint('#38BDF8')]} />
-      {resting ? (
-        <Button target="skip" label={p.L.skip} systemImage="forward.fill" modifiers={[labelStyle('iconOnly'), buttonStyle('bordered'), buttonBorderShape('circle'), controlSize('small'), tint(LIGHT)]} />
-      ) : (
-        <Button target="done" label={p.L.done} systemImage="checkmark" modifiers={[labelStyle('iconOnly'), buttonStyle('borderedProminent'), buttonBorderShape('circle'), controlSize('small'), tint(BLUE)]} />
-      )}
+      {resting ? <Button target="skip" label={p.L.skip} systemImage="forward.fill" modifiers={[labelStyle('iconOnly'), buttonStyle('bordered'), buttonBorderShape('circle'), controlSize('small'), tint(LIGHT)]} /> : null}
+      <Button target="done" label={p.L.done} systemImage="checkmark" modifiers={[labelStyle('iconOnly'), buttonStyle('borderedProminent'), buttonBorderShape('circle'), controlSize('small'), tint(BLUE)]} />
     </HStack>
   );
   // Under the bar: the coach's tip (green: go heavier, amber: rest or hold back), or the set when there's no tip.

@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { type ComponentProps, useEffect, useRef, useState } from 'react';
+import { type ComponentProps, useEffect, useMemo, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -13,102 +13,26 @@ import { useToast } from '@/components/Toast';
 import { ExercisePicker } from '@/components/train/ExercisePicker';
 import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
-import { restDone } from '@/lib/beep';
+import { histFor, logSet, ltrNums, REST, setAdvice } from '@/lib/activeWorkout';
 import { toPlanEx } from '@/lib/exercisesDb';
-import { type Session, type SessionEx, useTrain } from '@/lib/train';
+import { type Rest, type Session, type SessionEx, useTrain, vsLastTime } from '@/lib/train';
 import { useFood } from '@/lib/food';
-import { coachSet, type SetIn } from '@/lib/setCoach';
-import { exInfo, isLightLog, type PlanEx, topReps } from '@/lib/training';
+import { exInfo, type PlanEx, topReps } from '@/lib/training';
 import { useWeight } from '@/lib/units';
-import { onWorkoutAction, syncWorkoutActivity } from '@/lib/widgetSync';
-import type { WorkoutAction } from '@/widgets/WorkoutActivity';
 import { useSettings } from '@/theme/settings';
 import { goBack } from '@/lib/nav';
 
-const REST = 90;
-const digits = (v: string, dec: boolean) =>
-  v
+const digits = (v: string, dec: boolean) => {
+  const d = v
     .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
     .replace(/[,٫]/g, '.')
-    .replace(dec ? /[^\d.]/g : /\D/g, '')
-    .slice(0, 6);
+    .replace(dec ? /[^\d.]/g : /\D/g, '');
+  // Only the first dot counts ("1.2.5" is 1.25, not "not a number").
+  const [a, ...b] = d.split('.');
+  return (b.length ? `${a}.${b.join('')}` : a).slice(0, 6);
+};
 
-/** Did this exercise go up or down against last time? (design: exArrow) */
-function arrow(x: SessionEx): 'up' | 'down' | 'same' | null {
-  const done = x.sets.filter((s) => s.done && !s.warm);
-  if (!done.length) return null;
-  const v = done.reduce((a, s) => a + (+s.w || 0) * (+s.r || 0) + (+s.r || 0) * 0.01, 0);
-  const l = done.reduce((a, s) => a + s.lw * s.lr + s.lr * 0.01, 0);
-  if (Math.abs(v - l) < 0.001) return 'same';
-  return v > l ? 'up' : 'down';
-}
-
-type Tone = 'up' | 'ok' | 'down';
-type Tr = (k: string, v?: Record<string, string | number>) => string;
 type W = ReturnType<typeof useWeight>;
-
-/** Coach advice for an exercise: today's sets and your last workouts with it (lib/setCoach for weights).
- * Updates after every set; before the first set it can say where to start. */
-function setAdvice(x: SessionEx, timed: boolean, bodyweight: boolean, hist: SetIn[][], t: Tr, W: W): { text: string; tone: Tone } | null {
-  const a = adviceKg(x, timed, bodyweight, hist, t, W);
-  // Written in kg; shown in lb when you picked pounds.
-  return a ? { ...a, text: W.words(a.text) } : null;
-}
-
-function adviceKg(x: SessionEx, timed: boolean, bodyweight: boolean, hist: SetIn[][], t: Tr, W: W): { text: string; tone: Tone } | null {
-  const work = x.sets.filter((y) => !y.warm);
-  const done = work.filter((y) => y.done);
-  const nums = String(x.reps).match(/\d+/g)?.map(Number) ?? [10];
-  const lo = Math.min(...nums);
-  const hi = Math.max(...nums);
-  const last = done[done.length - 1];
-  const w = last ? +last.w || 0 : 0;
-  const r = last ? +last.r || 0 : 0;
-  const finished = done.length === work.length;
-
-  if (timed) {
-    if (!last) return null;
-    if (r >= hi + 10) return { text: t('{r} s, strong hold. Add 10 seconds next set.', { r }), tone: 'up' };
-    if (r >= hi) return { text: t('{r} s, you hit the target. Keep it steady.', { r }), tone: 'ok' };
-    return { text: t('{r} s. Rest a little longer and aim for {hi} s.', { r, hi }), tone: 'down' };
-  }
-  if (bodyweight || (last && w <= 0)) {
-    if (!last) return null;
-    if (r > hi + 2) return { text: t('{r} reps, too easy. Slow it down or add weight.', { r }), tone: 'up' };
-    if (r >= lo) return { text: finished ? t('All sets done. Nice work.') : t('{r} reps, right in the range. Same again.', { r }), tone: 'ok' };
-    return { text: t('{r} reps. Rest a bit longer before the next set.', { r }), tone: 'down' };
-  }
-  const a = coachSet({ done: done.map((y) => ({ w: +y.w || 0, r: +y.r || 0 })), left: work.length - done.length, lo, hi, step: W.step, hist });
-  if (!a) return null;
-  // Weights are kg: shown in your unit.
-  const vars = Object.fromEntries(Object.entries(a.vars).map(([k, v]) => [k, k === 'w' || k === 'w2' ? W.show(+v) : v]));
-  // Better than last time's matching set? Said first, when it's good news.
-  const beat = last && a.tone !== 'down' && last.lw > 0 && (w > last.lw || (w === last.lw && r > last.lr)) ? (w > last.lw ? t('+{n} kg on last time. ', { n: W.show(w - last.lw) }) : t('+{n} reps on last time. ', { n: r - last.lr })) : '';
-  return { text: `${beat}${t(a.key, vars)}`, tone: a.tone };
-}
-
-/** The set you're on: the first one not done, or null when all are done. */
-function currentSet(s: Session): { ei: number; si: number } | null {
-  const ei = s.ex.findIndex((x) => x.sets.some((y) => !y.done));
-  return ei < 0 ? null : { ei, si: s.ex[ei].sets.findIndex((y) => !y.done) };
-}
-
-/** Logs a set (empty weight and reps take last time's) and says how long to rest after it, or null when it was the last. */
-function logSet(s: Session, ei: number, si: number, lang: Parameters<typeof exInfo>[1]): { next: Session; restFor: number | null } {
-  const x = s.ex[ei];
-  const st = x.sets[si];
-  const info = exInfo(x, lang);
-  const w = st.w === '' ? String(st.lw || 0) : st.w;
-  const r = st.r === '' ? String(st.lr) : st.r;
-  const easy = !st.warm && +r >= topReps(x.reps) && +w >= st.lw && info.type !== 'Bodyweight' && !info.timed && +w > 0;
-  const next: Session = {
-    ...s,
-    ex: s.ex.map((e, i) => (i !== ei ? e : { ...e, tip: e.tip || easy, sets: e.sets.map((y, j) => (j === si ? { ...y, w, r, done: true } : y)) })),
-  };
-  const more = next.ex.some((e) => e.sets.some((z) => !z.done));
-  // Shorter rest after a warm-up set.
-  return { next, restFor: more ? (st.warm ? 45 : REST) : null };
-}
 
 /** The workout in progress (design: active). */
 export default function Active() {
@@ -119,8 +43,8 @@ export default function Active() {
   const train = useTrain();
   const W = useWeight();
   const s = train.session;
-  const [now, setNow] = useState(() => Date.now());
-  const [rest, setRest] = useState<{ end: number; total: number } | null>(null);
+  // The rest timer is kept with the workout (lib/train), so the Live Activity can start and skip it too.
+  const { rest, setRest } = train;
   const [confirm, setConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
   // The set whose number was tapped: make it a warm-up or a working set, or delete it.
@@ -133,105 +57,15 @@ export default function Active() {
   const food = useFood();
   const [waterOpen, setWaterOpen] = useState(false);
 
-  // Tick every quarter second; end the rest when its time is up.
-  const restRef = useRef(rest);
-  useEffect(() => {
-    restRef.current = rest;
-  }, [rest]);
-  useEffect(() => {
-    const id = setInterval(() => {
-      const n = Date.now();
-      setNow(n);
-      const r = restRef.current;
-      if (r && n >= r.end) {
-        restRef.current = null;
-        setRest(null);
-        restDone();
-        toast(t('Rest done. Next set.'), { icon: 'timer' });
-      }
-    }, 250);
-    return () => clearInterval(id);
-  }, [toast, t]);
-  const left = rest ? Math.max(0, Math.ceil((rest.end - now) / 1000)) : 0;
-
-  // The workout on the Lock Screen and in the Dynamic Island (iPhone): the exercise you're on, the set and its
-  // target, the workout clock, and the rest countdown while you rest. Updates when a set or the rest changes.
-  const { liveActivity } = useSettings();
-  useEffect(() => {
-    if (!s) return;
-    // Turned off in You → Widgets.
-    if (!liveActivity) return syncWorkoutActivity(null);
-    const cur = currentSet(s);
-    const x = cur ? s.ex[cur.ei] : null;
-    const st = x && cur ? x.sets[cur.si] : null;
-    const w = st ? +(st.w || st.lw) || 0 : 0;
-    const r = st ? +(st.r || st.lr) || 0 : 0;
-    const xi = x ? exInfo(x, lang) : null;
-    const timed = xi?.timed ?? false;
-    // The coach's tip under the exercise, the same one the workout screen shows.
-    const hist = x ? train.logs.filter((l) => !isLightLog(l, train.plan)).map((l) => (l.exercises ?? []).find((e) => e.id === x.id)?.sets ?? []).filter((y) => y.length).slice(0, 6) : [];
-    const adv = x && xi ? setAdvice(x, timed, xi.type === 'Bodyweight', hist, t, W) : null;
-    syncWorkoutActivity({
-      workout: s.home ? t('Home workout') : s.name === 'Together' ? t('Train together') : t('{w} workout', { w: t(s.name) }),
-      exercise: x ? exInfo(x, lang).name : t('All sets done'),
-      set: x && st && cur ? (st.warm ? t('Warm-up') : t('Set {a} of {b}', { a: cur.si + 1, b: x.sets.length })) : t('Tap Finish to save'),
-      target: st && r ? (w > 0 ? `${W.show(w)} ${W.label} × ${r}` : `× ${r}`) : '',
-      wText: st && w > 0 ? `${W.show(w)} ${W.label}` : '',
-      rText: timed ? `${r} ${t('s')}` : `× ${r}`,
-      canLog: !!st,
-      // "+2.5 kg" kept as one left-to-right piece, so Arabic doesn't show it as "2.5+".
-      tip: (adv?.text ?? '').replace(/[+−-]\d[\d.,]*/g, (m) => `\u2066${m}\u2069`),
-      tipTone: adv?.tone ?? 'ok',
-      water: food.day === food.today ? `${Math.round(food.water / 50) / 20} ${t('L')}` : '',
-      startedAt: s.start,
-      restEnd: rest?.end ?? null,
-      restStart: rest ? rest.end - rest.total * 1000 : null,
-      done: s.ex.reduce((a, e) => a + e.sets.filter((y) => y.done).length, 0),
-      total: s.ex.reduce((a, e) => a + e.sets.length, 0),
-      L: { rest: t('Rest'), next: t('Next'), sets: t('sets'), done: t('Done'), skip: t('Skip') },
-    });
-  }, [s, rest, lang, t, W, train.logs, train.plan, food.day, food.today, food.water, liveActivity]);
-
-  // The buttons on the Live Activity (iPhone, iOS 17+): change the set you're on, log it, or skip the rest, without
-  // opening the app. They read the latest workout from a ref, so the listener is set up once.
-  const latest = useRef({ s, train, W, lang, toast, t, food });
-  useEffect(() => {
-    latest.current = { s, train, W, lang, toast, t, food };
-  });
-  useEffect(
+  // Coach advice, history and the up/down arrow for each exercise, worked out when the workout changes (not every second).
+  const perEx = useMemo(
     () =>
-      onWorkoutAction((a: WorkoutAction) => {
-        const { s, train, W, lang, toast, t, food } = latest.current;
-        if (!s) return;
-        // A glass of water goes to today's water, like the water button on the workout screen.
-        if (a === 'water') return void food.addWater(250, 'Water', food.today);
-        if (a === 'skip') return setRest(null);
-        const cur = currentSet(s);
-        if (!cur) return;
-        const x = s.ex[cur.ei];
-        const st = x.sets[cur.si];
-        if (a === 'done') {
-          const { next, restFor } = logSet(s, cur.ei, cur.si, lang);
-          train.setSession(next);
-          if (restFor) setRest({ end: Date.now() + restFor * 1000, total: restFor });
-          else toast(t('All sets done. Tap Finish.'), { ai: true });
-          return;
-        }
-        let k: 'w' | 'r';
-        let v: string;
-        if (a === 'w-' || a === 'w+') {
-          // One plate jump in your unit (2.5 kg or 5 lb), kept in kg.
-          const shown = W.num(+(st.w || st.lw) || 0) + (a === 'w+' ? 1 : -1) * (W.unit === 'lb' ? 5 : 2.5);
-          k = 'w';
-          v = String(W.toKg(Math.max(0, shown)));
-        } else {
-          const by = exInfo(x, lang).timed ? 5 : 1;
-          k = 'r';
-          v = String(Math.max(1, (+(st.r || st.lr) || 0) + (a === 'r+' ? by : -by)));
-        }
-        train.setSession({ ...s, ex: s.ex.map((e, i) => (i !== cur.ei ? e : { ...e, sets: e.sets.map((y, j) => (j === cur.si ? { ...y, [k]: v } : y)) })) });
+      (s?.ex ?? []).map((x) => {
+        const info = exInfo(x, lang);
+        const hist = histFor(train.logs, train.plan, x.id);
+        return { adv: setAdvice(x, info.timed, info.type === 'Bodyweight', hist, t, W), arrow: vsLastTime(x, hist[0]) };
       }),
-    [],
+    [s, train.logs, train.plan, W, lang, t],
   );
 
   if (!s)
@@ -246,17 +80,8 @@ export default function Active() {
   const dn = s.ex.reduce((a, x) => a + x.sets.filter((y) => y.done).length, 0);
   // Only working sets make a workout: warm-ups alone don't save a log, mark the day done or raise the streak.
   const workDone = s.ex.reduce((a, x) => a + x.sets.filter((y) => y.done && !y.warm).length, 0);
-  const secs = Math.floor((now - s.start) / 1000);
-  const elapsed = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
 
   const update = (fn: (x: Session) => Session) => train.setSession(fn(s));
-  // Your last normal workouts with an exercise (newest first, working sets only), for the coach under it.
-  const histFor = (id: string): SetIn[][] =>
-    train.logs
-      .filter((l) => !isLightLog(l, train.plan))
-      .map((l) => (l.exercises ?? []).find((e) => e.id === id)?.sets ?? [])
-      .filter((sets) => sets.length)
-      .slice(0, 6);
   // Change the order mid-workout: move an exercise up or down (its sets go with it).
   const move = (ei: number, d: -1 | 1) =>
     update((x) => {
@@ -289,8 +114,8 @@ export default function Active() {
   const addSet = (ei: number, warm: boolean) =>
     editSets(ei, (sets) => {
       const work = sets.filter((y) => !y.warm);
-      const ref = work[work.length - 1] ?? sets[sets.length - 1] ?? { lw: 0, lr: topReps(s.ex[ei].reps) };
-      if (!warm) return [...sets, { w: '', r: '', done: false, lw: ref.lw, lr: ref.lr }];
+      const ref: { lw: number; lr: number; pw?: number; pr?: number } = work[work.length - 1] ?? sets[sets.length - 1] ?? { lw: 0, lr: topReps(s.ex[ei].reps) };
+      if (!warm) return [...sets, { w: '', r: '', done: false, lw: ref.lw, lr: ref.lr, ...(ref.pw != null ? { pw: ref.pw, pr: ref.pr } : {}) }];
       const firstWork = sets.findIndex((y) => !y.warm);
       const at = firstWork < 0 ? sets.length : firstWork;
       const warmSet = { w: '', r: '', done: false, lw: ref.lw ? Math.round(ref.lw * 0.5 * 2) / 2 : 0, lr: Math.max(ref.lr, 12), warm: true };
@@ -314,7 +139,7 @@ export default function Active() {
     let k = 0;
     const sets = (left.length ? left : [{ warm: false }]).map((y) => {
       const l = y.warm ? undefined : prev[k++];
-      return { w: '', r: '', done: false, lw: l?.w ?? 0, lr: l?.r ?? (y.warm ? 12 : topReps(old.reps)), warm: y.warm || undefined };
+      return { w: '', r: '', done: false, lw: l?.w ?? 0, lr: l?.r ?? (y.warm ? 12 : topReps(old.reps)), ...(l ? { pw: l.w, pr: l.r } : {}), warm: y.warm || undefined };
     });
     const nx: SessionEx = { ...pe, reps: old.reps, tip: false, sets };
     update((x) => ({ ...x, ex: done.length ? [...x.ex.slice(0, ei), { ...old, sets: done }, nx, ...x.ex.slice(ei + 1)] : x.ex.map((e, i) => (i === ei ? nx : e)) }));
@@ -367,15 +192,13 @@ export default function Active() {
           <Text variant="small" weight={700} color="sec">
             {t('{a} of {b} sets', { a: dn, b: tot })}
           </Text>
-          <Text variant="small" weight={700} color="sec" num>
-            {elapsed}
-          </Text>
+          <Elapsed start={s.start} />
         </Row>
         <Bar value={dn} max={tot} color={c.cobalt} />
         <View style={{ height: 14 }} />
         {s.ex.map((x, ei) => {
           const info = exInfo(x, lang);
-          const a = arrow(x);
+          const a = perEx[ei]?.arrow;
           const mach = info.mach[train.plan?.machines[x.id] ?? 0];
           return (
             <Card key={`${x.id}-${ei}`}>
@@ -527,14 +350,14 @@ export default function Active() {
                 </Springy>
               </Row>
               {(() => {
-                const adv = setAdvice(x, info.timed, info.type === 'Bodyweight', histFor(x.id), t, W);
+                const adv = perEx[ei]?.adv;
                 if (!adv) return null;
                 const tc = adv.tone === 'up' ? c.up : adv.tone === 'down' ? '#F59E0B' : c.cobalt;
                 return (
                   <Row gap={10} style={{ marginTop: 12, backgroundColor: c.inset, borderRadius: 14, padding: 10, borderStartWidth: 3, borderStartColor: tc }}>
                     {adv.tone === 'up' ? <Icon name="up" size={18} color={tc} strokeWidth={2.6} /> : adv.tone === 'down' ? <Icon name="down" size={18} color={tc} strokeWidth={2.6} /> : <Mark size={18} color={tc} stroke={4} />}
                     <Text variant="small" weight={700} style={{ flex: 1 }}>
-                      {adv.text}
+                      {ltrNums(adv.text)}
                     </Text>
                   </Row>
                 );
@@ -566,11 +389,7 @@ export default function Active() {
                 <Icon name="close" size={18} strokeWidth={2.2} />
               </Springy>
             </Row>
-            <View style={{ alignItems: 'center', marginTop: 4, marginBottom: 14 }}>
-              <Ring value={left} max={rest.total} size={150} stroke={10}>
-                <Text num size={44}>{`${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`}</Text>
-              </Ring>
-            </View>
+            <RestRing rest={rest} />
             <Row gap={10}>
               <View style={{ flex: 1 }}>
                 <Button kind="soft" title={t('+30 s')} style={{ alignSelf: 'stretch' }} onPress={() => setRest({ end: rest.end + 30000, total: rest.total + 30 })} />
@@ -646,6 +465,8 @@ export default function Active() {
                   icon="trash"
                   title={t('Delete set')}
                   color={c.down}
+                  // One set always stays, like Remove set.
+                  disabled={s.ex[ei].sets.length <= 1}
                   style={{ marginTop: 8 }}
                   onPress={() => {
                     editSets(ei, (sets) => sets.filter((_, j) => j !== si));
@@ -747,5 +568,37 @@ function WeightInput({ value, onChange, W, ...rest }: { value: string; onChange:
         onChange(kg);
       }}
     />
+  );
+}
+
+/** The workout clock, ticking by itself so the screen doesn't redraw every second. */
+function Elapsed({ start }: { start: number }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const secs = Math.max(0, Math.floor((now - start) / 1000));
+  return (
+    <Text variant="small" weight={700} color="sec" num>
+      {`${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`}
+    </Text>
+  );
+}
+
+/** The rest countdown ring. The rest itself ends in components/WorkoutLive (beep and toast). */
+function RestRing({ rest }: { rest: Rest }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(id);
+  }, []);
+  const left = Math.max(0, Math.ceil((rest.end - now) / 1000));
+  return (
+    <View style={{ alignItems: 'center', marginTop: 4, marginBottom: 14 }}>
+      <Ring value={left} max={rest.total} size={150} stroke={10}>
+        <Text num size={44}>{`${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`}</Text>
+      </Ring>
+    </View>
   );
 }

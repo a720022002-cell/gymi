@@ -95,6 +95,8 @@ export function coachSet(o: { done: SetIn[]; left: number; lo: number; hi: numbe
   }
   // A rep or two short: keep the weight.
   if (r >= lo - 2) return { key: 'Close to {lo}. Stay at {w} kg and rest a little longer.', vars: { lo, w }, tone: 'ok' };
+  // Well under the range at the lightest weight there is: rest longer rather than go lighter.
+  if (w <= step) return { key: '{r} reps. Rest a bit longer before the next set.', vars: { r }, tone: 'down' };
   // Well under the range: the weight for it, worked out from this set (not just one step down).
-  return { key: '{r} reps is heavy for {lo}–{hi}. Use about {w2} kg next set.', vars: { r, lo, hi, w2: Math.min(w - step, weightFor(strength, lo, step, 'down')) }, tone: 'down' };
+  return { key: '{r} reps is heavy for {lo}–{hi}. Use about {w2} kg next set.', vars: { r, lo, hi, w2: Math.max(step, Math.min(w - step, weightFor(strength, lo, step, 'down'))) }, tone: 'down' };
 }

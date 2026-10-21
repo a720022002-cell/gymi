@@ -6,6 +6,7 @@ import { Text } from '@/components/Text';
 import { Card, Label, Toggle } from '@/components/ui';
 import { LockScreen, MEDIUM, TodayMedium, TodaySmall, TrainMedium, TrainSmall, WorkoutCard } from '@/components/widgets/WidgetPreviews';
 import { useT } from '@/i18n';
+import { useTrain } from '@/lib/train';
 import { useWeight } from '@/lib/units';
 import { useWidgetData } from '@/lib/widgetData';
 import { useSettings } from '@/theme/settings';
@@ -18,6 +19,7 @@ export default function Widgets() {
   const { colors: c, isDark, liveActivity, setLiveActivity } = useSettings();
   const W = useWeight();
   const data = useWidgetData();
+  const { todayName } = useTrain();
   const ios = Platform.OS === 'ios';
 
   // Your numbers when they're loaded, an example otherwise.
@@ -127,7 +129,8 @@ export default function Widgets() {
       <Label>{t('During a workout')}</Label>
       <WorkoutCard
         s={{
-          workout: t('{w} workout', { w: train.rest || train.done ? t('Push') : train.workout }),
+          // Today's workout by its name ("Push workout", not "Push day workout"), or an example.
+          workout: t('{w} workout', { w: t(!train.rest && !train.done && todayName ? todayName : 'Push') }),
           set: t('Set {a} of {b}', { a: 2, b: 4 }),
           exercise: t('Bench press'),
           clock: '24:37',

@@ -84,13 +84,15 @@ export default function WorkoutHistory() {
       </Screen>
     );
 
-  // Month headers between the rows.
+  // Month headers between the rows. Rows come in the order they were started, and a workout can count for an earlier
+  // day, so each month is one group (never twice), newest day first.
   const groups: { m: string; items: WorkoutLog[] }[] = [];
   for (const w of rows) {
     const m = month(w.day);
-    if (groups.at(-1)?.m !== m) groups.push({ m, items: [] });
-    groups.at(-1)!.items.push(w);
+    const g = groups.find((x) => x.m === m) ?? (groups.push({ m, items: [] }), groups[groups.length - 1]);
+    g.items.push(w);
   }
+  for (const g of groups) g.items.sort((a, b) => b.day.localeCompare(a.day) || b.started_at.localeCompare(a.started_at));
 
   return (
     <Screen title={t('Workout history')} back>

@@ -10,11 +10,14 @@ import type { DayTotals } from './health';
 import { addDays, localDay } from './nutrition';
 import { shareWorkout } from './social';
 import { selectAll, supabase } from './supabase';
+import { LB } from './units';
 import { syncWorkoutActivity } from './widgetSync';
-import { buildWorkout, type Day, effectiveWeek, EX, isLightLog, type LastSets, lowReps, nextWeight, orderWeek, type PlanEx, planFromProgram, plannedOn, rangePlan, setWeekMoves, topReps, type TrainPlan, weekdayOf, weekStart, workoutKcal, heartKcal } from './training';
+import { useSettings } from '@/theme/settings';
+import { buildWorkout, type Day, effectiveWeek, EX, exInfo, isLightLog, type LastSets, lowReps, nextWeight, orderWeek, type PlanEx, planFromProgram, plannedOn, rangePlan, setWeekMoves, STEP_KG, topReps, type TrainPlan, weekdayOf, weekStart, workoutKcal, heartKcal } from './training';
 
-/** `light`: done as a lighter day or deload, so its weights don't set next time's numbers. */
-export type LoggedEx = { id: string; n: string; light?: boolean; sets: { w: number; r: number }[] };
+/** `light`: done as a lighter day or deload, so its weights don't set next time's numbers. `ar`: its Arabic name
+ * (newer logs), for exercises from the full list. */
+export type LoggedEx = { id: string; n: string; ar?: string; light?: boolean; sets: { w: number; r: number }[] };
 export type WorkoutLog = {
   id: string;
   day: string;
@@ -33,12 +36,33 @@ export type WorkoutLog = {
   max_hr?: number | null;
 };
 
-/** One set in the workout. Warm-up sets (warm) don't count toward volume, records or next time's numbers. */
-export type SessionSet = { w: string; r: string; done: boolean; lw: number; lr: number; warm?: boolean };
+/** One set in the workout. Warm-up sets (warm) don't count toward volume, records or next time's numbers.
+ * `lw`, `lr`: today's target. `pw`, `pr`: what you did last time (newer workouts; none without history). */
+export type SessionSet = { w: string; r: string; done: boolean; lw: number; lr: number; pw?: number; pr?: number; warm?: boolean };
 export type SessionEx = Omit<PlanEx, 'sets'> & { tip: boolean; sets: SessionSet[] };
 /** The workout in progress. Saved on the device so a reload doesn't lose it.
  * `day` is the day it counts for: the day you pressed Start (or the earlier day you picked), even if you finish after midnight. */
 export type Session = { name: string; start: number; home: boolean; ex: SessionEx[]; day?: string; light?: boolean };
+/** The rest between sets: when it ends and how long it was (seconds). */
+export type Rest = { end: number; total: number };
+
+/** Last time's numbers for a working set (k: its place among the working sets). Workouts started before `pw` was
+ * kept fall back to `last` (last time's sets). Null when there's no history. */
+export function lastTime(st: SessionSet, k: number, last?: { w: number; r: number }[] | null): { w: number; r: number } | null {
+  if (st.pw != null) return { w: st.pw, r: st.pr ?? 0 };
+  return last?.length ? (last[k] ?? last[last.length - 1]) : null;
+}
+
+/** Today's working sets against last time's: 'up', 'down', 'same', or null with nothing done or no history. */
+export function vsLastTime(x: SessionEx, last?: { w: number; r: number }[] | null): 'up' | 'down' | 'same' | null {
+  const work = x.sets.filter((s) => !s.warm);
+  const pairs = work.map((s, k) => ({ s, p: lastTime(s, k, last) })).filter((y) => y.s.done);
+  if (!pairs.length || !pairs.some((y) => y.p)) return null;
+  const v = pairs.reduce((a, { s }) => a + (+s.w || 0) * (+s.r || 0) + (+s.r || 0) * 0.01, 0);
+  const l = pairs.reduce((a, { p }) => a + (p ? p.w * p.r + p.r * 0.01 : 0), 0);
+  if (Math.abs(v - l) < 0.001) return 'same';
+  return v > l ? 'up' : 'down';
+}
 
 /** A workout left open: it counts for an earlier day and was started more than 12 hours ago.
  * Finish it (it still counts for its day) or throw it away with discardSession. */
@@ -80,6 +104,9 @@ type Train = {
   /** Heaviest weight in your last few normal (not lighter or deload) sessions on each exercise. */
   top: Record<string, number>;
   session: Session | null;
+  /** The rest timer between sets (the workout screen and the Live Activity share it). */
+  rest: Rest | null;
+  setRest: (r: Rest | null) => void;
   /** True when the open workout was left from an earlier day (see isStale). */
   stale: boolean;
   /** Throw away the open workout without saving it. */
@@ -154,6 +181,10 @@ export function TrainProvider({ children }: PropsWithChildren) {
   const [plan, setPlan] = useState<TrainPlan | null>(null);
   const [logs, setLogs] = useState<WorkoutLog[]>([]);
   const [session, setSessionState] = useState<Session | null>(null);
+  const [rest, setRest] = useState<Rest | null>(null);
+  // Plate jumps in your unit (2.5 kg or 5 lb), kept in kg.
+  const { unit } = useSettings();
+  const step = unit === 'lb' ? 5 / LB : STEP_KG;
   const [coach, setCoach] = useState<{ name: string; link: string } | null>(null);
   const [rec, setRec] = useState<{ day: string; tools: string[] }>({ day: '', tools: [] });
   const [hist, setHist] = useState<(History & { uid: string }) | null>(null);
@@ -511,6 +542,8 @@ export function TrainProvider({ children }: PropsWithChildren) {
   const setSession = useCallback(
     (s: Session | null) => {
       setSessionState(s);
+      // No workout, no rest.
+      if (!s) setRest(null);
       if (!userId) return;
       if (s) AsyncStorage.setItem(`${SESSION_KEY}.${userId}`, JSON.stringify(s)).catch(() => {});
       else AsyncStorage.removeItem(`${SESSION_KEY}.${userId}`).catch(() => {});
@@ -538,20 +571,22 @@ export function TrainProvider({ children }: PropsWithChildren) {
         ex: wo.ex.map(({ swapped: _s, target, last: ls, sets, ...x }) => {
           // Every rep done last time: start a step heavier (not on a lighter day, bodyweight or timed exercises).
           const weighted = !x.time && !EX[x.id]?.time && (x.t ?? EX[x.id]?.t) !== 'Bodyweight';
-          const up = !lighter && weighted ? nextWeight(ls, x.reps) : null;
+          const up = !lighter && weighted ? nextWeight(ls, x.reps, step) : null;
           return {
             ...x,
             tip: false,
             sets: Array.from({ length: sets }, (_, i) => {
               const l = ls[i] ?? ls[ls.length - 1];
-              if (up) return { w: '', r: '', done: false, lw: up, lr: lowReps(x.reps) };
-              return { w: '', r: '', done: false, lw: lighter ? target : (l?.w ?? 0), lr: l?.r ?? topReps(x.reps) };
+              // Last time's numbers, kept apart from the target for the up and down arrows.
+              const prev = l ? { pw: l.w, pr: l.r } : {};
+              if (up) return { w: '', r: '', done: false, lw: up, lr: lowReps(x.reps), ...prev };
+              return { w: '', r: '', done: false, lw: lighter ? target : (l?.w ?? 0), lr: l?.r ?? topReps(x.reps), ...prev };
             }),
           };
         }),
       });
     },
-    [last, top, preg, setSession],
+    [last, top, preg, step, setSession],
   );
 
   // A new log goes into the recent list and the whole history.
@@ -601,14 +636,13 @@ export function TrainProvider({ children }: PropsWithChildren) {
         const top = Math.max(...d.map((y) => y.w));
         const prev = known[x.id] ?? 0;
         if (top > prev && prev > 0) prs.push({ id: x.id, n: names[x.id] ?? x.id, w: top });
-        const v = d.reduce((a, y) => a + y.w * y.r + y.r * 0.01, 0);
-        const done = x.sets.filter((y) => y.done && !y.warm);
-        const lv = done.reduce((a, y) => a + y.lw * y.lr + y.lr * 0.01, 0);
-        if (last[x.id]) {
-          if (v > lv + 0.001) ups++;
-          else if (v < lv - 0.001) downs++;
-        }
-        exercises.push({ id: x.id, n: names[x.id] ?? x.id, ...(s.light ? { light: true } : {}), sets: d });
+        const vs = vsLastTime(x, last[x.id]);
+        if (vs === 'up') ups++;
+        else if (vs === 'down') downs++;
+        // The Arabic name too (exercises from the full list), so the history shows it in Arabic.
+        const n = names[x.id] ?? x.id;
+        const ar = EX[x.id] ? '' : exInfo(x, 'ar').name;
+        exercises.push({ id: x.id, n, ...(ar && ar !== n ? { ar } : {}), ...(s.light ? { light: true } : {}), sets: d });
       }
       // Calories use realistic minutes: never more than 3 hours, or about 6 minutes a set when the workout was left open.
       const logged = Math.min(600, minutes);
@@ -674,8 +708,8 @@ export function TrainProvider({ children }: PropsWithChildren) {
   );
 
   const value = useMemo<Train>(
-    () => ({ ready, loadError, reload: () => setLoadTry((n) => n + 1), setupDone, plan, savePlan, changePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, best, top, session, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, recTools, setRecTools, addLog, preg, setPreg }),
-    [ready, loadError, setupDone, plan, savePlan, changePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, best, top, session, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, recTools, setRecTools, addLog, preg, setPreg],
+    () => ({ ready, loadError, reload: () => setLoadTry((n) => n + 1), setupDone, plan, savePlan, changePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, best, top, session, rest, setRest, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, recTools, setRecTools, addLog, preg, setPreg }),
+    [ready, loadError, setupDone, plan, savePlan, changePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, best, top, session, rest, setRest, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, recTools, setRecTools, addLog, preg, setPreg],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

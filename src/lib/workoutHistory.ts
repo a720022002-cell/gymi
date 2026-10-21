@@ -39,5 +39,5 @@ export async function loadExerciseHistory(exId: string, limit = 8): Promise<Exer
   });
 }
 
-/** An exercise's name in your language (the log keeps the name it had that day). */
-export const loggedExName = (ex: { id: string; n: string }, lang: 'en' | 'ar') => (lang === 'ar' && EX[ex.id] ? EX[ex.id].ar : ex.n);
+/** An exercise's name in your language (the log keeps the name it had that day, and newer logs its Arabic name too). */
+export const loggedExName = (ex: { id: string; n: string; ar?: string }, lang: 'en' | 'ar') => (lang === 'ar' ? (EX[ex.id]?.ar ?? ex.ar ?? ex.n) : ex.n);

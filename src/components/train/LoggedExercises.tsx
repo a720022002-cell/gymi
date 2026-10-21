@@ -25,10 +25,12 @@ export function LoggedExercises({ log }: { log: WorkoutLog }) {
     <View style={{ gap: 10 }}>
       {log.exercises.map((ex, i) => {
         const pr = prs.get(ex.id);
+        // Your own exercises have no page to open.
+        const own = ex.id.startsWith('custom:');
         return (
           <Springy
             key={`${ex.id}-${i}`}
-            onPress={() => router.push({ pathname: '/exercise', params: { id: ex.id } })}
+            onPress={own ? null : () => router.push({ pathname: '/exercise', params: { id: ex.id } })}
             scaleTo={0.99}
             accessibilityLabel={loggedExName(ex, lang)}
             style={{ backgroundColor: c.card, borderRadius: 22, padding: 16 }}>
@@ -45,7 +47,7 @@ export function LoggedExercises({ log }: { log: WorkoutLog }) {
                   {t('{n} sets', { n: ex.sets.length })}
                 </Text>
               </View>
-              <Icon name="chev" size={18} color={c.sec} />
+              {own ? null : <Icon name="chev" size={18} color={c.sec} />}
             </View>
             <View style={{ marginTop: 10, gap: 6 }}>
               {ex.sets.map((s, j) => {

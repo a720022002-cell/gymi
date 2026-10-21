@@ -33,6 +33,7 @@ import { ReminderSync } from '@/components/ReminderSync';
 import { ToastProvider } from '@/components/Toast';
 import { AiConsentSheet } from '@/components/ai/AiConsentSheet';
 import { UpdateBanner } from '@/components/UpdateBanner';
+import { WorkoutLive } from '@/components/WorkoutLive';
 import { AuthProvider } from '@/lib/auth';
 import { FoodProvider } from '@/lib/food';
 import { HealthProvider } from '@/lib/health';
@@ -118,6 +119,7 @@ function AppStack({ ready }: { ready: boolean }) {
       <RingClosed />
       <CheckinSheet />
       <ReminderSync />
+      <WorkoutLive />
       <ReferralClaim />
       <FriendAlerts />
       <OfflineBanner />

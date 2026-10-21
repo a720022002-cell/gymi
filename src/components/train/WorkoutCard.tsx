@@ -96,20 +96,28 @@ export function StaleSessionChoice({ onDone }: { onDone?: () => void }) {
   );
 }
 
-/** Next planned workout after today, like "Pull on Thursday". */
-export function useNextWorkout() {
-  const { t, lang } = useT();
-  const { plan, week, todayIdx, today } = useTrain();
-  // Days off (a break) are passed over; after a week the date is shown too.
+/** The next planned workout after today (days off in a break passed over, each week with its own moves), or null.
+ * `i`: days from today, `wd`: its weekday. */
+export function nextPlanned(train: Pick<ReturnType<typeof useTrain>, 'plan' | 'week' | 'todayIdx' | 'today'>) {
+  const { plan, week, todayIdx, today } = train;
   for (let i = 1; i <= 35; i++) {
     const date = addDays(today, i);
     const wd = (todayIdx + i) % 7;
     const w = plan ? effectiveWeek(plan, weekStart(date))[wd]?.w : week[wd]?.w;
     if (!w || plan?.skipped[date]) continue;
-    const day = i < 7 ? t(DAYS_LONG[wd]) : new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date(`${date}T12:00:00`));
-    return t('{w} on {day}', { w: t(w), day });
+    return { w, i, wd, date };
   }
-  return t('none planned');
+  return null;
+}
+
+/** Next planned workout after today, like "Pull on Thursday". */
+export function useNextWorkout() {
+  const { t, lang } = useT();
+  const n = nextPlanned(useTrain());
+  if (!n) return t('none planned');
+  // After a week the date is shown too.
+  const day = n.i < 7 ? t(DAYS_LONG[n.wd]) : new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date(`${n.date}T12:00:00`));
+  return t('{w} on {day}', { w: t(n.w), day });
 }
 
 /** The last day of a break that started today or earlier (days off in a row), or null when only today is off. */

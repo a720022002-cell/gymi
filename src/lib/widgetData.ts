@@ -1,4 +1,5 @@
 import { useRecovery } from '@/components/train/RecoveryCard';
+import { nextPlanned } from '@/components/train/WorkoutCard';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { useStepGoal } from '@/lib/devices';
@@ -38,21 +39,17 @@ export function useWidgetData(): { today: TodayProps | null; train: TrainProps |
         }
       : null;
 
-  // Training widget: today's workout (or rest), the next one, the streak and the recovery score.
-  let next = '';
-  for (let i = 1; i <= 7 && train.plan; i++) {
-    const w = train.week[(train.todayIdx + i) % 7]?.w;
-    if (w) {
-      next = t('Next: {w} · {d}', { w: workoutTitle(w, t), d: t(DAYS[(train.todayIdx + i) % 7]) });
-      break;
-    }
-  }
+  // Training widget: today's workout (or rest), the next one, the streak and the recovery score. Like the Train tab:
+  // a day off (a break) is a rest day, and the next workout passes over breaks and uses next week's own moves.
+  const n = train.plan ? nextPlanned(train) : null;
+  const next = n ? t('Next: {w} · {d}', { w: workoutTitle(n.w, t), d: n.i < 7 ? t(DAYS[n.wd]) : `${t(DAYS[n.wd])} ${Number(n.date.slice(8))}` }) : '';
   const done = !!train.todayLog;
-  const rest = !train.todayName && !done;
+  const off = !!train.plan?.skipped[train.today];
+  const rest = (!train.todayName || off) && !done;
   const trainProps: TrainProps | null =
     train.ready && train.plan
       ? {
-          workout: done ? workoutTitle(train.todayLog!.name, t) : rest ? t('Rest day') : workoutTitle(train.todayName!, t),
+          workout: done ? workoutTitle(train.todayLog!.name, t) : rest ? t(off ? 'Day off' : 'Rest day') : workoutTitle(train.todayName!, t),
           status: done ? t('Done. Nice work.') : rest ? t('Recover and walk') : t('Ready when you are'),
           done,
           rest,

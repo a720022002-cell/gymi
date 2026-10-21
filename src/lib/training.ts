@@ -526,12 +526,13 @@ export const STEP_KG = 2.5;
 /**
  * Last time every set reached the top of the rep range at your working weight: this time starts one step heavier
  * (back at the low end of the range). Null when it isn't time to go up yet (or it isn't a weighted exercise).
+ * `step`: one plate jump in kg in your unit (2.5 kg, or 5 lb); the result lands on a whole number of steps.
  */
-export function nextWeight(prev: { w: number; r: number }[], reps: string): number | null {
+export function nextWeight(prev: { w: number; r: number }[], reps: string, step = STEP_KG): number | null {
   if (!prev.length) return null;
   const w = Math.max(...prev.map((s) => s.w));
   if (!(w > 0)) return null;
-  return prev.every((s) => s.w >= w && s.r >= topReps(reps)) ? w + STEP_KG : null;
+  return prev.every((s) => s.w >= w && s.r >= topReps(reps)) ? Math.round(Math.round((w + step) / step) * step * 10000) / 10000 : null;
 }
 
 /** Calories for a strength workout (about 5 METs). */
