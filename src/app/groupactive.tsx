@@ -28,7 +28,7 @@ import {
   setsOf,
   swapGroupExercise,
 } from '@/lib/groupWorkout';
-import { postActivity, setSessionStatus } from '@/lib/social';
+import { setSessionStatus } from '@/lib/social';
 import { useTrain, type WorkoutLog } from '@/lib/train';
 import { exInfo, exMuscle, muscleLabel, workoutKcal } from '@/lib/training';
 import { useWeight } from '@/lib/units';
@@ -44,7 +44,7 @@ const digits = (v: string, dec: boolean) =>
 /** When the group workout started and minutes since (45 min if it never started). */
 function sessionTime(startedAt: string | null) {
   const now = Date.now();
-  const minutes = startedAt ? Math.max(5, Math.min(600, Math.round((now - new Date(startedAt).getTime()) / 60000))) : 45;
+  const minutes = startedAt ? Math.max(5, Math.min(240, Math.round((now - new Date(startedAt).getTime()) / 60000))) : 45;
   return { minutes, start: startedAt ?? new Date(now - minutes * 60000).toISOString() };
 }
 
@@ -71,6 +71,9 @@ export default function GroupActive() {
   const [swap, setSwap] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
+  // A save in progress: a second tap on Finish doesn't save the workout again.
+  const finishing = useRef(false);
+  const [saving, setSaving] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const lastStatus = useRef<string | null>(null);
 
@@ -234,6 +237,17 @@ export default function GroupActive() {
   // Save my sets as a normal workout: real weights, volume and records.
   const finish = async () => {
     setConfirm(false);
+    if (finishing.current) return;
+    finishing.current = true;
+    setSaving(true);
+    try {
+      await saveGroup();
+    } finally {
+      finishing.current = false;
+      setSaving(false);
+    }
+  };
+  const saveGroup = async () => {
     if (!saved) {
       const exercises: WorkoutLog['exercises'] = [];
       const prs: WorkoutLog['prs'] = [];
@@ -250,29 +264,34 @@ export default function GroupActive() {
         const top = Math.max(...done.map((s) => s.w));
         const prev = train.best[x.id] ?? 0;
         if (top > prev && prev > 0) prs.push({ id: x.id, n, w: top });
-        exercises.push({ id: x.id, n, sets: done });
+        const info = exInfo({ id: x.id, n: x.n }, 'en');
+        exercises.push({ id: x.id, n, ...(info.muscle !== 'Other' ? { m: info.muscle } : {}), ...(info.timed || x.type === 2 ? { time: true } : {}), sets: done });
       }
       if (sets) {
         const { minutes, start } = sessionTime(g.started_at);
-        const log = await train.addLog({
+        // Same calories as a normal workout: realistic minutes and 80 kg when your weight isn't set.
+        const kcalMin = Math.min(minutes, 180, Math.max(30, sets * 6));
+        const res = await train.addLog({
           day: train.today,
           name: 'Together',
           started_at: start,
           minutes,
           volume: Math.round(volume * 10) / 10,
           sets_done: sets,
-          kcal: workoutKcal(minutes, Number(profile?.weight_kg ?? 75)),
+          kcal: workoutKcal(kcalMin, Number(profile?.weight_kg ?? 80)),
           exercises,
           prs,
           ups: 0,
           downs: 0,
+          // Saved once per group workout (the database refuses a second one).
+          group_session: id,
         });
-        if (!log) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+        if (!res) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+        const { log, dup } = res;
         setSaved(log.id);
-        const names = others.filter((m) => m.joined).map((m) => m.name || m.username);
-        if (names.length) postActivity('post', t('Trained together with {n}', { n: names.join(t(', ')) })).catch(() => {});
+        // Health app and friends' feed (if you share workouts) are handled like any workout, in lib/train.
         if (host) await setSessionStatus(id, 'done');
-        toast(t('Group workout saved'), { icon: 'users' });
+        toast(t(dup ? 'This group workout is already saved' : 'Group workout saved'), { icon: 'users' });
         return router.replace({ pathname: '/summary', params: { id: log.id } });
       }
     }
@@ -289,9 +308,9 @@ export default function GroupActive() {
         title={t('Group workout')}
         back
         right={
-          <Springy onPress={() => setConfirm(true)} scaleTo={1.08}>
+          <Springy onPress={() => setConfirm(true)} disabled={saving} scaleTo={1.08}>
             <Glass style={{ height: 44, borderRadius: 22, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' }}>
-              <Text weight={700}>{t('Finish')}</Text>
+              <Text weight={700}>{t(saving ? 'Saving…' : 'Finish')}</Text>
             </Glass>
           </Springy>
         }>

@@ -5,6 +5,8 @@ import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { loadCycle, saveLog } from '@/lib/cycle';
 import { useCycleToday } from '@/lib/cyclePhase';
+import { useDevices } from '@/lib/devices';
+import { addDays } from '@/lib/nutrition';
 import { sleepHours, useHealth } from '@/lib/health';
 import { recovery } from '@/lib/recovery';
 import { useTrain } from '@/lib/train';
@@ -46,12 +48,28 @@ function Steps() {
   const today = useToday();
   const { input } = useRecovery();
   const prev = health.checkins.at(-1);
+  // Last night from the watch, when it measured it: the sleep step starts from it.
+  const dev = useDevices(session?.user.id);
+  const night = dev.days.find((d) => d.day === train.today);
+  const watchH = night?.sleep_h != null && night.sleep_h > 0 ? night.sleep_h : null;
+  const clock = (m: number) => {
+    const x = ((Math.round(m / 5) * 5) % 1440 + 1440) % 1440;
+    return `${String(Math.floor(x / 60)).padStart(2, '0')}:${String(x % 60).padStart(2, '0')}`;
+  };
+  // A smart scale sends weights by itself: then the weight is only logged when you change it.
+  const scale = dev.days.some((d) => d.weight != null && d.day >= addDays(train.today, -14));
   const [step, setStep] = useState(0);
-  const [weight, setWeight] = useState(() => health.weights.at(-1)?.value ?? Number(profile?.weight_kg ?? 75));
-  const [mode, setMode] = useState<'times' | 'hours'>('times');
-  const [bed, setBed] = useState(prev?.bed ?? '23:00');
-  const [wake, setWake] = useState(prev?.wake ?? '07:00');
-  const [hm, setHm] = useState<[number, number]>([7, 0]);
+  const [weight0] = useState(() => night?.weight ?? health.weights.at(-1)?.value ?? Number(profile?.weight_kg ?? 75));
+  const [weight, setWeight] = useState(weight0);
+  const weightSet = Math.abs(weight - weight0) >= 0.05;
+  const [mode, setMode] = useState<'times' | 'hours'>(() => (watchH != null && night?.bed_min == null ? 'hours' : 'times'));
+  const [bed, setBed] = useState(() => (watchH != null && night?.bed_min != null ? clock(night.bed_min) : (prev?.bed ?? '23:00')));
+  const [wake, setWake] = useState(() => (watchH != null && night?.bed_min != null ? clock(night.bed_min + watchH * 60) : (prev?.wake ?? '07:00')));
+  const [hm, setHm] = useState<[number, number]>(() => {
+    if (watchH == null) return [7, 0];
+    const m = Math.round((watchH * 60) / 5) * 5;
+    return [Math.min(16, Math.floor(m / 60)), m % 60];
+  });
   const [quality, setQuality] = useState<number | null>(1);
   const [energy, setEnergy] = useState<number | null>(null);
   const [sore, setSore] = useState<number | null>(null);
@@ -65,7 +83,8 @@ function Steps() {
     const feel = skipFeel ? {} : { energy, sore };
     const ci = { day: train.today, sleep: skip.s ? null : hours, sore: skipFeel ? null : sore, energy: skipFeel ? null : energy };
     const score = recovery({ ...input, checkin: ci }).score;
-    if (!skip.w) health.logWeight(weight);
+    // Not a weight you didn't touch when a scale sends one (it would block today's scale reading).
+    if (!skip.w && (weightSet || !scale)) health.logWeight(weight);
     const lighter = !skipFeel && tired && canLighten;
     if (lighter) train.updatePlan({ light: train.today });
     const ok = await health.saveCheckin({ ...sleepPart, ...feel, score });
@@ -113,7 +132,10 @@ function Steps() {
       <View>
         {head('scale', 1, t('Morning weight'))}
         <Card style={{ marginTop: 16, paddingVertical: 4 }}>
-          <WeightWheel value={weight} onChange={setWeight} />
+          <WeightWheel
+            value={weight}
+            onChange={setWeight}
+          />
         </Card>
         <Row gap={8} style={{ alignItems: 'flex-start' }}>
           <Icon name="info" size={18} color={c.sec} />

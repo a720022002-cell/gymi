@@ -22,7 +22,7 @@ export async function loadWorkout(id: string): Promise<WorkoutLog | null> {
   return data ? clean([data as WorkoutLog])[0] : null;
 }
 
-export type ExerciseSession = { id: string; day: string; workout: string; sets: LoggedEx['sets']; light?: boolean };
+export type ExerciseSession = { id: string; day: string; workout: string; sets: LoggedEx['sets']; light?: boolean; time?: boolean };
 
 /** The last times you did one exercise: the sets you did each time, newest first. */
 export async function loadExerciseHistory(exId: string, limit = 8): Promise<ExerciseSession[] | null> {
@@ -35,7 +35,7 @@ export async function loadExerciseHistory(exId: string, limit = 8): Promise<Exer
   if (error) return null;
   return ((data as Pick<WorkoutLog, 'id' | 'day' | 'name' | 'exercises'>[]) ?? []).flatMap((w) => {
     const ex = (w.exercises ?? []).find((e) => e.id === exId);
-    return ex && ex.sets.length ? [{ id: w.id, day: w.day, workout: w.name, sets: ex.sets, light: ex.light }] : [];
+    return ex && ex.sets.length ? [{ id: w.id, day: w.day, workout: w.name, sets: ex.sets, light: ex.light, time: ex.time }] : [];
   });
 }
 

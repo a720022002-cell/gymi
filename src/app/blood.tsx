@@ -12,6 +12,7 @@ import { useT } from '@/i18n';
 import { type AiError, aiErrorText, askAI } from '@/lib/ai';
 import { useAuth } from '@/lib/auth';
 import { useFood } from '@/lib/food';
+import { useCycleCoach } from '@/lib/cyclePhase';
 import { ageFromIso } from '@/lib/nutrition';
 import { pickReportFile } from '@/lib/docpick';
 import { type BloodTest, type BloodValue, type HealthFile, useHealth } from '@/lib/health';
@@ -19,7 +20,7 @@ import { type Photo, takePhoto } from '@/lib/photo';
 import { shortDate } from '@/lib/progress';
 import { useSettings } from '@/theme/settings';
 
-type Read = { title?: string; day?: string; values: { name: string; value: number | string; unit: string; low?: number | null; high?: number | null; flag?: number }[] };
+type Read = { title?: string; day?: string; values: { name: string; value: number | string; unit: string; low?: number | null; high?: number | null; range?: string; flag?: number }[] };
 
 /**
  * A lab value as a number: "<10" and "≤10" read as 10 and below it, ">500" and "≥500" as 500 and above it,
@@ -66,6 +67,9 @@ export default function BloodScreen() {
   const [fileName, setFileName] = useState('');
   const [asking, setAsking] = useState(false);
   const shown = h.blood.find((b) => b.id === pick) ?? h.blood[0] ?? null;
+  // Pregnancy changes some ranges (never from cycle data kept only on this phone).
+  const cyc = useCycleCoach();
+  const preg = cyc && !cyc.anon ? cyc.preg : null;
 
   /** Read a report from a photo (camera or library) or a file (PDF or image). */
   const read = async (src: { photo: Photo } | { file: HealthFile & { size: number } }) => {
@@ -76,8 +80,8 @@ export default function BloodScreen() {
     const keep: HealthFile = 'photo' in src ? { base64: src.photo.base64, mime: src.photo.mime, name: t('Lab report photo') } : src.file;
     setFileName(keep.name);
     setBusy(true);
-    // Only the results are read from the report; the normal ranges come from guidelines for your sex and age, not the report.
-    const who = { sex: profile?.gender ?? null, age: ageFromIso(profile?.date_of_birth) };
+    // The range printed on the report when there is one; otherwise guidelines for your sex, age and pregnancy.
+    const who = { sex: profile?.gender ?? null, age: ageFromIso(profile?.date_of_birth), ...(preg ? { pregnant: preg.mode } : {}) };
     const { result, error } = await askAI<Read>('blood', isPdf ? { lang, file: b64, name: keep.name, ...who } : { lang, image: b64, mime: 'photo' in src ? src.photo.mime : src.file.mime, ...who });
     if (error || !result) {
       setBusy(false);
@@ -93,7 +97,8 @@ export default function BloodScreen() {
         // Check against the standard range ourselves; fall back to the AI's flag. "<10" or "Negative" stay as written.
         const flag = (r ? flagOf(r, low, high) : null) ?? (Math.sign(Number(v.flag) || 0) as -1 | 0 | 1);
         const value = r && r.cmp === 0 ? r.n : String(v.value).trim().slice(0, 30);
-        return { name: String(v.name).slice(0, 60), value, unit: String(v.unit ?? '').slice(0, 20), low, high, flag };
+        const from = low == null && high == null ? {} : { src: v.range === 'report' ? ('report' as const) : ('guideline' as const) };
+        return { name: String(v.name).slice(0, 60), value, unit: String(v.unit ?? '').slice(0, 20), low, high, ...from, flag };
       });
     // A file is still kept when no values could be read, so you can open it later.
     if (!values.length && 'photo' in src) {
@@ -231,7 +236,7 @@ function Report({ b }: { b: BloodTest }) {
         </Card>
       ) : null}
       <Text variant="xs" color="sec" style={{ marginHorizontal: 4, marginBottom: 8 }}>
-        {t('Normal ranges are the standard ones for your sex and age, not the ones printed on the report.')}
+        {t('Ranges are the ones printed on your report. When it has none, the standard range for your sex and age is used and marked “Guideline”.')}
       </Text>
       <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden', marginBottom: 12 }}>
         {b.values.map((v, i) => (
@@ -241,7 +246,7 @@ function Report({ b }: { b: BloodTest }) {
                 <Text weight={700}>{v.name}</Text>
                 {range(v) ? (
                   <Text variant="xs" color="sec">
-                    {t('Normal: {r} {u}', { r: range(v) as string, u: v.unit })}
+                    {t(v.src === 'report' ? 'Normal: {r} {u}' : 'Guideline: {r} {u}', { r: range(v) as string, u: v.unit })}
                   </Text>
                 ) : null}
               </View>

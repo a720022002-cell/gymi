@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Platform, TextInput, View } from 'react-native';
 
 import { Field } from '@/components/Field';
+import { AllergyWarn, useAllergyCheck } from '@/components/food/AllergyWarn';
 import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
@@ -67,6 +68,7 @@ export default function RecipeImport() {
   const [title, setTitle] = useState('');
   const [servings, setServings] = useState(1);
   const [rows, setRows] = useState<Row_[]>([]);
+  const allergyCheck = useAllergyCheck();
   const [saving, setSaving] = useState(false);
   const web = Platform.OS === 'web';
 
@@ -102,7 +104,13 @@ export default function RecipeImport() {
     setRes(x);
     setTitle(x.title);
     setServings(Math.max(1, Math.min(20, Math.round(x.servings) || 1)));
-    setRows(x.ingredients.map((i) => ({ name: i.name, g: Math.max(0, Math.round(i.grams)), per: { k: i.kcal / (i.grams || 1), p: i.protein / (i.grams || 1), c: i.carbs / (i.grams || 1), f: i.fat / (i.grams || 1) } })));
+    // No grams from the AI (0 or missing): 100 g, so its calories aren't lost (as in a meal photo).
+    setRows(
+      x.ingredients.map((i) => {
+        const g = Math.max(1, i.grams || 100);
+        return { name: i.name, g: Math.round(g), per: { k: (i.kcal || 0) / g, p: (i.protein || 0) / g, c: (i.carbs || 0) / g, f: (i.fat || 0) / g } };
+      }),
+    );
   };
 
   const tot = rows.reduce((a, x) => ({ k: a.k + x.per.k * x.g, p: a.p + x.per.p * x.g, c: a.c + x.per.c * x.g, f: a.f + x.per.f * x.g }), { k: 0, p: 0, c: 0, f: 0 });
@@ -163,6 +171,7 @@ export default function RecipeImport() {
 
   return (
     <Screen title={t('Your recipe')} back onBack={() => setRes(null)}>
+      <AllergyWarn items={allergyCheck(title, rows.filter((x) => x.g > 0).map((x) => x.name))} />
       <Field label={t('Name')} value={title} onChangeText={setTitle} maxLength={80} />
       <Card style={{ marginTop: 4 }}>
         <Row gap={10} style={{ justifyContent: 'space-between' }}>

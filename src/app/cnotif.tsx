@@ -19,7 +19,8 @@ import { useSettings } from '@/theme/settings';
 
 const DAYS_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-/** Coach notification settings, saved to the account (design: cnotif). Daily summary and weekly ranking are scheduled on the phone. */
+/** Coach notification settings, saved to the account (design: cnotif). Daily summary and weekly ranking are scheduled on the phone;
+ * low commitment and no food logged mark clients in the Clients tab. Only settings that do something are shown. */
 export default function CoachNotifScreen() {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
@@ -96,11 +97,6 @@ export default function CoachNotifScreen() {
         <Toggle value={n.on} onChange={(v) => set({ on: v })} label={t('Allow notifications')} />
       </Card>
       <View style={{ opacity: n.on ? 1 : 0.45 }} pointerEvents={n.on ? 'auto' : 'none'}>
-        {head(t('Messages'))}
-        <List>
-          {row('send', t('Messages from clients'), t('Every new message'), n.msgs, (v) => set({ msgs: v }), null, true)}
-          {row('cal', t('Meeting requests'), t('When a client asks to meet at the gym'), n.meet, (v) => set({ meet: v }))}
-        </List>
         {head(t('Client alerts'))}
         <List>
           {row(
@@ -118,14 +114,6 @@ export default function CoachNotifScreen() {
             true,
           )}
           {row(
-            'train',
-            t('Missed workouts'),
-            t(n.missed.n > 1 ? 'After {n} missed workouts in a row' : 'After {n} missed workout in a row', { n: n.missed.n }),
-            n.missed.on,
-            (v) => set({ missed: { ...n.missed, on: v } }),
-            chips([1, 2, 3], n.missed.n, (v) => set({ missed: { ...n.missed, n: v } }), (v) => t('{n} in a row', { n: v })),
-          )}
-          {row(
             'food',
             t('No food logged'),
             t(n.nofood.n > 1 ? 'When a client logs nothing for {n} days' : 'When a client logs nothing for {n} day', { n: n.nofood.n }),
@@ -133,16 +121,6 @@ export default function CoachNotifScreen() {
             (v) => set({ nofood: { ...n.nofood, on: v } }),
             chips([1, 2, 3], n.nofood.n, (v) => set({ nofood: { ...n.nofood, n: v } }), (v) => t(v > 1 ? '{n} days' : '{n} day', { n: v })),
           )}
-          {row(
-            'scale',
-            t('Big weight change'),
-            t('More than {n} kg in a week', { n: n.weight.kg }),
-            n.weight.on,
-            (v) => set({ weight: { ...n.weight, on: v } }),
-            chips([1, 2, 3], n.weight.kg, (v) => set({ weight: { ...n.weight, kg: v } }), (v) => `${v} ${t('kg')}`),
-          )}
-          {row('trophy', t('New personal records'), t('Celebrate with them'), n.prs, (v) => set({ prs: v }))}
-          {row('users', t('New client joined'), t('When someone joins with your code or package'), n.join, (v) => set({ join: v }))}
         </List>
         {head(t('Summaries'))}
         <List>
@@ -166,7 +144,6 @@ export default function CoachNotifScreen() {
               {time(n.weekly.t, (v) => set({ weekly: { ...n.weekly, t: v } }), t('Time'))}
             </View>,
           )}
-          {row('info', t('Adro updates'), t('News and tips for coaches'), n.adro, (v) => set({ adro: v }))}
         </List>
         {head(t('Quiet hours'))}
         <List>

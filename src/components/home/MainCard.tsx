@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { RCOL, useMetrics } from '@/components/home/metrics';
+import { RCOL, useDayRings, useMetrics } from '@/components/home/metrics';
 import { RingPickSheet } from '@/components/home/RingPickSheet';
 import { Icon } from '@/components/Icon';
 import { Ring } from '@/components/Ring';
@@ -15,7 +15,7 @@ import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { useStepGoal } from '@/lib/devices';
 import { useFood } from '@/lib/food';
-import { RING_NAMES, type RingKey, useHomeLayout } from '@/lib/homeLayout';
+import { RING_NAMES, type RingKey } from '@/lib/homeLayout';
 import { recLabel } from '@/lib/recovery';
 import { useTrain } from '@/lib/train';
 import { fx } from '@/lib/progress';
@@ -60,9 +60,8 @@ function RingSwitch({ onPress }: { onPress: () => void }) {
 /** The main card: calories, one other ring big, or up to 3 rings inside each other. */
 export function MainCard() {
   const food = useFood();
-  const [layout] = useHomeLayout();
   const [pick, setPick] = useState(false);
-  const rs = layout.rings;
+  const rs = useDayRings();
   const sw = <RingSwitch onPress={() => setPick(true)} />;
   return (
     <>
@@ -76,10 +75,9 @@ export function MainCard() {
 function RingsCard({ sw }: { sw: React.ReactNode }) {
   const { t } = useT();
   const { colors: c } = useSettings();
-  const [layout] = useHomeLayout();
   const m = useMetrics();
   const cols = RCOL(c);
-  const rs = layout.rings;
+  const rs = useDayRings();
   const nest = (i: number): React.ReactNode =>
     i >= rs.length ? null : (
       <Ring value={m[rs[i]].v} max={m[rs[i]].max} size={160 - i * 38} stroke={15} color={cols[i]}>
@@ -126,7 +124,7 @@ function HeroCard({ k, sw }: { k: RingKey; sw: React.ReactNode }) {
   const s = useStreaks();
   const { r } = useRecovery();
   const m = useMetrics()[k];
-  const wGoal = food.plan.water || 2800;
+  const wGoal = food.waterGoal;
   let big = m.big;
   let unit = '';
   let color = c.cobalt;

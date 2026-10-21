@@ -10,7 +10,7 @@ import { Text } from '@/components/Text';
 import { Button, Card, Row, Segmented } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
-import { type DeviceDay, sleepDetail, sourceName, useDevices, vo2Level } from '@/lib/devices';
+import { type DeviceDay, sleepDetail, sourceName, useDevices, useStepGoal, vo2Level } from '@/lib/devices';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { addDays, fmt } from '@/lib/nutrition';
@@ -32,6 +32,7 @@ export default function Reading() {
   const train = useTrain();
   const { session, profile } = useAuth();
   const dev = useDevices(session?.user.id);
+  const stepGoal = useStepGoal(session?.user.id);
   const { k: raw } = useLocalSearchParams<{ k: string }>();
   const k: ReadingKey = raw && raw in INFO ? (raw as ReadingKey) : 'steps';
   const info = INFO[k];
@@ -106,7 +107,8 @@ export default function Reading() {
           return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
         })
       : daily;
-  const last7 = Array.from({ length: 7 }, (_, i) => by.get(addDays(today, i - 6)) ?? (counted ? 0 : null)).filter((x): x is number => x != null);
+  // Counted readings: "usual", averages and the lowest leave out days with nothing logged and today (it isn't over).
+  const last7 = (counted ? Array.from({ length: 7 }, (_, i) => by.get(addDays(today, i - 7))) : Array.from({ length: 7 }, (_, i) => by.get(addDays(today, i - 6)))).filter((x): x is number => x != null);
   const latest = [...(rows ?? [])].sort((a, b) => a.day.localeCompare(b.day)).at(-1);
   const now = by.get(today) ?? (counted ? 0 : (latest?.v ?? null));
   const avg7 = last7.length ? last7.reduce((a, b) => a + b, 0) / last7.length : null;
@@ -117,6 +119,8 @@ export default function Reading() {
   const hours = hourly ?? [];
   const dayVals = hours.map((x) => (x == null || (k === 'hr' && x === 0) ? null : x));
   const vals = (range === 'day' ? dayVals : series).filter((x): x is number => x != null);
+  const statVals = range !== 'day' && counted ? days.filter((d) => d < today && by.has(d)).map((d) => by.get(d) as number) : vals;
+  const goalLine = k === 'steps' ? stepGoal : info.goal;
   const show = (v: number) => (info.dec ? fx(v) : fmt(v));
   const locale = lang === 'ar' ? 'ar-u-nu-latn' : 'en-US';
   // Every third hour, like 12a or 3p (ص / م in Arabic).
@@ -197,18 +201,18 @@ export default function Reading() {
         ) : range === 'day' ? (
           k === 'hr' ? <LineChart values={vals} dots={false} /> : <BarChart values={dayVals} labels={labels} />
         ) : info.bar ? (
-          <BarChart values={series} labels={labels} highlight={series.length - 1} goal={info.goal} />
+          <BarChart values={series} labels={labels} highlight={series.length - 1} goal={goalLine} />
         ) : (
-          <LineChart values={vals} dots={range === 'week'} goal={info.goal} />
+          <LineChart values={vals} dots={range === 'week'} goal={goalLine} />
         )}
       </Card>
-      {vals.length ? (
+      {statVals.length ? (
         <Row gap={8}>
           {(
             [
-              ['Average', vals.reduce((a, b) => a + b, 0) / vals.length],
-              ['Lowest', Math.min(...vals)],
-              ['Highest', Math.max(...vals)],
+              ['Average', statVals.reduce((a, b) => a + b, 0) / statVals.length],
+              ['Lowest', Math.min(...statVals)],
+              ['Highest', Math.max(...statVals)],
             ] as const
           ).map(([a, v]) => (
             <Card key={a} style={{ flex: 1, alignItems: 'center', paddingHorizontal: 6 }}>
@@ -234,7 +238,7 @@ export default function Reading() {
         <Row gap={6} style={{ marginTop: 12 }}>
           <Icon name="info" size={16} color={c.cobalt} />
           <Text variant="small" color="sec" style={{ flex: 1 }}>
-            {W.words(t(info.range, { n: train.plan?.days ?? 3 }))}
+            {k === 'steps' ? t('Your goal: {n} steps a day', { n: fmt(stepGoal) }) : W.words(t(info.range, { n: train.plan?.days ?? 3 }))}
           </Text>
         </Row>
       </Card>

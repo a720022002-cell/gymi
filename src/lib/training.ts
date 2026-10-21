@@ -54,6 +54,8 @@ export type TrainPlan = {
   /** Lighter day (date) and deload week (Sunday of that week). */
   light?: string;
   deload?: string;
+  /** Last day of the latest deload week (or the day it was ended early). Only sessions after it count for a new suggestion. */
+  deloadEnd?: string;
   deloadDismissed?: string;
   /** Train together invites already applied to this plan (session id). */
   togetherDone?: Record<string, true>;
@@ -237,6 +239,38 @@ export function planFromProgram(p: { name: string; days: { name: string; ex: Pla
   return { days: n, injuries: [], split: p.name, week, workouts, machines: {}, homeMode: false, skipped: {}, dismiss: {} };
 }
 
+/**
+ * Your plan from your coach's program, keeping what's yours (injuries, skipped days, machines, level, home mode,
+ * check-in, lighter day and deload). When the weekly layout changes, earlier days are never judged as missed
+ * (weekSince), and this week's own moves stay when their workouts are still in the program.
+ */
+export function planWithProgram(cur: TrainPlan | null | undefined, prog: { id: string; updated_at?: string; name: string; days: { name: string; ex: PlanEx[] }[] }, today: string): TrainPlan {
+  const base = rangePlan(planFromProgram(prog));
+  const layout = !cur || cur.week.some((d, i) => d.w !== base.week[i]?.w);
+  const override = cur?.override && cur.override.week.every((d) => !d.w || base.workouts[d.w]) ? cur.override : undefined;
+  return {
+    ...base,
+    since: cur?.coach?.id === prog.id ? (cur.since ?? today) : today,
+    weekSince: layout ? today : cur?.weekSince,
+    override,
+    overrides: cur?.overrides,
+    skipped: cur?.skipped ?? {},
+    dismiss: cur?.dismiss ?? {},
+    machines: cur?.machines ?? {},
+    checkin: cur?.checkin,
+    light: cur?.light,
+    deload: cur?.deload,
+    deloadEnd: cur?.deloadEnd,
+    deloadDismissed: cur?.deloadDismissed,
+    togetherDone: cur?.togetherDone,
+    level: cur?.level,
+    // Your injuries and home mode are yours, not the program's (injured exercises keep being swapped).
+    injuries: cur?.injuries ?? [],
+    homeMode: cur?.homeMode ?? false,
+    coach: { id: prog.id, updated_at: prog.updated_at },
+  };
+}
+
 /** A free workout name based on another one: "Push" → "Push 2", "Push 3"… */
 export function copyName(workouts: Record<string, unknown>, base: string) {
   const root = base.replace(/ \d+$/, '');
@@ -378,7 +412,8 @@ export function pregSafe(x: PlanEx): string | null {
 /** The workout for today, with injury swaps, short or home version, and last time's numbers. */
 export function buildWorkout(plan: TrainPlan, name: string, opts: { home?: boolean; short?: boolean; light?: boolean; deload?: boolean; preg?: boolean; last: LastSets; top?: Record<string, number> }) {
   const home = opts.home;
-  let base: PlanEx[] = home ? tplEx(WK.Home.ex) : (plan.workouts[name]?.ex ?? []);
+  // The home workout is shaped for your level too (fewer, easier sets for beginners; more for advanced).
+  let base: PlanEx[] = home ? exForLevel(tplEx(WK.Home.ex), plan.level) : (plan.workouts[name]?.ex ?? []);
   // Pregnant: safer exercises (a swap shows the new one's name), at most 3 sets of 10 reps or more.
   if (opts.preg) {
     const seen = new Set<string>();
@@ -402,8 +437,10 @@ export function buildWorkout(plan: TrainPlan, name: string, opts: { home?: boole
   // Lighter day: one set less and about 10% less weight. Deload week: one set less and about 60%.
   // Cut from your best recent normal session, so an old lighter session doesn't make it cut twice.
   // Pregnant: about 20% lighter than your best recent weights (and never pushing for more).
-  const cut = opts.deload ? 0.6 : opts.light ? 0.9 : opts.preg ? 0.8 : 1;
-  if (cut < 1) ex = ex.map((x) => ({ ...x, sets: opts.preg && !opts.light && !opts.deload ? x.sets : Math.max(2, x.sets - 1), target: Math.round((Math.max(x.target, opts.top?.[x.id] ?? 0) * cut) / 2.5) * 2.5 }));
+  // Pregnant and lighter (or deload) together: the lightest of them, so it's never heavier than pregnant alone.
+  const cut = Math.min(opts.deload ? 0.6 : 1, opts.light ? 0.9 : 1, opts.preg ? 0.8 : 1);
+  const fewer = !!(opts.light || opts.deload);
+  if (cut < 1) ex = ex.map((x) => ({ ...x, sets: fewer ? Math.max(1, x.sets - 1) : x.sets, target: Math.round((Math.max(x.target, opts.top?.[x.id] ?? 0) * cut) / 2.5) * 2.5 }));
   let min = home ? WK.Home.min : (plan.workouts[name]?.min ?? workoutMinutes(base));
   if (cut < 1) min = Math.round((min * 0.85) / 5) * 5;
   if (opts.short && ex.length > 3) {
@@ -564,8 +601,11 @@ export function topWeights(logs: { day: string; exercises: { id: string; sets: {
 }
 
 /** Lifts that dropped two sessions in a row (design: deload suggestion). Lighter and deload sessions don't count. */
-export function droppingLifts(all: { day: string; exercises: { id: string; n: string; light?: boolean; sets: { w: number }[] }[] }[], plan?: Pick<TrainPlan, 'light' | 'deload'> | null) {
-  const logs = all.filter((l) => !isLightLog(l, plan));
+export function droppingLifts(all: { day: string; exercises: { id: string; n: string; light?: boolean; sets: { w: number }[] }[] }[], plan?: Pick<TrainPlan, 'light' | 'deload' | 'deloadEnd'> | null) {
+  // Only normal sessions after the last deload week ended, so it isn't suggested again right after one.
+  const ends = [plan?.deloadEnd, plan?.deload ? addDay(plan.deload, 6) : undefined].filter((d): d is string => !!d).sort();
+  const after = ends[ends.length - 1];
+  const logs = all.filter((l) => !isLightLog(l, plan) && (!after || l.day > after));
   const ids = [...new Set(logs.flatMap((l) => l.exercises.map((x) => x.id)))];
   return ids.filter((id) => {
     const w = topWeights(logs, id);

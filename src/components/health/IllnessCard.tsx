@@ -7,6 +7,7 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Row } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
+import { useCycleToday } from '@/lib/cyclePhase';
 import { illnessCheck, useDevices } from '@/lib/devices';
 import { localDay } from '@/lib/nutrition';
 import { useTrain } from '@/lib/train';
@@ -29,9 +30,11 @@ export function IllnessCard() {
   const today = localDay();
   const [closed, setClosed] = useState<string | null>(null);
   const { watch } = useWatchPrefs(session?.user.id);
+  // The luteal phase raises temperature by itself.
+  const luteal = useCycleToday()?.phase === 'Luteal';
   // From the phone's health app, or a band or ring linked directly (its days are deleted when it's unlinked).
   const linked = dev.connected || !!dev.days.find((d) => d.day === today)?.wearable;
-  const ill = linked && watch.illness ? illnessCheck(dev.days, today) : null;
+  const ill = linked && watch.illness ? illnessCheck(dev.days, today, { luteal }) : null;
   if (!ill || closed === today) return null;
   const lighter = !!train.plan && train.plan.light !== today && !train.todayLog;
   return (

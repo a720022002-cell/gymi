@@ -29,7 +29,10 @@ export function useToday() {
   const deload = !!p && p.deload === weekStart(train.today);
   const name = train.todayName;
   const wo = p && name ? buildWorkout(p, name, { home, short, light, deload, preg: train.preg, last: train.last, top: train.top }) : null;
-  return { name, home, short, light, deload, wo, skipped: !!p?.skipped[train.today], done: !!train.todayLog };
+  // Done when today's planned workout was saved today; another workout (like Train together) doesn't count for it.
+  // On a rest day, any workout today shows as done.
+  const log = name ? (train.logs.find((l) => l.day === train.today && (l.name === name.slice(0, 40) || (home && l.name === 'Home'))) ?? null) : train.todayLog;
+  return { name, home, short, light, deload, wo, skipped: !!p?.skipped[train.today], done: !!log, log };
 }
 
 const HOUR = 3_600_000;
@@ -223,6 +226,7 @@ export function WorkoutCard() {
   const next = useNextWorkout();
   const stale = useStaleSession();
   const [skipOpen, setSkipOpen] = useState(false);
+  const [anotherOpen, setAnotherOpen] = useState(false);
   const cycle = useCycleToday();
   const toast = useToast();
   const { r: rec } = useRecovery();
@@ -252,21 +256,49 @@ export function WorkoutCard() {
       </Card>
     );
 
-  if (today.done && train.todayLog)
+  if (today.done && today.log) {
+    const log = today.log;
+    const others = Object.keys(train.plan?.workouts ?? {}).filter((w) => train.plan?.workouts[w]?.ex.length);
     return (
       <Card>
         <Row style={{ justifyContent: 'space-between' }}>
           <Text variant="small" weight={700} color="sec">
-            {workoutTitle(train.todayLog.name, t)}
+            {workoutTitle(log.name, t)}
           </Text>
           <OkChip label={t('Done')} />
         </Row>
         <Text variant="h2" style={{ marginTop: 4 }}>
-          {W.words(t('{m} min, {v} kg lifted', { m: train.todayLog.minutes, v: fmt(W.num(train.todayLog.volume)) }))}
+          {W.words(t('{m} min, {v} kg lifted', { m: log.minutes, v: fmt(W.num(log.volume)) }))}
         </Text>
-        <Button title={t('See summary')} style={{ marginTop: 16 }} onPress={() => router.push({ pathname: '/summary', params: { id: train.todayLog!.id } })} />
+        <Button title={t('See summary')} style={{ marginTop: 16 }} onPress={() => router.push({ pathname: '/summary', params: { id: log.id } })} />
+        {train.session ? (
+          <Button kind="soft" title={t('Continue workout')} style={{ marginTop: 8 }} onPress={() => router.push('/active')} />
+        ) : others.length ? (
+          <Springy onPress={() => setAnotherOpen(true)} style={{ alignSelf: 'center', marginTop: 12 }}>
+            <Text variant="small" weight={700} color="link">
+              {t('Start another workout')}
+            </Text>
+          </Springy>
+        ) : null}
+        <Sheet open={anotherOpen} onClose={() => setAnotherOpen(false)}>
+          <Text variant="h2">{t('Start another workout')}</Text>
+          <Row gap={8} style={{ flexWrap: 'wrap', marginTop: 12 }}>
+            {others.map((w) => (
+              <Chip
+                key={w}
+                title={t(w)}
+                onPress={() => {
+                  setAnotherOpen(false);
+                  router.push({ pathname: '/workout', params: { w } });
+                }}
+              />
+            ))}
+          </Row>
+          <Button kind="soft" title={t('Close')} style={{ marginTop: 16 }} onPress={() => setAnotherOpen(false)} />
+        </Sheet>
       </Card>
     );
+  }
 
   if (!today.name || !today.wo)
     return (

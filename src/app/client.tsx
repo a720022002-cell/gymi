@@ -6,6 +6,7 @@ import { BarChart, LineChart } from '@/components/Charts';
 import { CommitBars, commitTone } from '@/components/coach/Commit';
 import { InviteCode, InvitePlans } from '@/components/coach/Invite';
 import { TodoCard } from '@/components/coach/TodoCard';
+import { WarnChip } from '@/components/food/Chips';
 import { Stepper } from '@/components/food/Stepper';
 import { Thinking } from '@/components/food/Thinking';
 import { Icon, type IconName } from '@/components/Icon';
@@ -18,6 +19,7 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, NavButton, Row, Segmented } from '@/components/ui';
 import { useT } from '@/i18n';
 import { weekdayLetter } from '@/lib/dates';
+import { ALLERGENS } from '@/lib/allergies';
 import { useAuth } from '@/lib/auth';
 import {
   ageOf,
@@ -526,6 +528,21 @@ export default function ClientScreen() {
           </Ring>
         ) : null}
       </Row>
+      {/* The client's food allergies (from their food plan), so plans and meals you send leave them out. */}
+      {(() => {
+        const pl = s.plan as { allergies?: string[]; allergyNote?: string };
+        const list = [...ALLERGENS.filter((a) => pl.allergies?.includes(a.key)).map((a) => t(a.en)), ...(pl.allergyNote?.trim() ? [pl.allergyNote.trim().slice(0, 60)] : [])];
+        return list.length ? (
+          <Row gap={6} style={{ marginTop: 12, flexWrap: 'wrap' }}>
+            <Text variant="xs" weight={700} color="sec">
+              {t('Allergies:')}
+            </Text>
+            {list.map((a) => (
+              <WarnChip key={a} label={a} />
+            ))}
+          </Row>
+        ) : null;
+      })()}
       <View style={{ marginTop: 16, marginBottom: 14 }}>
         <Segmented<Tab>
           value={tab}

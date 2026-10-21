@@ -15,7 +15,7 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Row, Segmented, Springy, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
-import { type FoodPlan, fmt, fmtTime, GOALS, isMinor, kcalFloor, nextMealId, proteinKg, RAMADAN_SWITCH, suggestWater, targets, withMealIds, withPregnancy } from '@/lib/nutrition';
+import { flooredRate, type FoodPlan, fmt, fmtTime, GOALS, isMinor, kcalFloor, nextMealId, proteinKg, RAMADAN_SWITCH, suggestWater, targets, withMealIds, withPregnancy } from '@/lib/nutrition';
 import { CITIES, DEFAULT_CITY, fastTimes } from '@/lib/prayer';
 import { fx } from '@/lib/progress';
 import { useSettings } from '@/theme/settings';
@@ -36,12 +36,14 @@ export default function FoodResults() {
   const f = food.draft ?? food.plan;
   const set = (patch: Partial<FoodPlan>) => food.setDraft({ ...f, ...patch });
   const tg = targets(f);
-  // Lowest we suggest: 10% above your resting burn, at least 1,200 (women) or 1,500 (men) kcal.
-  const floor = kcalFloor(f.weight, food.person);
+  // Lowest we suggest: your resting burn, at least 1,200 (women) or 1,500 (men) kcal.
+  const floor = kcalFloor(f.weight, food.person, f.bf);
+  // A cut held back by that floor: the real weekly rate at these calories.
+  const rate = f.carbG == null ? flooredRate(f, food.person, tg.k) : null;
   const low = tg.k < floor;
   const minor = isMinor(food.person);
-  // Pregnancy mode: what Food will use each day (no deficit, +300 kcal).
-  const pregK = food.preg ? targets(withPregnancy(f, food.person, 300)).k : null;
+  // Pregnancy mode: what Food will use each day (no deficit, plus the trimester's extra).
+  const pregK = food.preg ? targets(withPregnancy(f, food.person, food.pregKcal)).k : null;
 
   useEffect(() => {
     if (!food.draft) food.setDraft({ ...food.plan });
@@ -113,6 +115,13 @@ export default function FoodResults() {
                 goal: t(GOALS[minor ? 2 : f.goal]).toLowerCase(),
               })}
             </Text>
+            {rate != null ? (
+              <Text variant="small" color="sec" center style={{ marginTop: 4 }}>
+                {rate < 0
+                  ? t('Your calories can’t go lower than {n} kcal, so expect about {x} kg a week, not the usual range.', { n: fmt(floor), x: Math.abs(rate).toFixed(2) })
+                  : t('Your calories can’t go lower than {n} kcal, which is about your maintenance. Moving more is the way to lose weight.', { n: fmt(floor) })}
+              </Text>
+            ) : null}
             {low ? (
               <View
                 style={{
@@ -135,7 +144,7 @@ export default function FoodResults() {
                 <Icon name="info" size={20} color={c.cobalt} />
                 <Text variant="small" style={{ flex: 1 }}>
                   {pregK != null
-                    ? t('Pregnancy mode is on: no calorie deficit, and about 300 kcal extra. Your daily goal in Food is {n} kcal. Caffeine: up to 200 mg a day.', { n: fmt(pregK) })
+                    ? t('Pregnancy mode is on: no calorie deficit, and about {x} kcal extra for this stage. Your daily goal in Food is {n} kcal. Caffeine: up to 200 mg a day.', { n: fmt(pregK), x: food.pregKcal })
                     : t('Under 18: we keep you at maintenance so you have energy to grow.')}
                 </Text>
               </View>
@@ -561,6 +570,9 @@ function CityCard({ f, set }: { f: FoodPlan; set: (p: Partial<FoodPlan>) => void
           a: fmtTime(x.maghrib, lang),
           b: fmtTime(x.fajr, lang),
         })}
+      </Text>
+      <Text variant="xs" color="sec" style={{ marginTop: 4 }}>
+        {t('Times are worked out for the city you pick. Outside these cities, check your local times.')}
       </Text>
       <Row gap={8} style={{ marginTop: 12, flexWrap: 'wrap' }}>
         {CITIES.map((cty) => (

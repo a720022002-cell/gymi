@@ -25,6 +25,7 @@ export default function MyCoachScreen() {
   const [k, setK] = useState<MyCoach | null | undefined>(undefined);
   const [confirm, setConfirm] = useState(false);
   const [meet, setMeet] = useState(false);
+  const [ending, setEnding] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -137,7 +138,7 @@ export default function MyCoachScreen() {
           <Card style={{ marginTop: 12, flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
             <Icon name="lock" size={18} color={c.sec} />
             <Text variant="small" color="sec" style={{ flex: 1 }}>
-              {t('Your coach sees your food, workouts, weight and sleep. Cycle data and health tests stay private.')}
+              {t('Your coach sees your food, workouts, weight, sleep and check-ins, steps, water, goal and allergies. Cycle data and blood tests stay private.')}
             </Text>
           </Card>
         </>
@@ -156,9 +157,13 @@ export default function MyCoachScreen() {
         <Button
           kind="danger"
           title={t(k.status === 'active' ? 'End coaching' : 'Cancel request')}
+          loading={ending}
           style={{ marginTop: 16 }}
           onPress={async () => {
-            await endCoaching(k.id);
+            setEnding(true);
+            const ok = await endCoaching(k.id);
+            setEnding(false);
+            if (!ok) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
             setConfirm(false);
             setK(null);
             toast(t('Done. You can find a new coach any time.'), { icon: 'check' });

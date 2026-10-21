@@ -29,8 +29,11 @@ export function injuriesStrained(e: { id: string; name_en?: string }, injuries: 
   return injuries.filter((i) => like.some((x) => x.stress?.includes(i)));
 }
 
-/** Keep only suggestions that make sense for this plan, and look up the exercises they name. */
-export async function prepareSuggestions(raw: unknown, plan: TrainPlan | null, today?: string): Promise<Suggestion[]> {
+/**
+ * Keep only suggestions that make sense for this plan, and look up the exercises they name. `noCut` (pregnant,
+ * after birth or breastfeeding, or the luteal phase): a calorie target under `kcal` (today's target) is dropped.
+ */
+export async function prepareSuggestions(raw: unknown, plan: TrainPlan | null, today?: string, safety?: { noCut?: boolean; kcal?: number | null }): Promise<Suggestion[]> {
   if (!Array.isArray(raw)) return [];
   const out: Suggestion[] = [];
   const names = plan ? Object.keys(plan.workouts) : [];
@@ -42,7 +45,9 @@ export async function prepareSuggestions(raw: unknown, plan: TrainPlan | null, t
     if (x?.type === 'targets') {
       const kcal = num(x.kcal), protein = num(x.protein), water = num(x.water);
       const t: Suggestion = { type: 'targets', title };
-      if (kcal >= 1200 && kcal <= 5000) t.kcal = Math.round(kcal / 10) * 10;
+      // Never fewer calories while pregnant, after birth or in the luteal phase.
+      const cut = !!safety?.noCut && (!safety.kcal || kcal < safety.kcal);
+      if (kcal >= 1200 && kcal <= 5000 && !cut) t.kcal = Math.round(kcal / 10) * 10;
       if (protein >= 40 && protein <= 300) t.protein = Math.round(protein);
       if (water >= 1000 && water <= 6000) t.water = Math.round(water / 100) * 100;
       if (t.kcal || t.protein || t.water) out.push(t);
@@ -144,10 +149,11 @@ export function applyPlanChanges(plan: TrainPlan, changes: PlanChange[], today: 
 }
 
 /** The food plan with new calorie, protein or water goals. */
-export function applyTargets(plan: FoodPlan, s: Extract<ChatAction, { type: 'targets' }>): FoodPlan {
+export function applyTargets(plan: FoodPlan, s: Extract<ChatAction, { type: 'targets' }>, kcalExtra = 0): FoodPlan {
+  // The coach sees your goal with the pregnancy/nursing extra in it; the plan keeps it without (it's added back on top).
   return {
     ...plan,
-    ...(s.kcal ? { kcal: s.kcal, carbG: null } : {}),
+    ...(s.kcal ? { kcal: Math.max(1200, s.kcal - kcalExtra), carbG: null } : {}),
     ...(s.protein && plan.weight ? { perKg: Math.round((s.protein / proteinKg(plan.weight)) * 100) / 100 } : {}),
     ...(s.water ? { water: s.water } : {}),
   };

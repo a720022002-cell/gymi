@@ -1,12 +1,22 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { addDays } from './nutrition';
+import { addDays, localDay } from './nutrition';
 import { supabase } from './supabase';
 
 export type CycleMode = 'track' | 'ttc' | 'preg' | 'post' | 'peri';
 export type CycleReminders = { period?: boolean; fertile?: boolean; log?: boolean };
 /** Pregnancy checklist: ticked items plus the next doctor visit. */
-export type PregChecklist = { folic?: boolean; water?: boolean; protein?: boolean; visit?: string | null; visitRemind?: boolean; day?: string };
+export type PregChecklist = {
+  folic?: boolean;
+  water?: boolean;
+  protein?: boolean;
+  visit?: string | null;
+  visitRemind?: boolean;
+  day?: string;
+  /** Day the saved preg_week / post_week was true (the week moves on from there by itself). */
+  pregFrom?: string;
+  postFrom?: string;
+};
 export type CycleSettings = {
   mode: CycleMode;
   cycle_len: number;
@@ -20,6 +30,8 @@ export type CycleSettings = {
   /** Pregnancy-safe workouts (set on the pregnancy page or the Train page; Train reads it through pregnancySafe()). */
   preg_adjust?: boolean;
   checklist?: PregChecklist;
+  /** When the settings were last saved (server only); the anchor for weeks saved before pregFrom/postFrom existed. */
+  updated_at?: string;
 };
 export type Period = { id: string; start_day: string; end_day: string | null };
 export type CycleLog = Record<string, string[]>;
@@ -133,7 +145,9 @@ let cur: { uid: string; anon: boolean } | null = null;
 async function readLocal(uid: string): Promise<Local> {
   try {
     const v = await AsyncStorage.getItem(LOCAL_KEY(uid));
-    return v ? (JSON.parse(v) as Local) : { settings: DEFAULT_CYCLE, periods: [], logs: {} };
+    if (!v) return { settings: DEFAULT_CYCLE, periods: [], logs: {} };
+    const l = JSON.parse(v) as Local;
+    return { ...l, settings: anchorWeeks(l.settings) };
   } catch {
     return { settings: DEFAULT_CYCLE, periods: [], logs: {} };
   }
@@ -162,13 +176,13 @@ export async function isAnon(uid: string) {
 /** strict: throw when something didn't load (instead of treating it as empty). */
 async function loadServer(uid: string, strict = false): Promise<Local> {
   const [s, p, l] = await Promise.all([
-    supabase.from('cycle_settings').select('mode,cycle_len,period_len,preg_week,post_week,lock,reminders,temp_watch,preg_adjust,checklist').eq('user_id', uid).maybeSingle(),
+    supabase.from('cycle_settings').select('mode,cycle_len,period_len,preg_week,post_week,lock,reminders,temp_watch,preg_adjust,checklist,updated_at').eq('user_id', uid).maybeSingle(),
     supabase.from('cycle_periods').select('id,start_day,end_day').order('start_day'),
     supabase.from('cycle_logs').select('day,data').order('day', { ascending: false }).limit(400),
   ]);
   if (strict && (s.error || p.error || l.error)) throw s.error ?? p.error ?? l.error;
   return {
-    settings: (s.data as CycleSettings) ?? DEFAULT_CYCLE,
+    settings: anchorWeeks((s.data as CycleSettings) ?? DEFAULT_CYCLE),
     periods: (p.data as Period[]) ?? [],
     logs: Object.fromEntries(((l.data as { day: string; data: CycleLog }[]) ?? []).map((x) => [x.day, x.data])) as Record<string, CycleLog>,
   };
@@ -381,6 +395,31 @@ export function nextFertile(now: NonNullable<ReturnType<typeof cycleNow>>, today
   return { from: addDays(ov, -5), to: addDays(ov, 1), ov, next: true };
 }
 
+/**
+ * Saved weeks from before the anchor existed count from when the settings were last saved (else today), so they
+ * keep moving on from now on. Filled in when read; the next save keeps it.
+ */
+function anchorWeeks(s: CycleSettings): CycleSettings {
+  const ck = s.checklist ?? {};
+  const at = s.updated_at?.slice(0, 10) ?? localDay();
+  if ((s.preg_week == null || ck.pregFrom) && (s.post_week == null || ck.postFrom)) return s;
+  return { ...s, checklist: { ...ck, ...(s.preg_week != null && !ck.pregFrom ? { pregFrom: at } : {}), ...(s.post_week != null && !ck.postFrom ? { postFrom: at } : {}) } };
+}
+
+/** This week of pregnancy (4 to 42) or after birth (0 to 104), moved on from the week you saved. Null when not set. */
+export function weekNow(s: Pick<CycleSettings, 'preg_week' | 'post_week' | 'checklist' | 'updated_at'>, kind: 'preg' | 'post', today: string) {
+  const base = kind === 'preg' ? s.preg_week : s.post_week;
+  if (base == null) return null;
+  const from = (kind === 'preg' ? s.checklist?.pregFrom : s.checklist?.postFrom) ?? s.updated_at?.slice(0, 10) ?? today;
+  const w = base + Math.max(0, Math.floor(diff(from, today) / 7));
+  return kind === 'preg' ? Math.max(4, Math.min(42, w)) : Math.max(0, Math.min(104, w));
+}
+
+/** Settings with this week saved as of today. */
+export function withWeek(s: CycleSettings, kind: 'preg' | 'post', week: number, today: string): CycleSettings {
+  return kind === 'preg' ? { ...s, preg_week: week, checklist: { ...s.checklist, pregFrom: today } } : { ...s, post_week: week, checklist: { ...s.checklist, postFrom: today } };
+}
+
 /** Due date from the pregnancy week (week 40 is the due date). */
 export const dueDate = (week: number, today: string) => addDays(today, (40 - week) * 7);
 
@@ -388,8 +427,8 @@ export const dueDate = (week: number, today: string) => addDays(today, (40 - wee
  * True when workouts should be pregnancy-safe: she is in pregnancy mode and turned on
  * "Adjust my workouts for pregnancy". Train can use it to pick lighter, safer exercises.
  */
-export function pregnancySafe(s: Pick<CycleSettings, 'preg_adjust'> | null | undefined) {
-  return !!s?.preg_adjust;
+export function pregnancySafe(s: Pick<CycleSettings, 'preg_adjust' | 'mode'> | null | undefined) {
+  return s?.mode === 'preg' && !!s.preg_adjust;
 }
 
 /** Turn pregnancy-safe workouts on or off from any screen (kept on this phone only in anonymous mode). */

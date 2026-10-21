@@ -18,7 +18,7 @@ import { useT } from '@/i18n';
 import { MEAS_INFO } from '@/lib/health';
 import { fmt } from '@/lib/nutrition';
 import { shortDate } from '@/lib/progress';
-import { blockUser, displayName, type FriendProfile, friendPhotoUrls, friendProfileChecked, friendShowcase, myFriends, removeFriendship, type Showcase } from '@/lib/social';
+import { blockUser, displayName, type FriendProfile, friendPhotoUrls, friendProfileChecked, friendShowcase, myFriendsOrNull, removeFriendship, type Showcase } from '@/lib/social';
 import { useWeight } from '@/lib/units';
 import { BadgeIcon } from '@/components/progress/Streaks';
 import { useSettings } from '@/theme/settings';
@@ -265,9 +265,12 @@ export default function FriendScreen() {
           title={t('Remove friend')}
           style={{ marginTop: 16 }}
           onPress={async () => {
-            const row = (await myFriends()).find((x) => x.id === f.id);
-            if (row) await removeFriendship(row.friendship_id);
+            const list = await myFriendsOrNull();
+            const row = list?.find((x) => x.id === f.id);
+            // Not in the list = already not friends; a failed load or delete says so instead of "removed".
+            const ok = !!list && (!row || (await removeFriendship(row.friendship_id)));
             setConfirm(false);
+            if (!ok) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
             toast(t('{n} removed', { n: name }), { icon: 'users' });
             goBack();
           }}

@@ -15,6 +15,7 @@ import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { addDays, fmt } from '@/lib/nutrition';
 import { fx, shortDate } from '@/lib/progress';
+import { exInfo } from '@/lib/training';
 import { escHtml, pdfIsPrint, pdfPage, type ReportStats, sharePdf, useReportData, useReportStats } from '@/lib/report';
 import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
@@ -45,12 +46,12 @@ export default function ExportScreen() {
     if (inc.weight && x.weight) out.push([t('Weight'), `${W.show(x.weight.first)} → ${W.text(x.weight.last)} (${x.weight.change > 0 ? '+' : ''}${W.show(x.weight.change)})`]);
     if (inc.weight && x.waistChange != null) out.push([t('Waist change'), `${x.waistChange > 0 ? '+' : ''}${fx(x.waistChange)} cm`]);
     if (inc.food) {
-      if (x.caloriesAvg != null) out.push([t('Average calories'), `${fmt(x.caloriesAvg)} kcal${x.calorieGoal ? ` (${t('goal')} ${fmt(x.calorieGoal)})` : ''}`]);
+      if (x.caloriesAvg != null) out.push([t('Average calories'), `${t('{n} kcal', { n: fmt(x.caloriesAvg) })}${x.calorieGoal ? ` (${t('goal')} ${fmt(x.calorieGoal)})` : ''}`]);
       if (x.proteinDays[1]) out.push([t('Protein goal met'), `${Math.round((x.proteinDays[0] / x.proteinDays[1]) * 100)}%`]);
     }
     if (inc.train) {
       out.push([t('Workouts'), x.workouts.planned ? t('{a} of {b}', { a: x.workouts.asPlanned, b: x.workouts.planned }) : String(x.workouts.done)]);
-      x.liftUps.forEach((l) => out.push([l.name, `${W.show(l.from)} → ${W.show(l.to)} ${W.label}`]));
+      x.liftUps.forEach((l) => out.push([exInfo({ id: l.id, n: l.name }, lang).name, `${W.show(l.from)} → ${W.show(l.to)} ${W.label}`]));
     }
     if (inc.sleep && x.sleepAvg != null) out.push([t('Average sleep'), `${fx(x.sleepAvg)} ${t('h')}`]);
     if (inc.health) {
@@ -70,7 +71,7 @@ export default function ExportScreen() {
       const lo = Math.min(...w) - 0.5;
       const hi = Math.max(...w) + 0.5;
       const pts = w.map((v, i) => `${(i / (w.length - 1)) * 500},${80 - ((v - lo) / (hi - lo)) * 76}`).join(' ');
-      svg = `<div class="lbl">${escHtml(t('Weight (kg)'))}</div><svg viewBox="0 0 500 84" width="100%" height="84"><polyline points="${pts}" fill="none" stroke="#3355FF" stroke-width="2.5" stroke-linejoin="round"/></svg>`;
+      svg = `<div class="lbl">${escHtml(W.words(t('Weight (kg)')))}</div><svg viewBox="0 0 500 84" width="100%" height="84"><polyline points="${pts}" fill="none" stroke="#3355FF" stroke-width="2.5" stroke-linejoin="round"/></svg>`;
     }
     const html = pdfPage({
       lang,

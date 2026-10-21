@@ -16,10 +16,14 @@ export default function Customize() {
   const female = useAuth().profile?.gender === 'female';
   const { colors: c } = useSettings();
   const [l, save] = useHomeLayout();
-  const move = (i: number, d: number) => {
-    const j = i + d;
-    if (j < 0 || j >= l.order.length) return;
+  // Cards you can see here (the cycle card is only for women); moves swap with the next visible card.
+  const shown = l.order.filter((k) => k !== 'cycle' || female);
+  const move = (k: (typeof l.order)[number], d: number) => {
+    const other = shown[shown.indexOf(k) + d];
+    if (!other) return;
     const order = [...l.order];
+    const i = order.indexOf(k);
+    const j = order.indexOf(other);
     [order[i], order[j]] = [order[j], order[i]];
     save({ ...l, order });
   };
@@ -46,13 +50,13 @@ export default function Customize() {
         {t('Move cards up or down. Turn off what you don’t need.')}
       </Text>
       <List>
-        {l.order.filter((k) => k !== 'cycle' || female).map((k, i) => (
+        {shown.map((k, i) => (
           <ListRow key={k} first={!i}>
             <View style={{ gap: 2 }}>
-              <Springy accessibilityLabel={t('Move up')} disabled={!i} onPress={() => move(i, -1)} style={{ width: 32, height: 24, alignItems: 'center', justifyContent: 'center', opacity: i ? 1 : 0.3 }}>
+              <Springy accessibilityLabel={t('Move up')} disabled={!i} onPress={() => move(k, -1)} style={{ width: 32, height: 24, alignItems: 'center', justifyContent: 'center', opacity: i ? 1 : 0.3 }}>
                 <Icon name="up" size={16} color={c.sec} />
               </Springy>
-              <Springy accessibilityLabel={t('Move down')} disabled={i === l.order.length - 1} onPress={() => move(i, 1)} style={{ width: 32, height: 24, alignItems: 'center', justifyContent: 'center', opacity: i === l.order.length - 1 ? 0.3 : 1 }}>
+              <Springy accessibilityLabel={t('Move down')} disabled={i === shown.length - 1} onPress={() => move(k, 1)} style={{ width: 32, height: 24, alignItems: 'center', justifyContent: 'center', opacity: i === shown.length - 1 ? 0.3 : 1 }}>
                 <Icon name="down" size={16} color={c.sec} />
               </Springy>
             </View>

@@ -1,6 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { type Dispatch, type SetStateAction, useCallback, useState } from 'react';
 import { TextInput, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
@@ -357,7 +357,7 @@ function GroupsTab({ groups, challenges, hasFriends, me }: { groups: Group[]; ch
   );
 }
 
-function ActivityTab({ items, setItems }: { items: FeedItem[] | null; setItems: (f: FeedItem[]) => void }) {
+function ActivityTab({ items, setItems }: { items: FeedItem[] | null; setItems: Dispatch<SetStateAction<FeedItem[] | null>> }) {
   const { t, lang } = useT();
   const W = useWeight();
   const { colors: c } = useSettings();
@@ -410,7 +410,12 @@ function ActivityTab({ items, setItems }: { items: FeedItem[] | null; setItems: 
                   const on = !a.cheered;
                   setItems(items.map((x) => (x.id === a.id ? { ...x, cheered: on, cheers: x.cheers + (on ? 1 : -1) } : x)));
                   const ok = await cheer(a.id, on);
-                  if (ok && on) toast(t('You cheered {n} on. {n} will see it.', { n: displayName(a) }), { icon: 'heart' });
+                  // Didn't save: put the cheer back the way it was.
+                  if (!ok) {
+                    setItems((xs) => (xs ?? []).map((x) => (x.id === a.id ? { ...x, cheered: !on, cheers: x.cheers + (on ? -1 : 1) } : x)));
+                    return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+                  }
+                  if (on) toast(t('You cheered {n} on. {n} will see it.', { n: displayName(a) }), { icon: 'heart' });
                 }}
               />
             ) : null}
@@ -474,9 +479,19 @@ function AddFriendSheet({ open, onClose, onChanged }: { open: boolean; onClose: 
                 {t('Requested')}
               </Text>
             ) : r.f.relation === 'received' ? (
-              <Text variant="small" weight={700} color="link">
-                {t('Wants to be friends')}
-              </Text>
+              // They already asked you: accept here.
+              <Button
+                small
+                title={t('Accept')}
+                onPress={async () => {
+                  const row = (await myFriendsOrNull())?.find((x) => x.id === r.f!.id && x.status === 'pending' && x.incoming);
+                  if (row && (await acceptRequest(row.friendship_id))) {
+                    toast(t('You and {n} are now friends', { n: displayName(r.f!) }), { icon: 'users' });
+                    setRes({ q: clean, f: { ...r.f!, relation: 'friends' } });
+                    onChanged();
+                  } else toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+                }}
+              />
             ) : (
               <Button
                 small

@@ -42,7 +42,8 @@ type Settings = {
   reduceTransparency: boolean;
   reduceSetting: boolean;
   setTheme: (t: ThemePref) => void;
-  setLang: (l: Lang) => void;
+  /** resume: a screen to open again after the restart Arabic needs on phones (e.g. during sign-up). */
+  setLang: (l: Lang, resume?: string) => void;
   setReduce: (r: boolean) => void;
   unit: WeightUnit;
   setUnit: (u: WeightUnit) => void;
@@ -51,6 +52,8 @@ type Settings = {
 };
 
 const KEY = 'adro.settings.v1';
+/** The screen to reopen after a language restart (read once by the root layout). */
+export const RESUME_KEY = 'adro.resume.v1';
 const DEFAULTS: Stored = { theme: 'system', lang: null, reduce: false, unit: 'kg', reduceReset: true };
 
 const Ctx = createContext<Settings | null>(null);
@@ -153,7 +156,7 @@ export function SettingsProvider({ children }: PropsWithChildren) {
       reduceTransparency: stored.reduce || systemReduce,
       reduceSetting: stored.reduce,
       setTheme: (theme) => save({ theme }),
-      setLang: (l) => {
+      setLang: (l, resume) => {
         save({ lang: l });
         // The phone app only flips left and right after a restart: save the choice first, then restart on the new side.
         const rtl = l === 'ar';
@@ -161,6 +164,7 @@ export function SettingsProvider({ children }: PropsWithChildren) {
           I18nManager.allowRTL(rtl);
           I18nManager.forceRTL(rtl);
           AsyncStorage.setItem(KEY, JSON.stringify({ ...stored, lang: l }))
+            .then(() => (resume ? AsyncStorage.setItem(RESUME_KEY, resume) : undefined))
             .then(() => reloadAppAsync('Language changed'))
             .catch(() => {});
         }

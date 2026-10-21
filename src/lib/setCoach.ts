@@ -14,6 +14,26 @@ const weightFor = (oneRm: number, reps: number, step: number, dir: 'up' | 'down'
   return Math.max(step, f(raw / step - 1e-9) * step);
 };
 
+/** Same top weight for 3 or more workouts in a row (newest first), each reaching the low end of the range at it. */
+export function stallOf(all: SetIn[][], lo: number): { w: number; n: number } | null {
+  const hist = all.filter((h) => h.some((s) => s.w > 0));
+  if (hist.length < 3) return null;
+  const top = (h: SetIn[]) => Math.max(...h.map((s) => s.w));
+  const w = top(hist[0]);
+  let n = 0;
+  for (const h of hist) {
+    if (Math.abs(top(h) - w) > 0.01 || !h.filter((s) => s.w === w).some((s) => s.r >= lo)) break;
+    n++;
+  }
+  return n >= 3 ? { w, n } : null;
+}
+
+/** The weight to start at when you've stalled (the coach's "time to go up: start at …"), or null. */
+export const stallUp = (hist: SetIn[][], lo: number, step: number) => {
+  const st = stallOf(hist, lo);
+  return st ? Math.round((st.w + step) * 10000) / 10000 : null;
+};
+
 /**
  * Advice for an exercise. `done`: today's finished working sets (in order). `left`: working sets still to do.
  * `hist`: your last normal workouts with this exercise, newest first, each its working sets. `step`: one weight jump.
@@ -25,16 +45,7 @@ export function coachSet(o: { done: SetIn[]; left: number; lo: number; hi: numbe
   const top = (h: SetIn[]) => Math.max(...h.map((s) => s.w));
 
   // Same top weight for 3 or more workouts in a row, with every one in the rep range: time to go up.
-  const stall = (() => {
-    if (hist.length < 3) return null;
-    const w = top(hist[0]);
-    let n = 0;
-    for (const h of hist) {
-      if (Math.abs(top(h) - w) > 0.01 || !h.filter((s) => s.w === w).some((s) => s.r >= lo)) break;
-      n++;
-    }
-    return n >= 3 ? { w, n } : null;
-  })();
+  const stall = stallOf(hist, lo);
 
   // Before the first set: from your last workouts.
   if (!done.length) {

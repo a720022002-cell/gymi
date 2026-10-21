@@ -12,7 +12,7 @@ import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Row } from '@/components/ui';
 import { useT } from '@/i18n';
-import { CY_PLAN, cycleNow, deletePeriod, endPeriod, nextFertile, saveSettings, startPeriod } from '@/lib/cycle';
+import { CY_PLAN, cycleNow, deletePeriod, endPeriod, nextFertile, saveSettings, startPeriod, weekNow, withWeek } from '@/lib/cycle';
 import { useFood } from '@/lib/food';
 import { shortDate } from '@/lib/progress';
 import { useSettings } from '@/theme/settings';
@@ -26,7 +26,7 @@ export function TodayTab({ st, reload, uid }: { st: State; reload: () => void; u
   const [pastOpen, setPastOpen] = useState(false);
   const s = st.settings;
   if (s.mode === 'preg') return <Pregnancy s={s} save={async (next) => (await saveSettings(uid, next), reload())} />;
-  if (s.mode === 'post') return <AfterBirth week={s.post_week ?? 2} set={async (w) => (await saveSettings(uid, { ...s, post_week: w }), reload())} />;
+  if (s.mode === 'post') return <AfterBirth week={weekNow(s, 'post', today) ?? 2} set={async (w) => (await saveSettings(uid, withWeek(s, 'post', w, today)), reload())} />;
   const now = cycleNow(st.periods, s, today);
   const lg = st.logs[today] ?? {};
   const logged = Object.values(lg).flat();

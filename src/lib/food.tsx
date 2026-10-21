@@ -3,27 +3,33 @@ import { AppState } from 'react-native';
 
 import { caffeineCheck, caffeineOf, caffeineToday, setCaffeinePregnant, showCaffeineAlert } from './caffeine';
 import { useAuth } from './auth';
+import { newId } from './coach';
 import type { MealPlan } from './coaching';
-import { cycleVersion, peekCycle } from './cycle';
+import { cycleVersion, peekCycle, weekNow } from './cycle';
 import {
   addDays,
   ageFromIso,
+  bfOf,
+  bmr,
   defaultPlan,
   type FoodPlan,
   hhmmOf,
   isMinor,
+  isRamadan,
   kcalFloor,
   localDay,
   type Macros,
+  maintenance,
   mealAt,
-  oldSuggestKcal,
   type Person,
   planMeals,
-  RAMADAN_SWITCH,
+  pregExtra,
   recalcTargets,
   targets,
+  untouchedKcal,
   withPregnancy,
 } from './nutrition';
+import { plannedOn, type TrainPlan } from './training';
 import { extraMoveKcal, pullHealth, pushHealth, useDevices, watchCardio } from './devices';
 import { supabase } from './supabase';
 
@@ -65,7 +71,8 @@ export type SavedMeal = {
 
 export type NewSavedMeal = Omit<SavedMeal, 'id' | 'code' | 'from_code'> & { code?: string; from_code?: string | null };
 
-export type Move = { id: string; day: string; kcal: number };
+/** `grp`: the balancing it came from (all its days share it; older moves have none). `kind`: 'balance' when it came from the balance sheet. */
+export type Move = { id: string; day: string; kcal: number; grp?: string | null; kind?: string | null };
 
 export type WaterLog = { id: string; ml: number; kind: string; created_at: string };
 
@@ -98,6 +105,9 @@ type Food = {
   /** The day the loaded logs and water belong to (for a moment after changing day, still the old one). */
   loadedDay: string | null;
   setupDone: boolean;
+  /** Something didn't load (no connection): what's on screen is from before, or nothing yet. `reload` tries again. */
+  loadError: boolean;
+  reload: () => void;
   plan: FoodPlan;
   person: Person;
   /** Unsaved plan while going through setup or editing targets. */
@@ -109,8 +119,16 @@ type Food = {
   /** Set after targets were updated for a new weight (Food shows a toast, then clears it). */
   weightNote: number | null;
   clearWeightNote: () => void;
-  /** Pregnancy mode is on (cycle tracking): no calorie deficit, +300 kcal, caffeine up to 200 mg. */
+  /** Pregnancy mode is on (cycle tracking): no calorie deficit, the trimester's extra calories, caffeine up to 200 mg. */
   preg: boolean;
+  /** After birth (cycle tracking): breastfeeding, +400 kcal and more water. */
+  nursing: boolean;
+  /** Extra calories a day shown for pregnancy (by trimester) or breastfeeding. Never saved in the plan. */
+  pregKcal: number;
+  /** The day's water goal: your plan's, plus a training day, cardio, pregnancy or breastfeeding. */
+  waterGoal: number;
+  /** Extra water in today's goal (ml), from training, cardio, pregnancy or breastfeeding. */
+  waterExtra: number;
   /** A patch, or a function that makes one from the newest plan (for undo after other changes). */
   updatePlan: (patch: Partial<FoodPlan> | ((cur: FoodPlan) => Partial<FoodPlan>)) => void;
   logs: FoodLog[];
@@ -140,14 +158,17 @@ type Food = {
   /** Copy someone's meal into your saved meals by its code. */
   addMealByCode: (code: string) => Promise<{ status: 'ok' | 'not_found' | 'exists' | 'slow' | 'failed'; meal?: SavedMeal }>;
   moves: Move[];
-  addMoves: (m: { day: string; kcal: number }[]) => Promise<Move[]>;
-  removeMoves: (ids: string[]) => Promise<void>;
+  /** One balancing: all rows share a new id (grp). */
+  addMoves: (m: { day: string; kcal: number }[], kind?: string) => Promise<Move[]>;
+  /** Remove moves by id, and whole balancings by their grp (also their days that aren't loaded). */
+  removeMoves: (ids: string[], grps?: string[]) => Promise<void>;
   water: number;
   waterLogs: WaterLog[];
   deleteWater: (id: string) => Promise<WaterLog | null>;
   /** Cardio today: what you logged plus the cardio your watch recorded. Its calories are added to today's budget. */
   cardio: Cardio[];
-  /** Calories added to today's budget: cardio, plus the watch's extra movement (moveKcal). */
+  /** Calories added to today's budget: cardio (only what's beyond your resting burn for those minutes, since your goal
+   * already counts that), plus the watch's extra movement (moveKcal). */
   burned: number;
   /** From the watch: active calories beyond your usual day that no cardio explains. */
   moveKcal: number;
@@ -188,6 +209,12 @@ export function FoodProvider({ children }: PropsWithChildren) {
   const [readyFor, setReadyFor] = useState<string | null>(null);
   const ready = !!userId && readyFor === userId;
   const [setupDone, setSetupDone] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [loadNo, setLoadNo] = useState(0);
+  const reload = useCallback(() => {
+    setLoadError(false);
+    setLoadNo((n) => n + 1);
+  }, []);
   const [plan, setPlan] = useState<FoodPlan>(defaultPlan(80));
   const [draft, setDraft] = useState<FoodPlan | null>(null);
   const [logs, setLogs] = useState<FoodLog[]>([]);
@@ -201,16 +228,20 @@ export function FoodProvider({ children }: PropsWithChildren) {
   const [balance, openBalance] = useState<'over' | 'under' | null>(null);
   const [logOpen, setLogOpenState] = useState(false);
   const [typeSeed, setTypeSeed] = useState<string | null>(null);
-  const [coachTargets, setCoachTargets] = useState<Food['coachTargets']>(null);
+  // What the coach set: typed numbers, else the meal plan's totals (either may be missing).
+  const [coachSet, setCoachSet] = useState<{ kcal: number | null; protein: number | null; name: string } | null>(null);
+  const [trained, setTrained] = useState<{ day: string; on: boolean } | null>(null);
   const [coach, setCoach] = useState<Food['coach']>(null);
   const [coachMeals, setCoachMeals] = useState<MealPlan | null>(null);
   const [weightNote, setWeightNote] = useState<number | null>(null);
   const clearWeightNote = useCallback(() => setWeightNote(null), []);
   // Pregnancy mode lives with the cycle data; re-read when it changes (checked every minute and when the app comes back).
   const [cycleVer, setCycleVer] = useState(cycleVersion());
-  const [cyc, setCyc] = useState<{ uid: string; preg: boolean } | null>(null);
+  const [cyc, setCyc] = useState<{ uid: string; mode: string; pregWeek: number | null } | null>(null);
   const female = profile?.gender === 'female';
-  const preg = female && !!cyc && cyc.uid === userId && cyc.preg;
+  const preg = female && !!cyc && cyc.uid === userId && cyc.mode === 'preg';
+  const nursing = female && !!cyc && cyc.uid === userId && cyc.mode === 'post';
+  const pregKcal = pregExtra(preg ? 'preg' : nursing ? 'post' : null, cyc?.pregWeek);
   const setLogOpen = useCallback((v: boolean) => {
     setLogOpenState(v);
     if (!v) setTypeSeed(null);
@@ -250,12 +281,16 @@ export function FoodProvider({ children }: PropsWithChildren) {
     if (!userId || !female) return;
     let alive = true;
     peekCycle(userId)
-      .then((c) => alive && setCyc({ uid: userId, preg: c.settings?.mode === 'preg' }))
+      .then((c) => {
+        if (!alive) return;
+        const st = c.settings;
+        setCyc({ uid: userId, mode: st?.mode ?? 'track', pregWeek: st?.mode === 'preg' ? weekNow(st, 'preg', today) : null });
+      })
       .catch(() => {});
     return () => {
       alive = false;
     };
-  }, [userId, female, cycleVer]);
+  }, [userId, female, cycleVer, today]);
 
   // Caffeine checks anywhere in the app use 200 mg a day in pregnancy.
   useEffect(() => {
@@ -287,18 +322,26 @@ export function FoodProvider({ children }: PropsWithChildren) {
       const weekEnd = addDays(today, 7);
       const from = day < today ? day : today;
       const seq = saveSeq.current;
-      const [p, l, s, m, w, cd, st, mc, mp] = await Promise.all([
+      const [p, l, s, m, w, cd, st, mc, mp, wl, tp] = await Promise.all([
         supabase.from('food_plans').select('*').eq('user_id', userId).maybeSingle(),
         supabase.from('food_logs').select('*').eq('day', day).order('created_at'),
         supabase.from('saved_meals').select('*').order('created_at', { ascending: false }),
-        supabase.from('calorie_moves').select('id,day,kcal').gte('day', from).lte('day', weekEnd),
+        // From the day you're looking at (a past day's own moves count for its goal) to a week ahead.
+        supabase.from('calorie_moves').select('id,day,kcal,grp,kind').gte('day', from).lte('day', weekEnd),
         supabase.from('water_logs').select('id,ml,kind,created_at').eq('day', day).order('created_at'),
         supabase.from('cardio_logs').select('id,kind,name,minutes,intensity,kcal,created_at').eq('day', day).order('created_at'),
         supabase.from('step_logs').select('steps').eq('day', day).maybeSingle(),
         supabase.rpc('my_coach'),
         supabase.rpc('my_coach_plans'),
+        // A training day (a workout logged or planned) needs more water.
+        supabase.from('workout_logs').select('id').eq('day', day).limit(1),
+        supabase.from('train_plans').select('plan').eq('user_id', userId).maybeSingle(),
       ]);
       if (!alive) return;
+      // Anything that didn't load keeps what's on screen (never an empty day, and never the setup screen for a plan
+      // that's there but didn't arrive); Food shows "try again".
+      const failed = [p, l, s, m, w, cd, st, mc, mp].some((x) => x.error);
+      setLoadError(failed);
       const pw = Number(profile?.weight_kg ?? 0);
       const base = defaultPlan(pw || 80);
       let loaded = p.data?.plan ? { ...base, ...(p.data.plan as FoodPlan) } : base;
@@ -306,10 +349,10 @@ export function FoodProvider({ children }: PropsWithChildren) {
       // Plans made before the calorie floor that are still under it (and untouched) are lifted to it.
       // A change waiting to be saved, or saved since this load began, is newer than what the server sent: keep it.
       const newer = savePending.current || saving.current > 0 || saveSeq.current !== seq;
-      if (p.data?.setup_done && !newer) {
+      if (!p.error && p.data?.setup_done && !newer) {
         const who = personRef.current;
         const stale = pw > 0 && pw !== weighedRef.current && Math.abs(pw - loaded.weight) >= 2;
-        const unsafe = loaded.carbG == null && loaded.kcal < kcalFloor(loaded.weight, who) && loaded.kcal === oldSuggestKcal(loaded, who);
+        const unsafe = loaded.carbG == null && loaded.kcal < kcalFloor(loaded.weight, who, loaded.bf) && untouchedKcal(loaded, who);
         // Under 18 never cuts or bulks.
         const minor = isMinor(who) && loaded.goal !== 2;
         if (stale || unsafe || minor) {
@@ -318,37 +361,48 @@ export function FoodProvider({ children }: PropsWithChildren) {
           if (stale) setWeightNote(loaded.weight);
         }
       }
-      if (newer) loaded = planRef.current;
-      setPlan(RAMADAN_SWITCH ? loaded : { ...loaded, ramadan: false });
-      if (!newer) setSetupDone(!!p.data?.setup_done);
-      setLogs((l.data as FoodLog[]) ?? []);
-      setLoadedDay(day);
-      setSaved((s.data as SavedMeal[]) ?? []);
-      setMoves((m.data as Move[]) ?? []);
-      setWaterLogs((w.data as WaterLog[]) ?? []);
-      setCardio((cd.data as Cardio[]) ?? []);
-      setStepsState((st.data as { steps: number } | null)?.steps ?? 0);
-      const co = ((mc.data as { id: string; status: string; kcal: number | null; protein: number | null; name: string | null; username: string }[] | null) ?? [])[0];
-      const active = co?.status === 'active';
-      const plan = active ? ((mp.data as { meals: MealPlan | null } | null)?.meals ?? null) : null;
-      const planK = plan ? plan.meals.reduce((a, x) => a + (+x.k || 0), 0) : 0;
-      const planP = plan ? plan.meals.reduce((a, x) => a + (+x.p || 0), 0) : 0;
-      setCoach(active ? { name: co.name || co.username, link: co.id } : null);
-      setCoachMeals(plan && plan.meals.length ? plan : null);
-      // The coach's meal plan sets the day's calories and protein; otherwise the numbers the coach typed in.
-      setCoachTargets(
-        active && planK > 0 && planP > 0
-          ? { kcal: Math.round(planK), protein: Math.round(planP), name: co.name || co.username }
-          : active && co.kcal && co.protein
-            ? { kcal: co.kcal, protein: co.protein, name: co.name || co.username }
-            : null,
-      );
+      // Ramadan mode only counts during Ramadan (from the phone's Islamic calendar); outside it, it's off (you turn it
+      // on again next Ramadan).
+      if (!p.error) {
+        if (newer) loaded = planRef.current;
+        setPlan(isRamadan(today) ? loaded : { ...loaded, ramadan: false });
+        if (!newer) setSetupDone(!!p.data?.setup_done);
+      }
+      if (!l.error) {
+        setLogs((l.data as FoodLog[]) ?? []);
+        setLoadedDay(day);
+      }
+      if (!s.error) setSaved((s.data as SavedMeal[]) ?? []);
+      if (!m.error) setMoves((m.data as Move[]) ?? []);
+      if (!w.error) setWaterLogs((w.data as WaterLog[]) ?? []);
+      if (!cd.error) setCardio((cd.data as Cardio[]) ?? []);
+      if (!st.error) setStepsState((st.data as { steps: number } | null)?.steps ?? 0);
+      let planned = false;
+      try {
+        const tplan = (tp.data as { plan: TrainPlan | null } | null)?.plan;
+        planned = !!tplan && plannedOn({ ...tplan, skipped: tplan.skipped ?? {} }, day);
+      } catch {}
+      setTrained({ day, on: !!wl.data?.length || planned });
+      if (!mc.error && !mp.error) {
+        const co = ((mc.data as { id: string; status: string; kcal: number | null; protein: number | null; name: string | null; username: string }[] | null) ?? [])[0];
+        const active = co?.status === 'active';
+        const plan = active ? ((mp.data as { meals: MealPlan | null } | null)?.meals ?? null) : null;
+        const planK = plan ? plan.meals.reduce((a, x) => a + (+x.k || 0), 0) : 0;
+        const planP = plan ? plan.meals.reduce((a, x) => a + (+x.p || 0), 0) : 0;
+        setCoach(active ? { name: co.name || co.username, link: co.id } : null);
+        setCoachMeals(plan && plan.meals.length ? plan : null);
+        // Same rule as the server (coach_client_targets): the numbers the coach typed first, then the meal plan's
+        // totals. Calories or protein alone is enough; the other one stays yours.
+        const kcal = co?.kcal && co.kcal > 0 ? co.kcal : planK > 0 ? Math.round(planK) : null;
+        const protein = co?.protein && co.protein > 0 ? co.protein : planP > 0 ? Math.round(planP) : null;
+        setCoachSet(active && (kcal || protein) ? { kcal, protein, name: co.name || co.username } : null);
+      }
       setReadyFor(userId);
     })();
     return () => {
       alive = false;
     };
-  }, [userId, today, day, profile?.weight_kg, upsertPlan]);
+  }, [userId, today, day, profile?.weight_kg, upsertPlan, loadNo]);
 
   const savePlan = useCallback(
     async (p: FoodPlan, done?: boolean) => {
@@ -402,11 +456,20 @@ export function FoodProvider({ children }: PropsWithChildren) {
     [userId, upsertPlan],
   );
 
+  // Your targets with pregnancy's or breastfeeding's extra on top (only shown; the plan keeps its own numbers).
+  const own = useMemo(() => targets(preg ? withPregnancy(plan, person, pregKcal) : nursing ? withPregnancy(plan, person, pregKcal, false) : plan), [plan, preg, nursing, pregKcal, person]);
+  const coachTargets = useMemo<Food['coachTargets']>(() => {
+    if (!coachSet) return null;
+    // Pregnant: never under maintenance, even when the coach set fewer calories.
+    const floor = preg ? Math.round(maintenance(plan, person) / 10) * 10 : 0;
+    return { kcal: Math.max(coachSet.kcal ?? own.k, floor), protein: coachSet.protein ?? own.p, name: coachSet.name };
+  }, [coachSet, own, preg, plan, person]);
   const target = useMemo(() => {
-    const base = targets(preg ? withPregnancy(plan, person, 300) : plan);
-    if (!coachTargets) return base;
-    return { k: coachTargets.kcal, p: coachTargets.protein, f: base.f, c: Math.max(0, Math.round((coachTargets.kcal - coachTargets.protein * 4 - base.f * 9) / 4)) };
-  }, [plan, coachTargets, preg, person]);
+    if (!coachTargets) return own;
+    // Calories from the coach: fat is a quarter of them (as in our own targets), carbs the rest.
+    const f = Math.round((coachTargets.kcal * 0.257) / 9);
+    return { k: coachTargets.kcal, p: coachTargets.protein, f, c: Math.max(0, Math.round((coachTargets.kcal - coachTargets.protein * 4 - f * 9) / 4)) };
+  }, [own, coachTargets]);
   const eaten = useMemo(
     () => logs.reduce((a, x) => ({ k: a.k + +x.kcal, p: a.p + +x.protein, c: a.c + +x.carbs, f: a.f + +x.fat }), { k: 0, p: 0, c: 0, f: 0 }),
     [logs],
@@ -424,7 +487,14 @@ export function FoodProvider({ children }: PropsWithChildren) {
   );
   const cardioKcal = cardio.reduce((a, x) => a + x.kcal, 0);
   const moveKcal = extraMoveKcal(dev.days, day, cardioKcal);
-  const burned = cardioKcal + moveKcal;
+  // Your goal already counts what you burn at rest (and your usual activity), so cardio adds only what it burns beyond
+  // resting for those minutes.
+  const restPerMin = bmr(plan.weight, person, bfOf(plan, person)) / 1440;
+  const netCardio = Math.round(cardio.reduce((a, x) => a + Math.max(0, x.kcal - restPerMin * (+x.minutes || 0)), 0));
+  const burned = netCardio + moveKcal;
+  const cardioMin = cardio.reduce((a, x) => a + (+x.minutes || 0), 0);
+  const waterExtra = (trained?.day === day && trained.on ? 500 : 0) + Math.round(cardioMin * 10) + (preg ? 300 : nursing ? 700 : 0);
+  const waterGoal = (plan.water || 2800) + waterExtra;
   const kcalLeft = dayGoal(day) + burned - eaten.k;
   useEffect(() => {
     stepsNow.current = steps;
@@ -480,14 +550,18 @@ export function FoodProvider({ children }: PropsWithChildren) {
     return true;
   }, []);
 
-  const restoreLog = useCallback(async (l: FoodLog) => {
-    const { id: _id, created_at: _c, ...rest } = l;
-    const { data } = await supabase.from('food_logs').insert(rest).select('*').single();
-    if (data) {
-      setLogs((xs) => [...xs, data as FoodLog].sort((a, b) => a.created_at.localeCompare(b.created_at)));
-      pushHealth(mealCopy(data as FoodLog));
-    }
-  }, []);
+  const restoreLog = useCallback(
+    async (l: FoodLog) => {
+      const { id: _id, created_at: _c, ...rest } = l;
+      const { data } = await supabase.from('food_logs').insert(rest).select('*').single();
+      if (data) {
+        // Only into the list when it's the day on screen (you may have moved to another day since).
+        if ((data as FoodLog).day === day) setLogs((xs) => [...xs, data as FoodLog].sort((a, b) => a.created_at.localeCompare(b.created_at)));
+        pushHealth(mealCopy(data as FoodLog));
+      }
+    },
+    [day],
+  );
 
   const saveMeal = useCallback(async (m: NewSavedMeal) => {
     const { data } = await supabase.from('saved_meals').insert(m).select('*').single();
@@ -519,15 +593,22 @@ export function FoodProvider({ children }: PropsWithChildren) {
     await supabase.from('saved_meals').delete().eq('id', id);
   }, []);
 
-  const addMoves = useCallback(async (ms: { day: string; kcal: number }[]) => {
-    const { data } = await supabase.from('calorie_moves').insert(ms).select('id,day,kcal');
+  const addMoves = useCallback(async (ms: { day: string; kcal: number }[], kind?: string) => {
+    const grp = newId();
+    const { data } = await supabase
+      .from('calorie_moves')
+      .insert(ms.map((x) => ({ ...x, grp, kind: kind ?? null })))
+      .select('id,day,kcal,grp,kind');
     if (data) setMoves((xs) => [...xs, ...(data as Move[])]);
     return (data as Move[]) ?? [];
   }, []);
 
-  const removeMoves = useCallback(async (ids: string[]) => {
-    setMoves((xs) => xs.filter((x) => !ids.includes(x.id)));
-    if (ids.length) await supabase.from('calorie_moves').delete().in('id', ids);
+  const removeMoves = useCallback(async (ids: string[], grps: string[] = []) => {
+    setMoves((xs) => xs.filter((x) => !ids.includes(x.id) && !(x.grp && grps.includes(x.grp))));
+    await Promise.all([
+      ids.length ? supabase.from('calorie_moves').delete().in('id', ids) : null,
+      grps.length ? supabase.from('calorie_moves').delete().in('grp', grps) : null,
+    ]);
   }, []);
 
   const addWater = useCallback(
@@ -601,6 +682,8 @@ export function FoodProvider({ children }: PropsWithChildren) {
       isToday,
       loadedDay,
       setupDone,
+      loadError,
+      reload,
       plan,
       person,
       draft,
@@ -610,6 +693,10 @@ export function FoodProvider({ children }: PropsWithChildren) {
       weightNote,
       clearWeightNote,
       preg,
+      nursing,
+      pregKcal,
+      waterGoal,
+      waterExtra,
       updatePlan,
       logs,
       eaten,
@@ -651,7 +738,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       typeSeed,
       openTyping,
     }),
-    [day, setDay, isToday, loadedDay, balance, logOpen, setLogOpen, typeSeed, openTyping, coach, coachMeals, addMealByCode, ready, today, setupDone, plan, person, draft, savePlan, applyWeight, weightNote, clearWeightNote, preg, updatePlan, logs, eaten, target, dayGoal, coachTargets, kcalLeft, addLog, deleteLog, setLogMeal, updateLog, restoreLog, saved, saveMeal, updateMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, moveKcal, addCardio, deleteCardio, steps, setSteps, addSteps, addWater],
+    [loadError, reload, nursing, pregKcal, waterGoal, waterExtra, day, setDay, isToday, loadedDay, balance, logOpen, setLogOpen, typeSeed, openTyping, coach, coachMeals, addMealByCode, ready, today, setupDone, plan, person, draft, savePlan, applyWeight, weightNote, clearWeightNote, preg, updatePlan, logs, eaten, target, dayGoal, coachTargets, kcalLeft, addLog, deleteLog, setLogMeal, updateLog, restoreLog, saved, saveMeal, updateMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, moveKcal, addCardio, deleteCardio, steps, setSteps, addSteps, addWater],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

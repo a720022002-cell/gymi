@@ -112,6 +112,10 @@ export async function writeRecap(
     /** Food allergies: meal ideas never contain them. */
     allergies?: string[];
     allergyNote?: string;
+    /** Pregnant or after birth (never from cycle data kept only on this phone). */
+    pregnancy?: { mode: 'preg' | 'post'; week: number | null } | null;
+    /** Today's cycle phase (same rule). */
+    phase?: string | null;
   },
 ): Promise<RecapAI | null> {
   const p = x.plan;
@@ -132,9 +136,13 @@ export async function writeRecap(
     foodAllergies: allergiesText(x.allergies, x.allergyNote) || 'none',
     level: p?.level ?? null,
     injuries: p?.injuries ?? [],
+    pregnancy: x.pregnancy ? { stage: x.pregnancy.mode === 'preg' ? 'pregnant' : 'after birth', week: x.pregnancy.week } : null,
+    phase: x.phase ?? null,
     exercises: p && !p.coach ? Object.values(EX).filter((e) => !(e.stress ?? []).some((s) => p.injuries.includes(s))).map((e) => ({ id: e.id, name: e.en, muscle: e.m })) : [],
   };
-  const devices = await loadDeviceBrief();
+  const devices = await loadDeviceBrief({ luteal: x.phase === 'Luteal' });
+  // No fewer calories while pregnant, after birth or in the luteal phase.
+  const noCut = !!x.pregnancy || x.phase === 'Luteal';
   const { result } = await askAI<{ headline?: string; wins?: unknown[]; problems?: unknown[]; tips?: unknown[]; suggest?: unknown[] }>('recap', { data: { ...data, devices }, lang: x.lang });
   if (!result) return null;
   const str = (v: unknown, n: number) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
@@ -157,7 +165,7 @@ export async function writeRecap(
     if (r.type === 'plan' || r.type === 'targets') {
       // A coach's plan or targets are the coach's: no changes suggested there.
       if ((r.type === 'plan' && p?.coach) || (r.type === 'targets' && x.coachFood)) continue;
-      const [sg] = (await prepareSuggestions([r], p)) as Suggestion[];
+      const [sg] = (await prepareSuggestions([r], p, undefined, { noCut, kcal: x.targets?.kcal })) as Suggestion[];
       if (!sg) continue;
       if (sg.type === 'targets') {
         // At most 200 kcal away, only the way the goal goes (a cut never gets more, a bulk never less), and only what changes.

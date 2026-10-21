@@ -148,7 +148,7 @@ export function CodeSheet({ open, onClose }: { open: boolean; onClose: () => voi
           {t('Enter your coach’s code')}
         </Text>
         <Text variant="small" color="sec" center style={{ marginTop: 4 }}>
-          {t('Your coach will see your food, workouts, weight and sleep so they can guide you. Cycle data stays private.')}
+          {t('Your coach will see your food, workouts, weight, sleep and check-ins, steps, water, goal and allergies so they can guide you. Cycle data and blood tests stay private.')}
         </Text>
       </View>
       <TextInput

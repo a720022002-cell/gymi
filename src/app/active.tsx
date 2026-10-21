@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { type ComponentProps, useEffect, useMemo, useState } from 'react';
+import { type ComponentProps, useEffect, useMemo, useRef, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -46,7 +46,12 @@ export default function Active() {
   // The rest timer is kept with the workout (lib/train), so the Live Activity can start and skip it too.
   const { rest, setRest } = train;
   const [confirm, setConfirm] = useState(false);
+  // Finish with sets still to do, and throwing the workout away.
+  const [early, setEarly] = useState(false);
+  const [discard, setDiscard] = useState(false);
   const [saving, setSaving] = useState(false);
+  // The weight boxes ("exercise:set"), to put the cursor in one that needs a weight.
+  const wRefs = useRef<Record<string, TextInput | null>>({});
   // The set whose number was tapped: make it a warm-up or a working set, or delete it.
   const [setMenu, setSetMenu] = useState<{ ei: number; si: number } | null>(null);
   // Swapping an exercise mid-workout: which one, then whether to keep the change in your plan.
@@ -124,7 +129,13 @@ export default function Active() {
   const markSet = (ei: number, si: number) => {
     const st = s.ex[ei].sets[si];
     if (st.done) return update((ss) => ({ ...ss, ex: ss.ex.map((e, i) => (i !== ei ? e : { ...e, sets: e.sets.map((y, j) => (j === si ? { ...y, done: false } : y)) })) }));
-    const { next, restFor } = logSet(s, ei, si, lang);
+    const { next, restFor, needWeight } = logSet(s, ei, si, lang);
+    // No weight typed and none from last time: ask for it instead of saving 0 kg.
+    if (needWeight) {
+      toast(t('Enter the weight for this set first.'), { icon: 'warn' });
+      wRefs.current[`${ei}:${si}`]?.focus();
+      return;
+    }
     train.setSession(next);
     if (restFor) setRest({ end: Date.now() + restFor * 1000, total: restFor });
     else toast(t('All sets done. Tap Finish.'), { ai: true });
@@ -165,8 +176,12 @@ export default function Active() {
     setSwapped(null);
   };
 
-  const finish = async () => {
+  const left = s.ex.reduce((a, x) => a + x.sets.filter((y) => !y.done).length, 0);
+  const finish = async (sure?: boolean) => {
     if (!workDone) return setConfirm(true);
+    // Sets still to do: ask first.
+    if (left && !sure) return setEarly(true);
+    setEarly(false);
     setSaving(true);
     const names = Object.fromEntries(s.ex.map((x) => [x.id, exInfo(x, 'en').name]));
     const log = await train.finishWorkout(names);
@@ -182,7 +197,7 @@ export default function Active() {
         title={s.home ? t('Home workout') : s.name === 'Together' ? t('Train together') : t('{w} workout', { w: t(s.name) })}
         back
         right={
-          <Springy onPress={finish} disabled={saving} scaleTo={1.08}>
+          <Springy onPress={() => finish()} disabled={saving} scaleTo={1.08}>
             <Glass style={{ height: 44, borderRadius: 22, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' }}>
               <Text weight={700}>{t(saving ? 'Saving…' : 'Finish')}</Text>
             </Glass>
@@ -293,6 +308,9 @@ export default function Active() {
                   </Springy>
                   <WeightInput
                     key={`${si}-${W.unit}`}
+                    inputRef={(r) => {
+                      wRefs.current[`${ei}:${si}`] = r;
+                    }}
                     value={st.w}
                     W={W}
                     editable={!info.timed}
@@ -377,6 +395,7 @@ export default function Active() {
           </View>
           <Icon name="chev" size={18} color={c.sec} />
         </Card>
+        {workDone ? <Button kind="ghost" icon="trash" title={t('Discard workout')} color={c.down} style={{ marginTop: 4 }} onPress={() => setDiscard(true)} /> : null}
         <View style={{ height: rest ? 300 : 90 }} />
       </Screen>
 
@@ -524,6 +543,36 @@ export default function Active() {
         <Button kind="soft" icon="check" title={t('Always (update my plan)')} color={c.text} style={{ marginTop: 8 }} onPress={keepAlways} />
       </Sheet>
 
+      <Sheet open={early} onClose={() => setEarly(false)}>
+        <Text variant="h2">{t('Finish the workout?')}</Text>
+        <Text color="sec" style={{ marginTop: 4 }}>
+          {left === 1 ? t('1 set isn’t done yet. Only the sets you finished are saved.') : t('{n} sets aren’t done yet. Only the sets you finished are saved.', { n: left })}
+        </Text>
+        <Button title={t('Keep training')} style={{ marginTop: 16 }} onPress={() => setEarly(false)} />
+        <Button kind="glass" title={t('Finish and save')} style={{ marginTop: 8 }} onPress={() => finish(true)} />
+      </Sheet>
+
+      <Sheet open={discard} onClose={() => setDiscard(false)}>
+        <Text variant="h2">{t('Discard this workout?')}</Text>
+        <Text color="sec" style={{ marginTop: 4 }}>
+          {t('Nothing from it is saved. This can’t be undone.')}
+        </Text>
+        <Button title={t('Keep training')} style={{ marginTop: 16 }} onPress={() => setDiscard(false)} />
+        <Button
+          kind="ghost"
+          icon="trash"
+          title={t('Discard workout')}
+          color={c.down}
+          style={{ marginTop: 8 }}
+          onPress={() => {
+            setDiscard(false);
+            setRest(null);
+            train.discardSession();
+            router.replace('/train');
+          }}
+        />
+      </Sheet>
+
       <Sheet open={confirm} onClose={() => setConfirm(false)}>
         <Text variant="h2">{t('Finish without logging?')}</Text>
         <Text color="sec" style={{ marginTop: 4 }}>
@@ -547,7 +596,7 @@ export default function Active() {
 }
 
 /** The weight box. It shows and takes your unit (kg or lb) while the set keeps kg. */
-function WeightInput({ value, onChange, W, ...rest }: { value: string; onChange: (kg: string) => void; W: W } & Omit<ComponentProps<typeof TextInput>, 'value' | 'onChangeText' | 'onChange'>) {
+function WeightInput({ value, onChange, W, inputRef, ...rest }: { value: string; onChange: (kg: string) => void; W: W; inputRef?: (r: TextInput | null) => void } & Omit<ComponentProps<typeof TextInput>, 'value' | 'onChangeText' | 'onChange'>) {
   const shown = (v: string) => (v ? W.show(+v) : '');
   const [text, setText] = useState(() => shown(value));
   const [seen, setSeen] = useState(value);
@@ -559,6 +608,7 @@ function WeightInput({ value, onChange, W, ...rest }: { value: string; onChange:
   return (
     <TextInput
       {...rest}
+      ref={inputRef}
       value={W.unit === 'kg' ? value : text}
       onChangeText={(v) => {
         const d = digits(v, true);

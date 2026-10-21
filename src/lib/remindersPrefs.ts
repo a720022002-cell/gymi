@@ -1,22 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { useT } from '@/i18n';
-
 import { useAuth } from './auth';
-import { useFood } from './food';
-import { useHealth } from './health';
 import { fmtTime } from './nutrition';
-import { buildReminders, DEFAULT_PREFS, FREQ, loadPrefs, type NCat, type Prefs, remindersSupported, savePrefs, scheduleReminders, vitaminDays } from './reminders';
-import { useTrain } from './train';
+import { askNotifPermission, DEFAULT_PREFS, FREQ, loadPrefs, type NCat, notifPermission, type Prefs, remindersSupported, savePrefs } from './reminders';
 
-/** Reminder settings for the Notifications screens: read, save, and reschedule on the phone. */
+/** Reminder settings for the Notifications screens: read and save (ReminderSync reschedules on the phone). */
 export function useReminderPrefs() {
-  const { t } = useT();
   const { session } = useAuth();
   const uid = session?.user.id;
-  const food = useFood();
-  const health = useHealth();
-  const { week } = useTrain();
   const [p, setP] = useState<{ uid: string; v: Prefs } | null>(null);
 
   useEffect(() => {
@@ -32,28 +23,16 @@ export function useReminderPrefs() {
 
   /** Save; ask = also ask the phone for permission. Answers 'denied' when notifications are off for Adro. */
   const save = useCallback(
-    async (next: Prefs, ask = false) => {
+    async (next: Prefs, ask = false): Promise<'ok' | 'denied'> => {
       if (!uid) return 'ok';
       setP({ uid, v: next });
+      // ReminderSync hears this and schedules, so there's one scheduler.
       await savePrefs(uid, next);
       if (!remindersSupported) return 'ok';
-      const vitamins = health.supplements.filter((x) => x.active && x.remind);
-      return scheduleReminders(
-        buildReminders(
-          next,
-          {
-            meals: food.setupDone ? food.plan.meals : [],
-            vitamins,
-            vitDays: await vitaminDays(uid, vitamins),
-            workoutTime: food.plan.myWorkoutTime || food.plan.workoutTime || null,
-            workoutWeek: week.length ? week.map((d) => d.w) : null,
-          },
-          t,
-        ),
-        ask,
-      );
+      if (ask) return (await askNotifPermission()) ? 'ok' : 'denied';
+      return (await notifPermission()) === 'denied' ? 'denied' : 'ok';
     },
-    [uid, food.setupDone, food.plan.meals, food.plan.myWorkoutTime, food.plan.workoutTime, health.supplements, week, t],
+    [uid],
   );
 
   return { prefs, ready: !!p, save };

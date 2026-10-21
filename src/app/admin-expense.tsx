@@ -11,7 +11,7 @@ import { fontFor, Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, ErrorText, Label, Row, Segmented, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
-import { deleteExpense, equalShares, EXPENSE_CATEGORIES, type Expense, listExpenses, listPartners, type Partner, sar, saveExpense, type Share } from '@/lib/admin';
+import { deleteExpense, equalShares, EXPENSE_CATEGORIES, type Expense, listExpenses, listPartners, type Partner, sar, saveExpense, type Share, useIsAdmin } from '@/lib/admin';
 import { useAuth } from '@/lib/auth';
 import { localDay } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
@@ -27,6 +27,7 @@ export default function AdminExpense() {
   const { colors: c } = useSettings();
   const toast = useToast();
   const { session } = useAuth();
+  const admin = useIsAdmin();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const [partners, setPartners] = useState<Partner[] | null>(null);
   const [d, setD] = useState<Draft | null>(null);
@@ -73,6 +74,13 @@ export default function AdminExpense() {
     };
   }, [id, session?.user.id]);
 
+  // Same gate as the other admin pages (the server checks too).
+  if (!admin)
+    return (
+      <Screen title={t('Purchase')} back>
+        <Text color="sec">{t('Only the Adro team can open this page.')}</Text>
+      </Screen>
+    );
   if (!partners || !d)
     return (
       <Screen title={t('Purchase')} back>

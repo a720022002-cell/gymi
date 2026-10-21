@@ -9,7 +9,7 @@ import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Row, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
-import { type CycleSettings, dueDate } from '@/lib/cycle';
+import { type CycleSettings, dueDate, weekNow, withWeek } from '@/lib/cycle';
 import { cycleRemindersSupported } from '@/lib/cycleReminders';
 import { useFood } from '@/lib/food';
 import { useTrain } from '@/lib/train';
@@ -24,11 +24,12 @@ export function Pregnancy({ s, save }: { s: CycleSettings; save: (next: CycleSet
   const { colors: c } = useSettings();
   const toast = useToast();
   const { today } = useFood();
-  const w = s.preg_week ?? 12;
-  const set = (pw: number) => save({ ...s, preg_week: pw });
+  // The week moves on by itself from the day it was saved.
+  const w = weekNow(s, 'preg', today) ?? 12;
+  const set = (pw: number) => save(withWeek(s, 'preg', pw, today));
   const ck = s.checklist ?? {};
-  // Daily items (folic acid, water, protein) start fresh each day; the visit date stays.
-  const daily = ck.day === today ? ck : { visit: ck.visit, visitRemind: ck.visitRemind };
+  // Daily items (folic acid, water, protein) start fresh each day; the visit date and week anchors stay.
+  const daily = ck.day === today ? ck : { visit: ck.visit, visitRemind: ck.visitRemind, pregFrom: ck.pregFrom, postFrom: ck.postFrom };
   const setCk = (patch: Partial<NonNullable<CycleSettings['checklist']>>) => save({ ...s, checklist: { ...daily, ...patch, day: today } });
   const tri = w < 14 ? 1 : w < 28 ? 2 : 3;
   const size = SIZES[Math.max(0, Math.min(28, Math.floor((w - 4) / 1.2)))];

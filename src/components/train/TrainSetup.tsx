@@ -87,7 +87,10 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
       const k = pick === 'ai' ? best : pick;
       plan = k === 'own' ? { ...planOwn(days, injuries), level: level ?? undefined } : planFromSplit(days, injuries, SPLITS[days][k as number][0], SPLITS[days][k as number][1], level ?? undefined);
     }
-    const ok = await train.savePlan({ ...plan, since: train.today }, true);
+    // Redoing setup keeps what's yours: days off and breaks, machines you picked, and home mode.
+    const cur = train.plan;
+    const keep = cur ? { skipped: { ...cur.skipped, ...plan.skipped }, dismiss: { ...cur.dismiss, ...plan.dismiss }, machines: { ...cur.machines, ...plan.machines }, homeMode: cur.homeMode } : {};
+    const ok = await train.savePlan({ ...plan, ...keep, since: train.today }, true);
     setThinking(null);
     setStep(0);
     if (!ok) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });

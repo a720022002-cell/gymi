@@ -24,7 +24,8 @@ export default function Welcome() {
   // Remember who invited you (their invite code, or a username from older links); used once your account is ready.
   useEffect(() => {
     const r = (ref ?? '').trim();
-    if (/^[A-Za-z0-9]{2,12}-[A-Za-z0-9]{3}$/.test(r)) AsyncStorage.setItem(REF_KEY, r.toUpperCase()).catch(() => {});
+    // Codes look like OMAR-7K2QXP (1-8 letters, a dash, 6 letters/digits); older GYMI-/ADRO- codes have 3-8 after the dash.
+    if (/^[A-Za-z]{1,8}-[A-Za-z0-9]{3,8}$/.test(r)) AsyncStorage.setItem(REF_KEY, r.toUpperCase()).catch(() => {});
     else if (/^[a-z][a-z0-9._]{2,19}$/.test(r.toLowerCase())) AsyncStorage.setItem(REF_KEY, r.toLowerCase()).catch(() => {});
   }, [ref]);
 

@@ -2,6 +2,9 @@ import type { Session } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
+import { resetSignupForm } from '@/components/signup/form';
+
+import { clearAiConsent } from './aiConsent';
 import { setAvatarUrl } from './avatars';
 import { cancelAllReminders } from './reminders';
 import { EMAIL_CODES, siteUrl } from './config';
@@ -72,6 +75,9 @@ export const maskEmail = (e: string) => {
 
 type Result = { error: string | null };
 
+/** updateProfile's error when the new username belongs to someone else. */
+export const USERNAME_TAKEN = 'That username is taken. Try another one.';
+
 type Auth = {
   configured: boolean;
   loading: boolean;
@@ -100,7 +106,8 @@ type Auth = {
    * 6-digit code and answers { code: email } without logging in; finish with verifyLoginCode.
    * If the code can't be sent you're logged in anyway (codeFailed), so nobody gets locked out.
    */
-  logIn: (identifier: string, password: string) => Promise<Result & { code?: string; codeFailed?: boolean }>;
+  /** email: the account's email (also when logging in by username), so "confirm your email first" can offer Resend. */
+  logIn: (identifier: string, password: string) => Promise<Result & { code?: string; codeFailed?: boolean; email?: string }>;
   sendLoginCode: (email: string) => Promise<Result>;
   verifyLoginCode: (email: string, code: string, trust: boolean) => Promise<Result>;
   /** Check the current password (before changing it). */
@@ -243,7 +250,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
           email = data as string;
         }
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) return err(error);
+        if (error) return { ...err(error), email };
         const uid = data.user?.id ?? '';
         if (LOGIN_CODES && uid && !(await trustedIds()).includes(uid)) {
           // Password is right. Now prove it's you with a code from your email.
@@ -300,8 +307,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
         if (!session) return { error: 'Please log in again.' };
         const { id: _id, email: _e, account_type: _a, coach_status: _c, invite_code: _i, ...allowed } = patch;
         const { data, error } = await supabase.from('profiles').update(allowed).eq('id', session.user.id).select('*').single();
-        if (error) return { error: 'Couldn’t save. Please try again.' };
+        // 23505: someone already has that username.
+        if (error) return { error: error.code === '23505' ? USERNAME_TAKEN : 'Couldn’t save. Please try again.' };
         setAvatarUrl([session.user.id, (data as Profile).username], (data as Profile).avatar_url ?? null);
+        // Keep the offline copy up to date too.
+        AsyncStorage.setItem(PROFILE_KEY(session.user.id), JSON.stringify(data)).catch(() => {});
         setProfile(data as Profile);
         return { error: null };
       },
@@ -317,6 +327,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
         const uid = session?.user.id;
         await cancelAllReminders();
         if (uid) await AsyncStorage.multiRemove([PROFILE_KEY(uid), `adro.trainplan.v1.${uid}`]).catch(() => {});
+        await clearAiConsent();
+        resetSignupForm();
         await supabase.auth.signOut();
         setProfile(null);
       },

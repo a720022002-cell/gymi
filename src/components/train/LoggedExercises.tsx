@@ -7,6 +7,7 @@ import { SetValue } from '@/components/train/SetValue';
 import { Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import type { WorkoutLog } from '@/lib/train';
+import { EX } from '@/lib/training';
 import { loggedExName } from '@/lib/workoutHistory';
 import { useSettings } from '@/theme/settings';
 
@@ -58,7 +59,7 @@ export function LoggedExercises({ log }: { log: WorkoutLog }) {
                       {t('Set {n}', { n: j + 1 })}
                     </Text>
                     <View style={{ flex: 1, alignItems: 'flex-start' }}>
-                      <SetValue w={s.w} r={s.r} />
+                      <SetValue w={s.w} r={s.r} timed={!!(ex.time || EX[ex.id]?.time)} />
                     </View>
                     {best ? <Icon name="trophy" size={16} color={c.cobalt} /> : null}
                   </View>

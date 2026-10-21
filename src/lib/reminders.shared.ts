@@ -42,7 +42,7 @@ export const DEFAULT_PREFS: Prefs = {
 
 /** Names, icons and the sample text a preview shows (design: NCAT). */
 export const NCAT_INFO: Record<NCat, { name: string; icon: 'drop' | 'food' | 'train' | 'sun' | 'moon' | 'pill' | 'doc' | 'users'; sample: string; route: string }> = {
-  water: { name: 'Water', icon: 'drop', sample: 'Time for a glass of water. You’re 700 ml behind.', route: '/water' },
+  water: { name: 'Water', icon: 'drop', sample: 'Time for a glass of water.', route: '/water' },
   food: { name: 'Meals and food', icon: 'food', sample: 'Lunch in 30 minutes: chicken kabsa, 810 kcal.', route: '/food' },
   workout: { name: 'Workouts', icon: 'train', sample: 'Push day in 30 minutes. Light weight, let’s go.', route: '/train' },
   checkin: { name: 'Daily check-in', icon: 'sun', sample: 'Your 30-second daily check-in is ready.', route: '/home' },
@@ -52,7 +52,10 @@ export const NCAT_INFO: Record<NCat, { name: string; icon: 'drop' | 'food' | 'tr
   friends: { name: 'Gym Bros', icon: 'users', sample: 'Ahmed hit a new PR: Bench 100 kg.', route: '/friends' },
 };
 
-/** Sounds each type can play (design: NSOUNDS) and their names (design: SOUNDS). */
+/**
+ * Sounds each type can play (design: NSOUNDS) and their names (design: SOUNDS). Reminders on the phone only play the
+ * phone's own sound or none (custom sounds aren't bundled yet), so Notifications only offers sound on/off.
+ */
 export const NSOUNDS: Record<NCat, string[]> = {
   water: ['drop', 'pour', 'default', 'bell', 'none'],
   food: ['crunch', 'default', 'bell', 'none'],
@@ -77,7 +80,7 @@ export const SOUND_NAMES: Record<string, string> = {
   yeahbuddy: '“Yeah buddy!” voice',
   none: 'None (silent)',
 };
-export const FREQ: Record<WaterFreq, string> = { '1h': 'Every hour', '2h': 'Every 2 hours', '3h': 'Every 3 hours', day: 'Once a day', behind: 'Only when I’m behind' };
+export const FREQ: Record<WaterFreq, string> = { '1h': 'Every hour', '2h': 'Every 2 hours', '3h': 'Every 3 hours', day: 'Once a day', behind: 'Every 2 hours, a quick check' };
 export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /** weekday: 1 = Sunday … 7 = Saturday (weekly); monthDay: 1–28 (monthly). Without either the reminder is daily. */
@@ -188,6 +191,18 @@ export function onPrefs(f: (p: Prefs) => void) {
   subs.add(f);
   return () => {
     subs.delete(f);
+  };
+}
+
+const pokes = new Set<() => void>();
+/** Ask ReminderSync to schedule again (e.g. right after notifications were allowed). */
+export function pokeReminders() {
+  pokes.forEach((f) => f());
+}
+export function onRemindersPoke(f: () => void) {
+  pokes.add(f);
+  return () => {
+    pokes.delete(f);
   };
 }
 

@@ -19,11 +19,11 @@ import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Row, Segmented, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
-import { useCycleToday } from '@/lib/cyclePhase';
+import { lutealHold, useCycleToday } from '@/lib/cyclePhase';
 import { useFood, useLogFood } from '@/lib/food';
 import { type Measure, useHealth } from '@/lib/health';
-import { addDays, fmt, fmtTime, hhmmOf, kcalFloor, mealAt, type PlannedMeal, planMeals } from '@/lib/nutrition';
-import { fastTimes } from '@/lib/prayer';
+import { addDays, fmt, fmtTime, hhmmOf, kcalFloor, mealAt, type PlannedMeal, planMeals, ramadanOn, targets } from '@/lib/nutrition';
+import { cityOf, fastTimes } from '@/lib/prayer';
 import { weekAvg } from '@/lib/progress';
 import { useSettings } from '@/theme/settings';
 
@@ -49,6 +49,19 @@ export default function Food() {
         <Thinking message={t('Loading your food')} />
       </Screen>
     );
+  // The plan didn't load: try again, never the setup (finishing it would replace the plan you have).
+  if (food.loadError && !food.setupDone)
+    return (
+      <Screen title={t('Food')} tabs>
+        <Card style={{ alignItems: 'center', paddingVertical: 26 }}>
+          <Icon name="warn" size={28} />
+          <Text center style={{ marginTop: 8 }}>
+            {t('Couldn’t load your food. Check your connection and try again.')}
+          </Text>
+          <Button small kind="soft" title={t('Try again')} style={{ marginTop: 12, alignSelf: 'center' }} onPress={food.reload} />
+        </Card>
+      </Screen>
+    );
   if (!food.setupDone) return <SetupWizard inTab />;
   return <FoodHome />;
 }
@@ -64,11 +77,14 @@ function FoodHome() {
   const [tab, setTab] = useState<'logged' | 'plan'>('logged');
   const [menuFor, setMenuFor] = useState<PlannedMeal | null>(null);
   const coach = food.coach;
-  const fast = food.plan.ramadan ? fastTimes(food.plan.city, food.today) : null;
-  // Cut or bulk, weight flat for 2 weeks, not dismissed in the last 2 weeks, and the coach isn't in charge.
+  const fast = ramadanOn(food.plan, food.today) ? fastTimes(food.plan.city, food.today) : null;
+  // The phone's clock isn't on the chosen city's time zone: you're likely somewhere else, so say whose times these are.
+  const otherZone = !!fast && -new Date().getTimezoneOffset() !== cityOf(food.plan.city).tz * 60;
+  // Cut or bulk, weight flat for 2 weeks, not dismissed in the last 2 weeks, and the coach isn't in charge. Not in the
+  // luteal phase (water weight can hide a real loss then).
   const cutting = food.plan.goal >= 3;
   const bulking = food.plan.goal <= 1;
-  const showPlateau = !coach && !food.preg && (cutting || bulking) && (!food.plan.plateauDay || food.plan.plateauDay <= addDays(food.today, -14)) && plateau(health.weights, food.today);
+  const showPlateau = !coach && !food.preg && (cutting || bulking) && (!food.plan.plateauDay || food.plan.plateauDay <= addDays(food.today, -14)) && plateau(health.weights, food.today) && !lutealHold(cycle);
   const adjust = cutting ? -150 : 150;
   // Targets were updated for a new weigh-in (see applyWeight): say so once.
   const weightNote = food.weightNote;
@@ -118,7 +134,11 @@ function FoodHome() {
   const meals = useMemo(() => planMeals(food.plan, food.day, goal), [food.plan, food.day, goal]);
   const loggedKeys = new Set(food.logs.map((l) => l.plan_key).filter(Boolean));
 
-  const upcoming = [1, 2, 3, 4].map((n) => addDays(food.today, n)).filter((d) => food.moves.some((m) => m.day === d));
+  const upcoming = [1, 2, 3, 4, 5, 6, 7].map((n) => addDays(food.today, n)).filter((d) => food.moves.some((m) => m.day === d));
+  // Under your goal: offered in the evening (after 8 pm), or for a day that's over.
+  const over = left < 0;
+  const underOk = !food.isToday || new Date().getHours() >= 20;
+  const offBy = Math.round(Math.abs(left));
   const dayName = (d: string) => {
     const [y, m, dd] = d.split('-').map(Number);
     return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { weekday: 'short' }).format(new Date(y, m - 1, dd));
@@ -147,6 +167,19 @@ function FoodHome() {
         </Row>
       }>
       <DayNav />
+      {food.loadError ? (
+        <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Icon name="warn" size={18} color={c.down} />
+          <Text variant="small" style={{ flex: 1 }}>
+            {t('Some of your food didn’t load. What you see may be out of date.')}
+          </Text>
+          <Springy onPress={food.reload}>
+            <Text variant="small" weight={700} color="link">
+              {t('Try again')}
+            </Text>
+          </Springy>
+        </Card>
+      ) : null}
       {coach ? (
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 14 }}>
           <Icon name="lock" size={18} color={c.cobalt} />
@@ -170,6 +203,11 @@ function FoodHome() {
             <Text variant="small" color="sec">
               {t('Meals are arranged around iftar ({a}) and suhoor (ends {b}).', { a: fmtTime(fast.maghrib, lang), b: fmtTime(fast.fajr, lang) })}
             </Text>
+            <Text variant="small" color={otherZone ? 'text' : 'sec'} weight={otherZone ? 700 : undefined} style={{ marginTop: 2 }}>
+              {otherZone
+                ? t('These times are for {city}. If you live somewhere else, check your local iftar and suhoor times.', { city: t(fast.city) })
+                : t('Times for {city}.', { city: t(fast.city) })}
+            </Text>
           </View>
         </Card>
       ) : null}
@@ -181,7 +219,22 @@ function FoodHome() {
               {t('Pregnancy mode')}
             </Text>
             <Text variant="small" color="sec">
-              {t('No calorie deficit while you’re pregnant. Your goal includes about 300 kcal extra, and caffeine is kept to 200 mg a day.')}
+              {food.pregKcal > 0
+                ? t('No calorie deficit while you’re pregnant. Your goal includes about {n} kcal extra, and caffeine is kept to 200 mg a day.', { n: food.pregKcal })
+                : t('No calorie deficit while you’re pregnant. In the first trimester you don’t need extra calories yet. Caffeine is kept to 200 mg a day.')}
+            </Text>
+          </View>
+        </Card>
+      ) : null}
+      {food.nursing && !coach ? (
+        <Card style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+          <Icon name="heart" color={c.cobalt} />
+          <View style={{ flex: 1 }}>
+            <Text variant="small" weight={700}>
+              {t('Breastfeeding')}
+            </Text>
+            <Text variant="small" color="sec">
+              {t('Your goal includes about {n} kcal extra, and your water goal 700 ml more.', { n: food.pregKcal })}
             </Text>
           </View>
         </Card>
@@ -216,7 +269,8 @@ function FoodHome() {
               title={t('Apply {n} kcal', { n: `${adjust > 0 ? '+' : '−'}${Math.abs(adjust)}` })}
               onPress={async () => {
                 const before = food.plan;
-                const k = Math.min(6000, Math.max(kcalFloor(food.plan.weight, food.person), food.target.k + adjust));
+                // From the plan's own calories (not today's shown goal, which may include breastfeeding's extra).
+                const k = Math.min(6000, Math.max(kcalFloor(food.plan.weight, food.person, food.plan.bf), targets(food.plan).k + adjust));
                 await food.savePlan({ ...food.plan, kcal: k, carbG: null, plateauDay: food.today });
                 toast(t('Daily calories set to {k} kcal', { k: fmt(k) }), { ai: true, undo: () => food.savePlan(before) });
               }}
@@ -251,8 +305,16 @@ function FoodHome() {
                 <Text variant="small" num>{`${fmt(v)} ${t('kcal')}`}</Text>
               </Row>
             ))}
-            {food.isToday ? (
-              <Springy onPress={() => (food.eaten.k === 0 && left >= 0 ? toast(t('Log some food first'), { icon: 'info' }) : food.openBalance(left < 0 ? 'over' : 'under'))} style={{ marginTop: 6 }}>
+            {over || underOk ? (
+              <Springy
+                onPress={() =>
+                  food.eaten.k === 0 && !over
+                    ? toast(t('Log some food first'), { icon: 'info' })
+                    : offBy === 0
+                      ? toast(t('You’re right on your goal.'), { icon: 'check' })
+                      : food.openBalance(over ? 'over' : 'under')
+                }
+                style={{ marginTop: 6 }}>
                 <Text variant="small" weight={700} color="link">
                   {t('Over or under? Balance it')}
                 </Text>
@@ -273,9 +335,11 @@ function FoodHome() {
             <Text weight={700}>{t('Adjusted goals this week')}</Text>
             <Springy
               onPress={() => {
-                // Today's matching offset (from balancing) goes too.
-                const ids = food.moves.filter((m) => upcoming.includes(m.day) || m.day === food.today).map((m) => m.id);
-                food.removeMoves(ids);
+                // Each balancing goes as a whole (its offset on the day it came from too), so no day is left half-moved.
+                // Older moves without a balancing id: the coming days and today, as before.
+                const grps = [...new Set(food.moves.filter((m) => m.grp && upcoming.includes(m.day)).map((m) => m.grp as string))];
+                const ids = food.moves.filter((m) => !m.grp && (upcoming.includes(m.day) || m.day === food.today)).map((m) => m.id);
+                food.removeMoves(ids, grps);
                 toast(t('Goals reset'), { icon: 'cal' });
               }}>
               <Text variant="small" weight={700} color="link">
@@ -424,20 +488,14 @@ function FoodHome() {
                       <Button
                         small
                         title={t('Log it')}
-                        onPress={() =>
-                          logFood(
-                            {
-                              name: `${m.n} (${t('coach plan')})`,
-                              kcal: +m.k || 0,
-                              protein: +m.p || 0,
-                              carbs: m.c ?? Math.round(((+m.k || 0) * 0.45) / 4),
-                              fat: m.f ?? Math.round(((+m.k || 0) * 0.25) / 9),
-                              meal: m.n,
-                            },
-                            toast,
-                            t,
-                          )
-                        }
+                        onPress={() => {
+                          // Carbs and fat the coach didn't give share what protein leaves of the calories.
+                          const k = +m.k || 0;
+                          const rest = Math.max(0, k - (+m.p || 0) * 4);
+                          const fat = m.f ?? (m.c != null ? Math.max(0, Math.round((rest - m.c * 4) / 9)) : Math.round(Math.min(rest, k * 0.257) / 9));
+                          const carbs = m.c ?? Math.max(0, Math.round((rest - fat * 9) / 4));
+                          logFood({ name: `${m.n} (${t('coach plan')})`, kcal: k, protein: +m.p || 0, carbs, fat, meal: m.n }, toast, t);
+                        }}
                       />
                     )}
                   </Row>
@@ -456,7 +514,7 @@ function FoodHome() {
         <View>
           <Row style={{ justifyContent: 'space-between', marginTop: 16, marginBottom: 10, marginHorizontal: 4 }}>
             <Text variant="small" weight={700} color="sec" style={{ flex: 1 }}>
-              {t(food.plan.ramadan ? 'Suggested for Ramadan' : 'Suggested for today. Tap a meal to log it or change it.')}
+              {t(ramadanOn(food.plan, food.day) ? 'Suggested for Ramadan' : 'Suggested for today. Tap a meal to log it or change it.')}
             </Text>
             <Springy onPress={() => router.push('/shopping')}>
               <Text variant="small" weight={700} color="link">
@@ -526,7 +584,7 @@ function FoodHome() {
         {(
           [
             ['bookmark', 'Saved meals', coach ? t('Your meals and meal codes') : t('{n} saved', { n: food.saved.length }), () => router.push('/saved-meals')],
-            ['drop', 'Water', t('{a} of {b} ml', { a: fmt(food.water), b: fmt(food.plan.water) }), () => router.push('/water')],
+            ['drop', 'Water', t('{a} of {b} ml', { a: fmt(food.water), b: fmt(food.waterGoal) }), () => router.push('/water')],
             ['pill', 'Vitamins and supplements', health.supplements.some((x) => x.active) ? t('{n} you take', { n: health.supplements.filter((x) => x.active).length }) : t('Add what you take, with reminders'), () => router.push('/vitamins')],
             ...(coach
               ? []

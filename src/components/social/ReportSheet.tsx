@@ -41,9 +41,13 @@ export function ReportSheet({
     if (!reason) return;
     setBusy(true);
     const ok = await sendReport({ reported: user, kind, ref: refId, reason, note });
-    const blocked = ok && block && user ? await blockUser(user) : false;
+    // The block doesn't wait on the report: if you asked for it, it happens either way.
+    const blocked = block && user ? await blockUser(user) : false;
     setBusy(false);
-    if (!ok) return toast(t('Couldn’t send. Please try again.'), { icon: 'warn' });
+    if (!ok) {
+      if (blocked) onBlocked?.();
+      return toast(t(blocked ? 'Couldn’t send the report, but {n} is blocked. Please try the report again.' : 'Couldn’t send. Please try again.', { n: name }), { icon: 'warn' });
+    }
     setReason(null);
     setNote('');
     onClose();

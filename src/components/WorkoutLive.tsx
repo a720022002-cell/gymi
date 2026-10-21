@@ -1,5 +1,6 @@
+import * as Notifications from 'expo-notifications';
 import { useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
+import { AppState, type AppStateStatus, Platform } from 'react-native';
 
 import { useToast } from '@/components/Toast';
 import { useT } from '@/i18n';
@@ -12,6 +13,40 @@ import { useWeight } from '@/lib/units';
 import { onWorkoutAction, syncWorkoutActivity } from '@/lib/widgetSync';
 import type { WorkoutAction } from '@/widgets/WorkoutActivity';
 import { useSettings } from '@/theme/settings';
+
+const REST_ID = 'adro-rest-end';
+// One change at a time, so a cancel never lands after the newer schedule.
+let restChain: Promise<unknown> = Promise.resolve();
+const queueRest = (fn: () => Promise<unknown>) => (restChain = restChain.then(fn).catch(() => {}));
+
+/** A notification when the rest ends, for when the app isn't on screen (locked phone, another app). Replaces any earlier one. */
+function scheduleRestEnd(end: number, title: string, body: string) {
+  if (Platform.OS === 'web') return;
+  queueRest(async () => {
+    await Notifications.cancelScheduledNotificationAsync(REST_ID).catch(() => {});
+    if (end - Date.now() < 1000) return;
+    const perm = await Notifications.getPermissionsAsync();
+    if (!perm.granted && perm.ios?.status !== Notifications.IosAuthorizationStatus.PROVISIONAL) return;
+    if (Platform.OS === 'android') await Notifications.setNotificationChannelAsync('rest', { name: 'Rest timer', importance: Notifications.AndroidImportance.HIGH });
+    await Notifications.scheduleNotificationAsync({
+      identifier: REST_ID,
+      content: { title, body, sound: true, data: { route: '/active' } },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: end, channelId: 'rest' },
+    });
+  });
+}
+function cancelRestEnd() {
+  if (Platform.OS === 'web') return;
+  queueRest(() => Notifications.cancelScheduledNotificationAsync(REST_ID));
+}
+/** Asked once, at the first rest, while the app is open (it can't ask from the background). */
+function askRestPermission() {
+  if (Platform.OS === 'web') return;
+  queueRest(async () => {
+    const perm = await Notifications.getPermissionsAsync();
+    if (!perm.granted && perm.status === 'undetermined' && perm.canAskAgain) await Notifications.requestPermissionsAsync({ ios: { allowAlert: true, allowBadge: false, allowSound: true } });
+  });
+}
 
 /** The workout in progress, whatever screen you're on: ends the rest when its time is up (beep and toast), and keeps
  * the Live Activity (iPhone) and its buttons working. Renders nothing. */
@@ -33,6 +68,19 @@ export function WorkoutLive() {
     );
     return () => clearTimeout(id);
   }, [rest, setRest, toast, t]);
+
+  // Away from the app (locked, or another app open): a notification at the rest's end. It's moved by +30 s and taken
+  // away by Skip or a new set (here or on the Live Activity), and when you come back to the app (the toast says it then).
+  useEffect(() => {
+    if (rest && AppState.currentState === 'active') askRestPermission();
+    const sync = (st: AppStateStatus) => {
+      if (rest && st !== 'active') scheduleRestEnd(rest.end, t('Rest done'), t('Rest done. Next set.'));
+      else cancelRestEnd();
+    };
+    sync(AppState.currentState);
+    const sub = AppState.addEventListener('change', sync);
+    return () => sub.remove();
+  }, [rest, t]);
 
   if (Platform.OS !== 'ios') return null;
   return <LiveActivity />;
@@ -66,7 +114,8 @@ function LiveActivity() {
     syncWorkoutActivity({
       workout: s.home ? t('Home workout') : s.name === 'Together' ? t('Train together') : t('{w} workout', { w: t(s.name) }),
       exercise: x ? exInfo(x, lang).name : t('All sets done'),
-      set: x && st && cur ? (st.warm ? t('Warm-up') : t('Set {a} of {b}', { a: cur.si + 1, b: x.sets.length })) : t('Tap Finish to save'),
+      // Working sets only: warm-ups have their own label and don't count.
+      set: x && st && cur ? (st.warm ? t('Warm-up') : t('Set {a} of {b}', { a: x.sets.slice(0, cur.si + 1).filter((y) => !y.warm).length, b: x.sets.filter((y) => !y.warm).length })) : t('Tap Finish to save'),
       target: st && r ? (w > 0 ? `${W.show(w)} ${W.label} × ${r}` : `× ${r}`) : '',
       wText: st && w > 0 ? `${W.show(w)} ${W.label}` : '',
       rText: timed ? `${r} ${t('s')}` : `× ${r}`,
@@ -107,7 +156,9 @@ function LiveActivity() {
         const x = s.ex[cur.ei];
         const st = x.sets[cur.si];
         if (a === 'done') {
-          const { next, restFor } = logSet(s, cur.ei, cur.si, lang);
+          const { next, restFor, needWeight } = logSet(s, cur.ei, cur.si, lang);
+          // No weight for a weighted exercise: nothing is logged (never 0 kg), and the card stays on this set.
+          if (needWeight) return;
           save(next);
           // A new rest starts (or none after the last set), so a rest left showing on a locked phone is cleared.
           train.setRest(restFor ? { end: Date.now() + restFor * 1000, total: restFor } : null);

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { TextInput, View } from 'react-native';
 
 import { Field } from '@/components/Field';
+import { AllergyWarn, useAllergyCheck } from '@/components/food/AllergyWarn';
 import { WarnChip } from '@/components/food/Chips';
 import { per100, PickFood } from '@/components/food/PickFood';
 import { useScanProduct } from '@/components/food/useScanProduct';
@@ -129,6 +130,9 @@ export default function MealResult() {
   const sugarHigh = !!res?.sugar_high && !rows.every((x) => naturalSugar(x.name));
   // High fat from the grams themselves (over about 21 g in one meal), so it's the same every time.
   const fatHigh = tot.f > 21;
+  // Your allergies in what the AI found (the dish's name and every item).
+  const allergyCheck = useAllergyCheck();
+  const allergic = allergyCheck([title, res?.title ?? ''].join(' | '), rows.map((x) => x.name));
   const add = async () => {
     if (!rows.length || tot.k <= 0) return;
     const name = title.trim() || rows.map((x) => x.name).join(t(', '));
@@ -183,6 +187,7 @@ export default function MealResult() {
               </Row>
             </View>
           ) : null}
+          <AllergyWarn items={allergic} />
           <Field label={t('Name')} value={title} onChangeText={setTitle} maxLength={80} />
           <Text variant="small" weight={700} color="sec" style={{ marginTop: 16, marginBottom: 8, marginHorizontal: 4 }}>
             {t('Ingredients')}

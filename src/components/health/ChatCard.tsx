@@ -3,6 +3,8 @@ import { View } from 'react-native';
 
 import { useT } from '@/i18n';
 import type { ChatCard as Card } from '@/lib/coach';
+import { useAuth } from '@/lib/auth';
+import { useWatchSleep } from '@/lib/devices';
 import { useFood, useLogFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { addDays, fmt } from '@/lib/nutrition';
@@ -79,6 +81,8 @@ export function ChatCard({ card }: { card: Card }) {
   const health = useHealth();
   const W = useWeight();
   const food = useFood();
+  const { session } = useAuth();
+  const watch = useWatchSleep(session?.user.id);
   const box = (children: ReactNode) => <View style={{ backgroundColor: c.bg, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12, marginTop: 10, minWidth: 220 }}>{children}</View>;
   const week = Array.from({ length: 7 }, (_, i) => addDays(food.today, i - 6));
   const letters = week.map((d) => new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { weekday: 'narrow' }).format(new Date(`${d}T12:00:00`)));
@@ -109,7 +113,8 @@ export function ChatCard({ card }: { card: Card }) {
 
   if (card.type === 'sleep') {
     const by = new Map(health.checkins.map((x) => [x.day, x.sleep_h]));
-    const nights = week.map((d) => by.get(d) ?? null);
+    // Nights you didn't log come from your watch.
+    const nights = week.map((d) => by.get(d) ?? watch[d] ?? null);
     if (!nights.some((x) => x != null)) return null;
     return box(
       <>

@@ -13,13 +13,13 @@ import { useToast } from '@/components/Toast';
 import { Button, ErrorText, Row, Segmented } from '@/components/ui';
 import { Wheel } from '@/components/Wheel';
 import { useT } from '@/i18n';
-import { type Profile, useAuth } from '@/lib/auth';
+import { type Profile, useAuth, USERNAME_TAKEN } from '@/lib/auth';
 import { EMAIL_CODES } from '@/lib/config';
 import { COUNTRIES } from '@/lib/countries';
 import { useFood } from '@/lib/food';
 import { ageFromIso, recalcTargets } from '@/lib/nutrition';
 import { supabase } from '@/lib/supabase';
-import { ageFrom, cleanUsername, daysIn, type Dob, dobToIso, emailError, fullPhone, passwordError, phoneMessage, usernameError } from '@/lib/validation';
+import { ageFrom, cleanNumber, cleanUsername, daysIn, type Dob, dobToIso, emailError, fullPhone, passwordError, phoneMessage, usernameError } from '@/lib/validation';
 import { useSettings } from '@/theme/settings';
 
 type K = 'name' | 'username' | 'email' | 'phone' | 'password' | 'gender' | 'dob' | 'height';
@@ -95,7 +95,8 @@ export default function Account() {
         {row('name', 'user', t('Name'), profile?.name || t('Not set'), null, true)}
         {row('username', 'key', t('Username'), `@${profile?.username ?? ''}`)}
         {row('email', 'mail', t('Email'), user?.new_email ? t('{a}, changing to {b}', { a: user.email ?? '', b: user.new_email }) : (user?.email ?? ''), chip(emailOk))}
-        {row('phone', 'phone', t('Phone number'), profile?.phone || t('Not set'), profile?.phone ? chip(false) : null)}
+        {/* No "Not verified" chip on the phone: checking it by text message doesn't exist yet. */}
+        {row('phone', 'phone', t('Phone number'), profile?.phone || t('Not set'))}
         {row('password', 'lock', t('Password'), t('Set'))}
       </List>
       <Text variant="small" weight={700} color="sec" style={{ marginTop: 6, marginBottom: 8, marginHorizontal: 4 }}>
@@ -166,6 +167,7 @@ function UsernameSheet({ onClose }: { onClose: () => void }) {
   const [state, setState] = useState<'same' | 'checking' | 'free' | 'taken' | 'bad' | 'idle'>('same');
   const [sugg, setSugg] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [saveErr, setSaveErr] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const latest = useRef(mine);
   useEffect(() => () => clearTimeout(timer.current), []);
@@ -173,6 +175,7 @@ function UsernameSheet({ onClose }: { onClose: () => void }) {
   const onType = (raw: string) => {
     const u = cleanUsername(raw);
     setV(u);
+    setSaveErr(null);
     latest.current = u;
     clearTimeout(timer.current);
     if (u === mine) return setState('same');
@@ -225,6 +228,7 @@ function UsernameSheet({ onClose }: { onClose: () => void }) {
       <Text variant="xs" color="sec" style={{ marginTop: 8 }}>
         {t('3 to 20 characters. Letters, numbers, dots and underscores. Start with a letter.')}
       </Text>
+      <ErrorText>{saveErr ? t(saveErr) : null}</ErrorText>
       <Button
         title={t('Save')}
         disabled={state !== 'free'}
@@ -234,7 +238,8 @@ function UsernameSheet({ onClose }: { onClose: () => void }) {
           setBusy(true);
           const r = await updateProfile({ username: v });
           setBusy(false);
-          if (r.error) return setState('taken');
+          if (r.error === USERNAME_TAKEN) return setState('taken');
+          if (r.error) return setSaveErr(r.error);
           onClose();
           toast(t('Username changed to @{u}', { u: v }), { icon: 'check' });
         }}
@@ -419,7 +424,8 @@ function PersonSheet({ k, onSave, onClose }: { k: 'gender' | 'dob' | 'height'; o
       patch = { gender };
     } else if (k === 'dob') {
       const a = ageFrom(dob);
-      if (a < 13 || a > 100) return setErr(t('You need to be 13 to 100 years old.'));
+      // Same as sign-up: the Terms say 16 or older.
+      if (a < 16 || a > 100) return setErr(t('You need to be 16 to 100 years old.'));
       patch = { date_of_birth: dobToIso(dob) };
     } else {
       const h = Number(height);
@@ -461,7 +467,7 @@ function PersonSheet({ k, onSave, onClose }: { k: 'gender' | 'dob' | 'height'; o
           </Text>
         </View>
       ) : (
-        <Field value={height} onChangeText={(v) => setHeight(v.replace(/\D/g, '').slice(0, 3))} unit={t('cm')} keyboardType="number-pad" inputMode="numeric" placeholder="178" ltr />
+        <Field value={height} onChangeText={(v) => setHeight(cleanNumber(v, false))} unit={t('cm')} keyboardType="number-pad" inputMode="numeric" placeholder="178" ltr />
       )}
       <ErrorText>{err}</ErrorText>
       <Button title={t('Save')} loading={busy} style={{ marginTop: 16 }} onPress={save} />

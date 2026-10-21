@@ -9,6 +9,7 @@ import { OtpInput } from '@/components/OtpInput';
 import { PhoneField } from '@/components/PhoneField';
 import { Screen } from '@/components/Screen';
 import { DeviceStep, HealthStep } from '@/components/signup/ConnectSteps';
+import { form, resetSignupForm, sent } from '@/components/signup/form';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, ErrorText, Label, Option, ProgDots, Row, Segmented, Springy } from '@/components/ui';
@@ -17,6 +18,7 @@ import { useT } from '@/i18n';
 import { EMAIL_CODES } from '@/lib/config';
 import { profileComplete, useAuth } from '@/lib/auth';
 import { applyCoach, type GymHours, myApplication, SOCIALS, SPECIALTIES } from '@/lib/coaching';
+import { askNotifPermission } from '@/lib/reminders';
 import { useSignupDraft } from '@/lib/signupDraft';
 import {
   ageFrom,
@@ -51,7 +53,21 @@ export default function SignUp() {
   }
   const { accountType } = useSignupDraft();
   const isCoach = (auth.profile?.account_type ?? accountType) === 'coach';
-  const done = () => router.replace({ pathname: '/home', params: { welcome: '1' } });
+  const done = async () => {
+    resetSignupForm();
+    // Sign-up is done: ask once for notifications so your reminders can show.
+    await askNotifPermission().catch(() => false);
+    router.replace({ pathname: '/home', params: { welcome: '1' } });
+  };
+  // Step 3 is a dead end for someone who signed in with the wrong account: let them log out.
+  const [leaving, setLeaving] = useState(false);
+  const switchAccount = async () => {
+    if (leaving) return;
+    setLeaving(true);
+    await auth.logOut().catch(() => {});
+    if (router.canDismiss()) router.dismissAll();
+    router.replace('/welcome');
+  };
 
   // Logged in with a finished profile: nothing to do here (coaches still send their application on step 3, and
   // everyone else can still connect a health app and a device on steps 4 and 5).
@@ -65,14 +81,14 @@ export default function SignUp() {
       {step === 0 ? <Basics onNext={() => setStep(1)} /> : null}
       {step === 1 ? <Verify onBack={() => setStep(0)} onVerified={() => setStep(2)} /> : null}
       {step === 2 ? isCoach ? <CoachApplication /> : <About onDone={() => setStep(3)} /> : null}
+      {step === 2 ? <Button title={t('Log out / Use another account')} kind="ghost" style={{ marginTop: 8 }} loading={leaving} onPress={switchAccount} /> : null}
       {step === 3 ? <HealthStep onNext={() => setStep(4)} /> : null}
       {step === 4 ? <DeviceStep onDone={done} /> : null}
     </Screen>
   );
 }
 
-/* ---------- shared form state across steps 1 and 2 ---------- */
-const form = { username: '', name: '', email: '', iso: 'SA', phone: '', password: '', password2: '' };
+/* ---------- shared form state across steps 1 and 2 lives in components/signup/form ---------- */
 
 /* ---------- Step 1: the basics ---------- */
 function Basics({ onNext }: { onNext: () => void }) {
@@ -92,11 +108,15 @@ function Basics({ onNext }: { onNext: () => void }) {
     if (e[k]) setE({ ...e, [k]: undefined });
   };
 
+  // Once the code or link is sent, your account (and username) exists, so it would show as taken.
+  const locked = !!sent.to;
+
   const onUsername = (raw: string) => {
     const u = cleanUsername(raw);
     set('username', u);
     clearTimeout(check.current);
     if (!u || usernameError(u)) return setUserState('idle');
+    if (u === sent.to?.username) return setUserState('free');
     setUserState('checking');
     check.current = setTimeout(async () => {
       const ok = await usernameAvailable(u);
@@ -119,6 +139,7 @@ function Basics({ onNext }: { onNext: () => void }) {
     setE(err);
     if (Object.keys(err).length) return;
 
+    if (f.username === sent.to?.username) return onNext();
     setBusy(true);
     const ok = await usernameAvailable(f.username);
     setBusy(false);
@@ -163,6 +184,15 @@ function Basics({ onNext }: { onNext: () => void }) {
     return null;
   })();
 
+  // A different email means a new account, with a new username.
+  const startOver = () => {
+    sent.to = null;
+    const next = { ...f, email: '', username: '' };
+    Object.assign(form, next);
+    setF(next);
+    setUserState('idle');
+  };
+
   const match = f.password2 ? (f.password2 === f.password ? 'ok' : f.password2.length >= f.password.length || !f.password.startsWith(f.password2) ? 'bad' : '') : '';
 
   return (
@@ -183,8 +213,9 @@ function Basics({ onNext }: { onNext: () => void }) {
         autoComplete="username-new"
         maxLength={20}
         ltr
+        editable={!locked}
         invalid={!!e.username || userState === 'taken'}
-        hint={userHint}
+        hint={locked ? <Text variant="small" weight={600} color="sec">{t('Your account was made with this username. You can change it later in Account.')}</Text> : userHint}
       />
       <Field label={t('Name')} optional={t('(optional)')} value={f.name} onChangeText={(v) => set('name', v)} placeholder={t('Omar')} autoComplete="given-name" maxLength={60} />
       <Field
@@ -198,8 +229,15 @@ function Basics({ onNext }: { onNext: () => void }) {
         autoComplete="email"
         autoCorrect={false}
         ltr
+        editable={!locked}
         error={e.email ? t(e.email) : null}
+        hint={locked ? <Text variant="small" weight={600} color="sec">{t(EMAIL_CODES ? 'We already sent a code here. Tap Next to enter it or get a new one.' : 'We already sent a link here. Tap Next to check it or get a new one.')}</Text> : null}
       />
+      {locked ? (
+        <Pressable onPress={startOver} hitSlop={8} style={{ alignSelf: 'flex-start', minHeight: 32, justifyContent: 'center', marginTop: -4, marginHorizontal: 4 }}>
+          <Text variant="small" weight={700} color="link">{t('Use a different email')}</Text>
+        </Pressable>
+      ) : null}
       <PhoneField
         iso={f.iso}
         digits={f.phone}
@@ -220,6 +258,7 @@ function Basics({ onNext }: { onNext: () => void }) {
         textContentType="newPassword"
         autoCapitalize="none"
         ltr
+        editable={!locked}
         error={e.password ? t(e.password) : null}
         hint={<PasswordMeter value={f.password} />}
       />
@@ -232,6 +271,7 @@ function Basics({ onNext }: { onNext: () => void }) {
         textContentType="newPassword"
         autoCapitalize="none"
         ltr
+        editable={!locked}
         error={e.password2 ? t(e.password2) : match === 'bad' ? t('Passwords don’t match') : null}
         hint={
           match === 'ok' ? (
@@ -246,7 +286,15 @@ function Basics({ onNext }: { onNext: () => void }) {
         <Button title={t('Next')} onPress={next} loading={busy} />
       </View>
       <Text variant="small" color="sec" center style={{ marginTop: 16 }}>
-        {t('By continuing you agree to the Terms and Privacy Policy.')}
+        {t('By continuing you agree to the')}{' '}
+        <Text variant="small" weight={700} color="link" onPress={() => router.push({ pathname: '/legal', params: { doc: 'terms' } })} accessibilityRole="link">
+          {t('Terms')}
+        </Text>{' '}
+        {t('and')}{' '}
+        <Text variant="small" weight={700} color="link" onPress={() => router.push('/legal')} accessibilityRole="link">
+          {t('Privacy Policy')}
+        </Text>
+        .
       </Text>
     </View>
   );
@@ -258,8 +306,10 @@ function Verify({ onBack, onVerified }: { onBack: () => void; onVerified: () => 
   const auth = useAuth();
   const toast = useToast();
   const { accountType } = useSignupDraft();
-  const [sent, setSent] = useState(false);
+  // Already sent (you went back and pressed Next again): show the code or link screen, with Resend.
+  const [isSent, setSent] = useState(!!sent.to && sent.to.email === form.email);
   const [busy, setBusy] = useState(false);
+  const [resending, setResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [left, setLeft] = useState(0);
@@ -284,6 +334,7 @@ function Verify({ onBack, onVerified }: { onBack: () => void; onVerified: () => 
     });
     setBusy(false);
     if (r.error) return setError(r.error);
+    sent.to = { username: form.username, email: form.email };
     setSent(true);
     setLeft(30);
   };
@@ -305,7 +356,10 @@ function Verify({ onBack, onVerified }: { onBack: () => void; onVerified: () => 
   };
 
   const resend = async () => {
+    if (resending) return;
+    setResending(true);
     const r = await auth.resendSignup(form.email);
+    setResending(false);
     if (r.error) return setError(r.error);
     setLeft(30);
     toast(t(EMAIL_CODES ? 'New code sent' : 'New link sent'), { icon: 'mail' });
@@ -314,12 +368,12 @@ function Verify({ onBack, onVerified }: { onBack: () => void; onVerified: () => 
   // Link mode: tapping the link in another tab logs this tab in too; move on when it does.
   const loggedIn = !!auth.session;
   useEffect(() => {
-    if (!EMAIL_CODES && sent && loggedIn) {
+    if (!EMAIL_CODES && isSent && loggedIn) {
       form.password = '';
       form.password2 = '';
       onVerified();
     }
-  }, [sent, loggedIn, onVerified]);
+  }, [isSent, loggedIn, onVerified]);
 
   const checkLink = async () => {
     setBusy(true);
@@ -330,7 +384,7 @@ function Verify({ onBack, onVerified }: { onBack: () => void; onVerified: () => 
     toast(t('Email confirmed'), { icon: 'check' });
   };
 
-  if (!sent)
+  if (!isSent)
     return (
       <View>
         <Text variant="h1">{t('Verify your account')}</Text>
@@ -366,7 +420,7 @@ function Verify({ onBack, onVerified }: { onBack: () => void; onVerified: () => 
           {left > 0 ? (
             <Text variant="small" weight={700} color="sec">{t('Resend link in 0:{s}', { s: String(left).padStart(2, '0') })}</Text>
           ) : (
-            <Pressable onPress={resend} hitSlop={8}>
+            <Pressable onPress={resend} disabled={resending} hitSlop={8}>
               <Text variant="small" weight={700} color="link">{t('Resend link')}</Text>
             </Pressable>
           )}
@@ -396,7 +450,7 @@ function Verify({ onBack, onVerified }: { onBack: () => void; onVerified: () => 
         {left > 0 ? (
           <Text variant="small" weight={700} color="sec">{t('Resend code in 0:{s}', { s: String(left).padStart(2, '0') })}</Text>
         ) : (
-          <Pressable onPress={resend} hitSlop={8}>
+          <Pressable onPress={resend} disabled={resending} hitSlop={8}>
             <Text variant="small" weight={700} color="link">{t('Resend code')}</Text>
           </Pressable>
         )}
@@ -410,6 +464,8 @@ function Verify({ onBack, onVerified }: { onBack: () => void; onVerified: () => 
 }
 
 /* ---------- Step 3: a bit about you ---------- */
+/** The Terms say you must be 16 or older (legal.tsx). */
+const MIN_AGE = 16;
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 function About({ onDone }: { onDone: () => void }) {
@@ -419,6 +475,8 @@ function About({ onDone }: { onDone: () => void }) {
   const toast = useToast();
   const [gender, setGender] = useState<'male' | 'female' | null>(auth.profile?.gender ?? null);
   const [dob, setDob] = useState<Dob | null>(null);
+  // The wheel starts on a sample date; it only counts once you've moved it.
+  const [dobPicked, setDobPicked] = useState(false);
   const [dobOpen, setDobOpen] = useState(false);
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
@@ -432,10 +490,10 @@ function About({ onDone }: { onDone: () => void }) {
   const save = async () => {
     const err: Errors = {};
     if (!gender) err.gender = 'Choose one.';
-    if (!dob) err.dob = 'Pick your date of birth.';
+    if (!dob || !dobPicked) err.dob = 'Pick your date of birth.';
     else {
       const a = ageFrom(dob);
-      if (!(a >= 13 && a <= 100)) err.dob = 'You need to be 13 to 100 years old.';
+      if (!(a >= MIN_AGE && a <= 100)) err.dob = 'You need to be 16 to 100 years old.';
     }
     const he = heightError(height);
     if (he) err.height = he;
@@ -488,10 +546,10 @@ function About({ onDone }: { onDone: () => void }) {
           }}
           accessibilityState={{ expanded: dobOpen }}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingHorizontal: 16 }}>
-          <Text weight={dob ? 700 : 400} color={dob ? 'text' : 'sec'} style={{ flex: 1 }}>
-            {dob ? `${t(MONTHS[dob.m - 1])} ${dob.d}, ${dob.y}` : t('Choose your birthday')}
+          <Text weight={dob && dobPicked ? 700 : 400} color={dob && dobPicked ? 'text' : 'sec'} style={{ flex: 1 }}>
+            {dob && dobPicked ? `${t(MONTHS[dob.m - 1])} ${dob.d}, ${dob.y}` : t('Choose your birthday')}
           </Text>
-          {dob ? (
+          {dob && dobPicked ? (
             <Text variant="small" weight={700} color="sec">
               {t('{n} years old', { n: ageFrom(dob) })}
             </Text>
@@ -508,13 +566,16 @@ function About({ onDone }: { onDone: () => void }) {
                 { items: Array.from({ length: 31 }, (_, i) => ({ value: i + 1, label: String(i + 1) })), selected: dob.d, width: 60 },
                 { items: Array.from({ length: thisYear - 1920 + 1 }, (_, i) => ({ value: 1920 + i, label: String(1920 + i) })), selected: dob.y, width: 90 },
               ]}
-              onChange={([m, d, y]) => setDob({ m, y, d: Math.min(d, daysIn(m, y)) })}
+              onChange={([m, d, y]) => {
+                setDob({ m, y, d: Math.min(d, daysIn(m, y)) });
+                setDobPicked(true);
+              }}
             />
           </View>
         ) : null}
       </View>
       <ErrorText>{e.dob ? t(e.dob) : null}</ErrorText>
-      {dob && !e.dob && ageFrom(dob) >= 13 && ageFrom(dob) < 18 ? (
+      {dob && dobPicked && !e.dob && ageFrom(dob) >= MIN_AGE && ageFrom(dob) < 18 ? (
         <Text variant="small" color="sec" style={{ marginTop: 2, marginHorizontal: 4 }}>
           {t('Under 18: we keep you at maintenance so you have energy to grow.')}
         </Text>
@@ -623,6 +684,9 @@ function CoachApplication() {
     if (!ok) return setE({ save: 'Couldn’t send. Please try again.' });
     await auth.refreshProfile().catch(() => null);
     toast(t('Application sent. We usually reply within 2 days.'), { icon: 'check' });
+    // Sign-up is done for coaches here: ask once for notifications.
+    resetSignupForm();
+    await askNotifPermission().catch(() => false);
     router.replace('/home');
     setTimeout(() => router.push('/coachapp'), 400);
   };

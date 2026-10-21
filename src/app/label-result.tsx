@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { Field } from '@/components/Field';
+import { AllergyWarn, useAllergyCheck } from '@/components/food/AllergyWarn';
 import { WarnChip } from '@/components/food/Chips';
 import { Thinking } from '@/components/food/Thinking';
 import { Icon } from '@/components/Icon';
@@ -35,6 +36,9 @@ export default function LabelResult() {
   const [err, setErr] = useState<AiError | null>(null);
   const [unit, setUnit] = useState<'g' | 'ml'>('g');
   const [v, setV] = useState({ name: '', k: '', p: '', c: '', f: '', s: '', g: '100' });
+  // One serving as printed (high sugar is judged on one serving, not on everything you ate).
+  const [serving, setServing] = useState(0);
+  const allergyCheck = useAllergyCheck();
 
   const fetchLabel = async () => {
     const r = await askAI<Label>('label_photo', { lang, image: photo?.base64, mime: photo?.mime });
@@ -43,6 +47,7 @@ export default function LabelResult() {
     const x = r.result;
     if (!x.readable) toast(t('Some numbers were hard to read. Please check them.'), { icon: 'info' });
     setUnit(x.unit === 'ml' ? 'ml' : 'g');
+    setServing(x.serving && x.serving > 0 ? x.serving : 0);
     const r1 = (n?: number) => (n == null ? '' : String(Math.round(n * 10) / 10));
     setV({ name: x.name ?? '', k: r1(x.kcal_100), p: r1(x.protein_100), c: r1(x.carbs_100), f: r1(x.fat_100), s: r1(x.sugar_100), g: String(Math.round(x.serving || 100)) });
   };
@@ -62,12 +67,15 @@ export default function LabelResult() {
   const k = num(v.k) * m;
   const sugar = num(v.s) * m;
   const ok = v.name.trim() && num(v.k) > 0 && m > 0;
+  const allergic = allergyCheck(v.name);
+  // High fat: 17.5 g per 100 g, or 8.75 g per 100 ml for drinks.
+  const fatHigh = num(v.f) >= (unit === 'ml' ? 8.75 : 17.5);
   const set = (key: keyof typeof v) => (s: string) => setV({ ...v, [key]: key === 'name' ? s : clean(s) });
 
   const add = async () => {
     if (!ok) return;
     const row = await logFood(
-      { name: `${v.name.trim()}, ${Math.round(num(v.g))} ${t(unit)}`, kcal: k, protein: num(v.p) * m, carbs: num(v.c) * m, fat: num(v.f) * m, sugar_high: addedSugarHigh(v.name, sugar), fat_high: num(v.f) >= 17.5 },
+      { name: `${v.name.trim()}, ${Math.round(num(v.g))} ${t(unit)}`, kcal: k, protein: num(v.p) * m, carbs: num(v.c) * m, fat: num(v.f) * m, sugar_high: addedSugarHigh(v.name, (num(v.s) * (serving || num(v.g) || 100)) / 100), fat_high: fatHigh },
       toast,
       t,
     );
@@ -109,6 +117,8 @@ export default function LabelResult() {
             {t('Per 100 {u}. Fix anything that looks wrong.', { u: t(unit) })}
           </Text>
           <Field label={t('Name')} value={v.name} onChangeText={set('name')} placeholder={t('Granola')} maxLength={80} />
+          {/* Only the name is known here (a label photo has no ingredient list read). */}
+          <AllergyWarn items={allergic} unknown />
           <Row gap={10}>
             <View style={{ flex: 1 }}>
               <Field label={t('Calories')} value={v.k} onChangeText={set('k')} inputMode="decimal" ltr unit={t('kcal')} />

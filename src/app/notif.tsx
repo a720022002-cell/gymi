@@ -11,14 +11,13 @@ import { Text } from '@/components/Text';
 import { Button, Card, Chip, Label, Row, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
 import { getSoundPrefs, previewSound, setSoundPrefs, SOUNDS, type SoundPrefs } from '@/lib/beep';
-import { FREQ, NCAT_INFO, NCATS, type NCat, NSOUNDS, type Prefs, SOUND_NAMES, type WaterFreq } from '@/lib/reminders';
+import { DEFAULT_PREFS, FREQ, NCAT_INFO, NCATS, type NCat, type Prefs, type WaterFreq } from '@/lib/reminders';
 import { useAuth } from '@/lib/auth';
 import { sleepDetail, useDevices } from '@/lib/devices';
 import { catSummary, useReminderPrefs } from '@/lib/remindersPrefs';
-import { playTone } from '@/lib/sound';
 import { useSettings } from '@/theme/settings';
 
-const REPORT_DAYS = ['Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue'];
+const REPORT_DAYS = ['Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed'];
 
 /** One reminder type: when, how often and which sound (design: notif). Open with /notif?type=water. */
 export default function NotifDetail() {
@@ -94,18 +93,17 @@ export default function NotifDetail() {
     </ListRow>
   );
 
-  // Workouts use the workout sound list (the same one the rest timer plays).
-  const sounds = k === 'workout' ? SOUNDS.map((s) => s.id) : NSOUNDS[k];
-  const soundName = (id: string) => (k === 'workout' ? (SOUNDS.find((s) => s.id === id)?.name ?? id) : (SOUND_NAMES[id] ?? id));
-  const curSound = k === 'workout' && sp ? sp.sound : cat.sound;
+  // Reminders play the phone's own notification sound, or none. The workout sound list is for the rest timer (in the app).
+  const soundOn = cat.sound !== 'none';
+  const setSoundOn = (on: boolean) => set(k, { sound: on ? (DEFAULT_PREFS[k].sound === 'none' ? 'default' : DEFAULT_PREFS[k].sound) : 'none' } as Partial<Prefs[NCat]>);
+  const sounds = SOUNDS.map((s) => s.id);
+  const soundName = (id: string) => SOUNDS.find((s) => s.id === id)?.name ?? id;
+  const curSound = sp?.sound ?? p.workout.sound;
   const pickSound = (id: string) => {
-    (k === 'workout' ? previewSound : playTone)(id);
-    set(k, { sound: id } as Partial<Prefs[NCat]>);
-    if (k === 'workout' && sp) {
-      const next = { ...sp, sound: id };
-      setSp(next);
-      setSoundPrefs(next);
-    }
+    previewSound(id);
+    const next = { rest: sp?.rest ?? true, sound: id };
+    setSp(next);
+    setSoundPrefs(next);
   };
 
   return (
@@ -129,7 +127,7 @@ export default function NotifDetail() {
             <Label>{t('How often')}</Label>
             {radio<WaterFreq>(
               p.water.freq,
-              (Object.keys(FREQ) as WaterFreq[]).map((v) => [v, t(FREQ[v]), v === 'behind' ? t('Checks every 2 hours and only reminds you if you’re behind') : undefined]),
+              (Object.keys(FREQ) as WaterFreq[]).map((v) => [v, t(FREQ[v]), v === 'behind' ? t('Asks you to check your water every 2 hours') : undefined]),
               (v) => set('water', { freq: v }),
             )}
             <List>
@@ -259,40 +257,44 @@ export default function NotifDetail() {
         ) : null}
 
         <Label>{t('Sound')}</Label>
-        <List>
-          {sounds.map((id, i) => (
-            <ListRow key={id} first={!i}>
-              <Pressable onPress={() => pickSound(id)} accessibilityRole="radio" accessibilityState={{ checked: curSound === id }} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <View style={{ width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: curSound === id ? c.cobalt : 'transparent', borderWidth: curSound === id ? 0 : 2, borderColor: c.line }}>
-                  {curSound === id ? <Icon name="check" size={13} color="#FFFFFF" strokeWidth={3} /> : null}
-                </View>
-                <Text weight={700} style={{ flex: 1 }}>
-                  {t(soundName(id))}
-                </Text>
-              </Pressable>
-              {id !== 'none' ? (
-                <Pressable
-                  onPress={() => (k === 'workout' ? previewSound : playTone)(id)}
-                  accessibilityLabel={t('Play {x}', { x: t(soundName(id)) })}
-                  style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon name="play" size={16} />
-                </Pressable>
-              ) : null}
-            </ListRow>
-          ))}
-        </List>
-        <Text variant="xs" color="sec" style={{ marginHorizontal: 4 }}>
-          {t('Tap a sound to hear it. Turn off silent mode on your phone to hear previews.')}
-        </Text>
+        <List>{toggleRow(t('Play a sound'), t('Uses your phone’s notification sound'), soundOn, setSoundOn, true)}</List>
+
+        {k === 'workout' ? (
+          <>
+            <Label>{t('Rest timer sound')}</Label>
+            <List>
+              {sounds.map((id, i) => (
+                <ListRow key={id} first={!i}>
+                  <Pressable onPress={() => pickSound(id)} accessibilityRole="radio" accessibilityState={{ checked: curSound === id }} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <View style={{ width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: curSound === id ? c.cobalt : 'transparent', borderWidth: curSound === id ? 0 : 2, borderColor: c.line }}>
+                      {curSound === id ? <Icon name="check" size={13} color="#FFFFFF" strokeWidth={3} /> : null}
+                    </View>
+                    <Text weight={700} style={{ flex: 1 }}>
+                      {t(soundName(id))}
+                    </Text>
+                  </Pressable>
+                  {id !== 'none' ? (
+                    <Pressable
+                      onPress={() => previewSound(id)}
+                      accessibilityLabel={t('Play {x}', { x: t(soundName(id)) })}
+                      style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon name="play" size={16} />
+                    </Pressable>
+                  ) : null}
+                </ListRow>
+              ))}
+            </List>
+            <Text variant="xs" color="sec" style={{ marginHorizontal: 4 }}>
+              {t('Tap a sound to hear it. Turn off silent mode on your phone to hear previews.')}
+            </Text>
+          </>
+        ) : null}
         <Button
           kind="glass"
           icon="bell"
           title={t('Preview a reminder')}
           style={{ marginTop: 12 }}
-          onPress={() => {
-            (k === 'workout' ? previewSound : playTone)(curSound);
-            showBanner({ title: 'Adro', body: t(info.sample), icon: info.icon, route: `/notif?type=${k}` });
-          }}
+          onPress={() => showBanner({ title: 'Adro', body: t(info.sample), icon: info.icon, route: `/notif?type=${k}` })}
         />
       </View>
     </Screen>

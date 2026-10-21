@@ -153,15 +153,7 @@ export function SettingsSheet({ st, uid, onDone }: { st: State; uid: string; onD
           <Toggle value={!!s.lock} onChange={(v) => setS({ ...s, lock: v })} label={t('Lock with Face ID')} />
         </Card>
       ) : null}
-      <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <View style={{ flex: 1 }}>
-          <Text weight={700}>{t('Use temperature from my watch')}</Text>
-          <Text variant="xs" color="sec">
-            {anon ? t('Not available in anonymous mode') : t('Apple Watch or Oura. Makes ovulation predictions better. Needs the Adro phone app and a connected device.')}
-          </Text>
-        </View>
-        {anon ? null : <Toggle value={!!s.temp_watch} onChange={(v) => setS({ ...s, temp_watch: v })} label={t('Use temperature from my watch')} />}
-      </Card>
+      {/* "Use temperature from my watch" (temp_watch) stays hidden until predictions use it. */}
       <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <View style={{ flex: 1 }}>
           <Text weight={700}>{t('Hidden from Gym Bros and coaches')}</Text>

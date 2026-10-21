@@ -76,6 +76,11 @@ export default function AdminReports() {
               {reasonText(r.reason)}
             </Text>
             {r.note ? <Text variant="small" style={{ marginTop: 4 }}>{r.note}</Text> : null}
+            {r.ref ? (
+              <Text variant="xs" color="sec" selectable style={{ marginTop: 4 }}>
+                {t('Reference: {r}', { r: r.ref })}
+              </Text>
+            ) : null}
             <Text variant="xs" color="sec" style={{ marginTop: 6 }}>
               {t('From @{u} · {n} reports about this person in all', { u: r.reporter ?? '?', n: r.reports_on_them })}
             </Text>

@@ -4,7 +4,7 @@ import { TextInput, View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
-import { ACTIVITY, bodyFatList, calcPlan, type FoodPlan, GOAL_DESC, GOAL_ORDER, GOALS, isMinor } from '@/lib/nutrition';
+import { ACTIVITY, bodyFatList, calcPlan, flooredRate, type FoodPlan, GOAL_DESC, GOAL_ORDER, GOALS, isMinor } from '@/lib/nutrition';
 import { useWeight } from '@/lib/units';
 import { cleanNumber } from '@/lib/validation';
 import { useSettings } from '@/theme/settings';
@@ -143,17 +143,21 @@ export function SetupWizard({ inTab }: { inTab?: boolean }) {
               </Text>
             </Card>
           ) : null}
-          {GOAL_ORDER.map((i) => (
-            <Option
-              key={i}
-              icon={i < 2 ? 'up' : i === 2 ? 'minus' : 'down'}
-              title={t(GOALS[i])}
-              subtitle={t(GOAL_DESC[i])}
-              selected={(minor ? 2 : f.goal) === i}
-              disabled={minor && i !== 2}
-              onPress={() => set({ goal: minor ? 2 : i })}
-            />
-          ))}
+          {GOAL_ORDER.map((i) => {
+            // A cut the calorie floor holds back: the rate you'd really get, not the usual range.
+            const rate = flooredRate({ ...f, goal: i }, food.person);
+            return (
+              <Option
+                key={i}
+                icon={i < 2 ? 'up' : i === 2 ? 'minus' : 'down'}
+                title={t(GOALS[i])}
+                subtitle={rate != null ? (rate < 0 ? t('About −{x} kg a week for you (your calorie floor)', { x: Math.abs(rate).toFixed(2) }) : t('Close to maintenance for you (your calorie floor)')) : t(GOAL_DESC[i])}
+                selected={(minor ? 2 : f.goal) === i}
+                disabled={minor && i !== 2}
+                onPress={() => set({ goal: minor ? 2 : i })}
+              />
+            );
+          })}
           <Button title={t('Next')} style={{ marginTop: 24 }} onPress={next} />
         </View>
       ) : null}

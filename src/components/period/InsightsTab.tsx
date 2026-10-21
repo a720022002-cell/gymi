@@ -15,10 +15,12 @@ import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { useTrain } from '@/lib/train';
 import { addDays } from '@/lib/nutrition';
+import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
 export function InsightsTab({ st }: { st: State }) {
   const { t, lang } = useT();
+  const W = useWeight();
   const { colors: c } = useSettings();
   const toast = useToast();
   const { profile } = useAuth();
@@ -73,10 +75,10 @@ export function InsightsTab({ st }: { st: State }) {
       {vol.some((v) => v != null) ? (
         <Card>
           <Text variant="xs" weight={700} color="sec">
-            {t('Average training volume per session (kg)')}
+            {W.words(t('Average training volume per session (kg)'))}
           </Text>
           <View style={{ marginTop: 8 }}>
-            <BarChart values={vol.map((v) => (v == null ? null : Math.round(v)))} labels={PH.map((p) => t(p))} highlight={best?.[1] ?? -1} />
+            <BarChart values={vol.map((v) => (v == null ? null : Math.round(W.num(v))))} labels={PH.map((p) => t(p))} highlight={best?.[1] ?? -1} />
           </View>
         </Card>
       ) : null}

@@ -15,7 +15,7 @@ import { Text } from '@/components/Text';
 import { Button, Card, NavButton, Option, Row, Segmented } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
-import { CY_MODES, type CycleMode, cycleNow, getPartner, partnerSummary, savePartner, loadCycle, saveSettings } from '@/lib/cycle';
+import { CY_MODES, type CycleMode, cycleNow, getPartner, partnerSummary, savePartner, loadCycle, saveSettings, withWeek } from '@/lib/cycle';
 import { lockSupported, unlock } from '@/lib/biolock';
 import { scheduleCycleReminders } from '@/lib/cycleReminders';
 import { useFood } from '@/lib/food';
@@ -146,7 +146,9 @@ export default function PeriodScreen() {
               subtitle={t(CY_MODES[k][1])}
               selected={st.settings.mode === k}
               onPress={async () => {
-                const next = { ...st.settings, mode: k, preg_week: k === 'preg' ? (st.settings.preg_week ?? 12) : st.settings.preg_week, post_week: k === 'post' ? (st.settings.post_week ?? 2) : st.settings.post_week };
+                // A week that was never set starts today (it moves on by itself from there).
+                const base = { ...st.settings, mode: k };
+                const next = k === 'preg' && base.preg_week == null ? withWeek(base, 'preg', 12, today) : k === 'post' && base.post_week == null ? withWeek(base, 'post', 2, today) : base;
                 setSt({ ...st, settings: next });
                 setModeOpen(false);
                 if (uid) await saveSettings(uid, next);

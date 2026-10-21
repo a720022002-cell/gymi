@@ -17,7 +17,8 @@ import { useHealth } from '@/lib/health';
 import { fx } from '@/lib/progress';
 import { useStreaks } from '@/lib/useProgress';
 import { fmt, localDay } from '@/lib/nutrition';
-import { useCycleToday } from '@/lib/cyclePhase';
+import { lockSupported } from '@/lib/biolock';
+import { useCycleCoach } from '@/lib/cyclePhase';
 import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
@@ -26,7 +27,7 @@ export function WaterCard() {
   const { colors: c } = useSettings();
   const toast = useToast();
   const food = useFood();
-  const goal = food.plan.water || 2800;
+  const goal = food.waterGoal;
   // Long press on + : type your own amount.
   const [custom, setCustom] = useState<string | null>(null);
   const amount = Number((custom ?? '').replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/\D/g, '')) || 0;
@@ -206,16 +207,25 @@ export function TipCard() {
 export function CycleCard() {
   const { t } = useT();
   const { colors: c } = useSettings();
-  const cy = useCycleToday();
+  const all = useCycleCoach();
+  const cy = all?.cycle ?? null;
+  const preg = all?.preg ?? null;
   const today = localDay();
   const until = cy ? Math.max(0, Math.round((new Date(`${cy.next}T12:00:00`).getTime() - new Date(`${today}T12:00:00`).getTime()) / 864e5)) : 0;
-  const sub = !cy
-    ? t('Log your period to see your phase. Private. Never shared.')
-    : cy.phase === 'Period'
-      ? t('Period day {n}', { n: cy.day })
-      : cy.late
-        ? t('Your period is late')
-        : `${t(cy.phase)} · ${until > 0 ? t('Next period in {n} days', { n: until }) : t('Your period could start any day')}`;
+  // Locked with Face ID or a fingerprint: no details on Home.
+  const sub = all?.lock && lockSupported
+    ? t('Locked. Tap to open.')
+    : preg
+      ? preg.week == null
+        ? t(preg.mode === 'preg' ? 'Pregnant' : 'After birth')
+        : t(preg.mode === 'preg' ? 'Pregnant · week {n}' : 'After birth · week {n}', { n: preg.week })
+      : !cy
+        ? t('Log your period to see your phase. Private. Never shared.')
+        : cy.phase === 'Period'
+          ? t('Period day {n}', { n: cy.day })
+          : cy.late
+            ? t('Your period is late')
+            : `${t(cy.phase)} · ${until > 0 ? t('Next period in {n} days', { n: until }) : t('Your period could start any day')}`;
   return (
     <Card onPress={() => router.push('/period')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
       <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(236,72,153,0.14)', alignItems: 'center', justifyContent: 'center' }}>

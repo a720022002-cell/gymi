@@ -10,6 +10,7 @@ import { Text } from '@/components/Text';
 import { Button, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { setPendingBarcode } from '@/lib/pending';
+import { normBarcode } from '@/lib/products';
 import { reader, readBarcode, readBarcodeFile } from '@/lib/readBarcode';
 import { goBack } from '@/lib/nav';
 
@@ -30,7 +31,8 @@ export default function Barcode() {
   const done = useRef(false);
   // Opened to pick a product (a saved meal): hand the code back instead of opening the product.
   const { pick } = useLocalSearchParams<{ pick?: string }>();
-  const go = (code: string) => {
+  const go = (raw: string) => {
+    const code = normBarcode(raw);
     if (pick) {
       setPendingBarcode(code);
       goBack();

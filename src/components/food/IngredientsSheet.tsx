@@ -6,7 +6,7 @@ import { useT } from '@/i18n';
 import { askAI } from '@/lib/ai';
 import { allergiesText } from '@/lib/allergies';
 import { useFood } from '@/lib/food';
-import { type CustomRecipe, type PlannedMeal } from '@/lib/nutrition';
+import { type CustomRecipe, dayKey, type PlannedMeal } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
 
 import { Sheet } from '../Sheet';
@@ -119,11 +119,11 @@ export function IngredientsSheet({ meal, onClose }: { meal: PlannedMeal | null; 
       };
     } else recipe = localRecipe(words, meal, t);
     const before = food.plan.custom;
-    food.updatePlan({ custom: { ...(food.plan.custom ?? {}), [meal.key]: recipe } });
+    food.updatePlan({ custom: { ...(food.plan.custom ?? {}), [dayKey(food.day, meal.key)]: recipe } });
     setBusy(false);
     setText('');
     onClose();
-    router.push({ pathname: '/recipe', params: { key: meal.key } });
+    router.push({ pathname: '/recipe', params: { key: meal.key, day: food.day } });
     toast(t('Recipe ready. Same calories as your plan.'), { ai: true, undo: () => food.updatePlan({ custom: before }) });
   };
 

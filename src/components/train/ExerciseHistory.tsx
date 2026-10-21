@@ -9,7 +9,7 @@ import { Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { shortDate } from '@/lib/progress';
 import { useTrain } from '@/lib/train';
-import { workoutTitle } from '@/lib/training';
+import { EX, workoutTitle } from '@/lib/training';
 import { useWeight } from '@/lib/units';
 import { type ExerciseSession, loadExerciseHistory } from '@/lib/workoutHistory';
 import { useSettings } from '@/theme/settings';
@@ -65,7 +65,7 @@ export function ExerciseHistory({ id }: { id: string }) {
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
                 {r.sets.map((s, j) => (
                   <View key={j} style={{ backgroundColor: c.inset, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
-                    <SetValue w={s.w} r={s.r} size={13} />
+                    <SetValue w={s.w} r={s.r} size={13} timed={!!(r.time || EX[id]?.time)} />
                   </View>
                 ))}
               </View>

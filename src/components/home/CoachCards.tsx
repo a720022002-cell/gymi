@@ -128,7 +128,7 @@ export function CoachCard({ k }: { k: MyCoach }) {
         </View>
       ) : (
         <Text variant="small" color="sec" style={{ marginTop: 8 }}>
-          {food.coachTargets ? t('Your calories and protein are set by {n}.', { n: name }) : t('Your coach can see your food, training and health, and can send you plans.')}
+          {food.coachTargets ? t('Your calories and protein are set by {n}.', { n: name }) : t('Your coach sees your food, workouts, weight, sleep and check-ins, steps, water, goal and allergies. Cycle data and blood tests stay private.')}
         </Text>
       )}
     </Card>

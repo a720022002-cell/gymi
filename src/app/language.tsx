@@ -17,9 +17,11 @@ export default function Language() {
   const { pre } = useLocalSearchParams<{ pre?: string }>();
   const duringSignup = pre === '1';
 
-  const choose = (l: Lang) => {
-    setLang(l);
-    if (session) updateProfile({ language: l });
+  const choose = async (l: Lang) => {
+    // Save it to your account first: Arabic restarts the phone app.
+    if (session) await updateProfile({ language: l }).catch(() => null);
+    // During sign-up the restart comes back here, so nothing is lost.
+    setLang(l, duringSignup ? '/language?pre=1' : undefined);
   };
 
   return (

@@ -26,6 +26,8 @@ export function InviteCodeSheet({ open, onDone, cancel }: { open: boolean; onDon
   const [busy, setBusy] = useState(false);
 
   const connect = async () => {
+    // Ignore a second tap while the first is still checking.
+    if (busy) return;
     const code = v.trim().toUpperCase();
     if (!code) return setErr(cancel ? t('Type a code.') : t('Type a code or tap Skip.'));
     setBusy(true);

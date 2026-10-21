@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, TextInput, View } from 'react-native';
 
 import { Field } from '@/components/Field';
+import { AllergyWarn } from '@/components/food/AllergyWarn';
 import { WarnChip } from '@/components/food/Chips';
 import { NutritionFacts, useMyFacts } from '@/components/food/NutritionFacts';
 import { Stepper } from '@/components/food/Stepper';
@@ -16,7 +17,7 @@ import { useT } from '@/i18n';
 import { productAllergies } from '@/lib/allergies';
 import { useFood, useLogFood } from '@/lib/food';
 import { aiErrorText, askAI } from '@/lib/ai';
-import { lookupProduct, type Product } from '@/lib/products';
+import { lookupProduct, normBarcode, type Product } from '@/lib/products';
 import { takePhoto } from '@/lib/photo';
 import { supabase } from '@/lib/supabase';
 import { EXTRA_KEYS, extraFacts, type Facts, FACTS, factsKey, myNameFor, offFactsFor, setMyName, withMine } from '@/lib/nutrients';
@@ -27,7 +28,9 @@ import { goBack } from '@/lib/nav';
 
 export default function ProductScreen() {
   const { t, lang } = useT();
-  const { code } = useLocalSearchParams<{ code?: string }>();
+  const { code: raw } = useLocalSearchParams<{ code?: string }>();
+  // Saved and looked up as 13 digits (a 12-digit UPC-A gets a 0 in front).
+  const code = raw ? normBarcode(raw) : undefined;
   const [state, setState] = useState<'loading' | 'found' | 'missing' | 'error' | 'fix'>(code ? 'loading' : 'missing');
   const [prod, setProd] = useState<Product | null>(null);
 
@@ -109,7 +112,9 @@ function Found({ x, code, onFix }: { x: Product; code: string; onFix: () => void
   const add = async () => {
     if (!(grams > 0)) return;
     const name = um === 'serving' ? (sv === 1 ? shownName : `${shownName} ×${sv}`) : `${shownName}, ${Math.round(grams)} ${t(x.unit)}`;
-    const row = await logFood({ name, kcal: x.k * m, protein: x.p * m, carbs: x.c * m, fat: x.f * m, sugar_high: addedSugarHigh(name, sugar), fat_high: x.f >= 17.5, barcode: code, food_id: x.id ?? null }, toast, t);
+    // High sugar is judged on one serving (two of something aren't "high sugar" twice over); high fat per 100 g, or per
+    // 100 ml for drinks (half the limit, as on UK front-of-pack labels).
+    const row = await logFood({ name, kcal: x.k * m, protein: x.p * m, carbs: x.c * m, fat: x.f * m, sugar_high: addedSugarHigh(name, (x.sugar * (x.size || 100)) / 100), fat_high: x.f >= (x.unit === 'ml' ? 8.75 : 17.5), barcode: code, food_id: x.id ?? null }, toast, t);
     if (row) goBack();
   };
 
@@ -133,14 +138,8 @@ function Found({ x, code, onFix }: { x: Product; code: string; onFix: () => void
           </Springy>
         ) : null}
       </Card>
-      {allergic.length ? (
-        <Row gap={8} style={{ marginTop: 10, padding: 12, borderRadius: 16, backgroundColor: 'rgba(220,38,38,0.1)', alignItems: 'flex-start' }}>
-          <Icon name="warn" size={18} color={c.down} />
-          <Text variant="small" weight={700} style={{ flex: 1 }}>
-            {t('Careful: this may contain {x}, which you’re allergic to.', { x: allergic.map((a) => t(a)).join(t(', ')) })}
-          </Text>
-        </Row>
-      ) : null}
+      {/* No ingredient list or allergen tags (often in our own food list): the name was checked, but say it isn't sure. */}
+      <AllergyWarn items={allergic} unknown={!x.ingredients?.trim() && !x.allergenTags?.length} />
       {renaming != null ? (
         <Card>
           <Field label={t('Your name for it')} value={renaming} onChangeText={setRenaming} maxLength={120} autoFocus />
@@ -310,7 +309,7 @@ function Manual({ code, offline, init }: { code?: string; offline: boolean; init
     });
     const name = um === 'serving' && canServing ? (sv === 1 ? v.name.trim() : `${v.name.trim()} ×${sv}`) : `${v.name.trim()}, ${Math.round(eaten)} ${u}`;
     const row = await logFood(
-      { name, kcal: per.k * m, protein: per.p * m, carbs: per.c * m, fat: per.f * m, sugar_high: addedSugarHigh(name, per.sugar * m), fat_high: per.f >= (unit === 'ml' ? 8.75 : 17.5), barcode: code ?? null, food_id: (foodId as string) ?? null },
+      { name, kcal: per.k * m, protein: per.p * m, carbs: per.c * m, fat: per.f * m, sugar_high: addedSugarHigh(name, (per.sugar * (size || 100)) / 100), fat_high: per.f >= (unit === 'ml' ? 8.75 : 17.5), barcode: code ?? null, food_id: (foodId as string) ?? null },
       toast,
       t,
     );

@@ -12,24 +12,8 @@ import { Button, Card, Row } from '@/components/ui';
 import { useT } from '@/i18n';
 import { myCoachPlans, type Program } from '@/lib/coaching';
 import { useTrain } from '@/lib/train';
-import { DAYS, type Day, exInfo, SPREAD, type TrainPlan, type Workout, workoutMinutes } from '@/lib/training';
+import { exInfo, planWithProgram } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
-
-/** Turn a coach's program into your weekly plan. */
-function toPlan(p: Program): TrainPlan {
-  const days = p.days.filter((d) => d.ex.length).slice(0, 6);
-  const n = Math.max(1, days.length);
-  const spots = n === 1 ? [1] : SPREAD[n];
-  const week: Day[] = DAYS.map(() => ({ w: null, lock: false }));
-  const workouts: Record<string, Workout> = {};
-  days.forEach((d, i) => {
-    let name = d.name.trim() || `Day ${i + 1}`;
-    while (workouts[name]) name = `${name} ${i + 1}`;
-    workouts[name] = { ex: d.ex, focus: '', min: workoutMinutes(d.ex) };
-    week[spots[i]].w = name;
-  });
-  return { days: n, injuries: [], split: p.name, week, workouts, machines: {}, homeMode: false, skipped: {}, dismiss: {} };
-}
 
 /** Client: the workout program your coach gave you (design: myprog). */
 export default function MyProgram() {
@@ -94,7 +78,8 @@ export default function MyProgram() {
           title={t('Use it')}
           style={{ marginTop: 16 }}
           onPress={async () => {
-            const ok = await train.savePlan({ ...toPlan(p), since: train.today }, true);
+            // Built like the automatic sync: your injuries, skipped days, machines, level and home mode stay.
+            const ok = await train.savePlan(planWithProgram(train.plan, p, train.today), true);
             setConfirm(false);
             toast(ok ? t('Your training plan is now {p}', { p: p.name }) : t('Couldn’t save. Please try again.'), { icon: ok ? 'check' : 'warn' });
             if (ok) router.replace('/train');

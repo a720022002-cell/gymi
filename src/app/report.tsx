@@ -91,7 +91,10 @@ function ReportBody({ stats: s, label, a, b, c }: { stats: ReportStats; label: s
   const { t, lang } = useT();
   const W = useWeight();
   const { profile } = useAuth();
+  const { today } = useFood();
   const key = `adro.report.${profile?.id ?? ''}.${a}.${b}.${lang}`;
+  // Only a period that's fully over is kept: one that includes today still changes.
+  const over = b < today;
   // null v: checked, nothing saved for this period yet.
   const [coach, setCoach] = useState<{ key: string; v: Coach | null } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -101,6 +104,7 @@ function ReportBody({ stats: s, label, a, b, c }: { stats: ReportStats; label: s
   useEffect(() => {
     let alive = true;
     (async () => {
+      if (!over) return setCoach({ key, v: null });
       const local = await AsyncStorage.getItem(key).catch(() => null);
       if (local) return alive && setCoach({ key, v: JSON.parse(local) as Coach });
       const saved = await loadSavedReport(a, b, lang).catch(() => null);
@@ -111,7 +115,7 @@ function ReportBody({ stats: s, label, a, b, c }: { stats: ReportStats; label: s
     return () => {
       alive = false;
     };
-  }, [key, a, b, lang]);
+  }, [key, a, b, lang, over]);
 
   const write = async () => {
     setBusy(true);
@@ -121,7 +125,8 @@ function ReportBody({ stats: s, label, a, b, c }: { stats: ReportStats; label: s
       period: `${a} to ${b} (${s.days} days)`,
       goal: s.goal,
       workouts: s.workouts.planned ? { doneAsPlanned: s.workouts.asPlanned, planned: s.workouts.planned } : { done: s.workouts.done },
-      weightKg: s.weight ? { start: s.weight.first, end: s.weight.last, change: s.weight.change } : null,
+      // In the unit the person uses.
+      weight: s.weight ? { unit: W.unit, start: W.num(s.weight.first), end: W.num(s.weight.last), change: Math.round((W.num(s.weight.last) - W.num(s.weight.first)) * 10) / 10 } : null,
       waistChangeCm: s.waistChange,
       averageCalories: s.caloriesAvg,
       calorieGoal: s.calorieGoal,
@@ -132,7 +137,7 @@ function ReportBody({ stats: s, label, a, b, c }: { stats: ReportStats; label: s
       averageSleepHours: s.sleepAvg,
       nightsUnder6_5h: s.shortNights,
       newPersonalRecords: s.prs,
-      liftsThatWentUp: s.liftUps,
+      liftsThatWentUp: s.liftUps.map((l) => ({ name: l.name, from: W.num(l.from), to: W.num(l.to), unit: W.unit })),
       commitmentPercent: s.commitment,
     };
     const { result, error } = await askAI<Coach>('report', { lang, stats });
@@ -140,6 +145,7 @@ function ReportBody({ stats: s, label, a, b, c }: { stats: ReportStats; label: s
     if (error || !result) return setErr(error ?? 'failed');
     const v = { well: (result.well ?? []).slice(0, 3), improve: (result.improve ?? []).slice(0, 3), focus: result.focus ?? '' };
     setCoach({ key, v });
+    if (!over) return;
     AsyncStorage.setItem(key, JSON.stringify(v)).catch(() => {});
     if (profile?.id) saveReport(profile.id, a, b, lang, v).catch(() => {});
   };
@@ -185,7 +191,7 @@ function ReportBody({ stats: s, label, a, b, c }: { stats: ReportStats; label: s
       ) : null}
       <Card>
         {[
-          [t('Average calories'), s.caloriesAvg != null ? `${fmt(s.caloriesAvg)}${s.calorieGoal ? ` / ${fmt(s.calorieGoal)}` : ''} kcal` : '–'],
+          [t('Average calories'), s.caloriesAvg != null ? t('{n} kcal', { n: `${fmt(s.caloriesAvg)}${s.calorieGoal ? ` / ${fmt(s.calorieGoal)}` : ''}` }) : '–'],
           [t('Calories on target'), s.calDays[1] ? t('{a} of {b} days', { a: s.calDays[0], b: s.calDays[1] }) : '–'],
           [t('Water goal'), s.waterDays[1] ? t('{a} of {b} days', { a: s.waterDays[0], b: s.waterDays[1] }) : '–'],
           [t('Training volume'), s.volume ? `${fmt(W.num(s.volume))} ${W.label}` : '–'],

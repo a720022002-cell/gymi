@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { useT } from '@/i18n';
@@ -8,6 +9,7 @@ import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { addDays } from '@/lib/nutrition';
 import { recLabel, recovery, type RecoveryInput } from '@/lib/recovery';
+import { supabase } from '@/lib/supabase';
 import { useTrain } from '@/lib/train';
 import { droppingLifts, EX, weekStart } from '@/lib/training';
 import { wearableName } from '@/lib/wearables';
@@ -50,12 +52,41 @@ function watchCardioLoad(days: DeviceDay[], today: string, dob: string | null | 
     );
 }
 
+/** Cardio you logged yourself in the last 4 weeks, as training work: a set per 8 minutes, more for hard and less for easy. */
+function useLoggedCardio(userId: string | undefined, today: string, refresh: unknown) {
+  const [rows, setRows] = useState<{ uid: string; xs: { day: string; work: number }[] } | null>(null);
+  useEffect(() => {
+    if (!userId) return;
+    let alive = true;
+    supabase
+      .from('cardio_logs')
+      .select('day,minutes,intensity')
+      .gt('day', addDays(today, -28))
+      .lte('day', today)
+      .limit(500)
+      .then(({ data, error }) => {
+        if (!alive || error) return;
+        const xs = ((data as { day: string; minutes: number; intensity: number }[] | null) ?? []).map((r) => ({ day: r.day, work: ((+r.minutes || 0) / 8) * ([0.75, 1, 1.3][r.intensity] ?? 1) }));
+        setRows({ uid: userId, xs });
+      });
+    return () => {
+      alive = false;
+    };
+  }, [userId, today, refresh]);
+  return rows && rows.uid === userId ? rows.xs : [];
+}
+
 /** Everything the recovery score needs, from food, training and the watch. */
 export function useRecovery() {
   const train = useTrain();
   const food = useFood();
   const { session, profile } = useAuth();
   const devices = useDevices(session?.user.id);
+  // Refetched when today's cardio changes (logged or deleted).
+  const logged = useLoggedCardio(session?.user.id, train.today, food.isToday ? food.cardio.length : -1);
+  const watchCardio = watchCardioLoad(devices.days, train.today, profile?.date_of_birth, profile?.gender === 'female');
+  // A day the watch recorded cardio uses the watch's, so the same run isn't counted twice.
+  const watchDays = new Set(watchCardio.map((x) => x.day));
   const { todayCheckin: ci, days } = useHealth();
   // Sleep you logged wins; otherwise last night's sleep from your watch.
   const watchSleep = devices.days.find((d) => d.day === train.today)?.sleep_h ?? null;
@@ -67,12 +98,12 @@ export function useRecovery() {
     // From the day totals, so looking at another day on the Food page doesn't change it.
     protein: food.setupDone ? { eaten: days[train.today]?.p ?? 0, yesterday: days[addDays(train.today, -1)]?.p ?? null, target: food.target.p } : null,
     // Today's water, even when the Food page is showing another day.
-    water: { ml: food.isToday ? food.water : (days[food.today]?.w ?? 0), goal: food.plan.water || 2800 },
+    water: { ml: food.isToday ? food.water : (days[food.today]?.w ?? 0), goal: food.waterGoal },
     tools: train.recTools,
     body: watchBody(devices.days, train.today),
-    cardio: watchCardioLoad(devices.days, train.today, profile?.date_of_birth, profile?.gender === 'female'),
+    cardio: [...watchCardio, ...logged.filter((x) => !watchDays.has(x.day))],
   };
-  return { input, r: recovery(input) };
+  return { input, r: recovery(input), watchSleep };
 }
 
 /** Recovery score on Train home (design: recoveryCard). */
@@ -125,7 +156,8 @@ export function DeloadCard() {
         </Text>
         <Springy
           onPress={() => {
-            train.updatePlan({ deload: undefined });
+            // Ended early: only sessions after today count toward the next "lighter week?" suggestion.
+            train.updatePlan({ deload: undefined, deloadEnd: train.today });
             toast(t('Back to normal weights'), { icon: 'train' });
           }}>
           <Text variant="small" weight={700} color="link">
@@ -154,7 +186,7 @@ export function DeloadCard() {
           small
           title={t('Start deload week')}
           onPress={() => {
-            train.updatePlan({ deload: week, deloadDismissed: week });
+            train.updatePlan({ deload: week, deloadEnd: addDays(week, 6), deloadDismissed: week });
             toast(t('Deload week started'), { ai: true });
           }}
         />

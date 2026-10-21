@@ -73,7 +73,19 @@ export default function You() {
         />
         <Item icon="mail" title={t('Email')} value={profile?.email ?? ''} />
         <Item icon="phone" title={t('Phone number')} value={profile?.phone ?? ''} />
-        <Item icon="user" title={t('Account type')} value={t(profile?.account_type === 'coach' ? 'Coach (under review)' : 'Member')} />
+        <Item
+          icon="user"
+          title={t('Account type')}
+          value={t(
+            profile?.account_type !== 'coach'
+              ? 'Member'
+              : profile.coach_status === 'approved'
+                ? 'Coach'
+                : profile.coach_status === 'rejected'
+                  ? 'Coach (not approved)'
+                  : 'Coach (under review)',
+          )}
+        />
       </List>
 
       {admin ? (
@@ -108,6 +120,8 @@ export default function You() {
           <Label>{t('Coaching')}</Label>
           <List>
             <Item icon="coach" title={t('My coach')} sub={t('Find a coach or enter a code')} onPress={() => router.push('/mycoach')} chevron />
+            {/* Members can apply to coach too (the screen shows the status once sent). */}
+            <Item icon="star" title={t('Apply as a coach')} sub={app ? t('See your application') : t('Coach clients on Adro')} onPress={() => router.push('/coachapp')} chevron />
           </List>
         </>
       )}
@@ -204,6 +218,8 @@ export default function You() {
           onPress={async () => {
             setConfirm(false);
             await logOut();
+            // Close every screen opened on top, so none is left behind for the next person.
+            if (router.canDismiss()) router.dismissAll();
             router.replace('/welcome');
           }}
         />

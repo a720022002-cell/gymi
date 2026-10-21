@@ -201,10 +201,13 @@ export default function GroupScreen() {
           title={t('Add')}
           disabled={!pick.length}
           onPress={async () => {
-            for (const u of pick) await addGroupMember(d.id, u);
+            let added = 0;
+            for (const u of pick) if (await addGroupMember(d.id, u)) added++;
             setAdding(false);
-            toast(t('Added to the group'), { icon: 'users' });
             load();
+            if (!added) return toast(t('Couldn’t add them. Please try again.'), { icon: 'warn' });
+            if (added < pick.length) return toast(t('Added {a} of {b}. Some couldn’t be added.', { a: added, b: pick.length }), { icon: 'warn' });
+            toast(t('Added to the group'), { icon: 'users' });
           }}
         />
       </Sheet>

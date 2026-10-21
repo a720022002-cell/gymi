@@ -168,6 +168,16 @@ Passwords and keys are left out on purpose.
 - **Second video, "Every beat" (21 Oct):** a 23-second portrait video (1080 × 1920), Arabic and English. One blue line changes shape: heartbeat ("Every beat", with a heartbeat in sync), sleep stages ("Every night"), a week of steps ("Every step"), the day's calorie ring ("Every bite"), lifts going up ("Every rep"). It then curls into the Adro ring ("Adro reads it all"), readiness counts up to 85%, and the coach's message types out ("Today, add 2.5 kg to your bench"). It ends on "Not more data. Better decisions." with the ring becoming the logo. Original sound. Files: `docs/marketing/Adro-every-beat-ar.mp4` and `-en.mp4`; the source is in `docs/marketing/every-beat/`.
 - **Apple-style ad (21 Oct):** a 30-second English ad, 16:9 (1920 × 1080), in the style of Apple's product ads. "Meet your new coach." on black; then Train. / Eat. / Recover. / Ask. in huge type on light gray, with a floating 3D iPhone showing the real app screens and a small data chip each (+2.5 kg next set, 1,050 kcal left, 85% recovered, answers in seconds); three phones fanning out ("Everything. In one place."); Smarter. Stronger. Yours. on the beat; the ring drawing itself into the adro logo with "Your AI fitness coach. Coming soon to the App Store." Original 120 bpm music, cut to the beat. File: `docs/marketing/Adro-apple-style-ad.mp4`; the source is in `docs/marketing/apple-style/`.
 - **Apple-style ad, vertical (21 Oct):** the same 30-second ad at 1080 × 1920 for Instagram, TikTok and Stories. The big word is on top, the phone is centered under it, the three phones and "Everything. In one place." are stacked, and the logo is in the middle. File: `docs/marketing/Adro-apple-style-ad-vertical.mp4`.
+### Final pre-launch audit (21 Oct 2026)
+- Checked the whole app (sign-up, food, training, health and AI, friends and coaches) for logic, links and design. About 150 findings; the clear bugs and logic gaps are fixed in the app.
+- Food: safe calorie floor, body-fat formula, net cardio, pregnancy by trimester and nursing, Ramadan by date, allergy warnings everywhere, water goal that grows with training and pregnancy (now used on Home, Progress and Recovery too), coach's AI targets no longer add the pregnancy extra twice.
+- Training: injuries kept when a coach program syncs, no 0 kg sets, offline finish queue, finish/discard confirm, rest times by exercise, bodyweight and timed progression.
+- Health and AI: pregnancy week, check-in card, past-day rings, report caching, AI pregnancy/luteal rules.
+- Social: privacy checks only answer about yourself, coach approval required for coach actions, one open coach request, block ends coaching, clearer coach-sharing wording.
+- Arabic: 751 exercise names translated, 142 new strings, lift names in the report and recap now in Arabic.
+- Database changes ready (food_fixes, social_fixes, train_fixes): tested in a dry run (no errors), NOT applied yet: waiting for your OK. The app code waits on the work branch until then, so the live site doesn't break.
+- AI function update checked, not deployed yet (same OK).
+
 ---
 
 ## Still waiting on you

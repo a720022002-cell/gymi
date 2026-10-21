@@ -158,7 +158,8 @@ function WeekStrip() {
                 <Icon name="check" size={18} color={isT ? c.bg : c.cobalt} strokeWidth={2.6} />
               ) : w ? (
                 <Text num size={12} color={isT ? c.bg : c.text}>
-                  {t(w).slice(0, 1)}
+                  {/* "Workout A"… show their letter (A, or أ in Arabic), not the same first letter for all. */}
+                  {/^Workout [A-Z]$/.test(w) ? (t(w).split(' ').pop() ?? w.slice(-1)) : t(w).slice(0, 1)}
                 </Text>
               ) : null}
             </View>

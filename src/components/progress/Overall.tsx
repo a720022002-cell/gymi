@@ -8,7 +8,7 @@ import { phoneSource, useDevices } from '@/lib/devices';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { addDays, fmt } from '@/lib/nutrition';
-import { fx, shortDate, weeklyVolume } from '@/lib/progress';
+import { fx, shortDate, sleepOn, weeklyVolume } from '@/lib/progress';
 import { hasRecap, recapWeek } from '@/lib/recap';
 import { recLabel } from '@/lib/recovery';
 import { useTrain } from '@/lib/train';
@@ -53,10 +53,9 @@ export function Overall({ go }: { go: (t: PTab, sub?: number) => void }) {
   const dWaist = waist.length > 1 ? waist.at(-1)!.value - waist[0].value : 0;
   const goal = food.plan.goal;
   const goodW = !hasDw ? null : goal >= 3 ? dw < 0 : goal <= 1 ? dw > 0 : Math.abs(dw) < 1;
-  // Sleep from the last 7 days only (an old check-in from months ago doesn't count).
-  const weekAgo = addDays(food.today, -6);
-  const sleeps = health.checkins.filter((x) => x.sleep_h != null && x.day >= weekAgo);
-  const sAvg = sleeps.length ? sleeps.reduce((a, x) => a + (x.sleep_h ?? 0), 0) / sleeps.length : null;
+  // Sleep from the last 7 days only (an old check-in from months ago doesn't count); your watch fills nights you didn't log.
+  const sleeps = Array.from({ length: 7 }, (_, i) => sleepOn({ checkins: health.checkins, watchSleep: s.x.watchSleep }, addDays(food.today, i - 6))).filter((h): h is number => h != null);
+  const sAvg = sleeps.length ? sleeps.reduce((a, h) => a + h, 0) / sleeps.length : null;
   const cm = s.commitment;
   const vol = weeklyVolume(train.logs, train.today);
   // This week so far vs last week up to the same day. Today counts only once you've trained, so a new week
@@ -143,7 +142,7 @@ export function Overall({ go }: { go: (t: PTab, sub?: number) => void }) {
         {tile('flame', t('Streak'), t('{n} days', { n: s.overall }), t('Best {n}', { n: s.best }), () => go('streaks', 0), s.overall > 0 ? true : null)}
         {tile('check', t('Commitment'), cm == null ? '–' : `${cm}%`, t('Last 30 days'), () => go('streaks', 2), cm == null ? null : cm >= 80)}
         {tile('food', t('Calories today'), fmt(todayFood.k), t('of {n} kcal', { n: fmt(food.dayGoal(food.today)) }), () => router.push('/food'), null)}
-        {tile('drop', t('Water today'), `${fx(todayFood.w / 1000)} L`, t('of {n} L', { n: fx((food.plan.water || 2800) / 1000) }), () => router.push('/water'), todayFood.w >= (food.plan.water || 2800) * 0.8 ? true : null)}
+        {tile('drop', t('Water today'), `${fx(todayFood.w / 1000)} L`, t('of {n} L', { n: fx(food.waterGoal / 1000) }), () => router.push('/water'), todayFood.w >= food.waterGoal * 0.8 ? true : null)}
       </View>
 
       <SecHead title={t('Strength')} />
@@ -160,7 +159,7 @@ export function Overall({ go }: { go: (t: PTab, sub?: number) => void }) {
         </Row>
         {vol.some((v) => v > 0) ? (
           <View style={{ marginTop: 8 }}>
-            <BarChart values={vol} labels={['W1', '', 'W3', '', 'W5', '', 'W7', t('Now')]} highlight={7} />
+            <BarChart values={vol} labels={[t('W{n}', { n: 1 }), '', t('W{n}', { n: 3 }), '', t('W{n}', { n: 5 }), '', t('W{n}', { n: 7 }), t('Now')]} highlight={7} />
           </View>
         ) : (
           <Text variant="small" color="sec" style={{ marginTop: 8 }}>

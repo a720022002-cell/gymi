@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { siteUrl } from './config';
 import { supabase } from './supabase';
 
-/** A free month of Pro for every 5 friends who join with your code (design: REF_GOAL). */
+/** A free month of Adro Premium for every 5 friends who join with your code (design: REF_GOAL). */
 export const REF_GOAL = 5;
 
 /** `count`: friends who joined and have used Adro on 2 days (they count toward free months); `waiting`: joined, not yet. */

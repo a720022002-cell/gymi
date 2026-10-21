@@ -2,7 +2,7 @@
 // rarely get the same meal plan. Checked here (amounts, macros, allergens) and kept in your food plan for 2 weeks.
 import { askAI } from './ai';
 import { allergensIn, allergiesText, noteHit } from './allergies';
-import { addDays, type FoodPlan, RAMADAN_SWITCH } from './nutrition';
+import { addDays, type FoodPlan, ramadanOn } from './nutrition';
 import type { Recipe } from './recipes';
 
 export type AiRecipe = Recipe & { type: string };
@@ -30,7 +30,7 @@ export const shoppingLock = (f: FoodPlan, today: string) => (f.shop?.lock && f.s
 
 /** Time for new recipes? Not while you're shopping from a list (only new allergies, goal or meals change them then). */
 export function needsRecipes(f: FoodPlan, lang: 'en' | 'ar', today: string) {
-  if (RAMADAN_SWITCH && f.ramadan) return false;
+  if (ramadanOn(f, today)) return false;
   const r = f.aiRecipes;
   if (!r || r.key !== recipesKey(f) || missingTypes(f).length) return true;
   if (shoppingLock(f, today)) return false;

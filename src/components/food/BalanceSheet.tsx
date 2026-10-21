@@ -4,7 +4,7 @@ import { TextInput, View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
-import { addDays, bmr, fmt } from '@/lib/nutrition';
+import { addDays, fmt, kcalFloor } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
 
 import { Icon } from '../Icon';
@@ -22,11 +22,21 @@ export function BalanceSheet() {
   const kind = food.balance;
   const under = kind === 'under';
   const days = useMemo(() => [1, 2, 3, 4].map((n) => addDays(food.today, n)), [food.today]);
-  // Taking calories never drops a day under max(resting burn, 1,200 kcal).
-  const minDay = Math.ceil(Math.max(bmr(food.plan.weight, food.person), 1200) / 10) * 10;
+  // The day being balanced: today, or an earlier day you're looking at (its offset goes on that day).
+  const base = food.day;
+  const past = base < food.today;
+  // Taking calories never drops a day under the calorie floor (resting burn, at least 1,200 or 1,500 kcal).
+  const minDay = kcalFloor(food.plan.weight, food.person, food.plan.bf);
   const room = (d: string) => (under ? Infinity : Math.max(0, Math.floor((food.dayGoal(d) - minDay) / 10) * 10));
   // Today was already balanced once: what's left can't be moved again (it would keep pushing the next days down).
-  const done = food.moves.some((m) => m.day === food.today && (under ? m.kcal < 0 : m.kcal > 0));
+  // A balancing made today has its offset on today and the opposite on later days; moves another day sent to today
+  // (or the weekly recap's) don't count. Older moves without a balancing id: any on today, as before.
+  const done = food.moves.some(
+    (m) =>
+      m.day === base &&
+      (under ? m.kcal < 0 : m.kcal > 0) &&
+      (!m.grp || (m.kind === 'balance' && food.moves.some((o) => o.grp === m.grp && o.day > base && Math.sign(o.kcal) === -Math.sign(m.kcal)))),
+  );
   const full = Math.max(0, Math.round(under ? food.kcalLeft : -food.kcalLeft));
   const dayName = (d: string) => {
     const [y, m, dd] = d.split('-').map(Number);
@@ -82,7 +92,7 @@ export function BalanceSheet() {
       .filter(([, v]) => v > 0)
       .map(([day, v]) => ({ day, kcal: sign * v }));
     // The same amount is settled on today, so today no longer shows as over (or under) and can't be moved twice.
-    const added = await food.addMoves([...rows, { day: food.today, kcal: -sign * amt }]);
+    const added = await food.addMoves([...rows, { day: base, kcal: -sign * amt }], 'balance');
     close();
     toast(rows.map((r) => `${dayName(r.day)} ${r.kcal > 0 ? '+' : '−'}${fmt(Math.abs(r.kcal))}`).join(', ') + ` ${t('kcal')}`, {
       icon: 'cal',
@@ -97,14 +107,14 @@ export function BalanceSheet() {
           <View style={{ alignItems: 'center' }}>
             <Icon name="info" size={30} color={c.cobalt} />
             <Text variant="h2" center style={{ marginTop: 8 }}>
-              {under ? t('You have {n} kcal left today', { n: fmt(full) }) : t('You’re {n} kcal over today', { n: fmt(full) })}
+              {past ? (under ? t('You had {n} kcal left that day', { n: fmt(full) }) : t('You were {n} kcal over that day', { n: fmt(full) })) : under ? t('You have {n} kcal left today', { n: fmt(full) }) : t('You’re {n} kcal over today', { n: fmt(full) })}
             </Text>
             <Text variant="small" color="sec" center style={{ marginTop: 4 }}>
               {t('You already moved calories from today. Moving more would make the next days too low. One day won’t undo your progress.')}
             </Text>
           </View>
-          {under ? <Button title={t('Have a free meal')} kind="cobalt" style={{ marginTop: 16 }} onPress={() => (proteinLeft > 0 ? setFreeAsk(true) : (close(), toast(t('Enjoy it. Anything up to {n} kcal fits today.', { n: fmt(full) }), { ai: true })))} /> : null}
-          <Button title={t('Got it')} kind={under ? 'ghost' : undefined} style={{ marginTop: under ? 8 : 16 }} onPress={close} />
+          {under && !past ? <Button title={t('Have a free meal')} kind="cobalt" style={{ marginTop: 16 }} onPress={() => (proteinLeft > 0 ? setFreeAsk(true) : (close(), toast(t('Enjoy it. Anything up to {n} kcal fits today.', { n: fmt(full) }), { ai: true })))} /> : null}
+          <Button title={t('Got it')} kind={under && !past ? 'ghost' : undefined} style={{ marginTop: under && !past ? 8 : 16 }} onPress={close} />
         </View>
       ) : freeAsk ? (
         <View>
@@ -141,7 +151,7 @@ export function BalanceSheet() {
           <View style={{ alignItems: 'center' }}>
             <Icon name="info" size={30} color={c.cobalt} />
             <Text variant="h2" center style={{ marginTop: 8 }}>
-              {under ? t('You have {n} kcal left today', { n: fmt(full) }) : t('You’re {n} kcal over today', { n: fmt(full) })}
+              {past ? (under ? t('You had {n} kcal left that day', { n: fmt(full) }) : t('You were {n} kcal over that day', { n: fmt(full) })) : under ? t('You have {n} kcal left today', { n: fmt(full) }) : t('You’re {n} kcal over today', { n: fmt(full) })}
             </Text>
             <Text variant="small" color="sec" center style={{ marginTop: 4 }}>
               {t(under ? 'Add them to other days this week, or enjoy a free meal.' : 'Take it from other days this week. One day won’t undo your progress.')}
@@ -249,7 +259,7 @@ export function BalanceSheet() {
             style={{ marginTop: 16 }}
             onPress={confirm}
           />
-          {under ? (
+          {under && !past ? (
             <View>
               <Button
                 title={t('Have a free meal')}

@@ -2,15 +2,43 @@ import { useEffect, useState } from 'react';
 
 import { useFood } from './food';
 import type { Checkin, DayTotals, Measure } from './health';
+import { loadDeviceDays } from './devices';
 import { addDays } from './nutrition';
-import { commitWindow, type ProgressInput } from './progress';
+import { commitWindow, dayKcalGoal, type ProgressInput, sleepOn } from './progress';
 import { WORDMARK } from '@/components/wordmark';
 
 import { supabase } from './supabase';
 import type { WorkoutLog } from './train';
 import { useTrain } from './train';
 
-export type ReportData = { days: Record<string, DayTotals>; logs: WorkoutLog[]; checkins: Checkin[]; weights: Measure[]; waist: Measure[] };
+export type ReportData = {
+  days: Record<string, DayTotals>;
+  logs: WorkoutLog[];
+  checkins: Checkin[];
+  weights: Measure[];
+  waist: Measure[];
+  /** Calories added to each day's goal (moved from other days, burned in cardio). */
+  kcalExtra: Record<string, number>;
+  /** Sleep from the watch by day, for nights without a check-in. */
+  watchSleep: Record<string, number>;
+};
+
+/** Calories added to each day's goal between two days: calories moved to it and burned in cardio (as on the Food tab). */
+export async function loadKcalExtras(from: string, to: string): Promise<Record<string, number>> {
+  const [m, c] = await Promise.all([
+    supabase.from('calorie_moves').select('day,kcal').gte('day', from).lte('day', to).limit(2000),
+    supabase.from('cardio_logs').select('day,kcal').gte('day', from).lte('day', to).limit(2000),
+  ]);
+  const out: Record<string, number> = {};
+  for (const r of [...((m.data as { day: string; kcal: number }[] | null) ?? []), ...((c.data as { day: string; kcal: number }[] | null) ?? [])]) out[r.day] = (out[r.day] ?? 0) + Number(r.kcal || 0);
+  return out;
+}
+
+/** Watch sleep by day between two days. */
+export async function loadWatchSleep(from: string, to: string): Promise<Record<string, number>> {
+  const days = await loadDeviceDays(from).catch(() => []);
+  return Object.fromEntries(days.filter((d) => d.day <= to && d.sleep_h != null && d.sleep_h > 0).map((d) => [d.day, d.sleep_h as number]));
+}
 
 /** Load everything between two days straight from the database (any range up to a year). */
 /** The adro wordmark as inline SVG for PDFs (the same shapes as the in-app logo). */
@@ -28,11 +56,13 @@ export function useReportData(from: string, to: string) {
     let alive = true;
     (async () => {
       // Food and water come as one short row per day: the database sends at most 1000 rows, and single logs would go over it.
-      const [f, l, c, m] = await Promise.all([
+      const [f, l, c, m, kcalExtra, watchSleep] = await Promise.all([
         supabase.rpc('my_day_totals').gte('day', from).lte('day', to),
         supabase.from('workout_logs').select('*').gte('day', from).lte('day', to).order('day').limit(500),
         supabase.from('checkins').select('day,sleep_h,sleep_q,bed,wake,energy,sore,score').gte('day', from).lte('day', to).order('day'),
         supabase.from('measurements').select('day,kind,value').in('kind', ['weight', 'waist']).gte('day', from).lte('day', to).order('day'),
+        loadKcalExtras(from, to).catch(() => ({})),
+        loadWatchSleep(from, to),
       ]);
       if (!alive) return;
       const days: Record<string, DayTotals> = {};
@@ -46,6 +76,8 @@ export function useReportData(from: string, to: string) {
           checkins: ((c.data as Checkin[]) ?? []).map((x) => ({ ...x, sleep_h: x.sleep_h == null ? null : Number(x.sleep_h) })),
           weights: ms.filter((x) => x.kind === 'weight'),
           waist: ms.filter((x) => x.kind === 'waist'),
+          kcalExtra,
+          watchSleep,
         },
       });
     })();
@@ -75,6 +107,8 @@ export function useReportStats(from: string, to: string, data: ReportData | null
     protein: food.target.p,
     water: food.plan.water || 2800,
     goal: food.plan.goal,
+    kcalExtra: data.kcalExtra,
+    watchSleep: data.watchSleep,
   };
   const first = [...Object.keys(data.days), ...data.logs.map((l) => l.day), ...data.checkins.map((c) => c.day), ...data.weights.map((w) => w.day)].sort()[0] ?? null;
   const cw = commitWindow(x, from, to, first);
@@ -91,29 +125,34 @@ export function useReportStats(from: string, to: string, data: ReportData | null
   for (let d = from; d <= to; d = addDays(d, 1)) {
     const v = data.days[d];
     if (v && v.k > 0 && food.setupDone) {
-      // That day's own goal (with calories moved between days); burned calories are only known for the day on screen.
-      const goal = food.dayGoal(d) + (d === food.day ? food.burned : 0);
+      // That day's own goal: calories moved to or from it and burned in cardio.
+      const goal = dayKcalGoal(x, d);
       count('cal', Math.abs(v.k - goal) <= goal * 0.1, d);
       count('prot', v.p >= food.target.p * 0.9, d);
     }
     if (v && v.w > 0) count('water', v.w >= (food.plan.water || 2800), d);
   }
-  const sleeps = data.checkins.filter((c) => c.sleep_h != null).map((c) => c.sleep_h as number);
+  // Nights you logged, or else what your watch measured.
+  const sleeps: number[] = [];
+  for (let d = from; d <= to; d = addDays(d, 1)) {
+    const h = sleepOn(x, d);
+    if (h != null) sleeps.push(h);
+  }
   const w = data.weights;
   const prs = data.logs.flatMap((l) => l.prs ?? []);
-  const lifts: Record<string, { n: string; a: number; b: number }> = {};
+  const lifts: Record<string, { id: string; n: string; a: number; b: number }> = {};
   for (const l of data.logs)
     for (const e of l.exercises) {
       const top = Math.max(0, ...e.sets.map((s) => s.w));
       if (!top) continue;
-      const cur = (lifts[e.id] ??= { n: e.n, a: top, b: top });
+      const cur = (lifts[e.id] ??= { id: e.id, n: e.n, a: top, b: top });
       cur.b = top;
     }
   const liftUps = Object.values(lifts)
     .filter((v) => v.b > v.a)
     .sort((p, q) => q.b - q.a - (p.b - p.a))
     .slice(0, 3)
-    .map((v) => ({ name: v.n, from: v.a, to: v.b }));
+    .map((v) => ({ id: v.id, name: v.n, from: v.a, to: v.b }));
   return {
     days: n,
     workouts: { done: data.logs.length, planned: cw.parts.work[1], asPlanned: cw.parts.work[0] },

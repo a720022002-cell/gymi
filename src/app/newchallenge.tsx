@@ -13,6 +13,7 @@ import { Button, Chip, Label, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { type ChallengeKind, createChallenge } from '@/lib/social';
+import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
 const KINDS: [ChallengeKind, string, IconName][] = [
@@ -52,8 +53,10 @@ export default function NewChallenge() {
   const [dur, setDur] = useState(0);
   const [fr, setFr] = useState<string[]>(() => (p.group ? p.group.split(',').filter(Boolean) : p.f ? [p.f] : []));
   const [busy, setBusy] = useState(false);
+  const W = useWeight();
   const k = KINDS[kind][0];
-  const goalKg = Number(goal.replace(',', '.'));
+  // Typed in your unit (kg or lb), saved in kg.
+  const goalKg = W.toKg(Number(goal.replace(',', '.')));
   const goalOk = goalKg >= 30 && goalKg <= 250;
   return (
     <Screen title={t('New challenge')} back>
@@ -97,9 +100,9 @@ export default function NewChallenge() {
             label={t('Your goal weight')}
             value={goal}
             onChangeText={(v) => setGoal(v.replace(/[^0-9.,]/g, '').slice(0, 5))}
-            placeholder={profile?.weight_kg ? String(profile.weight_kg) : '70'}
+            placeholder={profile?.weight_kg ? W.show(profile.weight_kg) : W.show(70)}
             keyboardType="decimal-pad"
-            unit={t('kg')}
+            unit={W.label}
             ltr
             hint={t('Only you see your goal. Friends set their own. Everyone is scored by how far they get toward it.')}
           />

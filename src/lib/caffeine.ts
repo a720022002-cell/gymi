@@ -28,7 +28,7 @@ const DRINKS: [RegExp, number][] = [
   [/cold ?brew|كولد ?برو/i, 200],
   [/americano|أمريكانو|امريكانو/i, 150],
   [/v60|drip|filter coffee|pour.?over|مقطرة|فلتر|كيمكس|chemex/i, 150],
-  [/latte|لاتيه|لاتي|cappuccino|كابتشينو|كابوتشينو|flat ?white|فلات ?وايت|cortado|كورتادو|mocha|موكا|macchiato|ماكياتو|spanish|سبانش/i, 130],
+  [/latte|لاتيه|لاتي|cappuccino|كابتشينو|كابوتشينو|flat ?white|فلات ?وايت|cortado|كورتادو|mocha|موكا|macchiato|ماكياتو|spanish ?latte|سبانش ?لاتيه/i, 130],
   [/iced coffee|آيس كوفي|ايس كوفي|قهوة مثلجة|frappuccino|فرابتشينو/i, 120],
   [/espresso|إسبريسو|اسبريسو|اسبرسو/i, 65],
   [/nescaf|نسكافيه|نسكافه|instant coffee|قهوة سريعة|3 ?in ?1|ثري ان ون/i, 65],

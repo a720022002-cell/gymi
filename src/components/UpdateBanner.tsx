@@ -3,6 +3,7 @@ import { Platform, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useT } from '@/i18n';
+import { watchOnline } from '@/lib/online';
 import { useSettings } from '@/theme/settings';
 
 import { Icon } from './Icon';
@@ -20,6 +21,9 @@ export function UpdateBanner() {
   const insets = useSafeAreaInsets();
   const [ready, setReady] = useState(false);
   const [hidden, setHidden] = useState(false);
+  // Offline, the offline bar takes this spot (and the update can't load anyway).
+  const [online, setOnline] = useState(true);
+  useEffect(() => watchOnline(setOnline), []);
 
   useEffect(() => {
     const mine = running();
@@ -45,10 +49,10 @@ export function UpdateBanner() {
     };
   }, []);
 
-  if (!ready || hidden) return null;
+  if (!ready || hidden || !online) return null;
   return (
     <View style={{ position: 'absolute', top: Math.max(8, insets.top) + 4, start: 8, end: 8, zIndex: 998 }}>
-      <View accessibilityRole="alert" style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: c.cobalt, borderRadius: 18, paddingVertical: 8, paddingStart: 14, paddingEnd: 6 }}>
+      <View accessibilityRole="alert" style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: c.cobalt, borderRadius: 18, paddingVertical: 4, paddingStart: 14, paddingEnd: 2 }}>
         <Icon name="sparkle" size={20} color="#FFFFFF" strokeWidth={2} />
         <Text variant="small" weight={600} color="#FFFFFF" style={{ flex: 1 }}>
           {t('A new version of Adro is ready.')}
@@ -58,7 +62,7 @@ export function UpdateBanner() {
             {t('Update')}
           </Text>
         </Pressable>
-        <Pressable onPress={() => setHidden(true)} accessibilityLabel={t('Dismiss')} style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}>
+        <Pressable onPress={() => setHidden(true)} accessibilityLabel={t('Dismiss')} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
           <Icon name="close" size={16} color="#FFFFFF" strokeWidth={2.2} />
         </Pressable>
       </View>

@@ -70,19 +70,34 @@ export function currentSet(s: Session): { ei: number; si: number } | null {
   return ei < 0 ? null : { ei, si: s.ex[ei].sets.findIndex((y) => !y.done) };
 }
 
-/** Logs a set (empty weight and reps take last time's) and says how long to rest after it, or null when it was the last. */
-export function logSet(s: Session, ei: number, si: number, lang: Parameters<typeof exInfo>[1]): { next: Session; restFor: number | null } {
+/** Main compound lifts get a longer rest: squats, bench, deadlifts, rows, presses, pull-ups and chin-ups. */
+export function restFor(x: SessionEx, warm?: boolean) {
+  if (warm) return 45;
+  const info = exInfo(x, 'en');
+  if (info.timed) return REST;
+  const big = /squat|bench|deadlift|\brow\b|press|pull-?up|chin-?up/i.test(info.name) && (info.type !== 'Bodyweight' || /pull-?up|chin-?up/i.test(info.name));
+  return big ? 150 : REST;
+}
+
+/**
+ * Logs a set (empty weight and reps take last time's) and says how long to rest after it, or null when it was the last.
+ * `needWeight`: a weighted exercise with no weight typed and none from last time; nothing is logged (never 0 kg).
+ */
+export function logSet(s: Session, ei: number, si: number, lang: Parameters<typeof exInfo>[1]): { next: Session; restFor: number | null; needWeight?: boolean } {
   const x = s.ex[ei];
   const st = x.sets[si];
   const info = exInfo(x, lang);
   const w = st.w === '' ? String(st.lw || 0) : st.w;
   const r = st.r === '' ? String(st.lr) : st.r;
+  if (!info.timed && info.type !== 'Bodyweight' && !(+w > 0) && st.w === '') return { next: s, restFor: null, needWeight: true };
   const easy = !st.warm && +r >= topReps(x.reps) && +w >= st.lw && info.type !== 'Bodyweight' && !info.timed && +w > 0;
   const next: Session = {
     ...s,
+    // When the last set was done: the workout ends a little after it, even if Finish is tapped much later.
+    lastAt: Date.now(),
     ex: s.ex.map((e, i) => (i !== ei ? e : { ...e, tip: e.tip || easy, sets: e.sets.map((y, j) => (j === si ? { ...y, w, r, done: true } : y)) })),
   };
   const more = next.ex.some((e) => e.sets.some((z) => !z.done));
-  // Shorter rest after a warm-up set.
-  return { next, restFor: more ? (st.warm ? 45 : REST) : null };
+  // Longer rest after the big lifts, shorter after a warm-up set.
+  return { next, restFor: more ? restFor(x, st.warm) : null };
 }

@@ -31,6 +31,9 @@ export default function LogIn() {
   const [busy, setBusy] = useState(false);
   // Login code (new phone): where it went, the code, and "don't ask again on this phone".
   const [codeTo, setCodeTo] = useState('');
+  // Email not confirmed yet: where to resend the sign-up link.
+  const [unconfirmed, setUnconfirmed] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
   const [trust, setTrust] = useState(true);
   const [left, setLeft] = useState(0);
   useEffect(() => {
@@ -48,6 +51,7 @@ export default function LogIn() {
     setBusy(true);
     const r = await auth.logIn(id, pw);
     setBusy(false);
+    setUnconfirmed(r.error && /confirm your email/i.test(r.error) && r.email ? r.email : null);
     if (r.error) return setError(r.error);
     if (r.codeFailed) toast(t('We couldn’t send a login code, so you’re logged in without one.'), { icon: 'info' });
     if (r.code) {
@@ -75,10 +79,22 @@ export default function LogIn() {
   };
 
   const resendCode = async () => {
+    if (resending) return;
+    setResending(true);
     const r = await auth.sendLoginCode(codeTo);
+    setResending(false);
     if (r.error) return setError(r.error);
     setLeft(30);
     toast(t('New code sent'), { icon: 'mail' });
+  };
+
+  const resendConfirm = async () => {
+    if (!unconfirmed || resending) return;
+    setResending(true);
+    const r = await auth.resendSignup(unconfirmed);
+    setResending(false);
+    if (r.error) return setError(r.error);
+    toast(t(EMAIL_CODES ? 'New code sent' : 'New link sent'), { icon: 'mail' });
   };
 
   const sendReset = async () => {
@@ -132,7 +148,7 @@ export default function LogIn() {
             {left > 0 ? (
               <Text variant="small" weight={700} color="sec">{t('Resend code in 0:{s}', { s: String(left).padStart(2, '0') })}</Text>
             ) : (
-              <Pressable onPress={resendCode} hitSlop={8}>
+              <Pressable onPress={resendCode} disabled={resending} hitSlop={8}>
                 <Text variant="small" weight={700} color="link">{t('Resend code')}</Text>
               </Pressable>
             )}
@@ -153,7 +169,7 @@ export default function LogIn() {
           <Field
             label={t('Email or username')}
             value={id}
-            onChangeText={(v) => { setId(v); setError(null); }}
+            onChangeText={(v) => { setId(v); setError(null); setUnconfirmed(null); }}
             placeholder={t('you@example.com or @username')}
             autoCapitalize="none"
             autoCorrect={false}
@@ -173,6 +189,7 @@ export default function LogIn() {
             ltr
           />
           <ErrorText>{error ? t(error) : null}</ErrorText>
+          {unconfirmed && error ? <Button title={t('Resend link')} kind="soft" small loading={resending} style={{ marginTop: 8, alignSelf: 'flex-start' }} onPress={resendConfirm} /> : null}
           <View style={{ marginTop: 16 }}>
             <Button title={t('Log in')} onPress={logIn} loading={busy} />
           </View>

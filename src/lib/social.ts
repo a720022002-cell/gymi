@@ -86,6 +86,13 @@ export async function getShare(userId: string): Promise<Share> {
   return data ? { ...DEFAULT_SHARE, ...(data as Share) } : DEFAULT_SHARE;
 }
 
+/** Your sharing settings, or null when they couldn't be loaded (so a screen doesn't save over them with the defaults). */
+export async function getShareOrNull(userId: string): Promise<Share | null> {
+  const { data, error } = await supabase.from('friend_share').select('workouts,prs,streak,weight,body,photos').eq('user_id', userId).maybeSingle();
+  if (error) return null;
+  return data ? { ...DEFAULT_SHARE, ...(data as Share) } : DEFAULT_SHARE;
+}
+
 export async function saveShare(userId: string, s: Share) {
   const { error } = await supabase.from('friend_share').upsert({ user_id: userId, ...s });
   return !error;
@@ -293,7 +300,8 @@ export const REPORT_REASONS: [ReportReason, string][] = [
 /** Report a person (or a coach page, group or challenge). Only the Adro team reads reports. */
 export async function sendReport(r: { reported: string | null; kind?: 'user' | 'coach' | 'group' | 'challenge'; ref?: string; reason: ReportReason; note?: string }) {
   const { error } = await supabase.from('user_reports').insert({ reported: r.reported, kind: r.kind ?? 'user', ref: r.ref ?? null, reason: r.reason, note: r.note?.trim().slice(0, 500) || null });
-  return !error;
+  // 23505: you already have an open report about this person, so it's already with the team.
+  return !error || error.code === '23505';
 }
 
 /** Block someone: the friendship ends, and neither of you can find or add the other. */

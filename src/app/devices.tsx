@@ -22,7 +22,7 @@ import { useTrain } from '@/lib/train';
 import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
-/** Your readings: what Adro knows today, in your own order. Closed and blurred until a device is connected in Connections. */
+/** Your readings: what Adro knows today, in your own order. Readings only a device sends stay closed and blurred until one is connected in Connections. */
 export default function Devices() {
   const { t } = useT();
   const { colors: c } = useSettings();
@@ -41,7 +41,8 @@ export default function Devices() {
   }, []);
   const wearOn = (ws?.links ?? []).filter((l) => l.status === 'ok').map((l) => wearableName(l.provider));
   const sources = [...(dev.connected ? [sourceName(dev.prefs.source)] : []), ...wearOn];
-  // Nothing connected: the readings stay blurred and closed, with one way out (Connections).
+  // Nothing connected: the readings only a device sends stay blurred and closed, with one way out (Connections).
+  // What you log yourself (weight, sleep, recovery, workouts) still opens.
   const locked = !sources.length;
 
   // Newest value a device sent for a field (within the last week).
@@ -119,47 +120,56 @@ export default function Devices() {
           {t('Move cards into any order, then tap Save.')}
         </Text>
       ) : null}
-      {/* The readings; blurred and closed when nothing is connected. */}
-      <View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }} pointerEvents={locked ? 'none' : 'auto'} aria-hidden={locked}>
-          {keys.map((k, i) => {
-            const [v, u] = value(k);
-            const info = INFO[k];
-            return (
-              <Card key={k} onPress={editing || locked ? undefined : () => router.push({ pathname: '/reading', params: { k } })} style={{ width: '48.5%', marginBottom: 10 }}>
-                <Row style={{ justifyContent: 'space-between' }}>
-                  <Icon name={info.icon} size={20} color={c.cobalt} />
-                  {editing ? (
-                    <Row gap={4}>
-                      <Springy onPress={() => move(k, -1)} disabled={i === 0} accessibilityLabel={t('Move up')} style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center', opacity: i === 0 ? 0.35 : 1 }}>
-                        <Icon name="back" size={15} />
-                      </Springy>
-                      <Springy onPress={() => move(k, 1)} disabled={i === keys.length - 1} accessibilityLabel={t('Move down')} style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center', opacity: i === keys.length - 1 ? 0.35 : 1 }}>
-                        <Icon name="chev" size={15} />
-                      </Springy>
-                    </Row>
-                  ) : (
-                    <Icon name="chev" size={16} color={c.sec} />
-                  )}
-                </Row>
-                <Text variant="small" weight={700} style={{ marginTop: 8 }} numberOfLines={2}>
-                  {t(label(k))}
-                </Text>
-                <Text num size={22} style={{ marginTop: 4 }}>
-                  {v}
-                  {u ? <Text num size={12} weight={500} color="sec">{` ${t(u)}`}</Text> : null}
-                </Text>
-              </Card>
-            );
-          })}
+      {/* The readings; the device-only ones blurred and closed when nothing is connected. */}
+      {grid(locked ? keys.filter((k) => !DEVICE_ONLY.includes(k)) : keys, false)}
+      {locked ? (
+        <View>
+          {grid(DEVICE_ONLY, true)}
+          <Locked />
         </View>
-        {locked ? <Locked /> : null}
-      </View>
+      ) : null}
       {locked ? null : (
         <Button small kind="ghost" title={t('Manage connections')} style={{ alignSelf: 'center', marginTop: 4 }} onPress={() => router.push('/connections')} />
       )}
     </Screen>
   );
+
+  function grid(list: ReadingKey[], closed: boolean) {
+    return (
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }} pointerEvents={closed ? 'none' : 'auto'} aria-hidden={closed}>
+        {list.map((k, i) => {
+          const [v, u] = closed ? ['–', ''] : value(k);
+          const info = INFO[k];
+          return (
+            <Card key={k} onPress={editing || closed ? undefined : () => router.push({ pathname: '/reading', params: { k } })} style={{ width: '48.5%', marginBottom: 10 }}>
+              <Row style={{ justifyContent: 'space-between' }}>
+                <Icon name={info.icon} size={20} color={c.cobalt} />
+                {editing ? (
+                  <Row gap={4}>
+                    <Springy onPress={() => move(k, -1)} disabled={i === 0} accessibilityLabel={t('Move up')} style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center', opacity: i === 0 ? 0.35 : 1 }}>
+                      <Icon name="back" size={15} />
+                    </Springy>
+                    <Springy onPress={() => move(k, 1)} disabled={i === keys.length - 1} accessibilityLabel={t('Move down')} style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center', opacity: i === keys.length - 1 ? 0.35 : 1 }}>
+                      <Icon name="chev" size={15} />
+                    </Springy>
+                  </Row>
+                ) : (
+                  <Icon name="chev" size={16} color={c.sec} />
+                )}
+              </Row>
+              <Text variant="small" weight={700} style={{ marginTop: 8 }} numberOfLines={2}>
+                {t(label(k))}
+              </Text>
+              <Text num size={22} style={{ marginTop: 4 }}>
+                {v}
+                {u ? <Text num size={12} weight={500} color="sec">{` ${t(u)}`}</Text> : null}
+              </Text>
+            </Card>
+          );
+        })}
+      </View>
+    );
+  }
 }
 
 /** Over the blurred readings: why they're closed, and the way to Connections. */

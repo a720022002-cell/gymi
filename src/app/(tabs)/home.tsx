@@ -95,7 +95,8 @@ export default function Home() {
       <DayNav />
       {past ? null : (
         <>
-          {health.ready && !health.todayCheckin && !askCode ? <CheckinCard onStart={() => health.setCheckinOpen(true)} /> : null}
+          {/* Until today's check-in is done (only a sleep logged from the chat has no score yet). */}
+          {health.ready && health.todayCheckin?.score == null && !askCode ? <CheckinCard onStart={() => health.setCheckinOpen(true)} /> : null}
           <CoachAppCard app={app} />
           {coach ? <CoachCard k={coach} /> : food.coachTargets ? <CoachSetCard name={food.coachTargets.name} /> : null}
         </>

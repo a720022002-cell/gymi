@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 
 import { Icon, Mark } from '@/components/Icon';
 import { Ring } from '@/components/Ring';
@@ -136,7 +136,8 @@ export default function Summary() {
           {t('Have your post-workout meal within 2 hours.')}
         </Text>
       </Card>
-      <Button icon="camera" title={t('Share on a photo')} style={{ marginTop: 8 }} onPress={() => router.push({ pathname: '/share-photo', params: { id: s.id } })} />
+      {/* Sharing on a photo only works on the web for now. */}
+      {Platform.OS === 'web' ? <Button icon="camera" title={t('Share on a photo')} style={{ marginTop: 8 }} onPress={() => router.push({ pathname: '/share-photo', params: { id: s.id } })} /> : null}
       <Button kind="glass" icon="share" title={t('Share your workout')} style={{ marginTop: 8 }} onPress={() => setShare(true)} />
       <Button title={t('Done')} style={{ marginTop: 8 }} onPress={() => router.replace('/home')} />
       <ShareWorkoutSheet log={s} open={share} onClose={() => setShare(false)} />

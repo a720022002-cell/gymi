@@ -1,7 +1,7 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
-import { View } from 'react-native';
+import { Linking, View } from 'react-native';
 
 import { ManualCode } from '@/components/food/ManualCode';
 import { Icon } from '@/components/Icon';
@@ -11,6 +11,7 @@ import { Glass } from '@/components/Glass';
 import { Button, Card, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { setPendingBarcode } from '@/lib/pending';
+import { normBarcode } from '@/lib/products';
 import { useSettings } from '@/theme/settings';
 import { goBack } from '@/lib/nav';
 
@@ -24,7 +25,8 @@ export default function Barcode() {
   const done = useRef(false);
   // Opened to pick a product (a saved meal): hand the code back instead of opening the product.
   const { pick } = useLocalSearchParams<{ pick?: string }>();
-  const go = (code: string) => {
+  const go = (raw: string) => {
+    const code = normBarcode(raw);
     if (pick) {
       setPendingBarcode(code);
       goBack();
@@ -61,7 +63,13 @@ export default function Barcode() {
           <Text variant="h3" center style={{ marginTop: 8 }}>
             {t('Allow the camera to scan barcodes')}
           </Text>
-          <Button title={t('Allow camera')} style={{ marginTop: 12, alignSelf: 'stretch' }} onPress={ask} />
+          {/* Said no before and the phone won't ask again: the button opens the app's settings instead. */}
+          <Button title={t(perm && !perm.canAskAgain ? 'Open Settings' : 'Allow camera')} style={{ marginTop: 12, alignSelf: 'stretch' }} onPress={() => (perm && !perm.canAskAgain ? Linking.openSettings().catch(() => {}) : ask())} />
+          {perm && !perm.canAskAgain ? (
+            <Text variant="small" color="sec" center style={{ marginTop: 8 }}>
+              {t('Turn on the camera for Adro in Settings, then come back.')}
+            </Text>
+          ) : null}
         </Card>
       )}
       <Text color="sec" center style={{ marginTop: 12 }}>

@@ -11,7 +11,8 @@ import { Sora_500Medium } from '@expo-google-fonts/sora/500Medium';
 import { Sora_600SemiBold } from '@expo-google-fonts/sora/600SemiBold';
 import { Sora_700Bold } from '@expo-google-fonts/sora/700Bold';
 import { useFonts } from 'expo-font';
-import { type ErrorBoundaryProps, Stack } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { type ErrorBoundaryProps, router, Stack, useRootNavigationState, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
@@ -34,13 +35,13 @@ import { ToastProvider } from '@/components/Toast';
 import { AiConsentSheet } from '@/components/ai/AiConsentSheet';
 import { UpdateBanner } from '@/components/UpdateBanner';
 import { WorkoutLive } from '@/components/WorkoutLive';
-import { AuthProvider } from '@/lib/auth';
+import { AuthProvider, useAuth } from '@/lib/auth';
 import { FoodProvider } from '@/lib/food';
 import { HealthProvider } from '@/lib/health';
 import { installLatinDigits } from '@/lib/latinDigits';
 import { TrainProvider } from '@/lib/train';
 import { SignupDraftProvider } from '@/lib/signupDraft';
-import { SettingsProvider, useSettings } from '@/theme/settings';
+import { RESUME_KEY, SettingsProvider, useSettings } from '@/theme/settings';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 installLatinDigits();
@@ -91,13 +92,48 @@ export default function RootLayout() {
   );
 }
 
+/** Screens you can open without being logged in. Everything else sends you to Welcome. */
+const PUBLIC = ['welcome', 'login', 'signup', 'language', 'account-type', 'reset-password', 'legal', '+not-found'];
+
 function AppStack({ ready }: { ready: boolean }) {
-  const { colors, isDark, ready: settingsReady } = useSettings();
+  const { colors, isDark, ready: settingsReady, langChosen, setLang } = useSettings();
+  const { configured, loading, session, profile } = useAuth();
   const show = ready && settingsReady;
+  const nav = useRootNavigationState();
+  const navReady = !!nav?.key;
+  const segments = useSegments() as string[];
 
   useEffect(() => {
     if (show) SplashScreen.hideAsync().catch(() => {});
   }, [show]);
+
+  // Logged out (or never logged in) on a signed-in screen: go to Welcome, closing what's open.
+  const first = segments[0];
+  useEffect(() => {
+    if (!navReady || !configured || loading || session || !first || PUBLIC.includes(first)) return;
+    if (router.canDismiss()) router.dismissAll();
+    router.replace('/welcome');
+  }, [navReady, configured, loading, session, first]);
+
+  // Back from the restart Arabic needs: reopen the screen you were on (sign-up's language step).
+  // Waits until a first screen is showing (Start's own redirect to Welcome must not replace it).
+  const started = navReady && !!first;
+  useEffect(() => {
+    if (!started) return;
+    AsyncStorage.getItem(RESUME_KEY)
+      .then((r) => {
+        if (!r) return;
+        AsyncStorage.removeItem(RESUME_KEY).catch(() => {});
+        if (r.startsWith('/')) router.push(r as never);
+      })
+      .catch(() => {});
+  }, [started]);
+
+  // Language saved in your account, on a phone where it wasn't chosen yet: use it.
+  useEffect(() => {
+    if (!settingsReady || langChosen || !profile?.language) return;
+    setLang(profile.language);
+  }, [settingsReady, langChosen, profile?.language, setLang]);
 
   if (!show) return null;
   return (

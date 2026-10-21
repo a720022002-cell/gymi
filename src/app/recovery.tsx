@@ -30,10 +30,13 @@ export default function RecoveryScreen() {
   const toast = useToast();
   const train = useTrain();
   const today = useToday();
-  const { input, r } = useRecovery();
+  const { input, r, watchSleep } = useRecovery();
   const health = useHealth();
   const ci = health.todayCheckin;
-  const [sleep, setSleep] = useState(ci?.sleep_h ?? 7);
+  // Sleep you logged, else your watch's, else 7 h; it follows them as they load until you change it yourself.
+  const [typed, setTyped] = useState<number | null>(null);
+  const sleep = typed ?? ci?.sleep_h ?? watchSleep ?? 7;
+  const setSleep = (h: number) => setTyped(h);
   const [sore, setSore] = useState<number | null>(ci?.sore ?? null);
   const [energy, setEnergy] = useState<number | null>(ci?.energy ?? null);
   const [label, tone] = recLabel(r.score);
@@ -72,8 +75,10 @@ export default function RecoveryScreen() {
 
   const save = () => {
     if (sore === null || energy === null) return;
-    const score = recovery({ ...input, checkin: { day: train.today, sleep, sore, energy } }).score;
-    health.saveCheckin({ sleep_h: sleep, sore, energy, score });
+    // Sleep is saved only when you set it (or logged it before), so a default never hides your watch's sleep.
+    const own = typed != null || ci?.sleep_h != null;
+    const score = recovery({ ...input, checkin: { day: train.today, sleep: own ? sleep : watchSleep, sore, energy } }).score;
+    health.saveCheckin({ ...(own ? { sleep_h: sleep } : {}), sore, energy, score });
     toast(t('Saved. Your score is updated.'), { icon: 'check' });
   };
 

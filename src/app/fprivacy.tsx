@@ -8,7 +8,7 @@ import { useToast } from '@/components/Toast';
 import { Button, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
-import { DEFAULT_SHARE, getShare, myBlocks, saveShare, type Share, unblockUser } from '@/lib/social';
+import { DEFAULT_SHARE, getShareOrNull, myBlocks, saveShare, type Share, unblockUser } from '@/lib/social';
 
 const ITEMS: [keyof Share, string][] = [
   ['workouts', 'Workouts you finish'],
@@ -26,6 +26,7 @@ export default function FriendPrivacy() {
   const { session } = useAuth();
   const uid = session?.user.id;
   const [s, setS] = useState<Share | null>(null);
+  const [failed, setFailed] = useState(false);
   // People you blocked: unblock them here.
   const [blocked, setBlocked] = useState<{ id: string; username: string | null; name: string | null }[]>([]);
   useEffect(() => {
@@ -40,7 +41,11 @@ export default function FriendPrivacy() {
   useEffect(() => {
     if (!uid) return;
     let alive = true;
-    getShare(uid).then((v) => alive && setS(v));
+    getShareOrNull(uid).then((v) => {
+      if (!alive) return;
+      if (v) setS(v);
+      else setFailed(true);
+    });
     return () => {
       alive = false;
     };
@@ -53,25 +58,33 @@ export default function FriendPrivacy() {
         {t('Friends only see what you turn on here. You can change it any time.')}
       </Text>
       <View style={{ height: 16 }} />
-      <List>
-        {ITEMS.map(([k, n], i) => (
-          <ListRow key={k} first={!i}>
-            <Text weight={700} style={{ flex: 1 }}>
-              {t(n)}
-            </Text>
-            <Toggle
-              value={cur[k]}
-              label={t(n)}
-              onChange={async (v) => {
-                if (!uid) return;
-                const next = { ...cur, [k]: v };
-                setS(next);
-                if (!(await saveShare(uid, next))) toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
-              }}
-            />
-          </ListRow>
-        ))}
-      </List>
+      {failed && !s ? (
+        <Text variant="small" color="down" style={{ marginBottom: 8, marginHorizontal: 4 }}>
+          {t('Couldn’t load. Please try again.')}
+        </Text>
+      ) : null}
+      {/* Switches wait until your settings load, so a tap can't save the defaults over them. */}
+      <View style={{ opacity: s ? 1 : 0.45 }} pointerEvents={s ? 'auto' : 'none'}>
+        <List>
+          {ITEMS.map(([k, n], i) => (
+            <ListRow key={k} first={!i}>
+              <Text weight={700} style={{ flex: 1 }}>
+                {t(n)}
+              </Text>
+              <Toggle
+                value={cur[k]}
+                label={t(n)}
+                onChange={async (v) => {
+                  if (!uid || !s) return;
+                  const next = { ...cur, [k]: v };
+                  setS(next);
+                  if (!(await saveShare(uid, next))) toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+                }}
+              />
+            </ListRow>
+          ))}
+        </List>
+      </View>
       <Text variant="small" color="sec" style={{ marginHorizontal: 4 }}>
         {t('Food logs, sleep, health and cycle data are never shared with friends.')}
       </Text>

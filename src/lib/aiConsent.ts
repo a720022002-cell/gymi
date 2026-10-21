@@ -17,14 +17,22 @@ const loaded = AsyncStorage.getItem(KEY)
   .catch(() => {});
 // "Not now" only skips the question until the app opens again.
 let askedThisRun = false;
+// AI actions waiting for your answer: Allow lets them go on, Not now stops them.
+let waiting: ((ok: boolean) => void)[] = [];
+const answer = (ok: boolean) => {
+  const w = waiting;
+  waiting = [];
+  w.forEach((f) => f(ok));
+};
 
-/** True when AI is allowed. Otherwise opens the question (once per app run, unless turned off in settings). */
-export async function aiAllowed() {
+/** True when AI is allowed. Otherwise opens the question (once per app run, unless turned off in settings) and waits for it. */
+export async function aiAllowed(): Promise<boolean> {
   await loaded;
   if (state.value === 'yes') return true;
-  if (state.value === null && !askedThisRun) {
+  if (state.value === null && (!askedThisRun || state.asking)) {
     askedThisRun = true;
     set({ asking: true });
+    return new Promise<boolean>((res) => waiting.push(res));
   }
   return false;
 }
@@ -32,10 +40,20 @@ export async function aiAllowed() {
 export function setAiConsent(on: boolean) {
   set({ value: on ? 'yes' : 'no', asking: false });
   AsyncStorage.setItem(KEY, on ? 'yes' : 'no').catch(() => {});
+  answer(on);
 }
 
 export function closeAiConsent() {
   set({ asking: false });
+  answer(false);
+}
+
+/** Logging out: the next person on this phone is asked for themselves. */
+export async function clearAiConsent() {
+  askedThisRun = false;
+  set({ value: null, asking: false });
+  answer(false);
+  await AsyncStorage.removeItem(KEY).catch(() => {});
 }
 
 export function useAiConsent() {

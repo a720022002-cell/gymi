@@ -68,14 +68,21 @@ function Weight() {
     setOpen(true);
   };
   const labels = w.map((x, i) => ((i % Math.max(1, Math.ceil(w.length / 4)) === 0 && i < w.length - Math.ceil(w.length / 8)) || i === w.length - 1 ? shortDate(x.day, lang) : ''));
-  const first = w[0];
-  const change = cur && first && w.length > 1 ? cur.value - first.value : null;
+  // Weekly averages, now against 4 weeks ago (or your first full week when that's newer), so one heavy day doesn't flip it.
+  const oldest = health.weights[0]?.day;
+  const back = addDays(food.today, -28);
+  const thenEnd = oldest && oldest > addDays(back, -6) ? addDays(oldest, 6) : back;
+  const then = thenEnd < addDays(food.today, -6) ? weekAvg(health.weights, thenEnd) : null;
+  const change = a != null && then != null ? a - then : null;
   let note: string | null = null;
   if (change != null) {
-    const toward = goal >= 3 ? change < 0 : goal <= 1 ? change > 0 : Math.abs(change) < 1;
-    note = toward
-      ? W.words(t('You’re on track. {n} kg since {d}. If your weight stays flat for two weeks, I’ll suggest adjusting calories.', { n: `${change > 0 ? '+' : '−'}${W.show(Math.abs(change))}`, d: shortDate(first.day, lang) }))
-      : W.words(t('Your weight is going the other way ({n} kg since {d}). Weigh in a few more mornings; one day doesn’t mean much.', { n: `${change > 0 ? '+' : '−'}${W.show(Math.abs(change))}`, d: shortDate(first.day, lang) }));
+    const vars = { n: `${change > 0 ? '+' : '−'}${W.show(Math.abs(change))}`, d: shortDate(addDays(thenEnd, -6), lang) };
+    if (goal === 2)
+      note = Math.abs(change) < 1 ? W.words(t('Your weight is steady: {n} kg since the week of {d}. Right where you want it.', vars)) : W.words(t('Your weight moved {n} kg since the week of {d}. If it keeps going that way, I’ll suggest adjusting calories.', vars));
+    else
+      note = (goal >= 3 ? change < 0 : change > 0)
+        ? W.words(t('You’re on track. {n} kg since the week of {d}. If your weight stays flat for two weeks, I’ll suggest adjusting calories.', vars))
+        : W.words(t('Your weight is going the other way ({n} kg since the week of {d}, comparing weekly averages). Weigh in a few more mornings.', vars));
   }
   return (
     <View>

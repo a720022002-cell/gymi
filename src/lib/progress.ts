@@ -18,7 +18,17 @@ export type ProgressInput = {
   goal: number;
   /** Your whole history (null until it loads; then only the recent data above is used). */
   life?: History | null;
+  /** Calories added to a day's goal: moved from other days and burned in cardio (that day's own goal). */
+  kcalExtra?: Record<string, number>;
+  /** Sleep from the watch, for nights without a check-in. */
+  watchSleep?: Record<string, number>;
 };
+
+/** A day's own calorie goal: your target plus calories moved to it and burned in cardio. */
+export const dayKcalGoal = (x: Pick<ProgressInput, 'kcal' | 'kcalExtra'>, d: string) => x.kcal + (x.kcalExtra?.[d] ?? 0);
+
+/** Last night's sleep: what you logged, or else your watch. */
+export const sleepOn = (x: Pick<ProgressInput, 'checkins' | 'watchSleep'>, d: string) => x.checkins.find((c) => c.day === d)?.sleep_h ?? x.watchSleep?.[d] ?? null;
 
 /** Food and water for every day: your whole history, with the recent days (and today) on top. */
 const allDays = (x: ProgressInput): Record<string, DayTotals> => ({ ...x.life?.days, ...x.days });
@@ -89,6 +99,7 @@ export function commitWindow(x: ProgressInput, from: string, to: string, first: 
   if (!first) return { parts, pct: null as number | null };
   const done = new Set(x.logs.map((l) => l.day));
   const sleep = new Map(x.checkins.map((c) => [c.day, c.sleep_h]));
+  for (const [d, h] of Object.entries(x.watchSleep ?? {})) if (sleep.get(d) == null) sleep.set(d, h);
   const add = (k: CommitKey, met: boolean, d: string) => {
     if (d === x.today && !met) return;
     parts[k][1]++;
@@ -105,11 +116,12 @@ export function commitWindow(x: ProgressInput, from: string, to: string, first: 
     }
     const v = x.days[d];
     if (x.foodSetup) {
-      add('cal', !!v && v.k > 0 && Math.abs(v.k - x.kcal) <= x.kcal * 0.1, d);
+      const goal = dayKcalGoal(x, d);
+      add('cal', !!v && v.k > 0 && Math.abs(v.k - goal) <= goal * 0.1, d);
       add('prot', !!v && v.p >= x.protein * 0.9, d);
     }
     add('water', !!v && v.w >= x.water, d);
-    // Only nights you told us about count.
+    // Only nights you told us about (or your watch measured) count.
     const h = sleep.get(d);
     if (h != null) add('sleep', h >= 7, d);
   }

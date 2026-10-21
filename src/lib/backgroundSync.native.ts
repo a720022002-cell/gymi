@@ -7,6 +7,7 @@ import * as TaskManager from 'expo-task-manager';
 
 import { translate } from '@/i18n';
 
+import { loadCycleToday } from './cyclePhase';
 import { type DeviceDay, deviceBrief, illnessCheck, syncInBackground } from './devices';
 import { localDay } from './nutrition';
 import { loadPrefs } from './reminders.shared';
@@ -70,8 +71,10 @@ async function morningNote(uid: string, days: DeviceDay[]) {
   const settings = await AsyncStorage.getItem('adro.settings.v1').catch(() => null);
   const lang: 'en' | 'ar' = settings && JSON.parse(settings).lang === 'ar' ? 'ar' : 'en';
   const t = (s: string, v?: Record<string, string | number>) => translate(lang, s, v);
-  const brief = deviceBrief(days, today);
-  const sick = illnessCheck(days, today);
+  // The luteal phase raises temperature by itself: the checks allow for it.
+  const luteal = (await loadCycleToday(uid))?.phase === 'Luteal';
+  const brief = deviceBrief(days, today, { luteal });
+  const sick = illnessCheck(days, today, { luteal });
   const sleep = night.sleep_h != null ? t('You slept {h} h.', { h: Math.round(night.sleep_h * 10) / 10 }) : '';
   const [title, body] = sick
     ? [t('Your body may be fighting something'), t('Rest, drink water and sleep early. Open Adro to see why.')]

@@ -1,7 +1,7 @@
 // Phone health data (Apple Health on iPhone, Health Connect on Android), saved as one summary per day
 // in "device_readings" so the web app and the coach can use it too. The phone-only parts live in healthSource.
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useSyncExternalStore } from 'react';
 
 import { startBackgroundSync, stopBackgroundSync } from './backgroundSync';
 import { connectSource, type HealthItem, nativeSource, readHeartRate, readRaw, removeHealth, writeHealth } from './healthSource';
@@ -343,9 +343,10 @@ export function sleepDetail(days: DeviceDay[], today = localDay()) {
 /**
  * Early signs of getting sick, from last night against your usual: temperature up, breathing faster, resting heart
  * rate up, HRV down, low blood oxygen. Two or more together, one of them temperature, breathing or oxygen (or very
- * low oxygen alone), is worth a warning. Null otherwise.
+ * low oxygen alone), is worth a warning. Null otherwise. In the luteal phase temperature and resting heart rate rise
+ * by themselves, so temperature only counts from a bigger rise (`luteal`).
  */
-export function illnessCheck(days: DeviceDay[], today = localDay()): { reasons: string[]; keys: string[] } | null {
+export function illnessCheck(days: DeviceDay[], today = localDay(), opts?: { luteal?: boolean }): { reasons: string[]; keys: string[] } | null {
   const night = days.find((d) => d.day === today);
   if (!night) return null;
   const before = days.filter((d) => d.day < today && d.day >= addDays(today, -30));
@@ -361,7 +362,7 @@ export function illnessCheck(days: DeviceDay[], today = localDay()): { reasons: 
   };
   const tUsual = usual('wrist_temp');
   const tUp = night.temp_dev != null ? night.temp_dev : night.wrist_temp != null && tUsual != null ? night.wrist_temp - tUsual : null;
-  if (tUp != null && tUp >= 0.5) add('temp', `temperature +${r1(tUp)} °C`);
+  if (tUp != null && tUp >= (opts?.luteal ? 0.9 : 0.5)) add('temp', `temperature +${r1(tUp)} °C`);
   const rUsual = usual('resp_rate');
   if (night.resp_rate != null && rUsual != null && night.resp_rate - rUsual >= 2) add('resp', `breathing ${r1(night.resp_rate)} a minute (usual ${r1(rUsual)})`);
   const hUsual = usual('hr_rest');
@@ -401,7 +402,7 @@ export type DeviceBrief = {
  * What the coach needs from the watch, ring or band: where it comes from, your usual numbers, the newest night next
  * to them, the last 14 days, and what stands out. Null when nothing came from a device.
  */
-export function deviceBrief(days: DeviceDay[], today = localDay()): DeviceBrief | null {
+export function deviceBrief(days: DeviceDay[], today = localDay(), opts?: { luteal?: boolean }): DeviceBrief | null {
   const all = days.filter((d) => d.day <= today);
   if (!all.length) return null;
   const src = (d: DeviceDay) => (d.wearable ? wearableName(d.wearable) : d.source === 'apple' || d.source === 'health_connect' ? sourceName(d.source) : wearableName(d.source));
@@ -458,7 +459,8 @@ export function deviceBrief(days: DeviceDay[], today = localDay()): DeviceBrief 
   else if (wSleep != null && wSleep < 6.5) signals.push(`Sleep average this week ${r1(wSleep)} h`);
   if (night?.sleep_eff != null && night.sleep_eff < 80) signals.push(`Restless night: ${night.sleep_eff}% of time in bed asleep`);
   if (night?.spo2 != null && night.spo2 < 94) signals.push(`Blood oxygen at night ${night.spo2}% (low; if it keeps happening, see a doctor)`);
-  if (night?.temp_dev != null && night.temp_dev >= 0.5) {
+  // In the luteal phase a warmer night is normal: only a bigger rise counts.
+  if (night?.temp_dev != null && night.temp_dev >= (opts?.luteal ? 0.9 : 0.5)) {
     signals.push(`Skin temperature +${r1(night.temp_dev)} °C above normal: could be getting sick (or the cycle phase)`);
     low++;
   }
@@ -473,7 +475,7 @@ export function deviceBrief(days: DeviceDay[], today = localDay()): DeviceBrief 
   const sd = sleepDetail(all, today);
   if (sd?.deep != null && sd.deep < 0.75) signals.push(`Little deep sleep last night: ${Math.round(sd.deep * 60)} min (most adults get 1 to 2 h)`);
   if (sd?.bedSpread != null && sd.bedSpread >= 60) signals.push(`Bedtime changes a lot: about ${Math.round(sd.bedSpread)} min from night to night (a steady bedtime sleeps better)`);
-  const ill = illnessCheck(all, today);
+  const ill = illnessCheck(all, today, opts);
   if (ill) {
     signals.push(`Possible illness: ${ill.reasons.join(', ')}. Suggest rest, fluids and a doctor if they feel unwell; never diagnose`);
     low++;
@@ -494,9 +496,9 @@ export function deviceBrief(days: DeviceDay[], today = localDay()): DeviceBrief 
 }
 
 /** The same, read fresh (for the weekly recap and the weekly plan check). */
-export async function loadDeviceBrief(): Promise<DeviceBrief | null> {
+export async function loadDeviceBrief(opts?: { luteal?: boolean }): Promise<DeviceBrief | null> {
   return loadDeviceDays(addDays(localDay(), -44))
-    .then((d) => deviceBrief(d))
+    .then((d) => deviceBrief(d, localDay(), opts))
     .catch(() => null);
 }
 
@@ -589,10 +591,26 @@ export async function syncDevice(n = 7): Promise<number | null> {
     await savePrefs({ last_sync: new Date().toISOString() });
     // Load again so the wearable's numbers (recovery, strain, its sleep) and the main device you picked stay in.
     await reloadDeviceDays().catch(() => {});
+    await stepsToLog().catch(() => {});
     return out.length;
   } finally {
     set({ syncing: false });
   }
+}
+
+/**
+ * Today's steps from the phone or watch also go into your step log (the higher of what you logged and what the device
+ * counted), so challenges and coaches see them too.
+ */
+async function stepsToLog() {
+  const uid = state.uid;
+  const today = localDay();
+  const dev = state.days.find((d) => d.day === today)?.steps ?? null;
+  if (!uid || dev == null || dev <= 0) return;
+  const { data, error } = await supabase.from('step_logs').select('steps').eq('day', today).maybeSingle();
+  if (error) return;
+  const mine = Number((data as { steps: number } | null)?.steps ?? 0);
+  if (Math.round(dev) > mine) await supabase.from('step_logs').upsert({ user_id: uid, day: today, steps: Math.round(dev) });
 }
 
 /** Ask the phone for permission, then read the last month. */
@@ -627,6 +645,7 @@ export async function syncInBackground(uid: string): Promise<DeviceDay[] | null>
   if (links.some((l) => !l.last_sync || Date.now() - new Date(l.last_sync).getTime() > 36e5)) {
     await syncWearables().catch(() => null);
     await reloadDeviceDays().catch(() => {});
+    await stepsToLog().catch(() => {});
   }
   return phone || links.length ? state.days : null;
 }
@@ -724,6 +743,12 @@ export function stepGoal(days: DeviceDay[], today = localDay()) {
   if (xs.length < 7) return 8000;
   const usual = avg(xs) as number;
   return Math.max(5000, Math.min(12000, Math.round((usual * 1.1) / 500) * 500));
+}
+
+/** Sleep from the watch or ring by day (hours), for nights without a check-in. */
+export function useWatchSleep(uid: string | undefined): Record<string, number> {
+  const { days } = useDevices(uid);
+  return useMemo(() => Object.fromEntries(days.filter((d) => d.sleep_h != null && d.sleep_h > 0).map((d) => [d.day, d.sleep_h as number])), [days]);
 }
 
 /** The step goal for the signed-in person (see stepGoal). */

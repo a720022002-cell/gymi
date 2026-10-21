@@ -4,7 +4,7 @@ import { View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { useFood, useLogFood } from '@/lib/food';
-import { changeMeal, fmt, type PlannedMeal, withMealIds } from '@/lib/nutrition';
+import { changeMeal, fmt, type PlannedMeal, ramadanOn, withMealIds } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
 
 import { Icon, type IconName } from '../Icon';
@@ -45,7 +45,7 @@ export function MealMenu({ meal, logged, onClose }: { meal: PlannedMeal | null; 
       'View recipe',
       () => {
         onClose();
-        router.push({ pathname: '/recipe', params: { key: meal.key } });
+        router.push({ pathname: '/recipe', params: { key: meal.key, day: food.day } });
       },
     ],
     ['swap', 'Change meal', swap],
@@ -58,7 +58,7 @@ export function MealMenu({ meal, logged, onClose }: { meal: PlannedMeal | null; 
       },
     ],
   ];
-  const canRemove = !food.plan.ramadan && food.plan.meals.length > 2;
+  const canRemove = !ramadanOn(food.plan, food.day) && food.plan.meals.length > 2;
 
   return (
     <>

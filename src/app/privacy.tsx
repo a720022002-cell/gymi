@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Platform, Share, TextInput, View } from 'react-native';
+import { Platform, TextInput, View } from 'react-native';
 
 import { Field } from '@/components/Field';
 import { Icon } from '@/components/Icon';
@@ -40,20 +40,39 @@ export default function Privacy() {
     setBusy(true);
     const out: Record<string, unknown> = { exported_at: new Date().toISOString(), user: { id: session.user.id, email: session.user.email } };
     for (const tb of TABLES) {
-      const { data } = await supabase.from(tb).select('*').limit(10000);
+      const { data, error } = await supabase.from(tb).select('*').limit(10000);
+      // A file with parts missing would look complete: stop instead.
+      if (error) {
+        setBusy(false);
+        return toast(t('Couldn’t get all your data. Check your connection and try again.'), { icon: 'warn' });
+      }
       out[tb] = data ?? [];
     }
     setBusy(false);
     const text = JSON.stringify(out, null, 2);
+    const name = `adro-data-${localDay()}.json`;
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
       const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
       const a = document.createElement('a');
       a.href = url;
-      a.download = `adro-data-${localDay()}.json`;
+      a.download = name;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
       toast(t('Your data file is downloading'), { icon: 'download' });
-    } else await Share.share({ message: text, title: 'Adro data' });
+    } else {
+      // Phones: write a real file and share that (the whole text is too big for a share message).
+      try {
+        const { File, Paths } = await import('expo-file-system');
+        const Sharing = await import('expo-sharing');
+        const file = new File(Paths.cache, name);
+        file.create({ overwrite: true });
+        file.write(text);
+        if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(file.uri, { mimeType: 'application/json', UTI: 'public.json', dialogTitle: 'Adro data' });
+        else toast(t('Sharing isn’t available on this phone.'), { icon: 'warn' });
+      } catch {
+        toast(t('Couldn’t save the file. Please try again.'), { icon: 'warn' });
+      }
+    }
   };
 
   const del = async () => {
@@ -68,6 +87,7 @@ export default function Privacy() {
     }
     setStep(0);
     await logOut().catch(() => {});
+    if (router.canDismiss()) router.dismissAll();
     router.replace('/welcome');
     setTimeout(() => toast(t('Your account and data were deleted'), { icon: 'trash' }), 500);
   };

@@ -19,8 +19,33 @@ export const ACTIVITY: [string, string][] = [
 ];
 const ACT_FACTOR = [1.25, 1.4, 1.55, 1.75];
 
-// Ramadan mode is hidden outside Ramadan. Set to true when Ramadan comes to show it again.
-export const RAMADAN_SWITCH = false;
+// Ramadan (month 9 of the Umm al-Qura calendar), for when the phone can't tell: about the first and last day.
+const RAMADAN_FALLBACK: [string, string][] = [
+  ['2027-02-08', '2027-03-08'],
+  ['2028-01-28', '2028-02-25'],
+  ['2029-01-16', '2029-02-13'],
+  ['2030-01-05', '2030-02-03'],
+  ['2030-12-26', '2030-12-31'],
+];
+
+/** Is this day ("YYYY-MM-DD") in Ramadan? From the phone's Umm al-Qura calendar, or a short table when it has none. */
+let hijri: Intl.DateTimeFormat | null | undefined;
+export function isRamadan(day = localDay()) {
+  if (hijri === undefined) {
+    try {
+      const f = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { month: 'numeric', timeZone: 'UTC' });
+      // A phone without the Islamic calendar quietly uses the normal one (September would look like Ramadan).
+      hijri = f.resolvedOptions().calendar?.startsWith('islamic') ? f : null;
+    } catch {
+      hijri = null;
+    }
+  }
+  if (hijri) return Number(hijri.format(new Date(`${day}T12:00:00Z`)).replace(/\D/g, '')) === 9;
+  return RAMADAN_FALLBACK.some(([a, b]) => day >= a && day <= b);
+}
+
+/** Ramadan meals are used on this day: you turned Ramadan mode on, and it's Ramadan. */
+export const ramadanOn = (f: Pick<FoodPlan, 'ramadan'>, day = localDay()) => !!f.ramadan && isRamadan(day);
 
 /** `id`: stays the same when other meals are removed, so picks, swapped recipes and logs stay with the right meal. */
 export type Meal = { n: string; t: string; type?: string; id?: number };
@@ -45,9 +70,9 @@ export type FoodPlan = {
   workoutTime: string;
   myWorkoutTime?: string | null;
   intensity: string;
-  /** Which recipe is shown for each meal slot (changes with "Change meal"). */
+  /** Which recipe is shown for each meal slot on a day (`day:key`, changes with "Change meal"). Keys without a day are from before and count for every day. */
   picks?: Record<string, number>;
-  /** Recipes changed by swapping an ingredient (or made from your ingredients), per meal slot. */
+  /** Recipes changed by swapping an ingredient (or made from your ingredients), per meal slot on a day (`day:key`; older ones without a day count for every day). */
   custom?: Record<string, CustomRecipe>;
   /** `lock`: you started buying a week's or a month's list, so meals (and the list) stay the same from `from` to `to`. */
   shop?: { checked: Record<string, boolean>; extra: { n: string; q: string; cat: string }[]; hidden: string[]; scope: number; lock?: { from: string; to: string; scope: number }; checkedFor?: string; ticks?: Record<string, Record<string, boolean>> };
@@ -91,30 +116,63 @@ export function defaultPlan(weight: number): FoodPlan {
   };
 }
 
-export const bmr = (weight: number, p: Person) =>
-  10 * weight + 6.25 * p.height - 5 * p.age + (p.gender === 'female' ? -161 : 5);
+/** Calories burned at rest. With a body fat % it uses lean mass (Katch-McArdle), else weight, height and age (Mifflin-St Jeor). */
+export const bmr = (weight: number, p: Person, bfPct?: number | null) =>
+  bfPct != null && bfPct > 0 && bfPct < 70
+    ? 370 + 21.6 * weight * (1 - bfPct / 100)
+    : 10 * weight + 6.25 * p.height - 5 * p.age + (p.gender === 'female' ? -161 : 5);
+
+/** The body fat % picked in setup (the body that looks closest), or undefined. */
+export const bfOf = (f: { bf?: number | null }, p: Person) => (f.bf == null ? undefined : bodyFatList(p.gender)[f.bf]);
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const hhmm = (h: number, m: number) => `${pad((h + 24) % 24)}:${pad(m)}`;
 
-/** Calories that keep your weight where it is (no goal change). */
-export const maintenance = (f: Pick<FoodPlan, 'weight' | 'activity' | 'sun'>, p: Person) => bmr(f.weight, p) * ACT_FACTOR[f.activity] + (f.sun ? 120 : 0);
+type BodyFacts = Pick<FoodPlan, 'weight' | 'activity' | 'sun'> & { bf?: number | null };
 
-/** Lowest daily calories we suggest: 10% above what you burn at rest, and never under 1,200 (women) or 1,500 (men). */
-export const kcalFloor = (weight: number, p: Person) => Math.round(Math.max(bmr(weight, p) * 1.1, p.gender === 'male' ? 1500 : 1200) / 10) * 10;
+/** Calories that keep your weight where it is (no goal change). */
+export const maintenance = (f: BodyFacts, p: Person) => bmr(f.weight, p, bfOf(f, p)) * ACT_FACTOR[f.activity] + (f.sun ? 120 : 0);
+
+/**
+ * Lowest daily calories we suggest: what you burn at rest, and never under 1,200 (women) or 1,500 (men). `bf` is the
+ * plan's body fat pick (FoodPlan.bf), so the floor uses the same resting burn as your calories.
+ */
+export const kcalFloor = (weight: number, p: Person, bf?: number | null) => Math.ceil(Math.max(bmr(weight, p, bfOf({ bf }, p)), p.gender === 'male' ? 1500 : 1200) / 10) * 10;
 
 /** Under 18: no cut or bulk, you stay at maintenance so you have energy to grow. */
 export const isMinor = (p: Person) => p.age < 18;
 
 /** Suggested daily calories for the goal. A cut never takes more than 25% off maintenance, and never goes under the floor. */
-export function suggestKcal(f: Pick<FoodPlan, 'weight' | 'activity' | 'sun' | 'goal'>, p: Person) {
+export function suggestKcal(f: BodyFacts & Pick<FoodPlan, 'goal'>, p: Person) {
   const tdee = maintenance(f, p);
   const adj = isMinor(p) ? 0 : Math.max(GOAL_ADJ[f.goal], -0.25 * tdee);
-  return Math.round(Math.max(tdee + adj, kcalFloor(f.weight, p)) / 10) * 10;
+  return Math.round(Math.max(tdee + adj, kcalFloor(f.weight, p, f.bf)) / 10) * 10;
 }
 
-/** What calcPlan suggested before the floor and the 25% cap (to tell untouched plans from ones changed by hand). */
-export const oldSuggestKcal = (f: Pick<FoodPlan, 'weight' | 'activity' | 'sun' | 'goal'>, p: Person) => Math.round((maintenance(f, p) + GOAL_ADJ[f.goal]) / 10) * 10;
+/**
+ * A cut the calorie floor holds back: about how much you'd lose a week at these calories (kg, negative), else null.
+ * Shown instead of the goal's usual range, which isn't reachable then.
+ */
+export function flooredRate(f: BodyFacts & Pick<FoodPlan, 'goal'>, p: Person, kcal = suggestKcal(f, p)) {
+  if (f.goal < 3 || isMinor(p)) return null;
+  const tdee = maintenance(f, p);
+  if (tdee + Math.max(GOAL_ADJ[f.goal], -0.25 * tdee) >= kcalFloor(f.weight, p, f.bf)) return null;
+  return Math.min(0, Math.round(((kcal - tdee) * 7) / 7700 / 0.05) * 0.05);
+}
+
+// Earlier formulas (by weight only, Mifflin-St Jeor), to tell untouched plans from ones changed by hand.
+const mifflinTdee = (f: BodyFacts, p: Person) => bmr(f.weight, p) * ACT_FACTOR[f.activity] + (f.sun ? 120 : 0);
+/** What calcPlan suggested before the floor and the 25% cap. */
+export const oldSuggestKcal = (f: Pick<FoodPlan, 'weight' | 'activity' | 'sun' | 'goal'>, p: Person) => Math.round((mifflinTdee(f, p) + GOAL_ADJ[f.goal]) / 10) * 10;
+/** What calcPlan suggested before body fat and the new floor (floor 10% above resting burn). */
+const prevSuggestKcal = (f: Pick<FoodPlan, 'weight' | 'activity' | 'sun' | 'goal'>, p: Person) => {
+  const tdee = mifflinTdee(f, p);
+  const adj = isMinor(p) ? 0 : Math.max(GOAL_ADJ[f.goal], -0.25 * tdee);
+  const floor = Math.round(Math.max(bmr(f.weight, p) * 1.1, p.gender === 'male' ? 1500 : 1200) / 10) * 10;
+  return Math.round(Math.max(tdee + adj, floor) / 10) * 10;
+};
+/** Calories still at one of our suggestions (now or before), so not changed by hand. */
+export const untouchedKcal = (f: FoodPlan, p: Person) => f.kcal === suggestKcal(f, p) || f.kcal === oldSuggestKcal(f, p) || f.kcal === prevSuggestKcal(f, p);
 
 /** Suggested water (ml): 35 ml per kg, more for sun and an active day. Between 1.5 and 6 litres (the most you can set). */
 export const suggestWater = (f: Pick<FoodPlan, 'weight' | 'activity' | 'sun'>) =>
@@ -170,8 +228,8 @@ export function recalcTargets(plan: FoodPlan, person: Person, opts: { weight?: n
   const goal = isMinor(person) ? 2 : plan.goal;
   const next = { ...plan, weight, goal };
   // Calories still at what we suggested (now, or before the calorie floor existed) count as untouched.
-  const kcalOff = plan.kcal === oldSuggestKcal(plan, prev) ? 0 : plan.kcal - suggestKcal(plan, prev);
-  const floor = kcalFloor(weight, person);
+  const kcalOff = untouchedKcal(plan, prev) ? 0 : plan.kcal - suggestKcal(plan, prev);
+  const floor = kcalFloor(weight, person, plan.bf);
   let kcal = suggestKcal(next, person) + kcalOff;
   // Never pushed under the floor by a recalculation (unless you had already set it lower yourself).
   if (kcal < floor) kcal = Math.max(kcal, Math.min(plan.kcal, floor));
@@ -179,10 +237,24 @@ export function recalcTargets(plan: FoodPlan, person: Person, opts: { weight?: n
   return { ...next, kcal: Math.round(kcal / 10) * 10, water: Math.min(6000, Math.max(1000, Math.round(water / 100) * 100)) };
 }
 
-/** Pregnant: no deficit (never under maintenance) plus about 300 kcal; breastfeeding plus 400. Only changes what's shown, not the saved plan. */
-export function withPregnancy(f: FoodPlan, p: Person, extra: number): FoodPlan {
+/**
+ * Extra calories a day for pregnancy or breastfeeding: about +0 in the first trimester (to week 13), +340 in the
+ * second (to week 27), +450 in the third; +400 after birth (breastfeeding). Week unknown: the second trimester's.
+ */
+export function pregExtra(mode: 'preg' | 'post' | null, week?: number | null) {
+  if (mode === 'post') return 400;
+  if (mode !== 'preg') return 0;
+  if (week == null) return 340;
+  return week < 14 ? 0 : week < 28 ? 340 : 450;
+}
+
+/**
+ * Pregnant: no deficit (never under maintenance) plus the trimester's extra; breastfeeding (`floor` false): your plan
+ * plus 400. Only changes what's shown, not the saved plan (save the plan's own numbers, never these).
+ */
+export function withPregnancy(f: FoodPlan, p: Person, extra: number, floor = true): FoodPlan {
   const base = targets(f).k;
-  const k = Math.max(base, Math.round(maintenance(f, p) / 10) * 10) + extra;
+  const k = (floor ? Math.max(base, Math.round(maintenance(f, p) / 10) * 10) : base) + extra;
   // Carbs set by hand: the extra calories go to carbs, so your protein and fat stay the same.
   if (f.carbG != null) return { ...f, carbG: f.carbG + Math.round((k - base) / 4) };
   return { ...f, kcal: k };
@@ -251,16 +323,30 @@ export const hhmmOf = (d = new Date()) => `${String(d.getHours()).padStart(2, '0
  * can land on the same one), with any swapped-ingredient version of it dropped. Undo puts `picks` and `custom` back.
  */
 export function changeMeal(f: FoodPlan, key: string, day: string, dayKcal: number) {
-  const custom = { ...(f.custom ?? {}) };
+  const dk = dayKey(day, key);
+  const custom = prune({ ...(f.custom ?? {}) }, day);
+  delete custom[dk];
+  // An older swap (kept for every day) goes too, or this day would still show it.
   delete custom[key];
   const cur = planMeals(f, day, dayKcal).find((x) => x.key === key);
+  const old = prune({ ...(f.picks ?? {}) }, day);
   const at = (step: number) => {
-    const picks = { ...(f.picks ?? {}), [key]: (f.picks?.[key] ?? 0) + step };
+    const picks = { ...old, [dk]: (f.picks?.[dk] ?? f.picks?.[key] ?? 0) + step };
     return { picks, custom, meal: planMeals({ ...f, picks, custom }, day, dayKcal).find((x) => x.key === key) };
   };
   let next = at(1);
   for (let step = 2; step <= 12 && next.meal?.r.n === cur?.r.n; step++) next = at(step);
   return next;
+}
+
+/** A meal slot's key for one day: picks and swapped recipes are kept per day, so changing today's lunch leaves other days alone. */
+export const dayKey = (day: string, key: string) => `${day}:${key}`;
+
+/** Picks or swaps for days more than 2 weeks back are dropped (they're no longer shown). */
+function prune<T>(m: Record<string, T>, day: string) {
+  const cut = addDays(day < localDay() ? day : localDay(), -14);
+  for (const k of Object.keys(m)) if (/^\d{4}-\d{2}-\d{2}:/.test(k) && k.slice(0, 10) < cut) delete m[k];
+  return m;
 }
 
 /** Give every meal its own id (its place in the list, for meals from before ids), before meals are removed, moved or added. */
@@ -296,7 +382,7 @@ function allergensOf(f: FoodPlan) {
 export function planMeals(f: FoodPlan, day?: string, dayKcal?: number): PlannedMeal[] {
   const date = day ?? localDay(new Date());
   const dayNo = Math.floor(Date.parse(`${date}T12:00:00Z`) / 86400000) || 0;
-  const ram = RAMADAN_SWITCH && !!f.ramadan;
+  const ram = ramadanOn(f, date);
   const meals = ram ? ramadanMeals(f.city, day) : f.meals;
   const tag = f.goal <= 1 ? 'Bulk' : 'Cut';
   // The day's real goal when known (pregnancy, calories moved between days), else the plan's.
@@ -327,9 +413,10 @@ export function planMeals(f: FoodPlan, day?: string, dayKcal?: number): PlannedM
     const okMine = safe(mine);
     const safeAll = grow(grow(okMine, () => safe(all)), () => safe(others()));
     const pool = safeAll.length ? safeAll : mine.length ? mine : all;
-    const start = (f.picks?.[key] ?? 0) + dayNo;
+    const dk = dayKey(date, key);
+    const start = (f.picks?.[dk] ?? f.picks?.[key] ?? 0) + dayNo;
     const fresh = Array.from({ length: pool.length }, (_, j) => pool[(start + j) % pool.length]).find((x) => !used.has(x.n));
-    const r = f.custom?.[key] ?? fresh ?? pool[start % pool.length];
+    const r = f.custom?.[dk] ?? f.custom?.[key] ?? fresh ?? pool[start % pool.length];
     used.add(r.n);
     const contains = has(r);
     const k = Math.round(((kcal * ws[i]) / tot) * (r.kAdj ?? 1) / 10) * 10;
@@ -373,3 +460,6 @@ export function addDays(day: string, n: number) {
 }
 
 export const fmt = (n: number) => Math.round(n).toLocaleString('en-US');
+
+/** Ramadan mode can be turned on (only during Ramadan). Worked out when the app starts; use isRamadan(day) for a given day. */
+export const RAMADAN_SWITCH = isRamadan();

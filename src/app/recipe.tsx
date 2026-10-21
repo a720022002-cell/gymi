@@ -11,8 +11,9 @@ import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
+import { allergensIn, noteHit } from '@/lib/allergies';
 import { useFood, useLogFood } from '@/lib/food';
-import { changeMeal, fmt, planMeals, scaleIngredients } from '@/lib/nutrition';
+import { changeMeal, dayKey, fmt, planMeals, scaleIngredients } from '@/lib/nutrition';
 import { inGrams, ingKcal } from '@/lib/recipes';
 import { subOptions } from '@/lib/subs';
 import { useSettings } from '@/theme/settings';
@@ -42,14 +43,16 @@ export default function RecipeScreen() {
   const subbed = r.subbed ?? [];
   const logged = food.logs.some((l) => l.plan_key === meal.key);
 
-  const applySub = (i: number, j: number) => {
+  // Swaps you're allergic to aren't offered.
+  const safeSub = (o: [string, number, string]) => !allergensIn([o[0]], food.plan.allergies).length && !noteHit([o[0]], food.plan.allergyNote);
+  const applySub = (i: number, o: [string, number, string] | null) => {
     const base = r.ing[i];
     const old = t(ing[i][0]).toLowerCase();
     let newIng = r.ing.map((x) => [...x] as typeof x);
     let newSubbed = [...subbed];
     let label: string;
     let kAdj = r.kAdj ?? 1;
-    if (j < 0) {
+    if (!o) {
       // The rest gets bigger to make up the calories, up to 1.5 times; past that the meal is simply smaller.
       const gone = ingKcal(base[0], base[1], base[2]);
       newIng.splice(i, 1);
@@ -63,13 +66,12 @@ export default function RecipeScreen() {
           ? t('Left out {x}. The rest is bigger, and this meal is now about {n} kcal.', { x: old, n: Math.round((meal.k / (r.kAdj ?? 1)) * kAdj / 10) * 10 })
           : t('Left out {x}. The rest is a bit bigger.', { x: old });
     } else {
-      const o = subOptions(base[0], base[1], base[2])[j];
       newIng[i] = o;
       if (!newSubbed.includes(i)) newSubbed.push(i);
       label = t('Swapped {a} for {b}. Calories stay about the same.', { a: old, b: t(o[0]).toLowerCase() });
     }
     const before = food.plan.custom;
-    food.updatePlan({ custom: { ...(food.plan.custom ?? {}), [meal.key]: { ...r, ing: newIng, subbed: newSubbed, kAdj } } });
+    food.updatePlan({ custom: { ...(food.plan.custom ?? {}), [dayKey(day, meal.key)]: { ...r, ing: newIng, subbed: newSubbed, kAdj } } });
     setSubFor(null);
     toast(label, { ai: true, undo: () => food.updatePlan({ custom: before }) });
   };
@@ -183,10 +185,10 @@ export default function RecipeScreen() {
               {(([v, w]) => t('Instead of {a} {u}, use one of these. Calories stay about the same.', { a: v, u: t(w) }))(inGrams(ing[subFor][0], ing[subFor][1], ing[subFor][2]))}
             </Text>
             <View style={{ marginTop: 12, backgroundColor: 'rgba(127,127,135,0.1)', borderRadius: 22, overflow: 'hidden' }}>
-              {subOptions(r.ing[subFor][0], r.ing[subFor][1], r.ing[subFor][2]).map((o, j) => {
+              {subOptions(r.ing[subFor][0], r.ing[subFor][1], r.ing[subFor][2]).filter(safeSub).map((o, j) => {
                 const shown = scaleIngredients({ ...r, ing: [o] }, meal.k)[0];
                 return (
-                  <Springy key={o[0]} onPress={() => applySub(subFor, j)} scaleTo={0.99} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingHorizontal: 16, borderTopWidth: j ? 1 : 0, borderTopColor: c.line }}>
+                  <Springy key={o[0]} onPress={() => applySub(subFor, o)} scaleTo={0.99} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingHorizontal: 16, borderTopWidth: j ? 1 : 0, borderTopColor: c.line }}>
                     <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: c.cobalt, alignItems: 'center', justifyContent: 'center' }}>
                       <Icon name="swap" size={16} color="#FFFFFF" />
                     </View>
@@ -197,7 +199,7 @@ export default function RecipeScreen() {
                   </Springy>
                 );
               })}
-              <Springy onPress={() => applySub(subFor, -1)} scaleTo={0.99} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingHorizontal: 16, borderTopWidth: 1, borderTopColor: c.line }}>
+              <Springy onPress={() => applySub(subFor, null)} scaleTo={0.99} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingHorizontal: 16, borderTopWidth: 1, borderTopColor: c.line }}>
                 <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
                   <Icon name="close" size={16} strokeWidth={2.2} />
                 </View>

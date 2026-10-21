@@ -1,7 +1,11 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
+import { useAuth } from './auth';
+import { useWatchSleep } from './devices';
 import { useFood } from './food';
 import { useHealth } from './health';
+import { addDays } from './nutrition';
+import { loadKcalExtras } from './report';
 import { activeDays, badges, bestWorkoutStreak, commitment, overallStreak, type ProgressInput, weeklyCommitment, weeksAbove } from './progress';
 import { useTrain } from './train';
 
@@ -10,6 +14,22 @@ export function useProgressInput(): ProgressInput {
   const food = useFood();
   const train = useTrain();
   const health = useHealth();
+  const { session } = useAuth();
+  // Each day's own calorie goal (moves and cardio) for the last 9 weeks; loaded again when today's change.
+  const from = addDays(food.today, -63);
+  const [extra, setExtra] = useState<{ from: string; v: Record<string, number> } | null>(null);
+  const todayKey = `${food.isToday ? food.moves.length : ''}|${food.isToday ? food.burned : ''}`;
+  useEffect(() => {
+    let alive = true;
+    loadKcalExtras(from, food.today)
+      .then((v) => alive && setExtra({ from, v }))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [from, food.today, todayKey]);
+  const kcalExtra = extra?.from === from ? extra.v : undefined;
+  const watchSleep = useWatchSleep(session?.user.id);
   return useMemo(
     () => ({
       today: food.today,
@@ -24,8 +44,10 @@ export function useProgressInput(): ProgressInput {
       water: food.plan.water || 2800,
       goal: food.plan.goal,
       life: train.history,
+      kcalExtra,
+      watchSleep,
     }),
-    [food.today, health.days, train.logs, health.checkins, health.measures, train.setupDone, train.plan, food.setupDone, food.target.k, food.target.p, food.plan.water, food.plan.goal, train.history],
+    [food.today, health.days, train.logs, health.checkins, health.measures, train.setupDone, train.plan, food.setupDone, food.target.k, food.target.p, food.plan.water, food.plan.goal, train.history, kcalExtra, watchSleep],
   );
 }
 

@@ -1,6 +1,6 @@
 import { addDays } from './nutrition';
 import type { WorkoutLog } from './train';
-import { EX, type Muscle } from './training';
+import { EX, type Muscle, MUSCLES, muscleGroup } from './training';
 
 export type RecoveryInput = {
   today: string;
@@ -16,7 +16,7 @@ export type RecoveryInput = {
    * resting heart rate, and the recovery or readiness score of a WHOOP or Oura.
    */
   body?: { hrv?: number | null; hrvUsual?: number | null; rhr?: number | null; rhrUsual?: number | null; device?: { name: string; score: number } | null } | null;
-  /** Cardio the watch recorded, as work in "sets" (from heart rate when measured, otherwise from minutes). */
+  /** Cardio the watch recorded and cardio you logged, as work in "sets" (from heart rate when measured, otherwise from minutes). */
   cardio?: { day: string; work: number }[];
 };
 
@@ -46,8 +46,8 @@ export function dailyLoad(logs: WorkoutLog[], today: string, n = 14) {
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
 /** Training load: this week's work against the usual week (up to the last 4 weeks). 1.0 = normal. Work is sets done
- * (so bodyweight and timed workouts count too; older logs without sets count 1 set per 3 minutes), plus the cardio
- * the watch recorded (heart-rate load / 10, or a set per 8 minutes without heart rate).
+ * (so bodyweight and timed workouts count too; older logs without sets count 1 set per 3 minutes), plus cardio: what
+ * the watch recorded (heart-rate load / 10, or a set per 8 minutes without heart rate) and what you logged yourself.
  * With under 2 weeks of history there's no usual week yet, so it stays neutral (`early`). */
 function loadRatio(logs: WorkoutLog[], today: string, cardio: { day: string; work: number }[] = []) {
   const first = [...logs.map((l) => l.day), ...cardio.map((c) => c.day)].reduce<string | null>((a, d) => (d <= today && (a == null || d < a) ? d : a), null);
@@ -144,8 +144,10 @@ export function muscleReady(logs: WorkoutLog[], today: string): Record<string, n
     if (daysAgo > 2 || daysAgo < 0) continue;
     const hit = new Set<Muscle>();
     l.exercises.forEach((e) => {
-      const m = EX[e.id]?.m;
-      if (m) hit.add(m);
+      // Database and your own exercises carry their muscle in the log (newer logs).
+      const own = e.m && e.m !== 'Other' ? (MUSCLES.includes(e.m as Muscle) ? (e.m as Muscle) : muscleGroup(e.m)) : undefined;
+      const m = EX[e.id]?.m ?? own;
+      if (m && m !== 'Other') hit.add(m);
     });
     hit.forEach((m) => (out[m] = Math.min(out[m], [35, 60, 85][daysAgo])));
   }
@@ -166,7 +168,7 @@ export function recTips(r: ReturnType<typeof recovery>, x: RecoveryInput, cycle?
     t.push({ icon: 'food', title: 'Eat your protein', body: 'You still need {n} g today. Have Greek yogurt or a shake before bed. It helps repair overnight.', vars: { n: Math.round(x.protein.target - x.protein.eaten) } });
   if (x.water.ml < x.water.goal * 0.7) t.push({ icon: 'drop', title: 'Drink more water', body: 'You’re at {a} of {b} ml. Even mild dehydration slows recovery.', vars: { a: x.water.ml, b: x.water.goal } });
   if (!r.early && r.acwr > 1.3) t.push({ icon: 'train', title: 'Training load jumped', body: 'This week’s load is {n}× your usual. Consider a lighter day or a deload week.', vars: { n: Math.round(r.acwr * 10) / 10 } });
-  if (r.score < 50) t.push({ icon: 'bolt', title: 'Make today light', body: 'Swap the workout for a 30-minute walk and mobility. You’ll train better tomorrow.' });
+  if (r.score < 60) t.push({ icon: 'bolt', title: 'Make today light', body: 'Swap the workout for a 30-minute walk and mobility. You’ll train better tomorrow.' });
   t.push({ icon: 'walk', title: 'Move on rest days', body: 'A 20 to 30 minute easy walk increases blood flow and speeds up recovery.' });
   return t.slice(0, 5);
 }

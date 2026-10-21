@@ -3,10 +3,8 @@ import { useEffect, useState } from 'react';
 
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
-import { useFood } from '@/lib/food';
-import { useHealth } from '@/lib/health';
 import { fmtTime } from '@/lib/nutrition';
-import { buildReminders, loadPrefs, type Prefs, remindersSupported, savePrefs, scheduleReminders } from '@/lib/reminders';
+import { askNotifPermission, loadPrefs, type Prefs, remindersSupported, savePrefs } from '@/lib/reminders';
 import { useSettings } from '@/theme/settings';
 
 import { Glass } from '../Glass';
@@ -22,8 +20,6 @@ export function useReminder(kind: Kind) {
   const toast = useToast();
   const { session } = useAuth();
   const uid = session?.user.id;
-  const food = useFood();
-  const health = useHealth();
   const [p, setP] = useState<{ uid: string; v: Prefs } | null>(null);
 
   useEffect(() => {
@@ -53,12 +49,9 @@ export function useReminder(kind: Kind) {
       icon: 'bell',
       action: { label: t('Settings'), fn: () => router.push('/notifications') },
     });
-    if (!remindersSupported) return;
-    const r = await scheduleReminders(
-      buildReminders(next, { meals: food.setupDone ? food.plan.meals : [], vitamins: health.supplements.filter((x) => x.active && x.remind), workoutToday: null }, t),
-      next[kind].on,
-    );
-    if (r === 'denied') toast(t('Turn on notifications for Adro in your phone settings.'), { icon: 'bell' });
+    // ReminderSync hears the saved change and schedules; here we only ask the phone for permission.
+    if (!remindersSupported || !next[kind].on) return;
+    if (!(await askNotifPermission())) toast(t('Turn on notifications for Adro in your phone settings.'), { icon: 'bell' });
   };
 
   return { on, prefs, summary: prefs ? summary(prefs) : '', toggle };

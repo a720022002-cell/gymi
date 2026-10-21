@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { useT } from '@/i18n';
+import { useAuth } from '@/lib/auth';
+import { useWatchSleep } from '@/lib/devices';
 import { useFood } from '@/lib/food';
 import { type SleepPart, sleepHours, useHealth } from '@/lib/health';
 import { addDays, fmtTime } from '@/lib/nutrition';
@@ -36,8 +38,11 @@ export function RecoveryTab() {
   const hist = health.checkins.filter((x) => x.score != null).slice(-30);
   const { today } = useFood();
   const week = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6));
+  // Nights you didn't log come from your watch.
+  const { session } = useAuth();
+  const watch = useWatchSleep(session?.user.id);
   const sleepBy = new Map(health.checkins.map((x) => [x.day, x]));
-  const nights = week.map((d) => sleepBy.get(d)?.sleep_h ?? null);
+  const nights = week.map((d) => sleepBy.get(d)?.sleep_h ?? watch[d] ?? null);
   const logged = nights.filter((x): x is number => x != null);
   const avg = logged.length ? logged.reduce((a, b) => a + b, 0) / logged.length : null;
   const last = [...health.checkins].reverse().find((x) => x.sleep_h != null);

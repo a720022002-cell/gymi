@@ -13,7 +13,9 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { aiErrorText, askAI } from '@/lib/ai';
-import { assignOne, deleteMealPlan, listMealPlans, type MealPlan, type PlanIng, type PlanMeal, saveMealPlan } from '@/lib/coaching';
+import { WarnChip } from '@/components/food/Chips';
+import { allergensIn, ALLERGENS, noteHit } from '@/lib/allergies';
+import { assignOne, clientSummary, coachList, deleteMealPlan, listMealPlans, type MealPlan, type PlanIng, type PlanMeal, saveMealPlan } from '@/lib/coaching';
 import { foodName } from '@/lib/foodsDb';
 import { fmt } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
@@ -39,6 +41,26 @@ export default function MealEdit() {
   const [busy, setBusy] = useState(false);
   const [ai, setAi] = useState<number | null>(null);
   const [build, setBuild] = useState<number | null>(null);
+  // The allergies of the clients this plan is for (the one you're making it for, or everyone who has it).
+  const [allergy, setAllergy] = useState<{ name: string; keys: string[]; note: string }[]>([]);
+  useEffect(() => {
+    if (!id && !assign) return;
+    let alive = true;
+    (async () => {
+      const links = (await coachList().catch(() => [])).filter((l) => l.client_id && l.status === 'active' && (l.id === assign || (!!id && l.meal_plan_id === id))).slice(0, 10);
+      const out = await Promise.all(
+        links.map(async (l) => {
+          const sm = await clientSummary(l.client_id as string).catch(() => null);
+          const pl = (sm?.plan ?? {}) as { allergies?: string[]; allergyNote?: string };
+          return { name: l.name || l.username || '', keys: pl.allergies ?? [], note: pl.allergyNote ?? '' };
+        }),
+      );
+      if (alive) setAllergy(out.filter((x) => x.keys.length || x.note.trim()));
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [id, assign]);
   useEffect(() => {
     if (!id) return;
     let alive = true;
@@ -70,6 +92,15 @@ export default function MealEdit() {
   const tot = p.meals.reduce((a, m) => a + (+m.k || 0), 0);
   const pt = p.meals.reduce((a, m) => a + (+m.p || 0), 0);
   const box = { height: 44, borderRadius: 12, backgroundColor: c.inset, paddingHorizontal: 12, fontSize: 15, color: c.text } as const;
+  // A meal with something a client is allergic to: what, and for whom.
+  const hits = (m: PlanMeal) => {
+    const texts = [m.n, m.d, ...(m.ing ?? []).map((x) => x.n)];
+    return allergy.flatMap((a) => {
+      const own = noteHit(texts, a.note);
+      const xs = [...allergensIn(texts, a.keys).map((k) => t(ALLERGENS.find((x) => x.key === k)?.en ?? k)), ...(own ? [own] : [])];
+      return xs.length ? [allergy.length > 1 ? t('{name}: {x}', { name: a.name, x: xs.join(t(', ')) }) : xs.join(t(', '))] : [];
+    });
+  };
 
   const estimate = async (i: number) => {
     const m = p.meals[i];
@@ -113,6 +144,11 @@ export default function MealEdit() {
               {t('Built from {n} ingredients', { n: m.ing.length })}
             </Text>
           ) : null}
+          {hits(m).map((h) => (
+            <View key={h} style={{ marginTop: 6, alignSelf: 'flex-start' }}>
+              <WarnChip label={t('Client is allergic: {x}', { x: h })} />
+            </View>
+          ))}
           <Row gap={8} style={{ marginTop: 8 }}>
             <Button small kind="soft" icon="search" title={t('Ingredients')} style={{ flex: 1 }} onPress={() => setBuild(i)} />
             <Button small kind="glass" icon="sparkle" title={t('Ask AI')} loading={ai === i} style={{ flex: 1 }} onPress={() => estimate(i)} />

@@ -9,15 +9,17 @@ import { pullHealth, pushHealth, useDevices, workoutHeart } from './devices';
 import type { DayTotals } from './health';
 import { addDays, localDay } from './nutrition';
 import { shareWorkout } from './social';
+import { stallUp } from './setCoach';
 import { selectAll, supabase } from './supabase';
 import { LB } from './units';
 import { syncWorkoutActivity } from './widgetSync';
 import { useSettings } from '@/theme/settings';
-import { buildWorkout, type Day, effectiveWeek, EX, exInfo, isLightLog, type LastSets, lowReps, nextWeight, orderWeek, type PlanEx, planFromProgram, plannedOn, rangePlan, setWeekMoves, STEP_KG, topReps, type TrainPlan, weekdayOf, weekStart, workoutKcal, heartKcal } from './training';
+import { buildWorkout, type Day, effectiveWeek, EX, exInfo, isLightLog, type LastSets, lowReps, nextWeight, orderWeek, type PlanEx, plannedOn, planWithProgram, rangePlan, setWeekMoves, STEP_KG, topReps, type TrainPlan, weekdayOf, weekStart, workoutKcal, heartKcal } from './training';
 
 /** `light`: done as a lighter day or deload, so its weights don't set next time's numbers. `ar`: its Arabic name
- * (newer logs), for exercises from the full list. */
-export type LoggedEx = { id: string; n: string; ar?: string; light?: boolean; sets: { w: number; r: number }[] };
+ * (newer logs), for exercises from the full list. `m`: its muscle group (newer logs), so database and your own exercises
+ * count toward muscle recovery. `time`: a timed hold (reps are seconds). `preg`: done with pregnancy-safe workouts on. */
+export type LoggedEx = { id: string; n: string; ar?: string; light?: boolean; m?: string; time?: boolean; preg?: boolean; sets: { w: number; r: number }[] };
 export type WorkoutLog = {
   id: string;
   day: string;
@@ -42,7 +44,7 @@ export type SessionSet = { w: string; r: string; done: boolean; lw: number; lr: 
 export type SessionEx = Omit<PlanEx, 'sets'> & { tip: boolean; sets: SessionSet[] };
 /** The workout in progress. Saved on the device so a reload doesn't lose it.
  * `day` is the day it counts for: the day you pressed Start (or the earlier day you picked), even if you finish after midnight. */
-export type Session = { name: string; start: number; home: boolean; ex: SessionEx[]; day?: string; light?: boolean };
+export type Session = { name: string; start: number; home: boolean; ex: SessionEx[]; day?: string; light?: boolean; preg?: boolean; lastAt?: number };
 /** The rest between sets: when it ends and how long it was (seconds). */
 export type Rest = { end: number; total: number };
 
@@ -128,8 +130,9 @@ type Train = {
   preg: boolean;
   setPreg: (on: boolean) => Promise<boolean>;
   setRecTools: (tools: string[]) => void;
-  /** Save a finished workout made elsewhere (group workouts). */
-  addLog: (row: Omit<WorkoutLog, 'id'>) => Promise<WorkoutLog | null>;
+  /** Save a finished workout made elsewhere (group workouts). With `group_session`, a second save of the same group
+   * workout is refused and the saved one comes back (`dup`). */
+  addLog: (row: Omit<WorkoutLog, 'id'> & { group_session?: string }) => Promise<{ log: WorkoutLog; dup?: boolean } | null>;
 };
 
 const Ctx = createContext<Train | null>(null);
@@ -138,6 +141,20 @@ const SESSION_KEY = 'adro.session.v1';
 const PLAN_KEY = (uid: string) => `adro.trainplan.v1.${uid}`;
 /** A plan change not saved to your account yet (no connection): sent when it can be, even after the app restarts. */
 const PENDING_KEY = (uid: string) => `adro.trainplan.pending.v1.${uid}`;
+/** Workouts finished without a connection: kept on this phone and saved when the connection is back. */
+const LOG_PENDING_KEY = (uid: string) => `adro.workoutlogs.pending.v1.${uid}`;
+type PendingLog = { local: string; row: Omit<WorkoutLog, 'id'> };
+const readPendingLogs = async (uid: string): Promise<PendingLog[]> => {
+  try {
+    const x = JSON.parse((await AsyncStorage.getItem(LOG_PENDING_KEY(uid))) ?? '[]');
+    return Array.isArray(x) ? x : [];
+  } catch {
+    return [];
+  }
+};
+/** How long after the last set a workout ends (cool-down, putting weights away), and the longest one can be. */
+const END_BUFFER_MS = 5 * 60_000;
+const MAX_MINUTES = 240;
 
 export function TrainProvider({ children }: PropsWithChildren) {
   const { session: auth, profile } = useAuth();
@@ -201,6 +218,8 @@ export function TrainProvider({ children }: PropsWithChildren) {
   const flushing = useRef<Promise<boolean> | null>(null);
   const retryTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const flushRef = useRef<() => Promise<boolean>>(async () => false);
+  // The same for workouts finished offline (flushLogs, below).
+  const flushLogsRef = useRef<() => Promise<void>>(async () => {});
   // Another account on this phone: its unsaved change isn't this one's.
   useEffect(() => {
     pending.current = null;
@@ -307,7 +326,11 @@ export function TrainProvider({ children }: PropsWithChildren) {
       setPlan(loaded);
       setSetupDone(!!row?.setup_done && !!raw?.week);
       setRec({ day: localDay(), tools: (r.data?.tools as string[] | undefined) ?? [] });
-      setLogs(((l.data as WorkoutLog[]) ?? []).map((x) => ({ ...x, volume: +x.volume })));
+      // Workouts finished offline show until they're saved.
+      const queued = (await readPendingLogs(userId)).map((q) => ({ ...q.row, id: q.local }) as WorkoutLog);
+      if (!alive) return;
+      setLogs([...queued, ...((l.data as WorkoutLog[]) ?? []).map((x) => ({ ...x, volume: +x.volume }))]);
+      if (queued.length) setTimeout(() => void flushLogsRef.current(), 0);
       try {
         setSessionState(s ? (JSON.parse(s) as Session) : null);
       } catch {
@@ -379,24 +402,8 @@ export function TrainProvider({ children }: PropsWithChildren) {
     }
     setCoach(link && link.status === 'active' ? { name: link.name || link.username, link: link.id } : { name: '', link: '' });
     if (cur?.coach?.id === prog.id && cur.coach.updated_at === prog.updated_at) return;
-    const today = localDay();
-    const base = rangePlan(planFromProgram(prog));
-    const next: TrainPlan = {
-      ...base,
-      since: cur?.coach?.id === prog.id ? (cur.since ?? today) : today,
-      skipped: cur?.skipped ?? {},
-      dismiss: cur?.dismiss ?? {},
-      machines: cur?.machines ?? {},
-      checkin: cur?.checkin,
-      light: cur?.light,
-      deload: cur?.deload,
-      deloadDismissed: cur?.deloadDismissed,
-      level: cur?.level,
-      // Your injuries and home mode are yours, not the program's (injured exercises keep being swapped).
-      injuries: cur?.injuries ?? [],
-      homeMode: cur?.homeMode ?? false,
-      coach: { id: prog.id, updated_at: prog.updated_at },
-    };
+    // Your own settings stay; a new layout starts being judged today, and this week's moves stay.
+    const next: TrainPlan = planWithProgram(cur, prog, localDay());
     clearTimeout(saveTimer.current);
     planRef.current = next;
     setPlan(next);
@@ -495,10 +502,12 @@ export function TrainProvider({ children }: PropsWithChildren) {
   const light = plan?.light;
   const deload = plan?.deload;
   const lifetimeBest = history?.best;
-  const { last, best, top } = useMemo(() => {
+  // Pregnancy-safe sessions set last time's numbers (pregLast) but not the normal top weight a cut is taken from.
+  const { last, best, top, pregLast } = useMemo(() => {
     const last: LastSets = {};
     const best: Record<string, number> = { ...lifetimeBest };
     const top: Record<string, number> = {};
+    const pregLast: Record<string, boolean> = {};
     const seen: Record<string, number> = {};
     for (const l of logs) {
       const reduced = isLightLog(l, { light, deload });
@@ -506,11 +515,15 @@ export function TrainProvider({ children }: PropsWithChildren) {
         const w = Math.max(0, ...x.sets.map((s) => s.w));
         best[x.id] = Math.max(best[x.id] ?? 0, w);
         if (reduced || !x.sets.length) continue;
-        if (!last[x.id]) last[x.id] = x.sets;
+        if (!last[x.id]) {
+          last[x.id] = x.sets;
+          if (x.preg) pregLast[x.id] = true;
+        }
+        if (x.preg) continue;
         if ((seen[x.id] = (seen[x.id] ?? 0) + 1) <= 3) top[x.id] = Math.max(top[x.id] ?? 0, w);
       }
     }
-    return { last, best, top };
+    return { last, best, top, pregLast };
   }, [logs, light, deload, lifetimeBest]);
 
   // Workouts in a row: a planned workout missed (not done, not skipped or dismissed) ends the run.
@@ -553,6 +566,17 @@ export function TrainProvider({ children }: PropsWithChildren) {
   const discardSession = useCallback(() => setSession(null), [setSession]);
   const stale = isStale(session, today);
 
+  // Your last normal workouts with an exercise (newest first, working sets only), like the coach under it reads.
+  const histFor = useCallback(
+    (id: string) =>
+      logs
+        .filter((l) => !isLightLog(l, { light, deload }))
+        .map((l) => (l.exercises ?? []).find((e) => e.id === id)?.sets ?? [])
+        .filter((sets) => sets.length)
+        .slice(0, 6),
+    [logs, light, deload],
+  );
+
   const startWorkout = useCallback(
     (name: string, home: boolean, short: boolean, opts?: { light?: boolean; deload?: boolean; ex?: PlanEx[]; day?: string }) => {
       const p = planRef.current;
@@ -560,18 +584,27 @@ export function TrainProvider({ children }: PropsWithChildren) {
       // A one-off list (Train together) uses the same building rules as a planned workout.
       const src = opts?.ex ? { ...p, workouts: { ...p.workouts, [name]: { ex: opts.ex, focus: '', min: 0 } } } : p;
       const wo = buildWorkout(src, name, { home, short, light: opts?.light, deload: opts?.deload, preg, last, top });
-      // Pregnant counts as a lighter session: lighter weights, and it doesn't lower next time's numbers.
-      const lighter = !!(opts?.light || opts?.deload || preg);
+      // Lighter day or deload: lighter weights, and it doesn't set next time's numbers.
+      const lighter = !!(opts?.light || opts?.deload);
+      // Pregnant: lighter weights and never a jump up, but it does set next time's numbers (kept from then on).
+      const easy = lighter || preg;
       setSession({
         name,
         start: Date.now(),
         day: opts?.day ?? localDay(),
         home,
         ...(lighter ? { light: true } : {}),
+        ...(preg && !lighter ? { preg: true } : {}),
         ex: wo.ex.map(({ swapped: _s, target, last: ls, sets, ...x }) => {
-          // Every rep done last time: start a step heavier (not on a lighter day, bodyweight or timed exercises).
-          const weighted = !x.time && !EX[x.id]?.time && (x.t ?? EX[x.id]?.t) !== 'Bodyweight';
-          const up = !lighter && weighted ? nextWeight(ls, x.reps, step) : null;
+          const timed = !!(x.time || EX[x.id]?.time);
+          const weighted = !timed && (x.t ?? EX[x.id]?.t) !== 'Bodyweight';
+          // Every rep done last time, or the same weight for 3 workouts in a row (the coach's "time to go up"): start a
+          // step heavier (not on a lighter or pregnancy-safe day).
+          const up = !easy && weighted ? (nextWeight(ls, x.reps, step) ?? stallUp(histFor(x.id), lowReps(x.reps), step)) : null;
+          // Bodyweight and timed: one more rep (or 5 more seconds) once every set reached the top of the range.
+          const more = !easy && !weighted && ls.length && ls.every((y) => y.r >= topReps(x.reps)) ? (timed ? 5 : 1) : 0;
+          // Pregnant: the same as last time when last time was pregnancy-safe too; otherwise the lighter target.
+          const keepLast = preg && !lighter && pregLast[x.id];
           return {
             ...x,
             tip: false,
@@ -580,13 +613,13 @@ export function TrainProvider({ children }: PropsWithChildren) {
               // Last time's numbers, kept apart from the target for the up and down arrows.
               const prev = l ? { pw: l.w, pr: l.r } : {};
               if (up) return { w: '', r: '', done: false, lw: up, lr: lowReps(x.reps), ...prev };
-              return { w: '', r: '', done: false, lw: lighter ? target : (l?.w ?? 0), lr: l?.r ?? topReps(x.reps), ...prev };
+              return { w: '', r: '', done: false, lw: easy && !keepLast ? target : (l?.w ?? 0), lr: l ? l.r + more : topReps(x.reps), ...prev };
             }),
           };
         }),
       });
     },
-    [last, top, preg, step, setSession],
+    [last, top, pregLast, preg, step, setSession, histFor],
   );
 
   // A new log goes into the recent list and the whole history.
@@ -595,16 +628,90 @@ export function TrainProvider({ children }: PropsWithChildren) {
     setHist((h) => h && { ...h, workouts: [{ day: log.day, started_at: log.started_at, prs: log.prs }, ...h.workouts] });
   }, []);
 
+  // After a workout is saved to your account: a copy for the phone's health app (when that's on), so it closes your
+  // rings there, and friends see it in Gym Bros if you share workouts (and records).
+  const afterSave = useCallback(
+    (log: WorkoutLog) => {
+      pushHealth({ type: 'workout', id: log.id, start: new Date(log.started_at), end: new Date(new Date(log.started_at).getTime() + log.minutes * 6e4), kind: 'Strength', kcal: log.kcal });
+      if (userId) shareWorkout(userId, { name: log.name, minutes: log.minutes, volume: log.volume, prs: log.prs ?? [] }).catch(() => {});
+    },
+    [userId],
+  );
+
   const addLog = useCallback(
-    async (row: Omit<WorkoutLog, 'id'>) => {
-      const { data, error } = await supabase.from('workout_logs').insert(row).select('*').single();
-      if (error || !data) return null;
+    async (row: Omit<WorkoutLog, 'id'> & { group_session?: string }) => {
+      // A group workout is saved once: a second save gets the one already saved.
+      const saved = async () => {
+        if (!row.group_session) return null;
+        const { data } = await supabase.from('workout_logs').select('*').eq('group_session', row.group_session).limit(1).maybeSingle();
+        return data ? { log: { ...(data as WorkoutLog), volume: +data.volume }, dup: true } : null;
+      };
+      const before = await saved();
+      if (before) return before;
+      let { data, error } = await supabase.from('workout_logs').insert(row).select('*').single();
+      // The database doesn't have the group workout column yet: saved without it (the check on this phone still holds).
+      if (error?.code === 'PGRST204' && row.group_session) {
+        const { group_session: _g, ...plain } = row;
+        ({ data, error } = await supabase.from('workout_logs').insert(plain).select('*').single());
+      }
+      if (error || !data) return error?.code === '23505' ? saved() : null;
       const log = { ...(data as WorkoutLog), volume: +data.volume };
       keep(log);
-      return log;
+      afterSave(log);
+      return { log };
     },
-    [keep],
+    [keep, afterSave],
   );
+
+  // Workouts finished offline: saved one by one when there's a connection (on start, when the app comes back, and every
+  // 15 seconds while some are waiting). A workout already saved (the answer was lost) isn't saved twice.
+  const logFlushing = useRef(false);
+  const logRetry = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const flushLogs = useCallback(async () => {
+    if (!userId || logFlushing.current) return;
+    logFlushing.current = true;
+    try {
+      for (const q of await readPendingLogs(userId)) {
+        const found = await supabase.from('workout_logs').select('*').eq('started_at', q.row.started_at).limit(1).maybeSingle();
+        let data = found.data as WorkoutLog | null;
+        let failed = !!found.error;
+        if (!failed && !data) {
+          const ins = await supabase.from('workout_logs').insert(q.row).select('*').single();
+          data = ins.data as WorkoutLog | null;
+          failed = !!ins.error;
+          // Refused by the database (not the connection): it would never save, so it stops waiting.
+          if (ins.error?.code) failed = false;
+        }
+        if (failed) {
+          clearTimeout(logRetry.current);
+          logRetry.current = setTimeout(() => void flushLogsRef.current(), 15_000);
+          return;
+        }
+        const rest = (await readPendingLogs(userId)).filter((x) => x.local !== q.local);
+        await AsyncStorage.setItem(LOG_PENDING_KEY(userId), JSON.stringify(rest)).catch(() => {});
+        if (!data) {
+          setLogs((xs) => xs.filter((x) => x.id !== q.local));
+          continue;
+        }
+        const log = { ...data, volume: +data.volume };
+        setLogs((xs) => xs.map((x) => (x.id === q.local ? log : x)));
+        // Health app and friends' feed weren't done when it was finished offline.
+        afterSave(log);
+      }
+    } finally {
+      logFlushing.current = false;
+    }
+  }, [userId, afterSave]);
+  useEffect(() => {
+    flushLogsRef.current = flushLogs;
+  }, [flushLogs]);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && void flushLogsRef.current());
+    return () => {
+      sub.remove();
+      clearTimeout(logRetry.current);
+    };
+  }, []);
 
   // A workout being saved: a second tap on Finish waits for the same save instead of saving the workout twice.
   const finishing = useRef<Promise<WorkoutLog | null> | null>(null);
@@ -612,7 +719,9 @@ export function TrainProvider({ children }: PropsWithChildren) {
     async (names: Record<string, string>) => {
       const s = session;
       if (!s || !userId) return null;
-      const minutes = Math.max(1, Math.round((Date.now() - s.start) / 60000));
+      // The workout ends a few minutes after the last set (not when Finish was tapped, which can be hours later).
+      const end = Math.min(Date.now(), s.lastAt ? s.lastAt + END_BUFFER_MS : Date.now());
+      const minutes = Math.min(MAX_MINUTES, Math.max(1, Math.round((end - s.start) / 60000)));
       let volume = 0;
       let setsDone = 0;
       let ups = 0;
@@ -639,19 +748,30 @@ export function TrainProvider({ children }: PropsWithChildren) {
         const vs = vsLastTime(x, last[x.id]);
         if (vs === 'up') ups++;
         else if (vs === 'down') downs++;
-        // The Arabic name too (exercises from the full list), so the history shows it in Arabic.
+        // The Arabic name too (exercises from the full list), so the history shows it in Arabic. The muscle group and
+        // whether it's timed are kept too (muscle recovery, and holds shown in seconds).
         const n = names[x.id] ?? x.id;
+        const info = exInfo(x, 'en');
         const ar = EX[x.id] ? '' : exInfo(x, 'ar').name;
-        exercises.push({ id: x.id, n, ...(ar && ar !== n ? { ar } : {}), ...(s.light ? { light: true } : {}), sets: d });
+        const m = EX[x.id] ? '' : info.muscle;
+        exercises.push({
+          id: x.id,
+          n,
+          ...(ar && ar !== n ? { ar } : {}),
+          ...(m && m !== 'Other' ? { m } : {}),
+          ...(info.timed ? { time: true } : {}),
+          ...(s.light ? { light: true } : {}),
+          ...(s.preg ? { preg: true } : {}),
+          sets: d,
+        });
       }
       // Calories use realistic minutes: never more than 3 hours, or about 6 minutes a set when the workout was left open.
-      const logged = Math.min(600, minutes);
-      const kcalMin = Math.min(logged, 180, Math.max(30, setsDone * 6));
+      const kcalMin = Math.min(minutes, 180, Math.max(30, setsDone * 6));
       const row = {
         day: s.day ?? localDay(new Date(s.start)),
         name: s.home ? 'Home' : s.name.slice(0, 40),
         started_at: new Date(s.start).toISOString(),
-        minutes: logged,
+        minutes,
         volume: Math.round(volume * 10) / 10,
         sets_done: setsDone,
         kcal: workoutKcal(kcalMin, Number(profile?.weight_kg ?? 80)),
@@ -661,17 +781,26 @@ export function TrainProvider({ children }: PropsWithChildren) {
         downs,
       };
       const { data, error } = await supabase.from('workout_logs').insert(row).select('*').single();
-      if (error || !data) return null;
+      if (error?.code || (!error && !data)) return null;
+      if (error || !data) {
+        // No connection: kept on this phone and saved when it's back. You still see your summary now.
+        const local = `local-${s.start}`;
+        const queue = (await readPendingLogs(userId)).filter((q) => q.local !== local);
+        await AsyncStorage.setItem(LOG_PENDING_KEY(userId), JSON.stringify([...queue, { local, row }])).catch(() => {});
+        const log = { ...row, id: local } as WorkoutLog;
+        keep(log);
+        setSession(null);
+        clearTimeout(logRetry.current);
+        logRetry.current = setTimeout(() => void flushLogsRef.current(), 15_000);
+        return log;
+      }
       const log = { ...(data as WorkoutLog), volume: +data.volume };
       keep(log);
       setSession(null);
-      // A copy for the phone's health app (when that's on), so the workout closes your rings there.
-      pushHealth({ type: 'workout', id: log.id, start: new Date(log.started_at), end: new Date(new Date(log.started_at).getTime() + log.minutes * 6e4), kind: 'Strength', kcal: log.kcal });
-      // Friends see it in Gym Bros, if you share workouts.
-      if (userId) shareWorkout(userId, { name: log.name, minutes: log.minutes, volume: log.volume, prs: log.prs ?? [] }).catch(() => {});
+      afterSave(log);
       return log;
     },
-    [session, userId, best, history, last, profile?.weight_kg, setSession, keep],
+    [session, userId, best, history, last, profile?.weight_kg, setSession, keep, afterSave],
   );
   // Heart rate from the watch for workouts of the last 2 days that don't have it yet (watches send it a little late,
   // so this runs again whenever the list or the watch data changes). Calories then come from the heart rate.
@@ -681,7 +810,7 @@ export function TrainProvider({ children }: PropsWithChildren) {
     if (!dev.connected || !logs.length) return;
     const age = profile?.date_of_birth ? Math.max(14, Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / 3.15576e10)) : 30;
     const kg = Number(profile?.weight_kg ?? 80);
-    const todo = logs.filter((l) => l.avg_hr == null && l.day >= addDays(localDay(), -1) && !hrTried.current.has(`${l.id}:${dev.prefs.last_sync}`));
+    const todo = logs.filter((l) => !l.id.startsWith('local-') && l.avg_hr == null && l.day >= addDays(localDay(), -1) && !hrTried.current.has(`${l.id}:${dev.prefs.last_sync}`));
     todo.forEach(async (l) => {
       hrTried.current.add(`${l.id}:${dev.prefs.last_sync}`);
       const start = new Date(l.started_at);

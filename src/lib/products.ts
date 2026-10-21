@@ -1,4 +1,4 @@
-import { foodByBarcode, foodName, myFix } from './foodsDb';
+import { type DbFood, foodByBarcode, foodName, myFix } from './foodsDb';
 import { type Facts, factsOf, offFacts } from './nutrients';
 
 /** A packaged product found by its barcode. */
@@ -27,10 +27,21 @@ export type Product = {
 
 type Nutriments = Record<string, number | string | undefined>;
 
+/** One form for every barcode: digits only, and a 12-digit UPC-A as its 13-digit EAN (a 0 in front), so the same product is
+ * always saved and found under the same code. */
+export const normBarcode = (code: string) => {
+  const d = code.replace(/\D/g, '');
+  return d.length === 12 ? `0${d}` : d;
+};
+
 /** Look up a barcode: your own fix, then our food list, then Open Food Facts. Null when nobody knows it. */
-export async function lookupProduct(code: string, lang: 'en' | 'ar'): Promise<Product | null> {
+export async function lookupProduct(raw: string, lang: 'en' | 'ar'): Promise<Product | null> {
+  const code = normBarcode(raw);
+  // Saved before codes were made the same: a UPC-A may be under its 12 digits.
+  const old = code.length === 13 && code.startsWith('0') ? code.slice(1) : null;
+  const byCode = async (f: (c: string) => Promise<DbFood | null>) => (await f(code).catch(() => null)) ?? (old ? await f(old).catch(() => null) : null);
   // Your own fix first, then our database (fast, and works when Open Food Facts is down).
-  const own = (await myFix(code).catch(() => null)) ?? (await foodByBarcode(code).catch(() => null));
+  const own = (await byCode(myFix)) ?? (await byCode(foodByBarcode));
   if (own)
     return {
       name: foodName(own, lang),

@@ -69,6 +69,14 @@ export default function LoggedScreen() {
   const planned = planMeals(food.plan);
   const mealNames = mealChoices(planned);
   const curMeal = log.meal || mealAt(planned, hhmmOf(new Date(log.created_at)));
+  // How much was logged, worked out from its calories and the food's calories per 100 (null when that's unknown).
+  const loggedG = (k100: number | null | undefined) => (k100 && k100 > 0 && +log.kcal > 0 ? Math.round((+log.kcal / k100) * 100) : null);
+  const logged = { kcal: +log.kcal, protein: +log.protein, carbs: +log.carbs, fat: +log.fat };
+  const factsFor = (g: number | null, unit: 'g' | 'ml') => (
+    <Text variant="xs" weight={700} color="sec" style={{ marginHorizontal: 4 }}>
+      {g ? t('For the {n} {u} you logged', { n: g, u: t(unit) }) : t('Per 100 {u}', { u: t(unit) })}
+    </Text>
+  );
   const num = (v: string) => +v.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[,٫]/g, '.') || 0;
   const numField = (k: 'k' | 'p' | 'c' | 'f', label: string, unit: string) =>
     edit ? (
@@ -191,7 +199,8 @@ export default function LoggedScreen() {
       ) : f ? (
         <>
           <View style={{ marginTop: 10 }}>
-            <NutritionFacts per100={factsOf(f, mine)} grams={100} unit={f.unit} serving={f.serving_g} factsKey={key} mine={mine} onMine={setMine} />
+            {factsFor(loggedG(+f.kcal_100), f.unit)}
+            <NutritionFacts per100={factsOf(f, mine)} grams={loggedG(+f.kcal_100) ?? 100} main={loggedG(+f.kcal_100) ? logged : undefined} unit={f.unit} serving={f.serving_g} factsKey={key} mine={mine} onMine={setMine} />
           </View>
           <Text variant="small" color="sec" style={{ marginTop: 12, marginHorizontal: 4 }}>
             {t('One serving: {s}', { s: `${Math.round(f.serving_g)} ${t(f.unit)}` })}
@@ -204,7 +213,8 @@ export default function LoggedScreen() {
         </>
       ) : barcode && off && off.code === barcode && Object.keys(off.f).length ? (
         <View style={{ marginTop: 10 }}>
-          <NutritionFacts per100={withMine(off.f, mine)} grams={100} unit="g" factsKey={key} mine={mine} onMine={setMine} />
+          {factsFor(loggedG(off.f.kcal), 'g')}
+          <NutritionFacts per100={withMine(off.f, mine)} grams={loggedG(off.f.kcal) ?? 100} main={loggedG(off.f.kcal) ? logged : undefined} unit="g" factsKey={key} mine={mine} onMine={setMine} />
         </View>
       ) : (
         <Text variant="small" color="sec" style={{ marginTop: 16, marginHorizontal: 4 }}>

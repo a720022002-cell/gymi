@@ -40,7 +40,8 @@ export default function WorkoutScreen() {
   if (!p || !w) return <Screen title={t('Workout')} back />;
   const past = !!day && day < train.today;
   const isToday = !past && w === today.name;
-  const home = isToday && today.home;
+  // Home mode is for every day's workout (not just today's); a home day picked for today only is today's.
+  const home = p.homeMode || (isToday && today.home);
   const light = isToday && today.light;
   const deload = isToday && today.deload;
   const wo = buildWorkout(p, w, { home, short: isToday && today.short, light, deload, preg: train.preg, last: train.last, top: train.top });

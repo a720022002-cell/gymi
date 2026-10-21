@@ -17,6 +17,7 @@ import { useFood } from '@/lib/food';
 import { useAuth } from '@/lib/auth';
 import { fmt } from '@/lib/nutrition';
 import { shortDate } from '@/lib/progress';
+import { useWeight } from '@/lib/units';
 import { CH_PCT, CH_UNIT, challengeBoard, challengeInfo, type ChallengeInfo, type ChallengeRow, challengeTitle, daysLeft, leaveChallenge, nudgeChallenge, setChallengeGoal } from '@/lib/social';
 import { useSettings } from '@/theme/settings';
 import { goBack } from '@/lib/nav';
@@ -45,6 +46,9 @@ export default function ChallengeScreen() {
   const [goalOpen, setGoalOpen] = useState(false);
   const [goal, setGoal] = useState('');
   const [nudging, setNudging] = useState(false);
+  const [leaveOpen, setLeaveOpen] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const W = useWeight();
 
   const load = useCallback(async () => {
     const [info, board] = await Promise.all([challengeInfo(id), challengeBoard(id)]);
@@ -80,7 +84,8 @@ export default function ChallengeScreen() {
   const pct = CH_PCT.includes(ch.kind);
   const max = pct ? 100 : Math.max(...d.board.map((b) => b.value), 1);
   const myRow = d.board.find((b) => b.user_id === me);
-  const goalKg = Number(goal.replace(',', '.'));
+  // The goal is typed in your unit (kg or lb) and saved in kg.
+  const goalKg = W.toKg(Number(goal.replace(',', '.')));
   const others = d.board.length > 1;
   return (
     <Screen title={t('Challenge')} back>
@@ -132,7 +137,7 @@ export default function ChallengeScreen() {
         {t(NOTE[ch.kind])}
       </Text>
       {ch.kind === 'weight' && myRow?.goal != null ? (
-        <Button small kind="ghost" title={t('Your goal: {n} kg. Change', { n: fmt(myRow.goal) })} style={{ alignSelf: 'center', marginTop: 4 }} onPress={() => (setGoal(String(myRow.goal)), setGoalOpen(true))} />
+        <Button small kind="ghost" title={W.words(t('Your goal: {n} kg. Change', { n: fmt(W.num(myRow.goal)) }))} style={{ alignSelf: 'center', marginTop: 4 }} onPress={() => (setGoal(String(W.num(myRow.goal ?? 0))), setGoalOpen(true))} />
       ) : null}
       {left > 0 && others ? (
         <Button
@@ -156,12 +161,30 @@ export default function ChallengeScreen() {
         title={t('Leave challenge')}
         color={c.down}
         style={{ marginTop: 12 }}
-        onPress={async () => {
-          if (me) await leaveChallenge(ch.id, me);
-          toast(t('You left the challenge'), { icon: 'trophy' });
-          goBack();
-        }}
+        onPress={() => setLeaveOpen(true)}
       />
+      <Sheet open={leaveOpen} onClose={() => setLeaveOpen(false)}>
+        <Text variant="h2" center>
+          {t('Leave this challenge?')}
+        </Text>
+        <Button
+          kind="danger"
+          title={t('Leave challenge')}
+          loading={leaving}
+          style={{ marginTop: 16 }}
+          onPress={async () => {
+            if (!me) return;
+            setLeaving(true);
+            const ok = await leaveChallenge(ch.id, me);
+            setLeaving(false);
+            if (!ok) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+            setLeaveOpen(false);
+            toast(t('You left the challenge'), { icon: 'trophy' });
+            goBack();
+          }}
+        />
+        <Button kind="ghost" title={t('Keep')} style={{ marginTop: 8 }} onPress={() => setLeaveOpen(false)} />
+      </Sheet>
       <Sheet open={goalOpen} onClose={() => setGoalOpen(false)}>
         <Text variant="h2">{t('Your goal weight')}</Text>
         <Field
@@ -169,7 +192,7 @@ export default function ChallengeScreen() {
           onChangeText={(v) => setGoal(v.replace(/[^0-9.,]/g, '').slice(0, 5))}
           placeholder="70"
           keyboardType="decimal-pad"
-          unit={t('kg')}
+          unit={W.label}
           ltr
           hint={t('Only you see your goal. Friends set their own. Everyone is scored by how far they get toward it.')}
         />

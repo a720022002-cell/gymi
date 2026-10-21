@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { AppState, Linking, Pressable, View } from 'react-native';
 
 import { TimeField } from '@/components/food/TimeField';
 import { Icon } from '@/components/Icon';
@@ -9,7 +10,7 @@ import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Label, Row, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
-import { NCAT_INFO, NCATS, remindersSupported } from '@/lib/reminders';
+import { NCAT_INFO, NCATS, notifPermission, remindersSupported } from '@/lib/reminders';
 import { catSummary, useReminderPrefs } from '@/lib/remindersPrefs';
 import { useSettings } from '@/theme/settings';
 
@@ -19,9 +20,21 @@ export default function NotificationsScreen() {
   const { colors: c } = useSettings();
   const toast = useToast();
   const { prefs: p, save } = useReminderPrefs();
+  // Is Adro allowed to notify? Checked again when you come back from the phone's settings.
+  const [perm, setPerm] = useState<Awaited<ReturnType<typeof notifPermission>> | null>(null);
+  const checkPerm = useCallback(() => {
+    notifPermission().then(setPerm).catch(() => {});
+  }, []);
+  useEffect(() => {
+    checkPerm();
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && checkPerm());
+    return () => sub.remove();
+  }, [checkPerm]);
+  const blocked = remindersSupported && perm === 'denied';
 
   const put = async (next: typeof p, ask = false) => {
     const r = await save(next, ask);
+    checkPerm();
     if (r === 'denied' && ask) toast(t('Turn on notifications for Adro in your phone settings.'), { icon: 'bell' });
   };
 
@@ -33,6 +46,20 @@ export default function NotificationsScreen() {
           <Text variant="small" style={{ flex: 1 }}>
             {t('Reminders arrive on the phone app. Your choices here are saved on this device only, so set them again in the phone app.')}
           </Text>
+        </Card>
+      ) : null}
+      {blocked ? (
+        <Card style={{ gap: 10 }}>
+          <Row gap={10} style={{ alignItems: 'flex-start' }}>
+            <Icon name="warn" size={20} color={c.down} />
+            <View style={{ flex: 1 }}>
+              <Text weight={700}>{t('Notifications are off in your phone settings')}</Text>
+              <Text variant="small" color="sec">
+                {t('Your reminders won’t show until you allow notifications for Adro.')}
+              </Text>
+            </View>
+          </Row>
+          <Button small kind="soft" title={t('Open phone settings')} style={{ alignSelf: 'flex-start' }} onPress={() => Linking.openSettings().catch(() => {})} />
         </Card>
       ) : null}
       <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -74,7 +101,7 @@ export default function NotificationsScreen() {
         </List>
       </View>
       <Text variant="small" color="sec" style={{ marginHorizontal: 4 }}>
-        {t('Tap a type to choose how often it reminds you and which sound it plays. If you don’t hear sounds, turn off your phone’s silent mode.')}
+        {t('Tap a type to choose how often it reminds you and whether it plays a sound. If you don’t hear sounds, turn off your phone’s silent mode.')}
       </Text>
 
       <Label>{t('Quiet hours')}</Label>
@@ -104,7 +131,9 @@ export default function NotificationsScreen() {
           </ListRow>
         ) : null}
       </List>
-      {remindersSupported ? <Button kind="glass" icon="bell" title={t('Turn on notifications')} style={{ marginTop: 8 }} onPress={() => put(p, true)} /> : null}
+      {remindersSupported && perm && perm !== 'granted' ? (
+        <Button kind="glass" icon="bell" title={t('Turn on notifications')} style={{ marginTop: 8 }} onPress={() => (blocked ? Linking.openSettings().catch(() => {}) : put(p, true))} />
+      ) : null}
     </Screen>
   );
 }

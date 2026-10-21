@@ -72,7 +72,7 @@ export default function CoachPage() {
       toast(t('Request sent. {n} will reply soon.', { n: name }), { icon: 'send' });
       return router.replace('/mycoach');
     }
-    toast(t(r === 'has_coach' ? 'You already have a coach. End that first.' : r === 'full' ? 'This coach is full right now. Check back soon.' : 'Couldn’t save. Please try again.'), { icon: 'warn' });
+    toast(t(r === 'has_coach' ? 'You already have a coach. End that first.' : r === 'has_request' ? 'You already asked another coach. Cancel that request in My coach first.' : r === 'full' ? 'This coach is full right now. Check back soon.' : 'Couldn’t save. Please try again.'), { icon: 'warn' });
   };
 
   return (
@@ -201,7 +201,7 @@ export default function CoachPage() {
       <Card style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
         <Icon name="info" size={18} color={c.sec} />
         <Text variant="small" color="sec" style={{ flex: 1 }}>
-          {t('If you join, this coach sees your food, workouts, weight and sleep. Cycle data and health tests stay private. Payment is agreed with the coach directly for now.')}
+          {t('If you join, this coach sees your food, workouts, weight, sleep and check-ins, steps, water, goal and allergies. Cycle data and blood tests stay private. Payment is agreed with the coach directly for now.')}
         </Text>
       </Card>
       {self ? null : withThem ? (

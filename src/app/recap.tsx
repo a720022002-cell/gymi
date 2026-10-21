@@ -12,6 +12,7 @@ import { useT } from '@/i18n';
 import { weekdayLetter } from '@/lib/dates';
 import { useAuth } from '@/lib/auth';
 import { applyPlanChanges, applyTargets, changeLine } from '@/lib/coachPlan';
+import { useCycleCoach } from '@/lib/cyclePhase';
 import { useFood } from '@/lib/food';
 import { addDays, fmt } from '@/lib/nutrition';
 import { fx } from '@/lib/progress';
@@ -21,6 +22,7 @@ import { useReportData, useReportStats } from '@/lib/report';
 import { loadPrefs, savePrefs } from '@/lib/reminders';
 import { useTrain } from '@/lib/train';
 import { goBack } from '@/lib/nav';
+import { exInfo } from '@/lib/training';
 import { useWeight } from '@/lib/units';
 
 // The story is always dark, like a story on any phone.
@@ -55,8 +57,13 @@ export default function Recap() {
   const asked = useRef(false);
   // Joined during or after that week: no recap yet (it would be all zeros).
   const tooNew = !!session && !hasRecap(session.user.created_at, start);
+  // Women: wait for the cycle data (pregnancy keeps the AI's suggestions safe).
+  const cycRaw = useCycleCoach();
+  const cyc = profile?.gender === 'female' ? cycRaw : null;
+  const cycWait = profile?.gender === 'female' && !cycRaw;
   useEffect(() => {
-    if (!stats || asked.current || tooNew) return;
+    // Waits for the week before too, so the comparison is always there.
+    if (!stats || !before || cycWait || asked.current || tooNew) return;
     asked.current = true;
     (async () => {
       const row = await recapRow(start).catch(() => null);
@@ -76,18 +83,21 @@ export default function Recap() {
         targets: food.setupDone ? { kcal: Math.round(food.target.k), protein: Math.round(food.target.p), water: food.plan.water } : null,
         coachFood: !!food.coachTargets,
         lang,
-        days: data ? weekDays(start, data, days) : [],
+        // Each day with its own calorie goal, and watch sleep on nights without a check-in.
+        days: data ? weekDays(start, data, days).map((d) => ({ ...d, sleepH: d.sleepH ?? (data.watchSleep[d.day] != null ? Math.round(data.watchSleep[d.day] * 10) / 10 : null), kcalGoal: food.setupDone ? Math.round(food.target.k + (data.kcalExtra[d.day] ?? 0)) : null })) : [],
         reminders: uid ? remindersSummary(await loadPrefs(uid).catch(() => null)) : undefined,
         savedMeals: food.saved.map((m) => m.name).slice(0, 30),
         allergies: food.plan.allergies,
         allergyNote: food.plan.allergyNote,
+        // Pregnancy and the cycle phase, never from cycle data kept only on this phone.
+        ...(cyc && !cyc.anon ? { pregnancy: cyc.preg, phase: cyc.cycle?.phase ?? null } : {}),
       }).catch(() => null);
       if (!out) return setAiState('failed');
       setAi(out);
       setAiState('ready');
       saveRecap(start, { ai: out, lang }).catch(() => {});
     })();
-  }, [stats, tooNew, before, goals, plan, food, lang, start, data, days, uid]);
+  }, [stats, tooNew, before, goals, plan, food, lang, start, data, days, uid, cyc, cycWait]);
 
   const slides: Slide[] = useMemo(() => {
     if (!stats) return [];
@@ -225,7 +235,7 @@ export default function Recap() {
                   for (const j of picked) {
                     const s = sug[j];
                     if (s?.type === 'plan' && planNext) planNext = applyPlanChanges(planNext, s.changes, food.today);
-                    if (s?.type === 'targets' && !food.coachTargets) foodNext = applyTargets(foodNext, s);
+                    if (s?.type === 'targets' && !food.coachTargets) foodNext = applyTargets(foodNext, s, food.pregKcal);
                     if (s?.type === 'move' && planNext) planNext = moveDay(planNext, s.from, s.to, food.today);
                     if (s?.type === 'balance') moves.push(...balanceMoves(s, food.today));
                   }
@@ -405,6 +415,7 @@ const dayLetter = weekdayLetter;
 function SlideBody(p: BodyProps) {
   // Weights in your unit (kg or lb); saved numbers are always kg.
   const W = useWeight();
+  const { lang } = useT();
   const { t, stats: s, ai } = p;
   const pctChange = (a: number, b: number | undefined | null) => (b ? Math.round(((a - b) / b) * 100) : null);
   if (p.k === 'intro')
@@ -451,7 +462,7 @@ function SlideBody(p: BodyProps) {
         ) : null}
         <Card>
           <RowKV k={t('Training volume')} v={`${fmt(W.num(s.volume))} ${W.label}`} tone={vol == null ? undefined : vol >= 0 ? 'up' : 'down'} tag={vol == null ? undefined : `${vol >= 0 ? '↑' : '↓'} ${Math.abs(vol)}%`} />
-          {s.liftUps[0] ? <RowKV k={t('Best lift up')} v={`${t(s.liftUps[0].name)} ${W.show(s.liftUps[0].to)} ${W.label}`} tone="up" tag={`+${W.show(s.liftUps[0].to - s.liftUps[0].from)} ${W.label}`} /> : null}
+          {s.liftUps[0] ? <RowKV k={t('Best lift up')} v={`${exInfo({ id: s.liftUps[0].id, n: s.liftUps[0].name }, lang).name} ${W.show(s.liftUps[0].to)} ${W.label}`} tone="up" tag={`+${W.show(s.liftUps[0].to - s.liftUps[0].from)} ${W.label}`} /> : null}
           {missed ? <RowKV k={t('Missed')} v={(p.days ?? []).map((d, j) => (d === 'miss' ? t(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][j]) : null)).filter(Boolean).join(t(', '))} tone="down" tag={t('{n} missed', { n: missed })} /> : null}
         </Card>
       </Stack>

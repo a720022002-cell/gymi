@@ -6,7 +6,7 @@ import { applyPlanChanges, prepareSuggestions } from './coachPlan';
 import type { Checkin } from './health';
 import { addDays } from './nutrition';
 import type { WorkoutLog } from './train';
-import { EX, exInfo, type TrainPlan, weekStart } from './training';
+import { EX, exInfo, isLightLog, type TrainPlan, weekStart } from './training';
 
 /** A week after the plan was made or last checked, with at least 3 workouts done since. Never for a coach's plan. */
 export function reviewDue(plan: TrainPlan | null, logs: WorkoutLog[], today: string) {
@@ -22,13 +22,18 @@ function reviewData(plan: TrainPlan, logs: WorkoutLog[], checkins: Checkin[], to
   const recent = logs.filter((l) => l.day >= start).sort((a, b) => a.day.localeCompare(b.day));
   const name = (id: string, n?: string) => exInfo({ id, n }, 'en').name;
   const history: Record<string, { name: string; sessions: string[] }> = {};
-  for (const l of recent)
+  for (const l of recent) {
+    // Lighter-day and deload sessions were lighter on purpose: left out, so they don't read as getting weaker.
+    if (isLightLog(l, plan)) continue;
     for (const x of l.exercises ?? []) {
-      if (!x.sets?.length) continue;
+      if (!x.sets?.length || x.light) continue;
       const best = x.sets.reduce((a, b) => (b.w > a.w || (b.w === a.w && b.r > a.r) ? b : a));
       const h = (history[x.id] ??= { name: name(x.id, x.n), sessions: [] });
-      h.sessions.push(`${l.day}: ${best.w ? `${best.w} kg × ${best.r}` : `${best.r} reps`}, ${x.sets.length} sets`);
+      // Timed holds are seconds, not reps.
+      const timed = x.time || EX[x.id]?.time;
+      h.sessions.push(`${l.day}: ${timed ? `${best.r} s hold` : best.w ? `${best.w} kg × ${best.r}` : `${best.r} reps`}, ${x.sets.length} sets${x.preg ? ' (pregnancy-safe)' : ''}`);
     }
+  }
   for (const h of Object.values(history)) h.sessions = h.sessions.slice(-6);
   const weeks = Math.max(1, Math.round((Date.parse(`${today}T12:00:00`) - Date.parse(`${start}T12:00:00`)) / (7 * 864e5)));
   const planned = plan.week.filter((d) => d.w).length * weeks;
@@ -43,7 +48,7 @@ function reviewData(plan: TrainPlan, logs: WorkoutLog[], checkins: Checkin[], to
     injuries: plan.injuries,
     weeksOnPlan: weeks,
     deloadThisWeek: plan.deload === weekStart(today) ? true : undefined,
-    plan: Object.fromEntries(Object.entries(plan.workouts).map(([w, v]) => [w, v.ex.map((x) => ({ id: x.id, name: name(x.id, x.n), sets: x.sets, reps: x.reps }))])),
+    plan: Object.fromEntries(Object.entries(plan.workouts).map(([w, v]) => [w, v.ex.map((x) => ({ id: x.id, name: name(x.id, x.n), sets: x.sets, reps: x.reps, ...(x.time || EX[x.id]?.time ? { unit: 'seconds' } : {}) }))])),
     history,
     adherence: { done: recent.length, planned },
     recoveryAvg: avg(ci.map((c) => c.score)),

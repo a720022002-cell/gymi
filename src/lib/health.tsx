@@ -1,8 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
+import { reminderTexts } from '@/components/period/shared';
+import { useT } from '@/i18n';
+
 import { useAuth } from './auth';
-import { importPeriods } from './cycle';
+import { cycleNow, importPeriods, peekCycle } from './cycle';
+import { scheduleCycleReminders } from './cycleReminders';
 import { phoneSource, pullHealth, pushHealth, useDevices } from './devices';
 import { useFood } from './food';
 import { addDays } from './nutrition';
@@ -43,7 +47,8 @@ export const MEAS_INFO: Record<(typeof MEAS)[number], [string, string, boolean, 
 export type Measure = { day: string; kind: MeasKind; value: number };
 export type ProgressPhoto = { id: string; day: string; path: string };
 export type Supplement = { id: string; name: string; dose: string; unit: string; freq: string; active: boolean; remind: boolean; time: string };
-export type BloodValue = { name: string; value: number | string; unit: string; low?: number | null; high?: number | null; flag: -1 | 0 | 1 };
+/** `src`: the range printed on the report, or a guideline range (only when the report printed none). */
+export type BloodValue = { name: string; value: number | string; unit: string; low?: number | null; high?: number | null; src?: 'report' | 'guideline'; flag: -1 | 0 | 1 };
 export type BloodTest = { id: string; day: string; title: string; values: BloodValue[]; file_path?: string | null; file_name?: string | null; file_mime?: string | null };
 /** A lab report file (PDF or photo) to keep with the values. */
 export type HealthFile = { base64: string; mime: string; name: string };
@@ -100,6 +105,7 @@ export function HealthProvider({ children }: PropsWithChildren) {
   const { session, profile, updateProfile } = useAuth();
   const userId = session?.user.id;
   const food = useFood();
+  const { t } = useT();
   const today = food.today;
   const [readyFor, setReadyFor] = useState<string | null>(null);
   const ready = !!userId && readyFor === `${userId}:${today}`;
@@ -290,7 +296,18 @@ export function HealthProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     if (!userId || !female || !dev.connected) return;
     const flow = dev.days.filter((d) => d.period != null).map((d) => d.day);
-    if (flow.length) importPeriods(userId, flow, today).catch(() => 0);
+    if (!flow.length) return;
+    importPeriods(userId, flow, today)
+      .then(async (added) => {
+        if (!added) return;
+        // New periods move the predictions: the period and fertile reminders follow them.
+        const v = await peekCycle(userId);
+        const n = cycleNow(v.periods, v.settings, today);
+        await scheduleCycleReminders(v.settings.reminders ?? {}, n ? { next: n.next, fertileFrom: n.fertileFrom, cycle: n.cycle } : null, reminderTexts(t));
+      })
+      .catch(() => 0);
+    // t is read only when something was imported; a language change alone doesn't import again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, female, dev.connected, dev.days, today]);
 
   const addPhoto = useCallback(

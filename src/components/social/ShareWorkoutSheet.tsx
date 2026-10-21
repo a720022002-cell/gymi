@@ -35,7 +35,7 @@ export function ShareWorkoutSheet({ log, open, onClose }: { log: WorkoutLog; ope
   }, [open]);
   const pr = log.prs?.[0];
   const text = pr
-    ? t('{w} done. New record on {x}: {k} kg.', { w: workoutTitle(log.name, t), x: pr.n, k: pr.w })
+    ? W.words(t('{w} done. New record on {x}: {k} kg.', { w: workoutTitle(log.name, t), x: pr.n, k: fmt(W.num(pr.w)) }))
     : W.words(t('{w} done in {m} minutes, {v} kg lifted.', { w: workoutTitle(log.name, t), m: log.minutes, v: fmt(W.num(log.volume)) }));
   const post = async () => {
     setBusy(true);

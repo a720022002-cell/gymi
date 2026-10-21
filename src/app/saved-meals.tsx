@@ -11,6 +11,8 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, ErrorText, Label, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { type SavedMeal, useFood, useLogFood } from '@/lib/food';
+import { AllergyWarn, useAllergyCheck } from '@/components/food/AllergyWarn';
+import { WarnChip } from '@/components/food/Chips';
 import { PickFood, per100 } from '@/components/food/PickFood';
 import { useScanProduct } from '@/components/food/useScanProduct';
 import { foodName } from '@/lib/foodsDb';
@@ -31,6 +33,10 @@ export default function SavedMeals() {
   const [code, setCode] = useState('');
   const [codeErr, setCodeErr] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const allergyCheck = useAllergyCheck();
+  // Your allergies in a saved meal: its name, items and ingredients.
+  const allergiesOf = (m: SavedMeal) => allergyCheck(m.name, [m.items, ...(m.ingredients ?? []).map((x) => x.n)]);
+  const allergyText = (xs: string[]) => xs.map((a) => t(a)).join(t(', '));
 
   const opened = food.saved.find((m) => m.id === openId);
   const editing = food.saved.find((m) => m.id === editId);
@@ -50,7 +56,10 @@ export default function SavedMeals() {
     if (r.status === 'exists') return setCodeErr(t('That meal is already in your saved meals.'));
     if (r.status !== 'ok' || !r.meal) return setCodeErr(t('Couldn’t save. Please try again.'));
     setCode('');
-    toast(t('Added “{name}”', { name: r.meal.name }), { icon: 'bookmark' });
+    // Someone else's meal: say right away if it has something you're allergic to.
+    const bad = allergiesOf(r.meal);
+    if (bad.length) toast(t('Added “{name}”. Careful: it may contain {x}, which you’re allergic to.', { name: r.meal.name, x: allergyText(bad) }), { icon: 'warn' });
+    else toast(t('Added “{name}”', { name: r.meal.name }), { icon: 'bookmark' });
   };
 
   return (
@@ -99,36 +108,49 @@ export default function SavedMeals() {
       </Card>
       {food.saved.length ? (
         <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden', marginBottom: 16 }}>
-          {food.saved.map((m, i) => (
-            <Springy
-              key={m.id}
-              onPress={() => setOpenId(m.id)}
-              scaleTo={0.99}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 14, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
-              <View style={{ width: 36, height: 36, borderRadius: 11, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
-                <Icon name="bookmark" size={18} />
-              </View>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text weight={700} numberOfLines={1}>
-                  {m.name}
-                </Text>
-                {m.items ? (
-                  <Text variant="small" color="sec" numberOfLines={2}>
-                    {m.items}
+          {food.saved.map((m, i) => {
+            const bad = allergiesOf(m);
+            return (
+              <Springy
+                key={m.id}
+                onPress={() => setOpenId(m.id)}
+                scaleTo={0.99}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 14, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
+                <View style={{ width: 36, height: 36, borderRadius: 11, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name="bookmark" size={18} />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text weight={700} numberOfLines={1}>
+                    {m.name}
                   </Text>
-                ) : null}
-                <Text variant="xs" color="sec" num>
-                  {t('P {p} g, C {c} g, F {f} g', { p: Math.round(m.protein), c: Math.round(m.carbs), f: Math.round(m.fat) })}
-                </Text>
-              </View>
-              <Button
-                small
-                title={t('{n} kcal', { n: fmt(m.kcal) })}
-                style={{ paddingHorizontal: 14 }}
-                onPress={() => logFood({ name: m.name, kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat }, toast, t)}
-              />
-            </Springy>
-          ))}
+                  {m.items ? (
+                    <Text variant="small" color="sec" numberOfLines={2}>
+                      {m.items}
+                    </Text>
+                  ) : null}
+                  <Text variant="xs" color="sec" num>
+                    {t('P {p} g, C {c} g, F {f} g', { p: Math.round(m.protein), c: Math.round(m.carbs), f: Math.round(m.fat) })}
+                  </Text>
+                  {bad.length ? (
+                    <View style={{ marginTop: 4, alignSelf: 'flex-start' }}>
+                      <WarnChip label={t('Contains {x}', { x: allergyText(bad) })} />
+                    </View>
+                  ) : null}
+                </View>
+                <Button
+                  small
+                  title={t('{n} kcal', { n: fmt(m.kcal) })}
+                  style={{ paddingHorizontal: 14 }}
+                  onPress={() => {
+                    const item = { name: m.name, parts: [m.items ?? '', ...(m.ingredients ?? []).map((x) => x.n)].filter(Boolean), kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat };
+                    // One tap logs it, unless it has something you're allergic to: then ask first.
+                    if (!bad.length) return logFood(item, toast, t);
+                    toast(t('Careful: this may contain {x}, which you’re allergic to.', { x: allergyText(bad) }), { icon: 'warn', action: { label: t('Log anyway'), fn: () => logFood(item, toast, t) } });
+                  }}
+                />
+              </Springy>
+            );
+          })}
         </View>
       ) : (
         <Card style={{ alignItems: 'center', paddingVertical: 26 }}>
@@ -157,6 +179,8 @@ function MealDetail({ m, onClose, onEdit }: { m: SavedMeal; onClose: () => void;
   const toast = useToast();
   const food = useFood();
   const logFood = useLogFood();
+  const allergyCheck = useAllergyCheck();
+  const allergic = allergyCheck(m.name, [m.items, ...(m.ingredients ?? []).map((x) => x.n)]);
   const share = async () => {
     const txt = t('Try my meal on Adro: {n} ({k} kcal, {p} g protein). Add it with code {c}', { n: m.name, k: fmt(m.kcal), p: Math.round(m.protein), c: m.code });
     try {
@@ -175,6 +199,7 @@ function MealDetail({ m, onClose, onEdit }: { m: SavedMeal; onClose: () => void;
           {m.items}
         </Text>
       ) : null}
+      <AllergyWarn items={allergic} />
       <Card style={{ marginTop: 12 }}>
         <Row style={{ justifyContent: 'space-between' }}>
           <Text weight={700}>{m.servings && m.servings > 1 ? t('One serving') : t('Total')}</Text>

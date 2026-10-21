@@ -42,12 +42,12 @@ export function OfflineBanner() {
     <Animated.View
       pointerEvents={show ? 'auto' : 'none'}
       style={{ position: 'absolute', top: Math.max(8, insets.top) + 4, start: 8, end: 8, zIndex: 999, opacity: a, transform: [{ translateY: a.interpolate({ inputRange: [0, 1], outputRange: [-100, 0] }) }] }}>
-      <View accessibilityRole="alert" style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: c.text, borderRadius: 18, paddingVertical: 10, paddingStart: 14, paddingEnd: 6 }}>
+      <View accessibilityRole="alert" style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: c.text, borderRadius: 18, paddingVertical: 4, paddingStart: 14, paddingEnd: 2 }}>
         <Icon name="warn" size={20} color={c.bg} strokeWidth={2} />
         <Text variant="small" weight={600} color={c.bg} style={{ flex: 1 }}>
-          {t('You’re offline. Your workout is saved and will sync later.')}
+          {t('You’re offline. What you change is saved and syncs when you’re back online.')}
         </Text>
-        <Pressable onPress={() => setHidden(true)} accessibilityLabel={t('Dismiss')} style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}>
+        <Pressable onPress={() => setHidden(true)} accessibilityLabel={t('Dismiss')} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
           <Icon name="close" size={16} color={c.bg} strokeWidth={2.2} />
         </Pressable>
       </View>

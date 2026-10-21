@@ -10,15 +10,15 @@ import { Icon, type IconName, Mark } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { fontFor, Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
-import { Row, Springy } from '@/components/ui';
+import { Sheet } from '@/components/Sheet';
+import { Button, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { type CaffeineAlert, caffeineCheck, caffeineOf, caffeineToday, showCaffeineAlert } from '@/lib/caffeine';
 import { aiErrorText, askAI } from '@/lib/ai';
 import { useAuth } from '@/lib/auth';
 import { useRecovery } from '@/components/train/RecoveryCard';
 import { type ChatAction, type ChatMsg, cleanCard, groupChats, guessCard, loadChats, loadMemory, newId, saveMemory, saveMsg, updateActions } from '@/lib/coach';
-import { isAnon } from '@/lib/cycle';
-import { useCycleToday } from '@/lib/cyclePhase';
+import { useCycleCoach } from '@/lib/cyclePhase';
 import { deviceBrief, useDevices } from '@/lib/devices';
 import { useFood } from '@/lib/food';
 import { MEAS, useHealth } from '@/lib/health';
@@ -57,20 +57,13 @@ export default function Coach() {
   const health = useHealth();
   const streaks = useStreaks();
   const { r: rec } = useRecovery();
-  const cycleToday = useCycleToday();
   // Cycle data kept only on this phone (private mode) is never sent to the AI.
-  const [cyclePrivate, setCyclePrivate] = useState(true);
-  useEffect(() => {
-    if (!session || !cycleToday) return;
-    let live = true;
-    isAnon(session.user.id)
-      .then((a) => live && setCyclePrivate(a))
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-  }, [session, cycleToday]);
-  const cycle = cyclePrivate ? null : cycleToday;
+  const cyc = useCycleCoach();
+  const cycle = cyc && !cyc.anon ? cyc.cycle : null;
+  const preg = cyc && !cyc.anon ? cyc.preg : null;
+  // A weight from the chat that's far from your last weigh-in is logged only after you say so.
+  const [weightAsk, setWeightAsk] = useState<{ kg: number; last: number; done: (ok: boolean) => void } | null>(null);
+  const askWeight = (kg: number, last: number) => new Promise<boolean>((done) => setWeightAsk({ kg, last, done }));
   const devices = useDevices(session?.user.id);
   const [memory, setMemory] = useState('');
   const { chat, ask } = useLocalSearchParams<{ chat?: string; ask?: string }>();
@@ -111,15 +104,33 @@ export default function Coach() {
     setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 50);
   }, [msgs.length, thinking]);
 
-  /** Everything the coach should know: today, the last week, trends, targets, cycle and watch data. */
+  /**
+   * Everything the coach should know: today, the last week, trends, targets, cycle and watch data. The server keeps
+   * the first 20,000 characters, so what must never be cut goes first, the watch data last, and it's made to fit here
+   * (the watch's 14 days trimmed to the key numbers, then dropped) so the plan, blood tests and supplements stay in.
+   */
   const context = () => {
     const c = fullContext();
-    // What must never be cut (the server keeps the first 20,000 characters) goes first.
-    const { foodAllergies, coachManagesFood, coachTargets, devices: dv, ...rest } = c;
-    return { foodAllergies, coachManagesFood, coachTargets, devices: dv, ...rest };
+    const { foodAllergies, coachManagesFood, coachTargets, pregnancy, devices: dv, ...rest } = c;
+    const LIMIT = 19000;
+    const first = { foodAllergies, coachManagesFood, coachTargets, pregnancy, ...rest };
+    const fits = (d: unknown) => JSON.stringify({ ...first, devices: d }).length <= LIMIT;
+    const KEY = ['day', 'source', 'sleep_h', 'hrv', 'hr_rest', 'recovery', 'steps', 'workouts'];
+    let d: typeof dv | { trimmed: string } | null = dv && { ...dv, last14Days: dv.last14Days.map((x) => Object.fromEntries(Object.entries(x).filter(([k]) => KEY.includes(k)))) };
+    if (d && 'last14Days' in d && !fits(d)) d = { ...d, last14Days: [] };
+    if (d && !fits(d)) d = { trimmed: 'watch data left out: too much data' };
+    if (!fits(d)) {
+      // Still too long: older workouts and the 14-day plan list are the first to go.
+      first.workoutsLast30Days = first.workoutsLast30Days.slice(0, 8);
+      if (first.trainingPlan) first.trainingPlan = { ...first.trainingPlan, next14Days: first.trainingPlan.next14Days.slice(0, 7) };
+    }
+    return { ...first, devices: d };
   };
   const fullContext = () => {
     const today = food.today;
+    // Today's food, even when the Food tab is on another day.
+    const td = health.days[today];
+    const eatenKcal = food.isToday ? food.eaten.k : (td?.k ?? 0);
     const week = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6));
     const ci = new Map(health.checkins.map((x) => [x.day, x]));
     const weekly = Array.from({ length: 8 }, (_, i) => {
@@ -139,23 +150,28 @@ export default function Coach() {
       todayWeekday: DAYS_LONG[weekdayOf(today)],
       time: new Date().toTimeString().slice(0, 5),
       weightKg: health.weights.at(-1)?.value ?? food.plan.weight,
+      // The unit the person sees and types weights in (weights in this data are always kg).
+      weightUnit: W.unit,
+      pregnancy: preg ? { stage: preg.mode === 'preg' ? 'pregnant' : 'after birth', week: preg.week } : null,
       weightWeeklyAverages: weekly,
       goal: food.setupDone ? GOALS[food.plan.goal] : 'not set up',
       caloriesGoal: food.setupDone ? food.dayGoal(today) : null,
-      // The food numbers below are for this day (the person may be looking back at an earlier day).
-      foodDay: food.isToday ? 'today' : food.day,
-      caloriesLeft: food.setupDone ? food.kcalLeft : null,
-      eatenToday: { kcal: Math.round(food.eaten.k), protein: Math.round(food.eaten.p), carbs: Math.round(food.eaten.c), fat: Math.round(food.eaten.f) },
+      // Today's numbers (cardio burned today is known only while the Food tab shows today).
+      caloriesLeft: food.setupDone ? Math.round(food.dayGoal(today) + (food.isToday ? food.burned : 0) - eatenKcal) : null,
+      eatenToday: food.isToday
+        ? { kcal: Math.round(food.eaten.k), protein: Math.round(food.eaten.p), carbs: Math.round(food.eaten.c), fat: Math.round(food.eaten.f) }
+        : { kcal: Math.round(td?.k ?? 0), protein: Math.round(td?.p ?? 0), carbs: null, fat: null },
       targets: food.setupDone ? food.target : null,
       coachTargets: food.coachTargets ? { kcal: food.coachTargets.kcal, protein: food.coachTargets.protein, coach: food.coachTargets.name } : null,
-      foodLoggedToday: food.logs.map((l) => l.name).slice(-10),
-      burnedByCardio: food.burned,
-      waterMl: food.water,
+      foodLoggedToday: food.isToday ? food.logs.map((l) => l.name).slice(-10) : null,
+      burnedByCardio: food.isToday ? food.burned : null,
+      waterMl: food.isToday ? food.water : Math.round(td?.w ?? 0),
       waterGoalMl: food.plan.water,
       last7Days: week.map((d) => {
         const c = ci.get(d);
         const f = health.days[d];
-        return { day: d, sleepH: c?.sleep_h ?? null, energy: c?.energy == null ? null : ['tired', 'normal', 'great'][c.energy], soreness: c?.sore == null ? null : ['none', 'a little', 'very sore'][c.sore], recovery: c?.score ?? null, kcal: f ? Math.round(f.k) : null, protein: f ? Math.round(f.p) : null };
+        // Today's recovery is the same score as "recoveryToday".
+        return { day: d, sleepH: c?.sleep_h ?? null, energy: c?.energy == null ? null : ['tired', 'normal', 'great'][c.energy], soreness: c?.sore == null ? null : ['none', 'a little', 'very sore'][c.sore], recovery: d === today ? rec.score : (c?.score ?? null), kcal: f ? Math.round(f.k) : null, protein: f ? Math.round(f.p) : null };
       }),
       recoveryToday: rec.score,
       // Last night's sleep (what you logged, or your watch) and what pulls recovery down.
@@ -171,14 +187,14 @@ export default function Coach() {
       workoutsLast7Days: train.logs.filter((l) => l.day >= week[0]).map((l) => `${l.name} (${l.day}, ${l.minutes} min)`),
       cycle: cycle ? { day: cycle.day, phase: cycle.phase, nextPeriod: cycle.next, late: cycle.late } : null,
       // Watch, ring or band (Apple Health, Health Connect, WHOOP, Oura): usual numbers, last night, what stands out, 14 days.
-      devices: deviceBrief(devices.days, today),
+      devices: deviceBrief(devices.days, today, { luteal: cycle?.phase === 'Luteal' }),
       stepsToday: food.isToday ? food.steps : null,
       checkinToday: health.todayCheckin
         ? {
             sleepH: health.todayCheckin.sleep_h,
             energy: health.todayCheckin.energy == null ? null : ['tired', 'normal', 'great'][health.todayCheckin.energy],
             soreness: health.todayCheckin.sore == null ? null : ['none', 'a little', 'very sore'][health.todayCheckin.sore],
-            recovery: health.todayCheckin.score,
+            recovery: rec.score,
           }
         : null,
       // The whole training plan, so the coach can suggest changes to it (exercise ids are what suggestions use).
@@ -268,6 +284,9 @@ export default function Coach() {
       } else if (a.type === 'weight' && a.kg >= 30 && a.kg <= 250) {
         const kg = r1(a.kg);
         const prev = health.weights.find((w) => w.day === food.today)?.value ?? null;
+        // More than 10% away from the last weigh-in (a mix-up of kg and lb?): ask first.
+        const last = health.weights.at(-1)?.value;
+        if (last && Math.abs(kg - last) > last * 0.1 && !(await askWeight(kg, last))) continue;
         if (await health.logWeight(kg)) {
           done.push({ type: 'weight', kg, prev, day: food.today });
           toast(W.words(t('Logged to Progress: {n} kg', { n: W.show(kg) })), { ai: true });
@@ -304,7 +323,8 @@ export default function Coach() {
       });
       if (error || !result) return toast(t(aiErrorText(error ?? 'failed')), { icon: 'warn' });
       const acts = await applyActions(Array.isArray(result.actions) ? result.actions : []);
-      const sugg = await prepareSuggestions(result.suggest, train.plan, food.today);
+      // No fewer calories while pregnant, after birth or in the luteal phase.
+      const sugg = await prepareSuggestions(result.suggest, train.plan, food.today, { noCut: !!preg || cycle?.phase === 'Luteal', kcal: Math.round(food.target.k) });
       const all2 = [...acts, ...sugg];
       // A suggested meal with one of your allergens is never shown.
       const aiCard = cleanCard(result.card);
@@ -372,7 +392,7 @@ export default function Coach() {
     } else {
       if (food.coachTargets) return toast(t('Your coach sets your targets. Ask them to change it.'), { icon: 'info' });
       const prev = { kcal: food.plan.kcal, perKg: food.plan.perKg, carbG: food.plan.carbG, water: food.plan.water };
-      if (!(await food.savePlan(applyTargets(food.plan, a)))) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+      if (!(await food.savePlan(applyTargets(food.plan, a, food.pregKcal)))) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
       setSuggestion(m, i, { ...a, state: 'applied', prev });
       toast(t('Your targets are updated'), { ai: true });
     }
@@ -537,6 +557,38 @@ export default function Coach() {
         ) : null}
         <View style={{ height: 150 }} />
       </Screen>
+      <Sheet
+        open={!!weightAsk}
+        onClose={() => {
+          weightAsk?.done(false);
+          setWeightAsk(null);
+        }}>
+        {weightAsk ? (
+          <View>
+            <Text variant="h2">{W.words(t('Log {n} kg?', { n: W.show(weightAsk.kg) }))}</Text>
+            <Text color="sec" style={{ marginTop: 6 }}>
+              {W.words(t('That’s more than 10% away from your last weigh-in ({n} kg). Check the number and the unit.', { n: W.show(weightAsk.last) }))}
+            </Text>
+            <Button
+              title={t('Log it')}
+              style={{ marginTop: 16 }}
+              onPress={() => {
+                weightAsk.done(true);
+                setWeightAsk(null);
+              }}
+            />
+            <Button
+              kind="glass"
+              title={t('Don’t log')}
+              style={{ marginTop: 8 }}
+              onPress={() => {
+                weightAsk.done(false);
+                setWeightAsk(null);
+              }}
+            />
+          </View>
+        ) : null}
+      </Sheet>
 
       <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, bottom: 16 + insets.bottom, gap: 8 }}>
         {!msgs.length ? (

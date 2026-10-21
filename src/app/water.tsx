@@ -16,7 +16,7 @@ import { Button, Card, Chip, Label, NavButton, Row, Springy } from '@/components
 import { useT } from '@/i18n';
 import { caffeineCheck, caffeineOfDrink, caffeineToday, showCaffeineAlert } from '@/lib/caffeine';
 import { useFood } from '@/lib/food';
-import { fmt, fmtTime, suggestWater } from '@/lib/nutrition';
+import { fmt, fmtTime, ramadanOn, suggestWater } from '@/lib/nutrition';
 import { fastTimes } from '@/lib/prayer';
 import { fx } from '@/lib/progress';
 import { useSettings } from '@/theme/settings';
@@ -30,11 +30,14 @@ export default function WaterScreen() {
   const { colors: c } = useSettings();
   const toast = useToast();
   const food = useFood();
-  const goal = food.plan.water || 2800;
+  // The day's goal: your own, plus a training day, cardio, pregnancy or breastfeeding.
+  const goal = food.waterGoal;
+  // The day you're looking at, by name when it isn't today.
+  const dayLabel = food.isToday ? t('Today') : new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date(`${food.day}T12:00:00`));
   const [drink, setDrink] = useState(false);
   const [goalOpen, setGoalOpen] = useState(false);
   const reminder = useReminder('water');
-  const fast = food.plan.ramadan ? fastTimes(food.plan.city, food.today) : null;
+  const fast = ramadanOn(food.plan, food.today) ? fastTimes(food.plan.city, food.today) : null;
 
   const add = async (ml: number, kind = 'Water') => {
     // Coffee or tea: warn about a big caffeine dose, counting what you already had today.
@@ -75,9 +78,14 @@ export default function WaterScreen() {
           <Button small kind="glass" icon="plus" title={t('{n} ml', { n: 500 })} onPress={() => add(500)} />
           <Button small title={t('Other')} onPress={() => setDrink(true)} />
         </Row>
+        {food.waterExtra > 0 ? (
+          <Text variant="xs" color="sec" center style={{ marginTop: 4 }}>
+            {t('Includes {n} ml extra for training, cardio, pregnancy or breastfeeding.', { n: fmt(food.waterExtra) })}
+          </Text>
+        ) : null}
         {food.water >= goal ? (
           <Text variant="small" weight={700} color="up" style={{ marginTop: 12 }}>
-            {t('Goal done for today. Nice.')}
+            {food.isToday ? t('Goal done for today. Nice.') : t('Goal done that day. Nice.')}
           </Text>
         ) : (
           <Text variant="small" color="sec" style={{ marginTop: 12 }}>
@@ -113,7 +121,7 @@ export default function WaterScreen() {
         </Card>
       ) : null}
       <Text variant="small" weight={700} color="sec" style={{ marginTop: 16, marginBottom: 8, marginHorizontal: 4 }}>
-        {t('Today')}
+        {dayLabel}
       </Text>
       {food.waterLogs.length ? (
         <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden' }}>
@@ -146,7 +154,7 @@ export default function WaterScreen() {
         </View>
       ) : (
         <Card style={{ alignItems: 'center' }}>
-          <Text color="sec">{t('Nothing yet today. Tap + to add a glass.')}</Text>
+          <Text color="sec">{food.isToday ? t('Nothing yet today. Tap + to add a glass.') : t('Nothing logged this day.')}</Text>
         </Card>
       )}
       <Text variant="small" weight={700} color="sec" style={{ marginTop: 16, marginBottom: 8, marginHorizontal: 4 }}>
@@ -181,7 +189,7 @@ export default function WaterScreen() {
       <WaterGoalSheet
         open={goalOpen}
         onClose={() => setGoalOpen(false)}
-        value={goal}
+        value={food.plan.water || 2800}
         suggested={suggestWater(food.plan)}
         onSave={(v) => {
           food.updatePlan({ water: v });

@@ -53,6 +53,31 @@ export function DaySheet({ d, onClose }: { d: number | null; onClose: () => void
         <Text variant="small" color="sec" style={{ marginTop: 8 }}>
           {t('Rest is where muscle grows. A walk or light stretching is a good idea.')}
         </Text>
+        {p.type !== 'order' && opts.some((o) => p.workouts[o]?.ex.length) ? (
+          <View>
+            <Text variant="small" weight={700} color="sec" style={{ marginTop: 16, marginBottom: 8 }}>
+              {t('Train anyway, this week only')}
+            </Text>
+            <Row gap={8} style={{ flexWrap: 'wrap' }}>
+              {opts
+                .filter((o) => p.workouts[o]?.ex.length)
+                .map((o) => (
+                  <Chip
+                    key={o}
+                    title={t(o)}
+                    onPress={() => {
+                      train.setWeek(
+                        train.week.map((x, i) => (i === d ? { ...x, w: o } : x)),
+                        true,
+                      );
+                      onClose();
+                      toast(t('{w} added to {day} this week', { w: t(o), day: t(DAYS_LONG[d]) }), { icon: 'check' });
+                    }}
+                  />
+                ))}
+            </Row>
+          </View>
+        ) : null}
         {!day.lock && !train.coach && p.type !== 'order' ? (
           <View>
             <Text variant="small" weight={700} color="sec" style={{ marginTop: 16, marginBottom: 8 }}>
@@ -82,7 +107,9 @@ export function DaySheet({ d, onClose }: { d: number | null; onClose: () => void
   const W = p.workouts[w];
   const b = buildWorkout(p, w, { preg: train.preg, last: train.last, top: train.top });
   const sets = b.ex.reduce((a, x) => a + x.sets, 0);
-  const canStart = isToday && !train.todayLog && b.ex.length > 0;
+  // Only today's planned workout being saved today blocks Start (another workout today, like Train together, doesn't).
+  const doneToday = train.logs.some((l) => l.day === train.today && l.name === w.slice(0, 40));
+  const canStart = isToday && !doneToday && !train.session && b.ex.length > 0;
   return (
     <Sheet open onClose={onClose}>
       <Row gap={4}>

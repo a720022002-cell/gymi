@@ -1,11 +1,24 @@
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
-import { buildReminders, listenReminderTaps, loadPrefs, onPrefs, onVitDays, remindersSupported, scheduleReminders, type VitReminder, vitaminDays } from '@/lib/reminders';
+import {
+  buildReminders,
+  listenReminderTaps,
+  loadPrefs,
+  notifPermission,
+  onPrefs,
+  onRemindersPoke,
+  onVitDays,
+  remindersSupported,
+  scheduleReminders,
+  type VitReminder,
+  vitaminDays,
+} from '@/lib/reminders';
 import { useTrain } from '@/lib/train';
 
 /** Phone apps: keep the scheduled reminders in step with your settings, meals, workout days and vitamins. Does nothing on the web. */
@@ -27,6 +40,20 @@ export function ReminderSync() {
   // Settings saved anywhere (Notifications, the bells on Food and Train, vitamin days) reschedule.
   useEffect(() => onPrefs(() => setRev((r) => r + 1)), []);
   useEffect(() => onVitDays(() => setRev((r) => r + 1)), []);
+  useEffect(() => onRemindersPoke(() => setRev((r) => r + 1)), []);
+  // Back from the phone's settings with notifications just turned on: schedule them.
+  const perm = useRef<string | null>(null);
+  useEffect(() => {
+    if (!remindersSupported) return;
+    const sub = AppState.addEventListener('change', async (st) => {
+      if (st !== 'active') return;
+      const now = await notifPermission();
+      if (perm.current && perm.current !== now && now === 'granted') setRev((r) => r + 1);
+      perm.current = now;
+    });
+    notifPermission().then((v) => (perm.current = v));
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     if (!remindersSupported || !uid) return;

@@ -212,7 +212,7 @@ export function ClientsView({ tab }: { tab?: boolean }) {
               title={t('Decline')}
               style={{ flex: 1 }}
               onPress={async () => {
-                await coachRespond(x.id, false);
+                if (!(await coachRespond(x.id, false))) toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
                 load();
               }}
             />
