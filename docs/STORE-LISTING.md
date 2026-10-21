@@ -1,6 +1,6 @@
 # صفحة Adro في المتاجر
 
-**التاريخ:** 18 أكتوبر 2026
+**التاريخ:** 21 أكتوبر 2026 (محدّث: الساعات والخواتم، الودجتس، شاشة القفل، إذن الذكاء الاصطناعي)
 
 **وش في هالملف:** نصوص صفحة التطبيق في App Store و Google Play بالعربي والإنجليزي، إجابات أسئلة الخصوصية، وقائمة الأشياء اللي Apple و Google يرفضون عليها عادة.
 
@@ -32,6 +32,8 @@ TRAIN
 - Snap a photo of a gym machine you don't know: Adro names it and adds it to your workout
 - Home and travel mode, lighter days and deload weeks
 - Pregnancy-safe workouts (optional)
+- Your full workout history: every set, weight and record
+- Log sets from the Lock Screen and the Dynamic Island while you train
 
 EAT
 - Daily calories, protein, carbs and fat for your goal
@@ -46,6 +48,11 @@ RECOVER AND TRACK
 - Weight, measurements and private progress photos
 - Cycle tracking with training tips for each phase (private, can be locked)
 - Lab reports read and tracked over time
+
+WATCHES, RINGS AND WIDGETS
+- Works with Apple Health, and links straight to WHOOP, Oura and Polar
+- Sleep, heart rate, HRV and recovery from your watch shape your plan each day
+- Home Screen and Lock Screen widgets for today's calories, protein, steps and workout
 
 YOUR AI COACH
 - Ask anything about training and food, in Arabic or English
@@ -74,6 +81,8 @@ Adro مدرب لياقة في جيبك. يسوي لك خطة تمرين، ويخ
 - صوّر أي جهاز ما تعرفه، و Adro يقولك وش هو ويضيفه لتمرينك
 - وضع البيت والسفر، أيام خفيفة وأسابيع راحة
 - تمارين آمنة للحمل (اختياري)
+- سجل تمارينك كامل: كل جولة ووزن ورقم قياسي
+- سجّل جولاتك من شاشة القفل والنوتش وإنت تتمرن
 
 الأكل
 - السعرات والبروتين والكارب والدهون حسب هدفك
@@ -88,6 +97,11 @@ Adro مدرب لياقة في جيبك. يسوي لك خطة تمرين، ويخ
 - الوزن والمقاسات وصور التقدم الخاصة فيك
 - متابعة الدورة مع نصايح تمرين لكل مرحلة (خاصة، وتقدرين تقفلينها)
 - قراءة تحاليل الدم ومتابعتها مع الوقت
+
+الساعات والخواتم والودجتس
+- يشتغل مع Apple Health، ويرتبط مباشرة مع WHOOP و Oura و Polar
+- نومك ونبضك وتقلب نبضك واستشفاءك من ساعتك تعدّل خطتك كل يوم
+- ودجتس للشاشة الرئيسية وشاشة القفل فيها سعراتك وبروتينك وخطواتك وتمرينك
 
 مدربك الذكي
 - اسأل أي شي عن التمرين والأكل، بالعربي أو الإنجليزي
