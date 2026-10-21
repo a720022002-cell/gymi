@@ -1,0 +1,197 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
+<style>html,body{margin:0;background:#000}canvas{display:block}</style>
+</head><body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+const LANG = new URLSearchParams(location.search).get('lang') || 'en';
+const AR = LANG === 'ar';
+const W = 1080, H = 1920, CX = 540, CY = 880, F = 900;
+const BLUE = '#3355FF', LIGHT = '#8FA3FF';
+const ctx = document.getElementById('c').getContext('2d');
+let SCHED = null;
+const TXT = AR ? {
+  intro: 'مدربك الذكي للياقة', wear: 'ساعتك وخاتمك', dev: 'أجهزتك', food: 'أكلك', train: 'تمرينك',
+  one1: 'كل شي تسويه.', one2: 'مدرب واحد.', tag: 'مدربك الذكي للياقة', soon: 'قريبًا على App Store',
+} : {
+  intro: 'Your AI fitness coach', wear: 'WEARABLES', dev: 'DEVICES', food: 'YOUR FOOD', train: 'TRAINING',
+  one1: 'Everything you do.', one2: 'One coach.', tag: 'Your AI fitness coach', soon: 'Coming soon to the App Store',
+};
+const FONT = (w, s) => AR ? `${w} ${s}px "IBM Plex Sans Arabic"` : `${w} ${s}px Sora`;
+
+// helpers
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const ease = (x) => { x = clamp(x); return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+const easeOut = (x) => 1 - Math.pow(1 - clamp(x), 3);
+const fade = (t, a, b, c, d) => clamp((t - a) / (b - a)) * (1 - clamp((t - c) / (d - c)));
+const lerp = (a, b, u) => a + (b - a) * u;
+
+// deterministic random
+let seed = 11; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+
+// stars: travel distance is the integral of the speed
+const STARS = Array.from({ length: 900 }, () => ({ x: (rnd() - 0.5) * 3400, y: (rnd() - 0.5) * 5200, z: rnd() * 3000 + 60, b: 0.4 + rnd() * 0.6 }));
+const speed = (t) => t < 2.6 ? lerp(120, 380, t / 2.6) : t < 15 ? 420 : t < 16.8 ? lerp(420, 2200, Math.sin(Math.PI * (t - 15) / 1.8)) : lerp(420, 60, clamp((t - 16.8) / 1.5));
+const DIST = []; { let d = 0; for (let i = 0; i <= 2400; i++) { DIST.push(d); d += speed(i / 120) / 120; } }
+const dist = (t) => DIST[Math.min(DIST.length - 1, Math.max(0, Math.round(t * 120)))];
+
+// ---------------- icons (white line drawings, centred, size 100) ----------------
+function icon(kind) {
+  const c = ctx; c.lineWidth = 7; c.lineCap = 'round'; c.lineJoin = 'round'; c.strokeStyle = '#fff'; c.fillStyle = '#fff';
+  const P = () => c.beginPath();
+  const rr = (x, y, w, h, r) => { c.beginPath(); c.roundRect(x, y, w, h, r); };
+  switch (kind) {
+    case 'watch': rr(-26, -48, 52, 22, 6); c.stroke(); rr(-26, 26, 52, 22, 6); c.stroke(); rr(-34, -30, 68, 60, 18); c.stroke();
+      P(); c.moveTo(0, -12); c.lineTo(0, 2); c.lineTo(11, 8); c.stroke(); break;
+    case 'ring': c.save(); c.scale(1, 0.62); P(); c.arc(0, 4, 40, 0, Math.PI * 2); c.stroke(); P(); c.arc(0, 4, 28, 0, Math.PI * 2); c.stroke(); c.restore();
+      P(); c.arc(0, -26, 6, 0, Math.PI * 2); c.fillStyle = LIGHT; c.fill(); break;
+    case 'band': rr(-46, -16, 92, 32, 16); c.stroke(); rr(-16, -10, 32, 20, 5); c.fillStyle = LIGHT; c.fill(); break;
+    case 'heart': P(); c.moveTo(0, 36); c.bezierCurveTo(-58, -2, -36, -50, 0, -22); c.bezierCurveTo(36, -50, 58, -2, 0, 36); c.stroke();
+      P(); c.moveTo(-26, 0); c.lineTo(-10, 0); c.lineTo(-3, -12); c.lineTo(5, 12); c.lineTo(12, 0); c.lineTo(26, 0); c.stroke(); break;
+    case 'phone': rr(-26, -46, 52, 92, 12); c.stroke(); P(); c.moveTo(-8, -36); c.lineTo(8, -36); c.stroke();
+      P(); c.arc(0, 6, 14, -Math.PI / 2, Math.PI * 1.1); c.strokeStyle = LIGHT; c.stroke(); break;
+    case 'scale': rr(-42, -42, 84, 84, 18); c.stroke(); rr(-18, -28, 36, 16, 5); c.fillStyle = LIGHT; c.fill(); P(); c.arc(0, 16, 4, 0, 7); c.fillStyle = '#fff'; c.fill(); break;
+    case 'pulse': P(); c.moveTo(-44, 6); c.lineTo(-22, 6); c.lineTo(-12, -24); c.lineTo(0, 30); c.lineTo(12, -8); c.lineTo(20, 6); c.lineTo(44, 6); c.stroke(); break;
+    case 'moon': P(); c.arc(0, 0, 34, 0.9, Math.PI * 2 - 0.9 + Math.PI * 0.0, false); c.stroke(); P(); c.arc(18, -12, 26, Math.PI * 0.62, Math.PI * 1.93, true); c.stroke();
+      P(); c.arc(30, -32, 3.5, 0, 7); c.fill(); break;
+    case 'bowl': P(); c.moveTo(-46, -2); c.lineTo(46, -2); c.arc(0, -2, 46, 0, Math.PI); c.stroke(); P(); c.moveTo(-16, 46); c.lineTo(16, 46); c.stroke();
+      P(); c.arc(-14, -4, 14, Math.PI, 0); c.arc(10, -4, 18, Math.PI, 0); c.stroke();
+      c.strokeStyle = LIGHT; for (const x of [-14, 4, 22]) { P(); c.moveTo(x, -34); c.quadraticCurveTo(x - 8, -42, x, -50); c.stroke(); } break;
+    case 'dates': for (const [x, y, r] of [[-18, 10, -0.5], [16, -6, 0.6], [6, 26, 0.1]]) { c.save(); c.translate(x, y); c.rotate(r); P(); c.ellipse(0, 0, 16, 26, 0, 0, 7); c.stroke(); c.restore(); } break;
+    case 'cup': P(); c.moveTo(-32, -18); c.lineTo(-24, 36); c.lineTo(24, 36); c.lineTo(32, -18); c.closePath(); c.stroke();
+      c.strokeStyle = LIGHT; for (const x of [-12, 6]) { P(); c.moveTo(x, -28); c.quadraticCurveTo(x - 8, -38, x, -48); c.stroke(); } break;
+    case 'drop': P(); c.moveTo(0, -46); c.bezierCurveTo(26, -14, 36, 4, 36, 14); c.arc(0, 14, 36, 0, Math.PI); c.bezierCurveTo(-36, 4, -26, -14, 0, -46); c.stroke(); break;
+    case 'dumbbell': rr(-48, -22, 14, 44, 5); c.stroke(); rr(-34, -32, 14, 64, 5); c.stroke(); rr(20, -32, 14, 64, 5); c.stroke(); rr(34, -22, 14, 44, 5); c.stroke();
+      P(); c.moveTo(-20, 0); c.lineTo(20, 0); c.stroke(); break;
+    case 'plate': P(); c.arc(0, 0, 44, 0, 7); c.stroke(); P(); c.arc(0, 0, 26, 0, 7); c.stroke(); P(); c.arc(0, 0, 8, 0, 7); c.fill(); break;
+    case 'kettle': P(); c.arc(0, 14, 32, 0, Math.PI * 2); c.stroke(); P(); c.moveTo(-22, -10); c.lineTo(-24, -34); c.quadraticCurveTo(0, -56, 24, -34); c.lineTo(22, -10); c.stroke(); break;
+    case 'stopwatch': P(); c.arc(0, 8, 36, 0, 7); c.stroke(); P(); c.moveTo(-10, -38); c.lineTo(10, -38); c.stroke(); P(); c.moveTo(0, -38); c.lineTo(0, -28); c.stroke();
+      P(); c.moveTo(0, 8); c.lineTo(14, -6); c.strokeStyle = LIGHT; c.stroke(); break;
+  }
+}
+/** An icon on a dark glass tile with a blue edge, at screen (x, y), size s, opacity a. */
+function tile(kind, x, y, s, a, rot = 0) {
+  if (a <= 0.01 || s < 2) return;
+  const c = ctx; c.save(); c.globalAlpha = a; c.translate(x, y); c.rotate(rot); c.scale(s / 140, s / 140);
+  c.shadowColor = 'rgba(51,85,255,0.85)'; c.shadowBlur = 40;
+  c.beginPath(); c.roundRect(-70, -70, 140, 140, 36);
+  const g = c.createLinearGradient(0, -70, 0, 70); g.addColorStop(0, '#1A1F3A'); g.addColorStop(1, '#0B0D18'); c.fillStyle = g; c.fill();
+  c.shadowBlur = 0; c.lineWidth = 3; c.strokeStyle = 'rgba(143,163,255,0.55)'; c.stroke();
+  icon(kind); c.restore();
+}
+
+// ---------------- the ring (Adro's open ring: 80% of a circle from the top, round ends) ----------------
+function ring(x, y, r, sw, rot, a, glow) {
+  if (a <= 0.01) return;
+  const c = ctx; c.save(); c.globalAlpha = a; c.lineCap = 'round';
+  c.shadowColor = 'rgba(51,85,255,1)'; c.shadowBlur = glow;
+  c.strokeStyle = BLUE; c.lineWidth = sw;
+  c.beginPath(); c.arc(x, y, r, -Math.PI / 2 + rot, -Math.PI / 2 + rot + Math.PI * 2 * 0.8); c.stroke();
+  c.restore();
+}
+
+// wordmark letters "adr" (Sora SemiBold outlines, font units)
+const LETTERS = new Path2D('M408 0V-161H385V-340Q385 -387 362 -410Q339 -433 291 -433Q266 -433 231 -432Q196 -431 160 -430Q125 -428 97 -426V-544Q120 -546 149 -548Q178 -550 208 -550Q239 -551 266 -551Q350 -551 406 -529Q461 -507 490 -460Q518 -413 518 -337V0ZM233 14Q174 14 130 -7Q85 -28 60 -67Q36 -106 36 -161Q36 -221 66 -259Q95 -297 148 -316Q202 -335 274 -335H400V-252H272Q224 -252 198 -228Q173 -205 173 -168Q173 -131 198 -108Q224 -85 272 -85Q301 -85 326 -96Q350 -106 366 -132Q383 -157 385 -201L419 -162Q414 -105 392 -66Q369 -27 330 -6Q290 14 233 14ZM847 18Q790 18 742 -3Q694 -24 659 -62Q624 -100 605 -150Q586 -201 586 -260V-281Q586 -339 604 -390Q623 -441 656 -479Q690 -517 738 -538Q785 -560 843 -560Q907 -560 956 -532Q1004 -505 1033 -450Q1062 -395 1065 -312L1024 -360V-730H1163V0H1053V-231H1077Q1074 -148 1043 -92Q1012 -37 962 -10Q911 18 847 18ZM878 -99Q919 -99 953 -118Q987 -136 1008 -172Q1028 -207 1028 -255V-295Q1028 -343 1007 -376Q986 -408 952 -426Q918 -443 878 -443Q833 -443 798 -422Q764 -400 744 -361Q725 -322 725 -270Q725 -218 745 -180Q765 -141 800 -120Q834 -99 878 -99ZM1276 0V-543H1386V-313H1383Q1383 -430 1433 -490Q1483 -550 1580 -550H1600V-429H1562Q1492 -429 1454 -392Q1415 -354 1415 -283V0Z');
+const WM = { x0: 30, y0: -745, w: 2229, h: 775, rcx: 1953.5, rcy: -271.5, r: 228.5, sw: 130 };
+const WS = 780 / WM.w; // wordmark width on screen
+const WX = CX - (WM.w / 2) * WS - WM.x0 * WS, WY = CY + 120; // baseline position
+const RING_END = { x: WX + WM.rcx * WS, y: WY + WM.rcy * WS, r: WM.r * WS, sw: WM.sw * WS };
+
+function text(str, x, y, size, weight, color, a, spacing = 0) {
+  if (a <= 0.01) return;
+  const c = ctx; c.save(); c.globalAlpha = a; c.font = FONT(weight, size); c.fillStyle = color; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.direction = AR ? 'rtl' : 'ltr'; c.letterSpacing = AR ? '0px' : `${spacing}px`;
+  c.shadowColor = 'rgba(0,0,0,0.6)'; c.shadowBlur = 24; c.fillText(str, x, y); c.restore();
+}
+
+// ---------------- one frame ----------------
+window.render = function (t) {
+  const c = ctx;
+  // background: near-black with a deep blue glow behind the ring
+  c.fillStyle = '#030306'; c.fillRect(0, 0, W, H);
+  const gl = c.createRadialGradient(CX, CY, 0, CX, CY, 1100);
+  const glowA = 0.22 + 0.25 * fade(t, 14.6, 16.2, 16.6, 18.5) + 0.06 * Math.sin(t * 1.3);
+  gl.addColorStop(0, `rgba(51,85,255,${glowA})`); gl.addColorStop(0.45, 'rgba(30,40,120,0.10)'); gl.addColorStop(1, 'rgba(0,0,0,0)');
+  c.fillStyle = gl; c.fillRect(0, 0, W, H);
+
+  // stars flying toward you
+  const d = dist(t), sp = speed(t);
+  for (const s of STARS) {
+    let z = s.z - (d % 3000); if (z < 40) z += 3000;
+    const x = CX + (s.x * F) / z, y = CY + (s.y * F) / z;
+    if (x < -50 || x > W + 50 || y < -50 || y > H + 50) continue;
+    const a = clamp((3000 - z) / 900) * s.b * (t < 0.8 ? t / 0.8 : 1);
+    const len = Math.min(140, (sp * 0.035 * F) / z);
+    const r = Math.max(0.6, 2.6 * (F / z) * 0.5);
+    c.strokeStyle = `rgba(200,210,255,${a})`; c.lineWidth = r; c.lineCap = 'round';
+    const ux = (x - CX), uy = (y - CY), ul = Math.hypot(ux, uy) || 1;
+    c.beginPath(); c.moveTo(x, y); c.lineTo(x - (ux / ul) * len, y - (uy / ul) * len); c.stroke();
+  }
+
+  // the ring: far away at first, then the portal everything comes through, then the "o" of adro
+  let rx = CX, ry = CY, rr = 300, rsw = 30, rot = t * 0.55, ra = 1, rg = 70;
+  if (t < 2.6) { const u = easeOut(t / 2.6); rr = lerp(40, 300, u); rsw = lerp(10, 30, u); ra = clamp(t / 0.6); }
+  if (t >= 15 && t < 16.8) { const u = (t - 15) / 1.8; rsw = 30 + 30 * Math.sin(Math.PI * u); rg = 70 + 90 * Math.sin(Math.PI * u); rr = 300 - 40 * Math.sin(Math.PI * u); }
+  if (t >= 16.8) {
+    const u = ease((t - 16.8) / 1.3);
+    rx = lerp(CX, RING_END.x, u); ry = lerp(CY, RING_END.y, u); rr = lerp(300, RING_END.r, u); rsw = lerp(30, RING_END.sw, u);
+    // spin settles so the gap ends where the logo has it
+    const r0 = (16.8 * 0.55) % (Math.PI * 2); rot = lerp(r0, Math.PI * 2, u); rg = lerp(70, 40, u);
+  }
+  ring(rx, ry, rr, rsw, rot, ra, rg);
+
+  // section titles inside the ring
+  const cats = SCHED.cats;
+  for (const k of cats) text(TXT[k.k], CX, CY, AR ? 82 : 62, 700, '#FFFFFF', fade(t, k.s + 0.05, k.s + 0.45, k.e - 0.45, k.e - 0.05), 16);
+  text(TXT.intro, CX, CY + 440, AR ? 66 : 52, 600, '#FFFFFF', fade(t, 0.5, 1.1, 2.1, 2.55), 1);
+
+  // things flying out of the ring, past you
+  const L = SCHED.L;
+  const ordered = SCHED.objs.map((o) => ({ o, p: (t - o.spawn) / L })).filter((x) => x.p > 0 && x.p < 1).sort((a, b) => a.p - b.p);
+  for (const { o, p } of ordered) {
+    const z = 150 + 2500 * Math.pow(1 - p, 2.2);
+    const k = F / z;
+    const x = CX + Math.cos(o.ang) * o.R * k, y = CY + Math.sin(o.ang) * o.R * k;
+    const s = 120 * k;
+    // Shown once it has come out of the ring (so it never sits on the title), gone as it passes you.
+    const a = clamp((o.R * k - 300) / 90) * (1 - clamp((s - 520) / 380));
+    tile(o.kind, x, y, s, a, o.spin * p);
+  }
+
+  // everything comes together into the ring
+  if (t >= 14.8 && t < 17.0) {
+    const kinds = ['watch', 'ring', 'scale', 'phone', 'bowl', 'dates', 'drop', 'dumbbell', 'kettle', 'heart', 'moon', 'plate'];
+    const u = ease((t - 14.8) / 1.9);
+    kinds.forEach((kd, i) => {
+      const th = (i / kinds.length) * Math.PI * 2 + u * 2.6;
+      const R = lerp(700, 0, u);
+      const s = lerp(150, 26, u);
+      const a = clamp((t - 14.8) / 0.35) * (1 - clamp((u - 0.82) / 0.18));
+      tile(kd, CX + Math.cos(th) * R, CY + Math.sin(th) * R * 1.15, s, a, th * 0.2);
+    });
+  }
+  text(TXT.one1, CX, CY + 520, AR ? 76 : 64, 700, '#FFFFFF', fade(t, 15.2, 15.7, 16.6, 16.95));
+  text(TXT.one2, CX, CY + 620, AR ? 76 : 64, 700, LIGHT, fade(t, 15.55, 16.05, 16.6, 16.95));
+
+  // the logo: "adr" joins the ring
+  const la = easeOut((t - 17.4) / 0.8);
+  if (la > 0) {
+    c.save(); c.globalAlpha = la; c.translate(WX - (1 - la) * 60, WY); c.scale(WS, WS); c.fillStyle = '#FFFFFF'; c.fill(LETTERS); c.restore();
+    ring(RING_END.x, RING_END.y, RING_END.r, RING_END.sw, Math.PI * 2, 1, 40);
+  }
+  text(TXT.tag, CX, CY + 360, AR ? 54 : 44, 600, '#FFFFFF', fade(t, 18.1, 18.7, 99, 100));
+  text(TXT.soon, CX, CY + 440, AR ? 40 : 34, 400, '#A1A1AA', fade(t, 18.5, 19.1, 99, 100));
+  // fade from and to black
+  const fb = Math.max(1 - clamp(t / 0.5), clamp((t - 20.2) / 0.6));
+  if (fb > 0) { c.fillStyle = `rgba(0,0,0,${fb})`; c.fillRect(0, 0, W, H); }
+};
+
+window.ready = (async () => {
+  SCHED = await (await fetch('schedule.json')).json();
+  await document.fonts.load(FONT(700, 60)); await document.fonts.load(FONT(600, 60)); await document.fonts.load(FONT(400, 40));
+  await document.fonts.ready;
+  window.render(new URLSearchParams(location.search).has('t') ? +new URLSearchParams(location.search).get('t') : 4);
+  return true;
+})();
+</script></body></html>
