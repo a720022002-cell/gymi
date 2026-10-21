@@ -132,8 +132,9 @@ export function SettingsSheet({ st, uid, onDone }: { st: State; uid: string; onD
           value={anon}
           onChange={async (v) => {
             setAnonBusy(true);
-            await setAnonMode(uid, v);
+            const ok = await setAnonMode(uid, v);
             setAnonBusy(false);
+            if (!ok) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
             setAnonState(v);
             toast(t(v ? 'Anonymous mode on. Cycle data is now only on this phone.' : 'Anonymous mode off. Cycle data is saved to your account again.'), { icon: 'lock' });
           }}

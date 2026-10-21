@@ -17,6 +17,7 @@ import { type Application, myApplication } from '@/lib/coaching';
 import { useFood } from '@/lib/food';
 import { type MyInvite, myInvite, REF_GOAL } from '@/lib/invites';
 import { RAMADAN_SWITCH } from '@/lib/nutrition';
+import { PAID_PLANS_LIVE } from '@/lib/plans';
 import { DEFAULT_PREFS, loadPrefs, notifSummary, type Prefs } from '@/lib/reminders';
 import { type ThemePref, useSettings } from '@/theme/settings';
 
@@ -130,7 +131,7 @@ export default function You() {
         <Item icon="watch" title={t('Connections')} sub={t('Devices, apps and your health records')} onPress={() => router.push('/connections')} chevron />
         {Platform.OS !== 'android' ? <Item icon="grid" title={t('Widgets')} sub={t('Home Screen, Lock Screen and workouts')} onPress={() => router.push('/widgets')} chevron /> : null}
         <Item icon="bell" title={t('Notifications')} value={notifSummary(np, t)} onPress={() => router.push('/notifications')} chevron />
-        <Item icon="star" title={t('Subscription')} value={t('Free plan')} onPress={() => router.push('/subscription')} chevron />
+        {PAID_PLANS_LIVE ? <Item icon="star" title={t('Subscription')} value={t('Free plan')} onPress={() => router.push('/subscription')} chevron /> : null}
       </List>
 
       <Label>{t('Theme')}</Label>

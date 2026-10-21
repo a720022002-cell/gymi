@@ -113,16 +113,37 @@ function unionHours(spans: { start: Date; end: Date }[]) {
   return total / 36e5;
 }
 
-/** One summary per day (local time). Sleep counts on the day you woke up. */
+/**
+ * Sleep samples grouped into nights: samples less than an hour apart belong together, so a night from 23:00 to
+ * 07:00 stays one night instead of being split at midnight.
+ */
+function sleepSessions(sleep: RawHealth['sleep']) {
+  const sorted = sleep.filter((x) => x.end > x.start).sort((a, b) => a.start.getTime() - b.start.getTime());
+  const out: { end: Date; items: RawHealth['sleep'] }[] = [];
+  let cur: (typeof out)[number] | null = null;
+  for (const x of sorted) {
+    if (cur && x.start.getTime() - cur.end.getTime() < 60 * 6e4) {
+      cur.items.push(x);
+      if (x.end > cur.end) cur.end = x.end;
+    } else {
+      cur = { end: x.end, items: [x] };
+      out.push(cur);
+    }
+  }
+  return out;
+}
+
+/** One summary per day (local time). Sleep counts on the day you woke up (a whole night on the day it ended). */
 export function buildDays(raw: RawHealth, days: string[], source: DeviceSource, today = localDay()): DeviceDay[] {
+  const nights = sleepSessions(raw.sleep);
   return days.map((day) => {
     const on = (d: Date) => localDay(d) === day;
     const steps = raw.steps.filter((x) => on(x.start));
     const kcal = raw.kcal.filter((x) => on(x.start));
     const hr = raw.hr.filter((x) => on(x.t));
     const last = (ps: Point[]) => ps.filter((x) => on(x.t)).sort((a, b) => a.t.getTime() - b.t.getTime()).at(-1)?.v ?? null;
-    const asleep = raw.sleep.filter((x) => x.kind === 'asleep' && on(x.end));
-    const bed = raw.sleep.filter((x) => on(x.end));
+    const bed = nights.filter((n) => on(n.end)).flatMap((n) => n.items);
+    const asleep = bed.filter((x) => x.kind === 'asleep');
     const sleepH = asleep.length ? unionHours(asleep) : null;
     const bedH = bed.length ? unionHours(bed) : null;
     const hrvs = raw.hrv.filter((x) => on(x.t)).map((x) => x.v);
@@ -480,7 +501,8 @@ export async function loadDeviceBrief(): Promise<DeviceBrief | null> {
 }
 
 export async function loadDevicePrefs(): Promise<DevicePrefs> {
-  const { data } = await supabase.from('device_prefs').select('source,connected,card_order,last_sync,write_back,primary').maybeSingle();
+  const { data, error } = await supabase.from('device_prefs').select('source,connected,card_order,last_sync,write_back,primary').maybeSingle();
+  if (error) throw error;
   return (data as DevicePrefs | null) ?? EMPTY_PREFS;
 }
 
@@ -514,8 +536,16 @@ let loading: string | null = null;
 async function load(uid: string) {
   if (loading === uid) return;
   loading = uid;
-  const prefs = await loadDevicePrefs();
-  const days = await loadDeviceDays(addDays(localDay(), -90), prefs.primary ?? 'auto');
+  let prefs: DevicePrefs;
+  let days: DeviceDay[];
+  try {
+    prefs = await loadDevicePrefs();
+    days = await loadDeviceDays(addDays(localDay(), -90), prefs.primary ?? 'auto');
+  } catch (e) {
+    // Not ready: the next open tries again (and saving never writes empty prefs over yours).
+    loading = null;
+    throw e;
+  }
   set({ uid, ready: true, prefs, days });
   // Phones refresh by themselves at most every 30 minutes. Once after the steps fix (they used to count twice when the
   // phone and the watch both recorded a walk), the whole last month is read again.
@@ -525,9 +555,11 @@ async function load(uid: string) {
     if (!fixed) syncDevice(30).then(() => AsyncStorage.setItem(STEPS_FIX, '1').catch(() => {}), () => {});
     else if (!prefs.last_sync || Date.now() - new Date(prefs.last_sync).getTime() > 30 * 6e4) syncDevice().catch(() => {});
   }
-  // Linked wearables (WHOOP, Oura) refresh at most every 3 hours, then the days load again.
+  // Linked wearables (WHOOP, Oura) refresh at most every 3 hours, then the days load again. On a phone they also
+  // refresh in the background, for the morning note and the illness warning.
   wearableStatus()
     .then(async (s) => {
+      if ((s?.links ?? []).some((l) => l.status === 'ok')) startBackgroundSync();
       const due = (s?.links ?? []).some((l) => l.status === 'ok' && (!l.last_sync || Date.now() - new Date(l.last_sync).getTime() > 3 * 36e5));
       if (!due) return;
       await syncWearables();
@@ -537,14 +569,14 @@ async function load(uid: string) {
 }
 
 async function savePrefs(patch: Partial<DevicePrefs>) {
-  const prefs = { ...state.prefs, ...patch };
-  set({ prefs });
-  await supabase.from('device_prefs').upsert({ user_id: state.uid, ...prefs, updated_at: new Date().toISOString() });
+  set({ prefs: { ...state.prefs, ...patch } });
+  // Only what changed, so prefs that didn't load are never saved over the ones on the server.
+  await supabase.from('device_prefs').upsert({ user_id: state.uid, ...patch, updated_at: new Date().toISOString() });
 }
 
-/** Read the phone's health data for the last `n` days and save it. Returns how many days had data. */
-export async function syncDevice(n = 7): Promise<number> {
-  if (!phoneSource || !state.uid || state.syncing) return 0;
+/** Read the phone's health data for the last `n` days and save it. Returns how many days had data, or null when it didn't run (a sync was already going). */
+export async function syncDevice(n = 7): Promise<number | null> {
+  if (!phoneSource || !state.uid || state.syncing) return null;
   set({ syncing: true });
   try {
     const today = localDay();
@@ -555,6 +587,8 @@ export async function syncDevice(n = 7): Promise<number> {
     const keep = state.days.filter((d) => !out.some((o) => o.day === d.day));
     set({ days: [...keep, ...out].sort((a, b) => a.day.localeCompare(b.day)) });
     await savePrefs({ last_sync: new Date().toISOString() });
+    // Load again so the wearable's numbers (recovery, strain, its sleep) and the main device you picked stay in.
+    await reloadDeviceDays().catch(() => {});
     return out.length;
   } finally {
     set({ syncing: false });
@@ -577,17 +611,24 @@ export async function disconnectDevice() {
 }
 
 /**
- * For the background task: load (when the app was closed), read the newest from the phone, and hand back the days.
- * Null when no phone health app is connected.
+ * For the background task: load (when the app was closed), read the newest from the phone and from a band or ring
+ * linked directly, and hand back the days. Null when neither is connected.
  */
 export async function syncInBackground(uid: string): Promise<DeviceDay[] | null> {
-  if (!phoneSource) return null;
   if (state.uid !== uid) await load(uid);
-  if (!state.prefs.connected || state.prefs.source !== phoneSource) return null;
-  // Loading may have started a sync already: wait for it (up to 20 seconds), then read the last 2 days.
-  for (let i = 0; i < 40 && state.syncing; i++) await new Promise((r) => setTimeout(r, 500));
-  await syncDevice(2).catch(() => 0);
-  return state.days;
+  const phone = !!phoneSource && state.prefs.connected && state.prefs.source === phoneSource;
+  if (phone) {
+    // Loading may have started a sync already: wait for it (up to 20 seconds), then read the last 2 days.
+    for (let i = 0; i < 40 && state.syncing; i++) await new Promise((r) => setTimeout(r, 500));
+    await syncDevice(2).catch(() => 0);
+  }
+  // A linked wearable: pull its newest days when the last pull is over an hour old.
+  const links = ((await wearableStatus().catch(() => null))?.links ?? []).filter((l) => l.status === 'ok');
+  if (links.some((l) => !l.last_sync || Date.now() - new Date(l.last_sync).getTime() > 36e5)) {
+    await syncWearables().catch(() => null);
+    await reloadDeviceDays().catch(() => {});
+  }
+  return phone || links.length ? state.days : null;
 }
 
 /**
@@ -633,7 +674,9 @@ export async function reloadDeviceDays() {
   if (!state.uid) return;
   const uid = state.uid;
   const days = await loadDeviceDays(addDays(localDay(), -90));
-  if (state.uid === uid) set({ days });
+  // Period flow from the phone is only kept in memory (never saved), so it's carried over.
+  const flow = new Map(state.days.filter((d) => d.period != null).map((d) => [d.day, d.period]));
+  if (state.uid === uid) set({ days: days.map((d) => (flow.has(d.day) ? { ...d, period: flow.get(d.day) } : d)) });
 }
 
 export const saveCardOrder = (order: string[]) => savePrefs({ card_order: order });

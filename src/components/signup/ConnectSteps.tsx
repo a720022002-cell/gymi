@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Platform, View } from 'react-native';
 
@@ -10,7 +10,7 @@ import { Button, Card, Row } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { connectDevice, phoneSource, reloadDeviceDays, sourceName, useDevices } from '@/lib/devices';
-import { linkWearable, wearableName, type WearableProvider, wearableStatus, type WearableStatus } from '@/lib/wearables';
+import { finishWearable, linkWearable, wearableName, type WearableProvider, wearableStatus, type WearableStatus } from '@/lib/wearables';
 import { useSettings } from '@/theme/settings';
 
 const hub = Platform.OS === 'android' ? 'Health Connect' : 'Apple Health';
@@ -94,15 +94,24 @@ export function DeviceStep({ onDone }: { onDone: () => void }) {
   }, [load]);
 
   // Back from the wearable's own sign-in: say how it went once.
-  const back = useLocalSearchParams<{ wearable?: string; status?: string }>();
+  // A sign-in that worked comes back as "finish": the server links it only for you (the one who started it).
+  const back = useLocalSearchParams<{ wearable?: string; status?: string; state?: string }>();
   useEffect(() => {
     if (!back.wearable || !back.status) return;
     const n = wearableName(back.wearable);
-    const msg: Record<string, string> = { linked: '{n} connected. Your last month is in.', denied: '{n} wasn’t connected: access was not allowed.', expired: 'That took too long. Tap {n} to try again.', error: 'Couldn’t connect {n}. Please try again.' };
-    toast(t(msg[back.status] ?? msg.error, { n }), { icon: back.status === 'linked' ? 'check' : 'warn' });
-    if (back.status === 'linked') reloadDeviceDays();
-    load();
-  }, [back.wearable, back.status, t, toast, load]);
+    const { status, state } = back;
+    // Clear the link first, so the message isn't shown again.
+    router.setParams({ wearable: undefined, status: undefined, state: undefined });
+    (async () => {
+      const how = status === 'finish' && state ? await finishWearable(state) : status;
+      const msg: Record<string, string> = { linked: '{n} connected. Your last month is in.', denied: '{n} wasn’t connected: access was not allowed.', expired: 'That took too long. Tap {n} to try again.', error: 'Couldn’t connect {n}. Please try again.' };
+      toast(t(msg[how] ?? msg.error, { n }), { icon: how === 'linked' ? 'check' : 'warn' });
+      if (how === 'linked') reloadDeviceDays();
+      load();
+    })();
+    // Only when coming back from a sign-in.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [back.wearable, back.status]);
 
   const on = (p: WearableProvider) => ws?.links.some((l) => l.provider === p && l.status === 'ok');
   const tap = async (p: WearableProvider) => {

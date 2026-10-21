@@ -1,9 +1,12 @@
+import { aiAllowed } from './aiConsent';
 import { supabase } from './supabase';
 
-export type AiError = 'ai_off' | 'limit' | 'busy' | 'auth' | 'too_big' | 'failed' | 'offline';
+export type AiError = 'ai_off' | 'limit' | 'busy' | 'auth' | 'too_big' | 'failed' | 'offline' | 'consent';
 
 /** Ask the Adro AI (Supabase Edge Function "ai"). The AI key lives only on the server. */
 export async function askAI<T>(task: string, body: Record<string, unknown>): Promise<{ result?: T; error?: AiError }> {
+  // Nothing goes to the AI before you allow it (asked once).
+  if (!(await aiAllowed())) return { error: 'consent' };
   try {
     const { data, error } = await supabase.functions.invoke('ai', { body: { task, ...body } });
     if (error) {
@@ -32,5 +35,6 @@ export function aiErrorText(e: AiError) {
     too_big: 'That photo is too big. Try another one.',
     failed: 'Something went wrong. Please try again.',
     offline: 'No internet connection. Please try again.',
+    consent: 'AI features are off. Turn them on in You, then Privacy and data.',
   }[e];
 }

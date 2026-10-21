@@ -110,7 +110,7 @@ Adro يعطي إرشادات عامة للياقة والتغذية، وهو م�
 |---|---|
 | **Contact Info → Name** | الاسم |
 | **Contact Info → Email Address** | الإيميل للدخول |
-| **Health & Fitness → Health** | الوزن، المقاسات، النوم، الدورة، الحمل، تحاليل الدم، الإصابات، بيانات Apple Health |
+| **Health & Fitness → Health** | الوزن، المقاسات، النوم، الدورة، الحمل، تحاليل الدم، الإصابات، بيانات Apple Health و WHOOP و Oura و Polar |
 | **Health & Fitness → Fitness** | التمارين، الخطوات، الكارديو، السعرات |
 | **User Content → Photos or Videos** | صور التقدم، صور الأكل والأجهزة والملصقات (تنرسل للذكاء الاصطناعي عشان يقراها) |
 | **User Content → Other User Content** | رسائل المدرب الذكي، الوجبات المحفوظة، الملاحظات |
@@ -120,7 +120,7 @@ Adro يعطي إرشادات عامة للياقة والتغذية، وهو م�
 
 **ما نجمع:** الموقع الدقيق، جهات الاتصال، بيانات الدفع (لسا ما فيه دفع)، سجل التصفح، الإعلانات.
 
-**Third-party:** الصور والنصوص تنرسل لمزود الذكاء الاصطناعي (OpenRouter) عشان يحللها. هذا يعتبر "معالج بيانات" لصالح التطبيق، مو تتبع.
+**Third-party:** الصور والنصوص تنرسل لمزود الذكاء الاصطناعي (OpenRouter) عشان يحللها. هذا يعتبر "معالج بيانات" لصالح التطبيق، مو تتبع. **وما ينرسل شي إلا بعد ما المستخدم يضغط «اسمح»** (Apple 5.1.2(i))، ويقدر يطفيها من الخصوصية والبيانات.
 
 ## 5. أسئلة Google (Data Safety)
 
@@ -142,7 +142,9 @@ Adro يعطي إرشادات عامة للياقة والتغذية، وهو م�
 | البند | الحالة |
 |---|---|
 | حذف الحساب من داخل التطبيق | ✅ موجود، والسيرفر يتأكد من كلمة المرور |
-| صفحة سياسة الخصوصية وشروط الاستخدام | ✅ داخل التطبيق، وبرابط ويب: الخصوصية `https://gymi-inky.vercel.app/legal` والشروط `https://gymi-inky.vercel.app/legal?doc=terms` (تتغير مع الاسم الجديد). **باقي إيميل تواصل** |
+| صفحة سياسة الخصوصية وشروط الاستخدام | ✅ داخل التطبيق، وبرابط ويب: الخصوصية `https://gymi-inky.vercel.app/site/privacy` والشروط `https://gymi-inky.vercel.app/site/terms` والدعم `https://gymi-inky.vercel.app/site/support` (تتغير لـ adro.sa لما يشتغل الدومين). **باقي إيميل support@adro.sa يشتغل** |
+| **إذن الذكاء الاصطناعي** (Apple 5.1.2(i)، من نوفمبر 2025) | ✅ (21 أكتوبر) أول ما يستخدم ميزة ذكاء اصطناعي، يطلع له سؤال يشرح وش ينرسل ولمين (OpenRouter)، وما ينرسل شي قبل «اسمح». وفيه زر تشغيل وإطفاء في الخصوصية والبيانات، والسياسة محدّثة |
+| **أزرار ما تشتغل** (Apple 2.1) | ✅ (21 أكتوبر) صفحة الاشتراك مخفية لين يشتغل الدفع (`src/lib/plans.ts` → `PAID_PLANS_LIVE`)، ومكافأة الدعوات تقول إنها تبدأ مع Premium |
 | إخلاء مسؤولية طبي | ✅ في المدرب الذكي، تحاليل الدم، الدورة والحمل |
 | نصوص الأذونات (الكاميرا، الصور، المايك، Face ID، Apple Health) | ✅ مكتوبة وواضحة |
 | **الإبلاغ والحظر للمستخدمين** (Apple 1.2) | ✅ إبلاغ وحظر من صفحة الصديق وطلبات الصداقة، إبلاغ عن المدرب، قائمة المحظورين، وصفحة أدمن للبلاغات. والشروط فيها "ممنوع الإساءة" ومراجعة خلال 24 ساعة |
@@ -150,10 +152,11 @@ Adro يعطي إرشادات عامة للياقة والتغذية، وهو م�
 | الذكاء الاصطناعي | ✅ يقول إنه مو طبيب. Apple يحب يشوف هذا واضح |
 | التصنيف العمري | 12+ (معلومات طبية بشكل خفيف) |
 | تسجيل الدخول | ✅ إيميل وكلمة مرور فقط، فما يلزم "Sign in with Apple" |
-| الدفع | ما فيه دفع في النسخة الأولى. إذا انضاف لازم يكون عن طريق Apple و Google |
+| الدفع | ما فيه دفع في النسخة الأولى. إذا انضاف لازم يكون عن طريق Apple و Google. دفع الكوتشات يتفق عليه الشخص مع الكوتش مباشرة (خدمة شخص لشخص، Apple 3.1.3(d)) |
+| Apple Health | ✅ يشرح وين ينستخدم: أنت ← التطبيق ← الاتصالات. وما ينستخدم للإعلانات (السياسة تقول هذا) |
 
 ## 7. ملاحظات للمراجعة (Review notes)
 
 نص جاهز تحطه في App Store Connect:
 
-Adro is a fitness and nutrition coach. Demo account: [email] / [password] (has a training plan, a meal plan and a week of logs). AI features (meal photos, chat, weekly recap) need an internet connection. Health data is used only inside the app and never for advertising. Account deletion: You → Privacy and data → Delete account.
+Adro is a fitness and nutrition coach. Demo account: [email] / [password] (has a training plan, a meal plan and a week of logs). AI features (meal photos, chat, weekly recap) need an internet connection and ask for permission the first time (they send data to OpenRouter only after the user taps Allow; it can be turned off in You → Privacy and data). Apple Health is optional, connected from You → App → Connections, and its data is used only inside the app, never for advertising. Widgets and the workout Live Activity show the user's own numbers. Account deletion: You → Privacy and data → Delete account.

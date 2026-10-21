@@ -8,8 +8,9 @@ import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
-import { Button, Card, ErrorText, Row } from '@/components/ui';
+import { Button, Card, ErrorText, Row, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
+import { setAiConsent, useAiConsent } from '@/lib/aiConsent';
 import { useAuth } from '@/lib/auth';
 import { localDay } from '@/lib/nutrition';
 import { supabase } from '@/lib/supabase';
@@ -24,6 +25,7 @@ const TABLES = [
 export default function Privacy() {
   const { t } = useT();
   const { colors: c } = useSettings();
+  const ai = useAiConsent();
   const toast = useToast();
   const { session, logOut } = useAuth();
   const [busy, setBusy] = useState(false);
@@ -62,7 +64,7 @@ export default function Privacy() {
     setDeleting(false);
     if (error) {
       const code = await (error as { context?: Response }).context?.json().then((j: { error?: string }) => j.error).catch(() => null);
-      return setErr(t(code === 'password' ? 'That password is not right.' : 'Couldn’t delete. Please try again.'));
+      return setErr(t(code === 'password' ? 'That password is not right.' : code === 'slow' ? 'Too many tries. Wait a few minutes and try again.' : 'Couldn’t delete. Please try again.'));
     }
     setStep(0);
     await logOut().catch(() => {});
@@ -76,6 +78,18 @@ export default function Privacy() {
         {t('Your data belongs to you.')}
       </Text>
       <Card style={{ marginTop: 16 }}>
+        <Row>
+          <Icon name="sparkle" size={20} color={c.cobalt} />
+          <View style={{ flex: 1 }}>
+            <Text weight={700}>{t('AI features')}</Text>
+            <Text variant="small" color="sec">
+              {t('Food photos, the coach, recipes and recaps. What you ask goes to an outside AI service to get the answer.')}
+            </Text>
+          </View>
+          <Toggle value={ai.value === 'yes'} onChange={setAiConsent} label={t('AI features')} />
+        </Row>
+      </Card>
+      <Card>
         <Row>
           <Icon name="download" size={20} color={c.cobalt} />
           <View style={{ flex: 1 }}>

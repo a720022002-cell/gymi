@@ -59,7 +59,7 @@ const isProvider = (p: unknown): p is Provider => p === 'whoop' || p === 'oura' 
 const configured = (p: Provider) => !!env(PROVIDERS[p].id) && !!env(PROVIDERS[p].secret);
 
 // Where the browser may be sent back after signing in: the Adro website, the phone app, or a local test server.
-const RETURN_OK = /^(https:\/\/gymi-inky\.vercel\.app|https:\/\/[a-z0-9-]+\.vercel\.app|adro:\/\/|exp\+adro:\/\/|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)(\/|$)/;
+const RETURN_OK = /^(https:\/\/gymi-inky\.vercel\.app|adro:\/\/|exp\+adro:\/\/|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?)(\/|$)/;
 
 const ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
 const randomState = (n: number) => Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) => ABC[b % ABC.length]).join('');
@@ -95,17 +95,30 @@ const expiry = (s?: number) => (s ? new Date(Date.now() + s * 1000).toISOString(
 /** A working access key: refreshed a minute before it runs out. A refused refresh marks the link "expired". */
 async function accessToken(db: SupabaseClient, l: Link) {
   if (!l.expires_at || new Date(l.expires_at).getTime() - 60_000 > Date.now()) return l.access_token;
-  if (!l.refresh_token) throw new Error('expired');
+  // Polar has no refresh: after about a year the person signs in again.
+  if (!l.refresh_token) {
+    await db.from('device_links').update({ status: 'expired', last_error: 'key ran out' }).eq('user_id', l.user_id).eq('provider', l.provider);
+    throw new Error('expired');
+  }
   try {
     const t = await tokenRequest(l.provider, { grant_type: 'refresh_token', refresh_token: l.refresh_token, ...(l.provider === 'whoop' ? { scope: 'offline' } : {}) });
-    // The old refresh token stops working once a new one is issued, so it's saved right away.
-    await db.from('device_links').update({ access_token: t.access_token, refresh_token: t.refresh_token ?? l.refresh_token, expires_at: expiry(t.expires_in), status: 'ok', last_error: null }).eq('user_id', l.user_id).eq('provider', l.provider);
+    // The old refresh token stops working once a new one is issued, so it's saved right away (only if nobody else
+    // refreshed it in the meantime).
+    await db.from('device_links').update({ access_token: t.access_token, refresh_token: t.refresh_token ?? l.refresh_token, expires_at: expiry(t.expires_in), status: 'ok', last_error: null }).eq('user_id', l.user_id).eq('provider', l.provider).eq('refresh_token', l.refresh_token);
     l.access_token = t.access_token;
     l.refresh_token = t.refresh_token ?? l.refresh_token;
     return t.access_token;
   } catch (e) {
-    await db.from('device_links').update({ status: 'expired', last_error: String(e).slice(0, 300) }).eq('user_id', l.user_id).eq('provider', l.provider);
-    throw new Error('expired');
+    // The scheduled sync and the app can refresh at the same moment: if the other one already got a new key, use it.
+    const { data: now } = await db.from('device_links').select('access_token,refresh_token,expires_at').eq('user_id', l.user_id).eq('provider', l.provider).maybeSingle();
+    if (now && now.refresh_token !== l.refresh_token && now.expires_at && new Date(now.expires_at).getTime() > Date.now()) {
+      Object.assign(l, now);
+      return now.access_token as string;
+    }
+    // Only a refused key means signing in again; a timeout or a server error is tried again later.
+    const refused = /token (400|401)/.test(String(e));
+    await db.from('device_links').update({ status: refused ? 'expired' : 'error', last_error: String(e).slice(0, 300) }).eq('user_id', l.user_id).eq('provider', l.provider);
+    throw new Error(refused ? 'expired' : 'failed');
   }
 }
 
@@ -187,7 +200,8 @@ async function whoopDays(token: string, from: Date) {
   }
   for (const c of cycles as { start: string; timezone_offset?: string; score_state?: string; score?: Record<string, unknown>; step_count?: number }[]) {
     if (c.score_state !== 'SCORED' || !c.score) continue;
-    const d = at(localDay(c.start, c.timezone_offset));
+    // A cycle starts when you fall asleep: it belongs to the day you wake into (6 hours later lands there).
+    const d = at(localDay(new Date(Date.parse(c.start) + 6 * 36e5).toISOString(), c.timezone_offset));
     d.strain = num(c.score.strain) != null ? r1(c.score.strain as number) : null;
     d.hr_avg = num(c.score.average_heart_rate) != null ? Math.round(c.score.average_heart_rate as number) : null;
     if (num(c.step_count) != null) d.steps = Math.round(c.step_count as number);
@@ -206,7 +220,12 @@ async function ouraDays(token: string, from: Date) {
   // The end day isn't included: tomorrow, so today counts.
   const end_date = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
   const q = { start_date, end_date };
-  const get = (path: string) => all('oura', token, `/v2/usercollection/${path}`, q).catch(() => [] as Record<string, unknown>[]);
+  // A missing list is skipped, but a key that was taken back stops the sync (so the link shows "sign in again").
+  const get = (path: string) =>
+    all('oura', token, `/v2/usercollection/${path}`, q).catch((e) => {
+      if ((e as Error).message === 'unauthorized') throw e;
+      return [] as Record<string, unknown>[];
+    });
   const [readiness, dsleep, sleep, activity, spo2, wos] = await Promise.all([get('daily_readiness'), get('daily_sleep'), get('sleep'), get('daily_activity'), get('daily_spo2'), get('workout')]);
   const days = new Map<string, Day>();
   const at = (d: string) => days.get(d) ?? (days.set(d, { workouts: [] }), days.get(d)!);
@@ -358,16 +377,17 @@ async function syncLink(db: SupabaseClient, l: Link, n: number) {
 async function callback(url: URL) {
   const db = admin();
   const state = url.searchParams.get('state') ?? '';
-  const { data: st } = await db.from('oauth_states').delete().eq('state', state).select('user_id,provider,return_to,created_at').maybeSingle();
+  const { data: st } = await db.from('oauth_states').select('user_id,provider,return_to,created_at,pending').eq('state', state).is('pending', null).maybeSingle();
   const back = (to: string, q: Record<string, string>) => {
     const u = new URL(to);
     for (const [k, v] of Object.entries(q)) u.searchParams.set(k, v);
     return new Response(null, { status: 302, headers: { Location: u.toString() } });
   };
   if (!st || !isProvider(st.provider)) return new Response('This sign-in link has expired. Go back to Adro and try again.', { status: 400 });
-  if (Date.now() - new Date(st.created_at).getTime() > 10 * 60_000) return back(st.return_to, { wearable: st.provider, status: 'expired' });
+  const drop = () => db.from('oauth_states').delete().eq('state', state);
+  if (Date.now() - new Date(st.created_at).getTime() > 10 * 60_000) return (await drop(), back(st.return_to, { wearable: st.provider, status: 'expired' }));
   const code = url.searchParams.get('code');
-  if (!code) return back(st.return_to, { wearable: st.provider, status: url.searchParams.get('error') === 'access_denied' ? 'denied' : 'error' });
+  if (!code) return (await drop(), back(st.return_to, { wearable: st.provider, status: url.searchParams.get('error') === 'access_denied' ? 'denied' : 'error' }));
   try {
     const t = await tokenRequest(st.provider, { grant_type: 'authorization_code', code, redirect_uri: SELF });
     // Who this is on the wearable's side (to spot the same band linked twice later).
@@ -383,16 +403,31 @@ async function callback(url: URL) {
         who = String(j.user_id ?? j.id ?? '') || null;
       } catch {}
     }
-    const link = { user_id: st.user_id, provider: st.provider, provider_user: who, access_token: t.access_token, refresh_token: t.refresh_token ?? null, expires_at: expiry(t.expires_in), scopes: t.scope ?? PROVIDERS[st.provider].scope, status: 'ok', last_error: null };
-    const { error } = await db.from('device_links').upsert(link, { onConflict: 'user_id,provider' });
+    // The keys wait here until the app that started this, signed in as the same person, confirms it ("finish").
+    // A sign-in link sent to someone else can't put their band on the sender's account.
+    const pending = { provider_user: who, access_token: t.access_token, refresh_token: t.refresh_token ?? null, expires_at: expiry(t.expires_in), scopes: t.scope ?? PROVIDERS[st.provider].scope };
+    const { error } = await db.from('oauth_states').update({ pending }).eq('state', state);
     if (error) throw new Error(error.message);
-    // The last month right away, so there's something to see.
-    await syncLink(db, { ...link, last_sync: null } as Link, 30).catch((e) => console.error('first sync', String(e)));
-    return back(st.return_to, { wearable: st.provider, status: 'linked' });
+    return back(st.return_to, { wearable: st.provider, status: 'finish', state });
   } catch (e) {
     console.error('callback', String(e));
+    await drop();
     return back(st.return_to, { wearable: st.provider, status: 'error' });
   }
+}
+
+/** The app confirms a sign-in it started: only the same signed-in person gets the link. */
+async function finish(db: SupabaseClient, uid: string, state: string) {
+  const { data: st } = await db.from('oauth_states').delete().eq('state', state).not('pending', 'is', null).select('user_id,provider,created_at,pending').maybeSingle();
+  if (!st || !isProvider(st.provider)) return 'expired';
+  if (st.user_id !== uid) return 'error';
+  if (Date.now() - new Date(st.created_at).getTime() > 30 * 60_000) return 'expired';
+  const link = { user_id: uid, provider: st.provider, ...(st.pending as Record<string, unknown>), status: 'ok', last_error: null };
+  const { error } = await db.from('device_links').upsert(link, { onConflict: 'user_id,provider' });
+  if (error) throw new Error(error.message);
+  // The last month right away, so there's something to see.
+  await syncLink(db, { ...link, last_sync: null } as unknown as Link, 30).catch((e) => console.error('first sync', String(e)));
+  return 'linked';
 }
 
 // ---------------------------------------------------------------------------
@@ -401,7 +436,10 @@ async function callback(url: URL) {
 /** Links not synced for 3 hours, oldest first: the last 3 days each, for at most 100 seconds per run. */
 async function cronSync(db: SupabaseClient) {
   const since = new Date(Date.now() - 3 * 36e5).toISOString();
-  const { data } = await db.from('device_links').select('user_id,provider,access_token,refresh_token,expires_at,last_sync').eq('status', 'ok').or(`last_sync.is.null,last_sync.lt.${since}`).order('last_sync', { ascending: true, nullsFirst: true }).limit(60);
+  // Links that failed for a passing reason (a timeout, the maker's server down) are tried again when their last good
+  // sync is over 6 hours old.
+  const errSince = new Date(Date.now() - 6 * 36e5).toISOString();
+  const { data } = await db.from('device_links').select('user_id,provider,access_token,refresh_token,expires_at,last_sync').or(`and(status.eq.ok,or(last_sync.is.null,last_sync.lt.${since})),and(status.eq.error,or(last_sync.is.null,last_sync.lt.${errSince}))`).order('last_sync', { ascending: true, nullsFirst: true }).limit(60);
   const stop = Date.now() + 100_000;
   let ok = 0;
   let failed = 0;
@@ -463,12 +501,21 @@ if (!Deno.env.get('WEARABLES_TEST')) Deno.serve(async (req) => {
       return json({ url: a.toString() });
     }
 
+    if (body.action === 'finish') {
+      return json({ status: await finish(db, uid, String(body.state ?? '')) });
+    }
+
     if (body.action === 'sync') {
       const { data: links } = await db.from('device_links').select('user_id,provider,access_token,refresh_token,expires_at,last_sync').eq('user_id', uid);
       const out: Record<string, number | string> = {};
       for (const l of (links ?? []) as Link[]) {
         if (isProvider(body.provider) && l.provider !== body.provider) continue;
         if (!configured(l.provider)) continue;
+        // Not again within a minute (each sync is many calls to the maker, shared by everyone).
+        if (l.last_sync && Date.now() - new Date(l.last_sync).getTime() < 60_000) {
+          out[l.provider] = 0;
+          continue;
+        }
         // A week back (a month the first time), so late-scored nights are filled in too.
         const n = Math.min(60, Math.max(2, Number(body.days) || (l.last_sync ? 7 : 30)));
         try {

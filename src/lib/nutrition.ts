@@ -50,7 +50,7 @@ export type FoodPlan = {
   /** Recipes changed by swapping an ingredient (or made from your ingredients), per meal slot. */
   custom?: Record<string, CustomRecipe>;
   /** `lock`: you started buying a week's or a month's list, so meals (and the list) stay the same from `from` to `to`. */
-  shop?: { checked: Record<string, boolean>; extra: { n: string; q: string; cat: string }[]; hidden: string[]; scope: number; lock?: { from: string; to: string; scope: number }; checkedFor?: string };
+  shop?: { checked: Record<string, boolean>; extra: { n: string; q: string; cat: string }[]; hidden: string[]; scope: number; lock?: { from: string; to: string; scope: number }; checkedFor?: string; ticks?: Record<string, Record<string, boolean>> };
   ramadan?: boolean;
   /** City for iftar and suhoor times (Ramadan mode). Riyadh when not set. */
   city?: string;
@@ -271,6 +271,24 @@ export const nextMealId = (meals: Meal[]) => withMealIds(meals).reduce((a, m) =>
 /** `contains`: your allergens in this meal, only when there was no safe recipe to pick (shown as a warning). */
 export type PlannedMeal = Meal & { key: string; r: CustomRecipe; k: number; p: number; c: number; f: number; contains?: string[] };
 
+// Each recipe's allergens, worked out once for the current allergy settings (planMeals runs for every day of a list).
+let allergyCache = { key: '', map: new WeakMap<Recipe, string[]>() };
+function allergensOf(f: FoodPlan) {
+  const key = JSON.stringify([f.allergies ?? [], f.allergyNote ?? '']);
+  if (allergyCache.key !== key) allergyCache = { key, map: new WeakMap() };
+  const { map } = allergyCache;
+  return (x: Recipe) => {
+    let v = map.get(x);
+    if (!v) {
+      const texts = [x.n, ...x.ing.map((g) => g[0])];
+      const own = noteHit(texts, f.allergyNote);
+      v = [...allergensIn(texts, f.allergies), ...(own ? [own] : [])];
+      map.set(x, v);
+    }
+    return v;
+  };
+}
+
 /**
  * A day's suggested meals, sized to the daily calories. Your own AI recipes come first, then the built-in ones; the
  * dish changes from day to day (and with "Change meal"), and the same dish isn't used twice in a day.
@@ -287,29 +305,27 @@ export function planMeals(f: FoodPlan, day?: string, dayKcal?: number): PlannedM
   const tot = ws.reduce((a, b) => a + b, 0) || 1;
   // Recipes already on today's plan: another one is picked when there's a choice, so meals don't repeat.
   const used = new Set<string>();
+  const has = allergensOf(f);
   return meals.map((m, i) => {
     const type = m.type ?? m.n;
     const key = `${ram ? 'r' : ''}${type}${m.id ?? i}`;
     // Recipes without your allergens: this meal's for your goal; when that's fewer than 3, any for this meal too,
     // then other meals' (so there's always a choice and "Change meal" changes something).
     // Your own words count too ("strawberries"), not just the allergens you picked.
-    const has = (x: Recipe) => {
-      const texts = [x.n, ...x.ing.map((g) => g[0])];
-      const own = noteHit(texts, f.allergyNote);
-      return [...allergensIn(texts, f.allergies), ...(own ? [own] : [])];
-    };
     const safe = (list: Recipe[]) => list.filter((x) => !has(x).length);
     const ai = ram ? [] : (f.aiRecipes?.list ?? []).filter((x) => x.type === type);
     const all = [...ai, ...(RECIPES[type] ?? RECIPES.Snack)];
     const mine = all.filter((x) => x.tag === tag);
     // Borrowing from other meals: full meals for a main meal, snacks for a snack.
     const light = (k: string) => k === 'Snack' || k === 'Pre-workout';
-    const others = Object.entries(RECIPES)
-      .filter(([k]) => k !== type && k !== 'Iftar' && k !== 'Suhoor' && light(k) === light(type))
-      .flatMap(([, v]) => v);
-    const grow = (a: Recipe[], b: Recipe[]) => (a.length >= 3 ? a : [...a, ...b.filter((x) => !a.includes(x))]);
+    const others = () =>
+      Object.entries(RECIPES)
+        .filter(([k]) => k !== type && k !== 'Iftar' && k !== 'Suhoor' && light(k) === light(type))
+        .flatMap(([, v]) => v);
+    // The wider lists are only checked when the closer ones are too short.
+    const grow = (a: Recipe[], b: () => Recipe[]) => (a.length >= 3 ? a : [...a, ...b().filter((x) => !a.includes(x))]);
     const okMine = safe(mine);
-    const safeAll = grow(grow(okMine, safe(all)), safe(others));
+    const safeAll = grow(grow(okMine, () => safe(all)), () => safe(others()));
     const pool = safeAll.length ? safeAll : mine.length ? mine : all;
     const start = (f.picks?.[key] ?? 0) + dayNo;
     const fresh = Array.from({ length: pool.length }, (_, j) => pool[(start + j) % pool.length]).find((x) => !used.has(x.n));

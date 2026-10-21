@@ -14,6 +14,7 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Row } from '@/components/ui';
 import { useT } from '@/i18n';
 import { inviteText, type MyInvite, myInvite, REF_GOAL } from '@/lib/invites';
+import { PAID_PLANS_LIVE } from '@/lib/plans';
 import { shortDate } from '@/lib/progress';
 import { myReferrals } from '@/lib/social';
 import { useSettings } from '@/theme/settings';
@@ -92,6 +93,7 @@ export default function Invite() {
         <Text variant="small" color="sec" style={{ marginTop: 12 }}>
           {t('Every {n} friends who join with your code gives you 1 month of Adro Premium free.', { n: REF_GOAL })}{' '}
           {t('A friend counts once they’ve used Adro on 2 different days.')}
+          {PAID_PLANS_LIVE ? null : ` ${t('Free months start when Adro Premium launches. We keep count until then.')}`}
         </Text>
         {inv?.waiting ? (
           <Text variant="small" color="sec" style={{ marginTop: 6 }}>
@@ -105,7 +107,7 @@ export default function Invite() {
               <Text variant="small" weight={700}>
                 {earned > 1 ? t('{n} free months earned.', { n: earned }) : t('1 free month earned.')}
               </Text>{' '}
-              {t('Added to your subscription.')}
+              {t(PAID_PLANS_LIVE ? 'Added to your subscription.' : 'Saved for when Adro Premium launches.')}
             </Text>
           </Row>
         ) : null}

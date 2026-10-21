@@ -25,8 +25,16 @@ Deno.serve(async (req) => {
     if (!email || typeof body.password !== 'string' || !body.password) return json({ error: 'password' }, 403);
     const anon = createClient(url, Deno.env.get('SUPABASE_ANON_KEY') ?? '', { auth: { persistSession: false } });
     const { error: pe } = await anon.auth.signInWithPassword({ email, password: body.password });
-    if (pe) return json({ error: 'password' }, 403);
+    // Too many tries is "wait a bit", not "wrong password".
+    if (pe) return pe.status === 429 ? json({ error: 'slow' }, 429) : json({ error: 'password' }, 403);
+    // That check made a session of its own: it isn't needed.
+    await anon.auth.signOut().catch(() => {});
     const id = u.user.id;
+    // WHOOP, Oura and Polar are told first (their own access is taken back), the same way Disconnect does.
+    const { data: links } = await admin.from('device_links').select('provider').eq('user_id', id);
+    for (const l of links ?? []) {
+      await fetch(`${url}/functions/v1/wearables`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'disconnect', provider: l.provider }) }).catch(() => {});
+    }
     // Files live in storage under the user's folder in each bucket (photos, health files, certificates, avatar).
     // Every file must be gone before the account is: otherwise health files would stay behind with no owner.
     for (const bucket of ['progress', 'health-files', 'coach-certs', 'avatars']) {

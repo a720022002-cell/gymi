@@ -9,6 +9,7 @@ Everything in the code is ready for the phone apps. The steps below need **your*
 - Delete account and download data (Apple and Google require this). Deleting runs on the server only.
 - Privacy policy and terms pages inside the app (You → Account).
 - App settings for the stores: app name, icons, splash, bundle id `com.adro.app`, camera and photo permission texts, and build profiles in `eas.json`.
+- (21 Oct) AI asks for permission before sending anything to the outside AI service, the Subscription page is hidden until payments work (`PAID_PLANS_LIVE` in `src/lib/plans.ts`), and the privacy policy covers AI and WHOOP, Oura and Polar. Full review checklist: `docs/STORE-LISTING.md` section 6.
 
 ## What you need to do
 

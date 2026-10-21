@@ -14,9 +14,9 @@ import { useFonts } from 'expo-font';
 import { type ErrorBoundaryProps, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
-import '@/lib/renameKeys';
+import { keysReady } from '@/lib/renameKeys';
 // Defines the background health sync first thing, so it also exists when the phone starts Adro in the background.
 import '@/lib/backgroundSync';
 import { ErrorScreen } from '@/components/ErrorScreen';
@@ -31,6 +31,7 @@ import { OfflineBanner } from '@/components/OfflineBanner';
 import { ReferralClaim } from '@/components/ReferralClaim';
 import { ReminderSync } from '@/components/ReminderSync';
 import { ToastProvider } from '@/components/Toast';
+import { AiConsentSheet } from '@/components/ai/AiConsentSheet';
 import { UpdateBanner } from '@/components/UpdateBanner';
 import { AuthProvider } from '@/lib/auth';
 import { FoodProvider } from '@/lib/food';
@@ -49,6 +50,11 @@ export function ErrorBoundary(p: ErrorBoundaryProps) {
 }
 
 export default function RootLayout() {
+  // Saved data moved from the old "gymi." keys first (phones only; the splash screen stays up until then).
+  const [moved, setMoved] = useState(false);
+  useEffect(() => {
+    keysReady.then(() => setMoved(true));
+  }, []);
   const [fontsLoaded, fontError] = useFonts({
     Sora_500Medium,
     Sora_600SemiBold,
@@ -64,6 +70,7 @@ export default function RootLayout() {
     IBMPlexSansArabic_700Bold,
   });
 
+  if (!moved) return null;
   return (
     <SettingsProvider>
       <AuthProvider>
@@ -104,6 +111,7 @@ function AppStack({ ready }: { ready: boolean }) {
         <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
         <Stack.Screen name="welcome" options={{ animation: 'fade' }} />
       </Stack>
+      <AiConsentSheet />
       <LogSheet />
       <BalanceSheet />
       <CaffeineSheet />

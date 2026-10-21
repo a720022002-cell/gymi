@@ -8,6 +8,7 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Row } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useIsAdmin } from '@/lib/admin';
+import { localDay } from '@/lib/nutrition';
 import { shortDate } from '@/lib/progress';
 import { type AdminReport, adminReports, closeReport, REPORT_REASONS } from '@/lib/social';
 import { useSettings } from '@/theme/settings';
@@ -68,7 +69,7 @@ export default function AdminReports() {
                 <Text variant="small" color="sec">{[r.reported ? `@${r.reported}` : null, t(r.kind === 'coach' ? 'Coach page' : r.kind === 'group' ? 'Group' : r.kind === 'challenge' ? 'Challenge' : 'Person')].filter(Boolean).join(' · ')}</Text>
               </View>
               <Text variant="xs" color="sec">
-                {shortDate(r.created_at.slice(0, 10), lang)}
+                {shortDate(localDay(new Date(r.created_at)), lang)}
               </Text>
             </Row>
             <Text weight={700} color={c.down} style={{ marginTop: 8 }}>

@@ -91,7 +91,9 @@ export function useReportStats(from: string, to: string, data: ReportData | null
   for (let d = from; d <= to; d = addDays(d, 1)) {
     const v = data.days[d];
     if (v && v.k > 0 && food.setupDone) {
-      count('cal', Math.abs(v.k - food.target.k) <= food.target.k * 0.1, d);
+      // That day's own goal (with calories moved between days); burned calories are only known for the day on screen.
+      const goal = food.dayGoal(d) + (d === food.day ? food.burned : 0);
+      count('cal', Math.abs(v.k - goal) <= goal * 0.1, d);
       count('prot', v.p >= food.target.p * 0.9, d);
     }
     if (v && v.w > 0) count('water', v.w >= (food.plan.water || 2800), d);

@@ -1,3 +1,4 @@
+import { siteUrl } from './config';
 import { supabase } from './supabase';
 
 export type Share = { workouts: boolean; prs: boolean; streak: boolean; weight: boolean; body: boolean; photos: boolean };
@@ -257,7 +258,8 @@ export async function friendShowcase(id: string) {
   return (data as Showcase | null) ?? null;
 }
 
-export const INVITE_BASE = 'https://gymi-inky.vercel.app/welcome?ref=';
+// The same site address as the other invite links (from config).
+export const INVITE_BASE = `${siteUrl()}/welcome?ref=`;
 export async function myReferrals() {
   const { data } = await supabase.rpc('my_referrals');
   return (data as { name: string | null; username: string; joined: string }[] | null) ?? [];

@@ -121,17 +121,27 @@ const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
  * Arabic names are checked too: "فراولة" finds "Strawberries". Arabic words match with و ب ف ل ك and ال in front.
  */
 export function noteHit(texts: string[], note?: string): string | null {
-  const words = noteWords(note);
-  if (!words.length) return null;
+  const res = noteRegexes(note);
+  if (!res.length) return null;
   const en = texts.join(' | ').toLowerCase();
   const ar = [...texts.map((x) => AR[x] ?? ''), ...texts].join(' | ');
-  for (const w of words) {
-    const re = /[\u0600-\u06FF]/.test(w)
-      ? new RegExp(`(?<!${AR_LETTER})(?:[وبفلك])?(?:ال|لل)?${esc(w)}`)
-      : new RegExp(`\\b${esc(w)}`, 'i');
-    if (re.test(ar) || re.test(en)) return w;
-  }
+  for (const [w, re] of res) if (re.test(ar) || re.test(en)) return w;
   return null;
+}
+
+// The note's words as regexes, kept for the last note (the same note is checked against many recipes).
+let noteCache: { note: string; res: [string, RegExp][] } = { note: '', res: [] };
+function noteRegexes(note?: string) {
+  const n = note ?? '';
+  if (noteCache.note !== n)
+    noteCache = {
+      note: n,
+      res: noteWords(n).map((w) => [
+        w,
+        /[\u0600-\u06FF]/.test(w) ? new RegExp(`(?<!${AR_LETTER})(?:[وبفلك])?(?:ال|لل)?${esc(w)}`) : new RegExp(`\\b${esc(w)}`, 'i'),
+      ]),
+    };
+  return noteCache.res;
 }
 
 /** Open Food Facts allergen tags, as our allergens. */

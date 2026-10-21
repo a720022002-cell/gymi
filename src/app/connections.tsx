@@ -11,7 +11,7 @@ import { Button, Card, Chip, Row, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { connectDevice, type DevicePrimary, disconnectDevice, phoneSource, reloadDeviceDays, setPrimaryDevice, setWriteBack, sourceName, syncDevice, useDevices } from '@/lib/devices';
-import { linkWearable, syncWearables, unlinkWearable, wearableName, type WearableProvider, wearableStatus, type WearableStatus } from '@/lib/wearables';
+import { finishWearable, linkWearable, syncWearables, unlinkWearable, wearableName, type WearableProvider, wearableStatus, type WearableStatus } from '@/lib/wearables';
 import { useWatchPrefs } from '@/lib/watchPrefs';
 import { useSettings } from '@/theme/settings';
 
@@ -33,15 +33,25 @@ export default function Connections() {
   }, [loadWs]);
 
   // Back from a wearable's sign-in: say how it went once, then clear the link.
-  const back = useLocalSearchParams<{ wearable?: string; status?: string }>();
+  // A sign-in that worked comes back as "finish": the server links it only for you (the one who started it).
+  const back = useLocalSearchParams<{ wearable?: string; status?: string; state?: string }>();
   useEffect(() => {
     if (!back.wearable || !back.status) return;
     const n = wearableName(back.wearable);
-    const msg: Record<string, string> = { linked: '{n} connected. Your last month is in.', denied: '{n} wasn’t connected: access was not allowed.', expired: 'That took too long. Tap {n} to try again.', error: 'Couldn’t connect {n}. Please try again.' };
-    toast(t(msg[back.status] ?? msg.error, { n }), { icon: back.status === 'linked' ? 'check' : 'warn' });
-    if (back.status === 'linked') reloadDeviceDays();
+    const { status, state } = back;
     router.replace('/connections');
-  }, [back.wearable, back.status, t, toast]);
+    (async () => {
+      const how = status === 'finish' && state ? await finishWearable(state) : status;
+      const msg: Record<string, string> = { linked: '{n} connected. Your last month is in.', denied: '{n} wasn’t connected: access was not allowed.', expired: 'That took too long. Tap {n} to try again.', error: 'Couldn’t connect {n}. Please try again.' };
+      toast(t(msg[how] ?? msg.error, { n }), { icon: how === 'linked' ? 'check' : 'warn' });
+      if (how === 'linked') {
+        reloadDeviceDays();
+        loadWs();
+      }
+    })();
+    // Only when coming back from a sign-in.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [back.wearable, back.status]);
 
   const hub = Platform.OS === 'android' ? 'Health Connect' : 'Apple Health';
   // The four steps need about 325 points at 11 pt text; narrower cards get slightly smaller text.
@@ -63,6 +73,8 @@ export default function Connections() {
     if (phoneLinked) {
       const x = await syncDevice(7).catch(() => 0);
       setBusy(null);
+      // Null: a sync was already going (it brings the days in by itself).
+      if (x == null) return;
       return toast(t('Synced {n} days from {s}', { n: x, s: native ?? '' }), { icon: 'check' });
     }
     const res = await connectDevice().catch(() => 'unavailable' as const);

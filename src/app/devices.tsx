@@ -16,9 +16,10 @@ import { saveCardOrder, sourceName, useDevices } from '@/lib/devices';
 import { wearableName, wearableStatus, type WearableStatus } from '@/lib/wearables';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
-import { fmt } from '@/lib/nutrition';
+import { addDays, fmt } from '@/lib/nutrition';
 import { fx } from '@/lib/progress';
 import { useTrain } from '@/lib/train';
+import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
 /** Your readings: what Adro knows today, in your own order. Closed and blurred until a device is connected in Connections. */
@@ -44,8 +45,9 @@ export default function Devices() {
   const locked = !sources.length;
 
   // Newest value a device sent for a field (within the last week).
-  const devLast = (k: keyof (typeof dev.days)[number]) => [...dev.days].reverse().find((d) => d[k] != null && (!Array.isArray(d[k]) || (d[k] as unknown[]).length))?.[k] as number | undefined;
+  const devLast = (k: keyof (typeof dev.days)[number], from = addDays(food.today, -6)) => [...dev.days].reverse().find((d) => d.day >= from && d[k] != null && (!Array.isArray(d[k]) || (d[k] as unknown[]).length))?.[k] as number | undefined;
   const w = health.weights.at(-1);
+  const W = useWeight();
   const lastSleep = [...health.checkins].reverse().find((x) => x.sleep_h != null);
   const workoutKcal = train.logs.filter((l) => l.day === food.today).reduce((a, l) => a + l.kcal, 0);
   const devToday = dev.days.find((d) => d.day === food.today);
@@ -55,7 +57,7 @@ export default function Devices() {
     const show = (v: number | undefined | null) => (v == null ? '–' : info.dec ? fx(v) : fmt(v));
     if (k === 'steps') return [fmt(steps), ''];
     if (k === 'burned') return [fmt(food.burned + workoutKcal), 'kcal'];
-    if (k === 'weight') return w ? [fx(w.value), 'kg'] : ['–', ''];
+    if (k === 'weight') return w ? [W.show(w.value), W.unit] : ['–', ''];
     if (k === 'sleep') {
       const v = lastSleep?.sleep_h ?? devLast('sleep_h');
       return v != null ? [fx(v), 'h'] : ['–', ''];
@@ -65,8 +67,8 @@ export default function Devices() {
     const v = devLast(DEVICE_FIELD[k] as keyof (typeof dev.days)[number]);
     return [show(v), v == null ? '' : info.unit];
   };
-  // Watch-only cards show up once a device has sent them.
-  const visible = (k: ReadingKey) => !DEVICE_ONLY.includes(k) || devLast(DEVICE_FIELD[k] as keyof (typeof dev.days)[number]) != null;
+  // Watch-only cards show up once a device has sent them (at any time).
+  const visible = (k: ReadingKey) => !DEVICE_ONLY.includes(k) || devLast(DEVICE_FIELD[k] as keyof (typeof dev.days)[number], '') != null;
   const keys = (editing ?? orderedKeys(dev.prefs.card_order)).filter(visible);
   const label = (k: ReadingKey) => (k === 'workouts' ? 'Workouts this week' : INFO[k].name);
 

@@ -17,6 +17,8 @@ import { addDays, fmt } from '@/lib/nutrition';
 import { fx } from '@/lib/progress';
 import { supabase } from '@/lib/supabase';
 import { useTrain } from '@/lib/train';
+import { useWeight } from '@/lib/units';
+import { wearableName } from '@/lib/wearables';
 import { useSettings } from '@/theme/settings';
 
 type Rows = { day: string; v: number }[];
@@ -33,6 +35,9 @@ export default function Reading() {
   const { k: raw } = useLocalSearchParams<{ k: string }>();
   const k: ReadingKey = raw && raw in INFO ? (raw as ReadingKey) : 'steps';
   const info = INFO[k];
+  // Weight in the unit you picked (kg or lb); the rest have one unit.
+  const W = useWeight();
+  const unit = k === 'weight' ? W.unit : info.unit;
   const [pickRange, setRange] = useState<'day' | 'week' | 'month' | '3m'>('week');
   const [fetched, setFetched] = useState<{ k: ReadingKey; rows: Rows } | null>(null);
   const today = food.today;
@@ -76,7 +81,7 @@ export default function Reading() {
   const rows: Rows | null = field
     ? devRows(field)
     : k === 'weight'
-      ? health.weights.map((x) => ({ day: x.day, v: x.value }))
+      ? health.weights.map((x) => ({ day: x.day, v: W.num(x.value) }))
       : k === 'sleep'
         ? [...devRows('sleep_h').filter((x) => !health.checkins.some((c) => c.day === x.day && c.sleep_h != null)), ...health.checkins.filter((x) => x.sleep_h != null).map((x) => ({ day: x.day, v: x.sleep_h as number }))]
         : k === 'recovery'
@@ -114,7 +119,9 @@ export default function Reading() {
   const vals = (range === 'day' ? dayVals : series).filter((x): x is number => x != null);
   const show = (v: number) => (info.dec ? fx(v) : fmt(v));
   const locale = lang === 'ar' ? 'ar-u-nu-latn' : 'en-US';
-  const labels = range === 'day' ? hours.map((_, h) => (h % 3 === 0 ? ['12a', '3a', '6a', '9a', '12p', '3p', '6p', '9p'][h / 3] : '')) : range === 'week' ? days.map((d) => new Intl.DateTimeFormat(locale, { weekday: 'narrow' }).format(new Date(`${d}T12:00:00`))) : range === '3m' ? series.map((_, w) => (w < 12 && w % 4 === 0 ? new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' }).format(new Date(`${days[w * 7]}T12:00:00`)) : '')) : days.map((d, i) => (i % 5 === 0 ? String(Number(d.slice(8))) : ''));
+  // Every third hour, like 12a or 3p (ص / م in Arabic).
+  const hourLabel = (h: number) => `${h % 12 || 12}${lang === 'ar' ? (h < 12 ? 'ص' : 'م') : h < 12 ? 'a' : 'p'}`;
+  const labels = range === 'day' ? hours.map((_, h) => (h % 3 === 0 ? hourLabel(h) : '')) : range === 'week' ? days.map((d) => new Intl.DateTimeFormat(locale, { weekday: 'narrow' }).format(new Date(`${d}T12:00:00`))) : range === '3m' ? series.map((_, w) => (w < 12 && w % 4 === 0 ? new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' }).format(new Date(`${days[w * 7]}T12:00:00`)) : '')) : days.map((d, i) => (i % 5 === 0 ? String(Number(d.slice(8))) : ''));
   const enough = vals.length > (info.bar ? 0 : 1);
   const open: Partial<Record<ReadingKey, [string, () => void]>> = {
     steps: ['Log cardio or steps', () => router.push('/cardio')],
@@ -127,6 +134,13 @@ export default function Reading() {
     sleepEff: ['Open sleep in Progress', () => router.push({ pathname: '/progress', params: { tab: 'recovery' } })],
   };
   const [btn, go] = open[k] ?? [];
+  // Where today's reading came from: the phone's health app, or a band or ring linked directly (its own readings,
+  // and sleep and heart ones unless the phone is your main device).
+  const phoneDay = devToday?.source === 'apple' || devToday?.source === 'health_connect' ? devToday.source : null;
+  const wearOnly: (keyof DeviceDay)[] = ['recovery', 'strain', 'sleep_score'];
+  const wearWins: (keyof DeviceDay)[] = ['hrv', 'hr_rest', 'sleep_h', 'in_bed_h', 'sleep_eff', 'spo2', 'temp_dev'];
+  const fromWear = !!devToday?.wearable && (!phoneDay || (!!field && (wearOnly.includes(field) || (dev.prefs.primary !== 'phone' && wearWins.includes(field)))));
+  const srcName = fromWear && devToday?.wearable ? wearableName(devToday.wearable) : phoneDay ? sourceName(phoneDay) : null;
 
   return (
     <Screen title={t(info.name)} back>
@@ -136,13 +150,13 @@ export default function Reading() {
             <Icon name={info.icon} size={18} color={c.cobalt} />
           </View>
           <Text variant="small" weight={700} color="sec">
-            {field || (k === 'steps' && devToday?.steps) ? t('Today, from {s}', { s: sourceName(dev.prefs.source) }) : by.has(today) || counted ? t('Today, from what you log') : latest ? t('Last logged') : t('Today')}
+            {srcName && (field || (k === 'steps' && devToday?.steps)) ? t('Today, from {s}', { s: srcName }) : by.has(today) || counted ? t('Today, from what you log') : latest ? t('Last logged') : t('Today')}
           </Text>
         </Row>
         <Row style={{ marginTop: 12, alignItems: 'flex-end', justifyContent: 'space-between' }}>
           <Text num size={40}>
             {now == null ? '–' : show(now)}
-            {info.unit && now != null ? <Text num size={16} weight={500} color="sec">{` ${t(info.unit)}`}</Text> : null}
+            {unit && now != null ? <Text num size={16} weight={500} color="sec">{` ${t(unit)}`}</Text> : null}
           </Text>
           {now == null || avg7 == null ? null : Math.abs(diff) > (info.dec ? 0.05 : 0.5) ? (
             <View style={{ alignItems: 'flex-end' }}>
@@ -220,7 +234,7 @@ export default function Reading() {
         <Row gap={6} style={{ marginTop: 12 }}>
           <Icon name="info" size={16} color={c.cobalt} />
           <Text variant="small" color="sec" style={{ flex: 1 }}>
-            {t(info.range, { n: train.plan?.days ?? 3 })}
+            {W.words(t(info.range, { n: train.plan?.days ?? 3 }))}
           </Text>
         </Row>
       </Card>
@@ -251,7 +265,12 @@ function SleepMore({ days, today }: { days: DeviceDay[]; today: string }) {
   const { t } = useT();
   const sd = sleepDetail(days, today);
   if (!sd || (sd.deep == null && sd.rem == null && sd.bedUsual == null)) return null;
-  const h = (v: number | null) => (v == null ? '–' : t('{h} h {m} min', { h: Math.floor(v), m: Math.round((v % 1) * 60) }));
+  const h = (v: number | null) => {
+    if (v == null) return '–';
+    // Whole minutes first, so 1.999 h is 2 h 0 min, not 1 h 60 min.
+    const m = Math.round(v * 60);
+    return t('{h} h {m} min', { h: Math.floor(m / 60), m: m % 60 });
+  };
   const steady = sd.bedSpread == null ? null : sd.bedSpread < 30 ? 'Very steady' : sd.bedSpread < 60 ? 'Fairly steady' : 'Changes a lot';
   return (
     <Card>

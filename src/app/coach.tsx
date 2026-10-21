@@ -29,7 +29,7 @@ import { supabase } from '@/lib/supabase';
 import { useTrain } from '@/lib/train';
 import { useWeight } from '@/lib/units';
 import { useStreaks } from '@/lib/useProgress';
-import { allergensIn, allergiesText } from '@/lib/allergies';
+import { allergensIn, allergiesText, noteHit } from '@/lib/allergies';
 import { REMINDER_NAME } from '@/lib/recap';
 import { remindersSummary, withReminder } from '@/lib/recapApply';
 import { loadPrefs, type Prefs, savePrefs } from '@/lib/reminders';
@@ -308,7 +308,7 @@ export default function Coach() {
       const all2 = [...acts, ...sugg];
       // A suggested meal with one of your allergens is never shown.
       const aiCard = cleanCard(result.card);
-      const safeCard = aiCard?.type === 'meal' && allergensIn([aiCard.name], food.plan.allergies).length ? null : aiCard;
+      const safeCard = aiCard?.type === 'meal' && (allergensIn([aiCard.name], food.plan.allergies).length || noteHit([aiCard.name], food.plan.allergyNote)) ? null : aiCard;
       const card = safeCard ?? (all2.length ? null : guessCard(q));
       const ai = await saveMsg({ chat_id: chatId, role: 'ai', text: String(result.reply ?? '').slice(0, 4000), actions: all2.length ? all2 : null, card });
       // The coach keeps a short memory of lasting things you told it.

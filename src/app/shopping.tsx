@@ -66,7 +66,7 @@ export default function Shopping() {
     return out;
     // Only meals matter here: ticking an item changes `shop` inside the plan, which doesn't change the list.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fp.meals, fp.picks, fp.custom, fp.aiRecipes, fp.allergies, fp.goal, fp.kcal, fp.perKg, fp.carbG, fp.fatG, fp.ramadan, from, days, dayGoal]);
+  }, [fp.meals, fp.picks, fp.custom, fp.aiRecipes, fp.allergies, fp.allergyNote, fp.goal, fp.kcal, fp.perKg, fp.carbG, fp.fatG, fp.ramadan, from, days, dayGoal]);
   const amount = (u: Record<string, number>) => {
     if (u.g) return u.g >= 1000 ? `${(u.g / 1000).toFixed(1)} ${t('kg')}` : `${Math.round(u.g)} ${t('g')}`;
     if (u.ml) return u.ml >= 1000 ? `${(u.ml / 1000).toFixed(1)} ${t('L')}` : `${Math.round(u.ml)} ${t('ml')}`;
@@ -83,8 +83,10 @@ export default function Shopping() {
   shop.extra.forEach((e) => (cats[e.cat] ??= []).push([e.n, e.q, true]));
   const all = Object.values(cats).flat();
   // Ticks belong to one list (this lock, or today's): a new week or month starts with none.
+  // Each list keeps its own, so ticking today's list doesn't clear the week's (older saves had only one list).
   const period = locked ? `${lock.scope}:${lock.from}` : `${shop.scope}:${food.today}`;
-  const checked = shop.checkedFor === period ? shop.checked : {};
+  const ticks = shop.ticks ?? (shop.checkedFor ? { [shop.checkedFor]: shop.checked } : {});
+  const checked = ticks[period] ?? {};
   const done = all.filter(([n]) => checked[n]).length;
   const scopeName = [t('today'), t('this week'), t('this month')][shop.scope];
   const text = () =>
@@ -200,12 +202,18 @@ export default function Shopping() {
                   accessibilityState={{ checked: on }}
                   onPress={() => {
                     if (edit) {
-                      const before = { extra: shop.extra, hidden: shop.hidden };
+                      const removed = shop.extra.find((e) => e.n === n);
                       if (extra) save({ extra: shop.extra.filter((e) => e.n !== n) });
                       else save({ hidden: [...shop.hidden, n] });
                       toast(extra ? t('Removed {name}', { name: t(n) }) : t('{name} moved to “Already have”', { name: t(n) }), {
                         icon: extra ? 'trash' : 'check',
-                        undo: () => food.updatePlan({ shop: { ...shop, ...(food.plan.shop ?? {}), ...before } }),
+                        // Undo puts back only this item, on the newest list (other changes since then stay).
+                        undo: () =>
+                          food.updatePlan((cur) => {
+                            const s = { ...EMPTY, ...(cur.shop ?? {}) };
+                            if (!extra) return { shop: { ...s, hidden: s.hidden.filter((x) => x !== n) } };
+                            return { shop: { ...s, extra: removed && !s.extra.some((e) => e.n === n) ? [...s.extra, removed] : s.extra } };
+                          }),
                       });
                     } else
                     {
@@ -213,8 +221,17 @@ export default function Shopping() {
                       const startLock = !on && shop.scope > 0 && !lock;
                       const nextLock = startLock ? { from: food.today, to: addDays(food.today, [1, 7, 30][shop.scope] - 1), scope: shop.scope } : undefined;
                       const nextPeriod = nextLock ? `${nextLock.scope}:${nextLock.from}` : period;
+                      const list = { ...(nextPeriod === period ? checked : (ticks[nextPeriod] ?? {})), [n]: !on };
+                      // Only lists still in use are kept: today's, the locked one and this one.
+                      const lk = nextLock ?? lock;
+                      const keepLock = lk ? `${lk.scope}:${lk.from}` : '';
+                      const kept = Object.fromEntries(
+                        Object.entries({ ...ticks, [nextPeriod]: list }).filter(([k]) => k === nextPeriod || k === keepLock || k.endsWith(`:${food.today}`)),
+                      );
                       save({
-                        checked: { ...(nextPeriod === period ? checked : {}), [n]: !on },
+                        ticks: kept,
+                        // Also the old single list, for older versions of the app.
+                        checked: list,
                         checkedFor: nextPeriod,
                         ...(nextLock ? { lock: nextLock } : {}),
                       });

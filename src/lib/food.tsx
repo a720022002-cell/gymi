@@ -111,7 +111,8 @@ type Food = {
   clearWeightNote: () => void;
   /** Pregnancy mode is on (cycle tracking): no calorie deficit, +300 kcal, caffeine up to 200 mg. */
   preg: boolean;
-  updatePlan: (patch: Partial<FoodPlan>) => void;
+  /** A patch, or a function that makes one from the newest plan (for undo after other changes). */
+  updatePlan: (patch: Partial<FoodPlan> | ((cur: FoodPlan) => Partial<FoodPlan>)) => void;
   logs: FoodLog[];
   eaten: Macros;
   target: Macros;
@@ -233,6 +234,15 @@ export function FoodProvider({ children }: PropsWithChildren) {
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   // A small change is waiting to be saved (the plan on screen is newer than the server's).
   const savePending = useRef(false);
+  // Plan saves still on their way to the server, and how many were ever started (a load that began before one keeps
+  // the plan on screen).
+  const saving = useRef(0);
+  const saveSeq = useRef(0);
+  const upsertPlan = useCallback((row: { user_id: string; plan: FoodPlan; setup_done?: boolean }) => {
+    saving.current++;
+    saveSeq.current++;
+    return Promise.resolve(supabase.from('food_plans').upsert(row)).finally(() => saving.current--);
+  }, []);
   // The last weigh-in applyWeight already looked at (so loading doesn't redo it with a single day's weight).
   const weighedRef = useRef<number | null>(null);
 
@@ -276,6 +286,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
     (async () => {
       const weekEnd = addDays(today, 7);
       const from = day < today ? day : today;
+      const seq = saveSeq.current;
       const [p, l, s, m, w, cd, st, mc, mp] = await Promise.all([
         supabase.from('food_plans').select('*').eq('user_id', userId).maybeSingle(),
         supabase.from('food_logs').select('*').eq('day', day).order('created_at'),
@@ -293,7 +304,9 @@ export function FoodProvider({ children }: PropsWithChildren) {
       let loaded = p.data?.plan ? { ...base, ...(p.data.plan as FoodPlan) } : base;
       // Your profile weight is the one that counts: 2 kg or more away from the plan's weight updates the targets.
       // Plans made before the calorie floor that are still under it (and untouched) are lifted to it.
-      if (p.data?.setup_done) {
+      // A change waiting to be saved, or saved since this load began, is newer than what the server sent: keep it.
+      const newer = savePending.current || saving.current > 0 || saveSeq.current !== seq;
+      if (p.data?.setup_done && !newer) {
         const who = personRef.current;
         const stale = pw > 0 && pw !== weighedRef.current && Math.abs(pw - loaded.weight) >= 2;
         const unsafe = loaded.carbG == null && loaded.kcal < kcalFloor(loaded.weight, who) && loaded.kcal === oldSuggestKcal(loaded, who);
@@ -301,14 +314,13 @@ export function FoodProvider({ children }: PropsWithChildren) {
         const minor = isMinor(who) && loaded.goal !== 2;
         if (stale || unsafe || minor) {
           loaded = recalcTargets(loaded, who, { weight: stale ? pw : loaded.weight });
-          supabase.from('food_plans').upsert({ user_id: userId, plan: loaded }).then(() => {});
+          upsertPlan({ user_id: userId, plan: loaded }).catch(() => {});
           if (stale) setWeightNote(loaded.weight);
         }
       }
-      // A small change still waiting to be saved is newer than what the server has: keep it.
-      if (savePending.current) loaded = planRef.current;
+      if (newer) loaded = planRef.current;
       setPlan(RAMADAN_SWITCH ? loaded : { ...loaded, ramadan: false });
-      setSetupDone(!!p.data?.setup_done);
+      if (!newer) setSetupDone(!!p.data?.setup_done);
       setLogs((l.data as FoodLog[]) ?? []);
       setLoadedDay(day);
       setSaved((s.data as SavedMeal[]) ?? []);
@@ -336,7 +348,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
     return () => {
       alive = false;
     };
-  }, [userId, today, day, profile?.weight_kg]);
+  }, [userId, today, day, profile?.weight_kg, upsertPlan]);
 
   const savePlan = useCallback(
     async (p: FoodPlan, done?: boolean) => {
@@ -346,18 +358,19 @@ export function FoodProvider({ children }: PropsWithChildren) {
       savePending.current = false;
       // Plans saved from a screen started from a copy (setup, My targets): recipes the AI made meanwhile stay.
       const cur = planRef.current;
-      if (cur?.aiRecipes && (!p.aiRecipes || p.aiRecipes.at < cur.aiRecipes.at)) p = { ...p, aiRecipes: cur.aiRecipes };
+      // Recipes added for a new meal keep the old date, so a longer list on the same date is newer too.
+      const pa = p.aiRecipes;
+      const ca = cur?.aiRecipes;
+      if (ca && (!pa || pa.at < ca.at || (pa.at === ca.at && pa.list.length < ca.list.length))) p = { ...p, aiRecipes: ca };
       setPlan(p);
       planRef.current = p;
       if (done !== undefined) setSetupDone(done);
-      const { error } = await supabase
-        .from('food_plans')
-        .upsert({ user_id: userId, plan: p, ...(done !== undefined ? { setup_done: done } : {}) });
+      const { error } = await upsertPlan({ user_id: userId, plan: p, ...(done !== undefined ? { setup_done: done } : {}) });
       // Saving from setup or the plan screen: the weight typed there becomes your profile weight too.
       if (!error && done && Math.abs(p.weight - Number(profile?.weight_kg ?? 0)) >= 0.1) updateProfile({ weight_kg: Math.round(p.weight * 10) / 10 }).catch(() => {});
       return !error;
     },
-    [userId, profile?.weight_kg, updateProfile],
+    [userId, profile?.weight_kg, updateProfile, upsertPlan],
   );
 
   const applyWeight = useCallback(
@@ -374,8 +387,8 @@ export function FoodProvider({ children }: PropsWithChildren) {
 
   // Small changes (meal swaps, shopping ticks) save quietly after a moment.
   const updatePlan = useCallback(
-    (patch: Partial<FoodPlan>) => {
-      const next = { ...planRef.current, ...patch };
+    (patch: Partial<FoodPlan> | ((cur: FoodPlan) => Partial<FoodPlan>)) => {
+      const next = { ...planRef.current, ...(typeof patch === 'function' ? patch(planRef.current) : patch) };
       planRef.current = next;
       setPlan(next);
       clearTimeout(saveTimer.current);
@@ -383,10 +396,10 @@ export function FoodProvider({ children }: PropsWithChildren) {
       // Changes in a row go out once, a moment later, always the newest plan.
       saveTimer.current = setTimeout(() => {
         savePending.current = false;
-        if (userId) supabase.from('food_plans').upsert({ user_id: userId, plan: planRef.current }).then(() => {});
+        if (userId) upsertPlan({ user_id: userId, plan: planRef.current }).catch(() => {});
       }, 600);
     },
-    [userId],
+    [userId, upsertPlan],
   );
 
   const target = useMemo(() => {

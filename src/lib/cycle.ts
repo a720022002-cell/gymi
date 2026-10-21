@@ -159,12 +159,14 @@ export async function isAnon(uid: string) {
   }
 }
 
-async function loadServer(uid: string): Promise<Local> {
+/** strict: throw when something didn't load (instead of treating it as empty). */
+async function loadServer(uid: string, strict = false): Promise<Local> {
   const [s, p, l] = await Promise.all([
     supabase.from('cycle_settings').select('mode,cycle_len,period_len,preg_week,post_week,lock,reminders,temp_watch,preg_adjust,checklist').eq('user_id', uid).maybeSingle(),
     supabase.from('cycle_periods').select('id,start_day,end_day').order('start_day'),
     supabase.from('cycle_logs').select('day,data').order('day', { ascending: false }).limit(400),
   ]);
+  if (strict && (s.error || p.error || l.error)) throw s.error ?? p.error ?? l.error;
   return {
     settings: (s.data as CycleSettings) ?? DEFAULT_CYCLE,
     periods: (p.data as Period[]) ?? [],
@@ -191,28 +193,45 @@ function changed() {
   version++;
 }
 
-/** Anonymous mode: move cycle data to this device only (and delete it from our server), or back. */
-export async function setAnon(uid: string, on: boolean) {
+/**
+ * Anonymous mode: move cycle data to this device only (and delete it from our server), or back. False when it
+ * couldn't: nothing is deleted unless the copy was made first, and the mode only changes once both worked.
+ */
+export async function setAnon(uid: string, on: boolean): Promise<boolean> {
   changed();
-  if (on) {
-    const data = await loadServer(uid);
-    await writeLocal(uid, data);
-    await deleteServer(uid);
-    await supabase.from('cycle_partner').delete().eq('user_id', uid);
-  } else {
-    const l = await readLocal(uid);
-    await supabase.from('cycle_settings').upsert({ user_id: uid, ...l.settings, updated_at: new Date().toISOString() });
-    if (l.periods.length) await supabase.from('cycle_periods').upsert(l.periods.map(({ start_day, end_day }) => ({ start_day, end_day })), { onConflict: 'user_id,start_day' });
-    const logs = Object.entries(l.logs).map(([day, data]) => ({ day, data }));
-    if (logs.length) await supabase.from('cycle_logs').upsert(logs, { onConflict: 'user_id,day' });
-    await AsyncStorage.removeItem(LOCAL_KEY(uid));
+  try {
+    if (on) {
+      const data = await loadServer(uid, true);
+      await writeLocal(uid, data);
+      if (!(await deleteServer(uid))) return false;
+      const { error } = await supabase.from('cycle_partner').delete().eq('user_id', uid);
+      if (error) return false;
+    } else {
+      const l = await readLocal(uid);
+      const s = await supabase.from('cycle_settings').upsert({ user_id: uid, ...l.settings, updated_at: new Date().toISOString() });
+      if (s.error) return false;
+      if (l.periods.length) {
+        const { error } = await supabase.from('cycle_periods').upsert(l.periods.map(({ start_day, end_day }) => ({ start_day, end_day })), { onConflict: 'user_id,start_day' });
+        if (error) return false;
+      }
+      const logs = Object.entries(l.logs).map(([day, data]) => ({ day, data }));
+      if (logs.length) {
+        const { error } = await supabase.from('cycle_logs').upsert(logs, { onConflict: 'user_id,day' });
+        if (error) return false;
+      }
+      await AsyncStorage.removeItem(LOCAL_KEY(uid));
+    }
+    await AsyncStorage.setItem(ANON_KEY(uid), on ? '1' : '0');
+  } catch {
+    return false;
   }
-  await AsyncStorage.setItem(ANON_KEY(uid), on ? '1' : '0');
   cur = { uid, anon: on };
+  return true;
 }
 
 async function deleteServer(uid: string) {
-  await Promise.all([supabase.from('cycle_periods').delete().eq('user_id', uid), supabase.from('cycle_logs').delete().eq('user_id', uid), supabase.from('cycle_settings').delete().eq('user_id', uid)]);
+  const rs = await Promise.all([supabase.from('cycle_periods').delete().eq('user_id', uid), supabase.from('cycle_logs').delete().eq('user_id', uid), supabase.from('cycle_settings').delete().eq('user_id', uid)]);
+  return rs.every((r) => !r.error);
 }
 
 export async function saveSettings(uid: string, s: CycleSettings) {

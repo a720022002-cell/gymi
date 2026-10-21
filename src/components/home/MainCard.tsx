@@ -164,7 +164,7 @@ function HeroCard({ k, sw }: { k: RingKey; sw: React.ReactNode }) {
     stats = [
       [fmt(STEP_GOAL), t('Goal')],
       [food.steps ? fmt(Math.max(0, STEP_GOAL - food.steps)) : '--', t('To go')],
-      [food.steps ? `${fx(food.steps * 0.00075)} km` : '--', t('Distance')],
+      [food.steps ? `${fx(food.steps * 0.00075)} ${t('km')}` : '--', t('Distance')],
     ];
     if (!food.steps) action = <Button small title={t('Connect a watch')} style={{ marginTop: 12, alignSelf: 'center' }} onPress={() => router.push('/devices')} />;
   } else if (k === 'recovery') {

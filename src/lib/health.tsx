@@ -3,7 +3,7 @@ import { createContext, type PropsWithChildren, useCallback, useContext, useEffe
 
 import { useAuth } from './auth';
 import { importPeriods } from './cycle';
-import { pullHealth, pushHealth, useDevices } from './devices';
+import { phoneSource, pullHealth, pushHealth, useDevices } from './devices';
 import { useFood } from './food';
 import { addDays } from './nutrition';
 import { adjustScore } from './recovery';
@@ -258,10 +258,13 @@ export function HealthProvider({ children }: PropsWithChildren) {
   // Smart scale: weigh-ins (and body fat) from the phone's health app become Adro weigh-ins by themselves. Only days
   // after the last import (the first time: the last 2 weeks), and never over one you typed, so a day you deleted
   // stays deleted. The newest one updates your targets like a typed weigh-in.
+  // Only on the phone whose health app is linked: the last import is kept on each device, so another one (or the
+  // web) would bring back weigh-ins you deleted.
   const dev = useDevices(userId);
   const scaleKey = userId ? `adro.scale.${userId}` : null;
+  const scalePhone = !!phoneSource && dev.prefs.source === phoneSource;
   useEffect(() => {
-    if (!ready || !scaleKey || !dev.ready || !dev.connected) return;
+    if (!ready || !scaleKey || !dev.ready || !dev.connected || !scalePhone) return;
     const fromScale = dev.days.filter((d) => d.weight != null && d.day <= today);
     if (!fromScale.length) return;
     let stop = false;
@@ -280,7 +283,7 @@ export function HealthProvider({ children }: PropsWithChildren) {
     return () => {
       stop = true;
     };
-  }, [ready, scaleKey, dev.ready, dev.connected, dev.days, today, measures, logWeight, putMeasures]);
+  }, [ready, scaleKey, dev.ready, dev.connected, scalePhone, dev.days, today, measures, logWeight, putMeasures]);
 
   // Period days logged in the phone's health app fill in cycle tracking (women only; see importPeriods).
   const female = profile?.gender === 'female';

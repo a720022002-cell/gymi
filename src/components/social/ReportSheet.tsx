@@ -47,6 +47,8 @@ export function ReportSheet({
     setReason(null);
     setNote('');
     onClose();
+    // The report went in, but the block didn't: say so (the toggle was on).
+    if (block && user && !blocked) return toast(t('Report sent, but we couldn’t block {n}. Please try again.', { n: name }), { icon: 'warn' });
     toast(t(blocked ? 'Thanks. We’ll look at it, and {n} is blocked.' : 'Thanks. We’ll look at it.', { n: name }), { icon: 'check' });
     if (blocked) onBlocked?.();
   };

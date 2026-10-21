@@ -52,13 +52,21 @@ export async function wearableStatus(): Promise<WearableStatus | null> {
 /** Where the wearable's sign-in sends you back: Connections, on the web or in the phone app. */
 const returnTo = (path: string) => (Platform.OS === 'web' && typeof window !== 'undefined' ? `${window.location.origin}${path}` : Linking.createURL(path));
 
-/** Open the wearable's own sign-in. Coming back to `path` (Connections) with ?wearable=…&status=linked finishes it. */
+/** Open the wearable's own sign-in. Coming back to `path` (Connections) with ?wearable=…&status=finish&state=… is
+ * confirmed with finishWearable. */
 export async function linkWearable(p: WearableProvider, path = '/connections'): Promise<'opened' | 'not_set_up' | 'offline' | 'failed'> {
   const { data, code } = await call<{ url: string }>({ action: 'start', provider: p, return_to: returnTo(path) });
   if (!data?.url) return code === 'not_set_up' || code === 'offline' ? code : 'failed';
   if (Platform.OS === 'web' && typeof window !== 'undefined') window.location.assign(data.url);
   else await Linking.openURL(data.url);
   return 'opened';
+}
+
+/** Back from the wearable's sign-in with ?status=finish&state=…: the server links it only if you're the one who
+ * started it. Returns how it went, in the same words the screens already show (linked, expired, error). */
+export async function finishWearable(state: string): Promise<'linked' | 'expired' | 'error'> {
+  const { data } = await call<{ status: string }>({ action: 'finish', state });
+  return data?.status === 'linked' || data?.status === 'expired' ? data.status : 'error';
 }
 
 /** Pull the newest days now. Per wearable: days saved, or "expired" (sign in again) / "error". */

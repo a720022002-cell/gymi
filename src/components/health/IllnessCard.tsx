@@ -29,7 +29,9 @@ export function IllnessCard() {
   const today = localDay();
   const [closed, setClosed] = useState<string | null>(null);
   const { watch } = useWatchPrefs(session?.user.id);
-  const ill = dev.connected && watch.illness ? illnessCheck(dev.days, today) : null;
+  // From the phone's health app, or a band or ring linked directly (its days are deleted when it's unlinked).
+  const linked = dev.connected || !!dev.days.find((d) => d.day === today)?.wearable;
+  const ill = linked && watch.illness ? illnessCheck(dev.days, today) : null;
   if (!ill || closed === today) return null;
   const lighter = !!train.plan && train.plan.light !== today && !train.todayLog;
   return (

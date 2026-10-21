@@ -11,6 +11,7 @@ import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
+import { allergensIn, noteHit } from '@/lib/allergies';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { fx } from '@/lib/progress';
@@ -159,15 +160,32 @@ export function StreaksCard() {
 export function TipCard() {
   const { t } = useT();
   const { colors: c } = useSettings();
-  const { eaten, target, kcalLeft } = useFood();
+  const { eaten, target, kcalLeft, plan } = useFood();
   const left = Math.round(target.p - eaten.p);
+  // The first protein idea without any of your allergens (or the words in your own allergy note).
+  const safe = (tips: [string[], string][]) =>
+    tips.find(([foods]) => !allergensIn(foods, plan.allergies).length && !noteHit(foods, plan.allergyNote))?.[1] ?? 'You still need {n} g of protein. Add some to your next meal.';
   const tip =
     kcalLeft < 0
       ? t('You went over today. No stress: a walk tonight or a lighter dinner tomorrow evens it out.')
       : left > 25
-        ? t('You still need {n} g of protein. A cup of Greek yogurt after training covers most of it.', { n: left })
+        ? t(
+            safe([
+              [['Greek yogurt'], 'You still need {n} g of protein. A cup of Greek yogurt after training covers most of it.'],
+              [['chicken breast'], 'You still need {n} g of protein. A grilled chicken breast covers most of it.'],
+              [['tuna'], 'You still need {n} g of protein. A can of tuna covers most of it.'],
+            ]),
+            { n: left },
+          )
         : left > 0
-          ? t('Only {n} g of protein left. A glass of laban or two eggs will finish it.', { n: left })
+          ? t(
+              safe([
+                [['laban', 'eggs'], 'Only {n} g of protein left. A glass of laban or two eggs will finish it.'],
+                [['chicken'], 'Only {n} g of protein left. A few slices of chicken will finish it.'],
+                [['tuna'], 'Only {n} g of protein left. Half a can of tuna will finish it.'],
+              ]),
+              { n: left },
+            )
           : t('Protein done for today. Nice work.');
   return (
     <Card onPress={() => router.push('/coach')} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
