@@ -1,0 +1,200 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
+<style>html,body{margin:0;background:#000}canvas{display:block}</style>
+</head><body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script src="letters.js"></script>
+<script>
+// "Every beat." One blue line becomes your heartbeat, sleep, steps, food and lifts, then the Adro ring that turns
+// them into today's plan. Rendered frame by frame: window.render(t) draws the frame at t seconds.
+const AR = new URLSearchParams(location.search).get('lang') === 'ar';
+const W = 1080, H = 1920, CX = 540, CY = 900;
+const BLUE = '#3355FF', LIGHT = '#8FA3FF';
+const c = document.getElementById('c').getContext('2d');
+const T = AR ? {
+  w: ['كل نبضة.', 'كل ليلة.', 'كل خطوة.', 'كل لقمة.', 'كل عدّة.'],
+  d: ['62 نبضة/دقيقة', '7 س 32 د نوم', '9,240 خطوة', '1,750 من 2,800 سعرة', 'من 70 إلى 82.5 كجم'],
+  reads: 'Adro يقراها كلها.', ready: 'جاهز تتمرن بقوة',
+  coach: 'نمت 7.5 ساعة واستشفاءك 85%. اليوم زيد 2.5 كجم على البنش',
+  who: 'مدربك', end1: 'مو أرقام أكثر.', end2: 'قرارات أذكى.', tag: 'مدربك الذكي للياقة', soon: 'قريبًا على App Store',
+} : {
+  w: ['Every beat.', 'Every night.', 'Every step.', 'Every bite.', 'Every rep.'],
+  d: ['62 bpm', '7 h 32 min asleep', '9,240 steps', '1,750 of 2,800 kcal', '70 → 82.5 kg'],
+  reads: 'Adro reads it all.', ready: 'Ready to train hard',
+  coach: 'You slept 7.5 h and you’re 85% recovered. Today, add 2.5 kg to your bench',
+  who: 'Your coach', end1: 'Not more data.', end2: 'Better decisions.', tag: 'Your AI fitness coach', soon: 'Coming soon to the App Store',
+};
+const FONT = (w, s, num) => (num ? `${w} ${s}px Sora` : AR ? `${w} ${s}px "IBM Plex Sans Arabic"` : `${w} ${s}px Sora`);
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const ease = (x) => { x = clamp(x); return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+const easeOut = (x) => 1 - Math.pow(1 - clamp(x), 3);
+const fade = (t, a, b, cc, d) => clamp((t - a) / (b - a)) * (1 - clamp((t - cc) / (d - cc)));
+const lerp = (a, b, u) => a + (b - a) * u;
+
+// ---------- shapes: each is a polyline, resampled to N points by length so any two can morph ----------
+const N = 700;
+function resample(pts) {
+  const seg = [0]; for (let i = 1; i < pts.length; i++) seg.push(seg[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  const total = seg[seg.length - 1], out = []; let j = 1;
+  for (let k = 0; k < N; k++) {
+    const d = (k / (N - 1)) * total; while (j < seg.length - 1 && seg[j] < d) j++;
+    const u = (d - seg[j - 1]) / (seg[j] - seg[j - 1] || 1);
+    out.push([lerp(pts[j - 1][0], pts[j][0], u), lerp(pts[j - 1][1], pts[j][1], u)]);
+  }
+  return out;
+}
+const X0 = 110, X1 = 970;
+// heartbeat: three beats
+const ecg = (() => { const p = []; for (let i = 0; i <= 900; i++) { const s = i / 900, x = lerp(X0, X1, s); const u = (s * 3) % 1; let y = 0;
+  y += -18 * Math.exp(-(((u - 0.18) / 0.035) ** 2));           // P
+  y += 22 * Math.exp(-(((u - 0.36) / 0.008) ** 2));            // Q
+  y += -210 * Math.exp(-(((u - 0.40) / 0.012) ** 2));          // R
+  y += 70 * Math.exp(-(((u - 0.44) / 0.012) ** 2));            // S
+  y += -40 * Math.exp(-(((u - 0.66) / 0.06) ** 2));            // T
+  p.push([x, CY + y]); } return resample(p); })();
+// sleep stages (awake at the top, deep at the bottom), a smooth step line
+const sleep = (() => { const lv = [0, 1, 2, 3, 3, 2, 1, 2, 3, 2, 1, 1, 2, 1, 0, 1, 1, 0]; const p = []; const w = (X1 - X0) / lv.length;
+  lv.forEach((l, i) => { const y = CY - 150 + l * 100; p.push([X0 + i * w + 6, y]); p.push([X0 + (i + 1) * w - 6, y]); }); return resample(p); })();
+// steps: a week of bars, traced as one line
+const steps = (() => { const hs = [0.55, 0.8, 0.62, 1, 0.74, 0.9, 0.7]; const base = CY + 200, w = (X1 - X0) / hs.length, gap = 26; const p = [[X0, base]];
+  hs.forEach((h, i) => { const a = X0 + i * w + gap / 2, b = X0 + (i + 1) * w - gap / 2, top = base - h * 400; p.push([a, base], [a, top], [b, top], [b, base]); }); p.push([X1, base]); return resample(p); })();
+// food: the day's calorie ring, 62% full
+const arc = (r, from, frac) => { const p = []; for (let i = 0; i <= 400; i++) { const a = from + (i / 400) * frac * Math.PI * 2; p.push([CX + Math.cos(a) * r, CY + Math.sin(a) * r]); } return resample(p); };
+const food = arc(270, -Math.PI / 2, 0.625);
+// lifts: stairs going up, heavier every week
+const reps = (() => { const p = [[X0, CY + 230]]; const n = 6, w = (X1 - X0) / n; for (let i = 0; i < n; i++) { const y = CY + 230 - i * 85; p.push([X0 + i * w, y], [X0 + (i + 1) * w, y]); if (i < n - 1) p.push([X0 + (i + 1) * w, y - 85]); } return resample(p); })();
+// the Adro ring: 80% of a circle from the top, clockwise
+const adro = arc(300, -Math.PI / 2, 0.8);
+const SHAPES = [ecg, sleep, steps, food, reps, adro];
+const STARTS = [0, 2.6, 5.0, 7.4, 9.8, 12.2]; // when each shape is complete
+const MORPH = 0.75;
+
+function pointsAt(t) {
+  let k = 0; while (k < STARTS.length - 1 && t >= STARTS[k + 1]) k++;
+  const next = Math.min(k + 1, SHAPES.length - 1);
+  const mStart = (STARTS[k + 1] ?? 99) - MORPH;
+  const u = next === k ? 0 : ease((t - mStart) / MORPH);
+  const A = SHAPES[k], B = SHAPES[next];
+  return u <= 0 ? A : A.map((p, i) => [lerp(p[0], B[i][0], u), lerp(p[1], B[i][1], u)]);
+}
+
+// ---------- drawing helpers ----------
+function text(str, x, y, size, weight, color, a, opts = {}) {
+  if (a <= 0.01) return;
+  c.save(); c.globalAlpha = a; c.font = FONT(weight, size, opts.num); c.fillStyle = color; c.textAlign = opts.align ?? 'center'; c.textBaseline = 'middle';
+  c.direction = AR && !opts.num ? 'rtl' : 'ltr'; c.letterSpacing = opts.ls ? `${opts.ls}px` : '0px';
+  if (opts.blur != null) c.filter = `blur(${opts.blur}px)`;
+  c.fillText(str, x + (opts.dx ?? 0), y + (opts.dy ?? 0)); c.restore();
+}
+/** A word that lands: slides up a little and sharpens. */
+function word(str, y, size, color, t0, t1) {
+  const a = fade(t, t0, t0 + 0.35, t1 - 0.3, t1);
+  const u = easeOut((t - t0) / 0.45);
+  text(str, CX, y, size, 700, color, a, { dy: (1 - u) * 40, blur: (1 - u) * 10, ls: AR ? 0 : -1 });
+}
+let t = 0;
+function wrapLines(str, maxW) {
+  const words = str.split(' '), lines = []; let cur = '';
+  for (const w of words) { const n = cur ? cur + ' ' + w : w; if (c.measureText(n).width > maxW && cur) { lines.push(cur); cur = w; } else cur = n; }
+  if (cur) lines.push(cur); return lines;
+}
+
+window.render = function (time) {
+  t = time;
+  c.fillStyle = '#030306'; c.fillRect(0, 0, W, H);
+  // faint dot grid, slowly drifting
+  c.save(); c.globalAlpha = 0.18 * (1 - fade(t, 18.6, 19.4, 99, 100) * 0.6);
+  c.fillStyle = '#5B6AA8'; const off = (t * 12) % 60;
+  for (let y = -60; y < H + 60; y += 60) for (let x = -60; x < W + 60; x += 60) { c.beginPath(); c.arc(x + off, y, 1.6, 0, 7); c.fill(); }
+  c.restore();
+  // blue glow that breathes with the heartbeat at first, then sits behind the ring
+  const beat = t < 2.6 ? Math.max(0, Math.sin(((t - 0.5) / 0.86) * Math.PI * 2)) ** 8 : 0;
+  const gA = 0.12 + 0.18 * beat + 0.22 * fade(t, 11.8, 13, 18.6, 19.6);
+  const g = c.createRadialGradient(CX, CY, 0, CX, CY, 900); g.addColorStop(0, `rgba(51,85,255,${gA})`); g.addColorStop(1, 'rgba(0,0,0,0)');
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+
+  // ---------- the line ----------
+  let pts = pointsAt(t);
+  // the heartbeat draws itself in
+  let upto = N; if (t < 2.0) upto = Math.max(2, Math.floor(N * easeOut((t - 0.2) / 1.6)));
+  // ring phase: thicker, then it moves to become the logo's o
+  let sw = 7, glow = 26;
+  if (t > 11.5) { const u = ease((t - 11.6) / 1.2); sw = lerp(7, 40, u); glow = lerp(26, 60, u); }
+  let ringA = 1;
+  const END = (() => { const s = 780 / 2229; const wx = CX - (2229 / 2) * s - 30 * s, wy = CY + 120; return { s, wx, wy, x: wx + 1953.5 * s, y: wy - 271.5 * s, r: 228.5 * s, sw: 130 * s }; })();
+  if (t > 19.0) {
+    const u = ease((t - 19.0) / 1.2);
+    const k = lerp(1, END.r / 300, u), dx = lerp(0, END.x - CX, u), dy = lerp(0, END.y - CY, u);
+    pts = pts.map(([x, y]) => [CX + (x - CX) * k + dx, CY + (y - CY) * k + dy]);
+    sw = lerp(40, END.sw, u); glow = lerp(60, 36, u);
+  }
+  if (upto > 1 && ringA > 0) {
+    c.save(); c.lineCap = 'round'; c.lineJoin = 'round';
+    c.shadowColor = 'rgba(51,85,255,1)'; c.shadowBlur = glow; c.strokeStyle = BLUE; c.lineWidth = sw;
+    c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < upto; i++) c.lineTo(pts[i][0], pts[i][1]); c.stroke();
+    // a bright core on the thin line
+    if (sw < 14) { c.shadowBlur = 0; c.strokeStyle = 'rgba(200,210,255,0.85)'; c.lineWidth = 2; c.stroke(); }
+    c.restore();
+    // the pen: a bright dot at the head while it draws
+    if (t < 2.0) { const p = pts[upto - 1]; c.save(); c.shadowColor = '#fff'; c.shadowBlur = 30; c.fillStyle = '#fff'; c.beginPath(); c.arc(p[0], p[1], 9, 0, 7); c.fill(); c.restore(); }
+  }
+
+  // ---------- words and data ----------
+  const ends = [2.6, 5.0, 7.4, 9.8, 12.2];
+  T.w.forEach((w, i) => {
+    const t0 = i === 0 ? 0.6 : STARTS[i] - 0.2, t1 = ends[i] - 0.15;
+    word(w, 430, AR ? 120 : 112, '#FFFFFF', t0, t1);
+    const da = fade(t, t0 + 0.4, t0 + 0.8, t1 - 0.3, t1);
+    text(T.d[i], CX, i === 3 ? CY : (i === 4 ? CY + 330 : CY + 330), i === 3 ? 54 : 44, 600, i === 3 ? '#FFFFFF' : LIGHT, da, { num: false });
+  });
+  word(T.reads, 430, AR ? 104 : 96, '#FFFFFF', 12.0, 14.0);
+
+  // readiness inside the ring, counting up
+  const ra = fade(t, 13.4, 13.9, 18.4, 18.9);
+  if (ra > 0) {
+    const n = Math.round(85 * easeOut((t - 13.5) / 1.4));
+    text(`${n}%`, CX, CY - 18, 150, 700, '#FFFFFF', ra, { num: true, ls: -4 });
+    text(T.ready, CX, CY + 92, AR ? 40 : 34, 600, '#4ADE80', ra * clamp((t - 14.6) / 0.4));
+  }
+  // the coach's message, typed out
+  const ba = fade(t, 15.0, 15.4, 18.4, 18.9);
+  if (ba > 0) {
+    const bx = 90, by = CY + 420, bw = 900;
+    c.save(); c.globalAlpha = ba;
+    c.font = FONT(600, AR ? 42 : 38); const lines = wrapLines(T.coach, bw - 100);
+    const bh = 120 + lines.length * (AR ? 66 : 58);
+    c.translate(0, (1 - easeOut((t - 15.0) / 0.5)) * 30);
+    c.shadowColor = 'rgba(51,85,255,0.5)'; c.shadowBlur = 40;
+    c.beginPath(); c.roundRect(bx, by, bw, bh, 44); c.fillStyle = 'rgba(22,26,48,0.92)'; c.fill();
+    c.shadowBlur = 0; c.lineWidth = 2; c.strokeStyle = 'rgba(143,163,255,0.4)'; c.stroke();
+    // who it's from
+    c.font = FONT(700, AR ? 34 : 30); c.fillStyle = LIGHT; c.textBaseline = 'middle'; c.direction = AR ? 'rtl' : 'ltr'; c.textAlign = AR ? 'right' : 'left';
+    const hx = AR ? bx + bw - 50 : bx + 50; c.fillText(`✦ ${T.who}`, hx, by + 58);
+    // typed text
+    const total = T.coach.length, shown = Math.floor(total * clamp((t - 15.4) / 1.9));
+    let left = shown; c.font = FONT(600, AR ? 42 : 38); c.fillStyle = '#fff';
+    lines.forEach((ln, i) => { const part = ln.slice(0, Math.max(0, left)); left -= ln.length + 1; if (part) c.fillText(part, hx, by + 120 + i * (AR ? 66 : 58)); });
+    c.restore();
+  }
+  // the line
+  word(T.end1, 400, AR ? 100 : 92, '#FFFFFF', 18.6, 22.5);
+  word(T.end2, 520, AR ? 100 : 92, LIGHT, 18.9, 22.5);
+
+  // logo
+  const la = easeOut((t - 19.9) / 0.8);
+  if (la > 0) {
+    c.save(); c.globalAlpha = la; c.translate(END.wx - (1 - la) * 60, END.wy); c.scale(END.s, END.s); c.fillStyle = '#FFFFFF'; c.fill(LETTERS); c.restore();
+  }
+  text(T.tag, CX, CY + 340, AR ? 52 : 44, 600, '#FFFFFF', fade(t, 20.5, 21.1, 99, 100));
+  text(T.soon, CX, CY + 420, AR ? 40 : 34, 400, '#A1A1AA', fade(t, 20.9, 21.5, 99, 100));
+
+  const fb = Math.max(1 - clamp(t / 0.35), clamp((t - 22.6) / 0.5));
+  if (fb > 0) { c.fillStyle = `rgba(0,0,0,${fb})`; c.fillRect(0, 0, W, H); }
+};
+
+window.ready = (async () => {
+  for (const w of [400, 600, 700]) { await document.fonts.load(FONT(w, 60)); await document.fonts.load(FONT(w, 60, true)); }
+  await document.fonts.ready; window.render(4); return true;
+})();
+</script></body></html>
