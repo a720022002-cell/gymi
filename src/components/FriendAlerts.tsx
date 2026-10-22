@@ -4,7 +4,7 @@ import { AppState } from 'react-native';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { loadPrefs } from '@/lib/reminders';
-import { challengeTitle, displayName, recentFriendPRs, recentNudges } from '@/lib/social';
+import { challengeTitle, displayName, mySocialInvites, recentFriendPRs, recentNudges } from '@/lib/social';
 import { useWeight } from '@/lib/units';
 
 import { showBanner } from './NotifyBanner';
@@ -12,7 +12,7 @@ import { showBanner } from './NotifyBanner';
 const EVERY = 90_000;
 const nowIso = () => new Date().toISOString();
 
-/** While the app is open: a banner when a friend hits a PR or nudges you in a challenge (Notifications → Gym Bros). */
+/** While the app is open: a banner when you're invited to a group or challenge, a friend hits a PR or nudges you in a challenge (Notifications → Gym Bros). */
 export function FriendAlerts() {
   const { t } = useT();
   const W = useWeight();
@@ -29,6 +29,12 @@ export function FriendAlerts() {
       const from = since;
       since = nowIso();
       if (!alive || !p.on || !p.friends.on) return;
+      const inv = (await mySocialInvites().catch(() => [])).find((x) => new Date(x.created_at).getTime() > new Date(from).getTime());
+      if (inv && alive) {
+        const name = inv.kind === 'group' ? (inv.title ?? '') : challengeTitle({ kind: inv.challenge_kind ?? 'workouts', exercise_name: inv.exercise_name }, t);
+        showBanner({ title: inv.from_name ?? t('Gym Bros'), body: inv.kind === 'group' ? t('invited you to the group {g}', { g: name }) : t('invited you to a challenge: {g}', { g: name }), icon: inv.kind === 'group' ? 'users' : 'trophy', route: '/friends' });
+        return;
+      }
       if (p.friends.prs) {
         const prs = await recentFriendPRs(from, uid).catch(() => []);
         const a = prs[0];

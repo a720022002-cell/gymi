@@ -79,6 +79,8 @@ export async function cancelAllReminders() {
 /** Open the right screen when a reminder is tapped. */
 export function listenReminderTaps(go: (route: string) => void) {
   const sub = Notifications.addNotificationResponseReceivedListener((r) => {
+    // Message notifications (from the server) are opened by PushSync.
+    if (r.notification.request.content.data?.type === 'coach_message') return;
     const route = r.notification.request.content.data?.route;
     if (typeof route === 'string') go(route);
   });

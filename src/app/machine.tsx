@@ -12,7 +12,7 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Row } from '@/components/ui';
 import { useT } from '@/i18n';
 import { type AiError, aiErrorText, askAI } from '@/lib/ai';
-import { type DbExercise, dbExName, getExercise, machineCatalog, searchExercises, toPlanEx } from '@/lib/exercisesDb';
+import { type CustomKind, type DbExercise, dbExName, getExercise, machineCatalog, searchExercises, toPlanEx } from '@/lib/exercisesDb';
 import { type Photo, takePhoto } from '@/lib/photo';
 import { useTrain } from '@/lib/train';
 import { DAYS_LONG, type Equipment, EX, type Muscle, muscleGroup, muscleLabel, MUSCLES_FINE, type PlanEx, topReps, workoutMinutes } from '@/lib/training';
@@ -60,6 +60,8 @@ export default function MachineScreen() {
   const [pri, setPri] = useState<string | null>(null);
   const [sec, setSec] = useState<string[]>([]);
   const [tried, setTried] = useState(false);
+  // How it's logged: with weight, bodyweight reps, or held for seconds.
+  const [kind, setKind] = useState<CustomKind>('weighted');
   const workouts = Object.keys(train.plan?.workouts ?? {});
   // Today's workout (or the first) until you pick one; the plan may load after the screen opens.
   const [picked, setTarget] = useState<string | null>(null);
@@ -138,11 +140,13 @@ export default function MachineScreen() {
 
   const addOwn = (n: string, ar?: string, fine?: { pri: string; sec: string[] }) => {
     const nm = n.trim().slice(0, 40);
-    const reps = found && /\d/.test(found.reps ?? '') ? String(found.reps).slice(0, 7) : '10–12';
+    const timed = !!fine && kind === 'timed';
+    const body = !!fine && kind !== 'weighted';
+    const reps = timed ? '45' : found && /\d/.test(found.reps ?? '') ? String(found.reps).slice(0, 7) : body ? '12–15' : '10–12';
     const g = fine ? muscleGroup(fine.pri) : group;
     if (!nm || !g) return;
     const id = `custom:${nm.toLowerCase().replace(/[^a-z0-9؀-ۿ]+/g, '-')}`;
-    add({ id, sets: setsOf(found?.sets), reps, n: nm, ar: ar ?? (lang === 'ar' ? nm : null), m: g, t: found?.equipment ?? 'Machine', ...(fine ? { pri: fine.pri, sec: fine.sec } : {}) }, nm);
+    add({ id, sets: setsOf(found?.sets), reps, n: nm, ar: ar ?? (lang === 'ar' ? nm : null), m: g, t: body ? 'Bodyweight' : (found?.equipment ?? 'Machine'), ...(timed ? { time: true } : {}), ...(fine ? { pri: fine.pri, sec: fine.sec } : {}) }, nm);
   };
 
   // Not sure (or it picked nothing): the look-alikes are shown to choose from.
@@ -185,7 +189,7 @@ export default function MachineScreen() {
 
   return (
     <Screen title={t('Unknown machine?')} back>
-      {!photo ? (
+      {!photo && !own ? (
         <View style={{ alignItems: 'center', paddingTop: 20 }}>
           <View style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: c.card, alignItems: 'center', justifyContent: 'center' }}>
             <Icon name="camera" size={48} color={c.cobalt} />
@@ -198,12 +202,15 @@ export default function MachineScreen() {
           </Text>
           <Button icon="camera" title={t('Take a photo')} style={{ marginTop: 24, alignSelf: 'stretch' }} onPress={() => snap(true)} />
           <Button kind="glass" icon="doc" title={t('Choose a photo')} style={{ marginTop: 8, alignSelf: 'stretch' }} onPress={() => snap(false)} />
+          <Button kind="ghost" icon="edit" title={t('No photo? Name it myself')} style={{ marginTop: 4, alignSelf: 'stretch' }} onPress={() => setOwn(true)} />
         </View>
       ) : (
         <View>
-          <View style={{ alignItems: 'center' }}>
-            <Image source={{ uri: photo.uri }} style={{ width: 200, height: 200, borderRadius: 24 }} contentFit="cover" />
-          </View>
+          {photo ? (
+            <View style={{ alignItems: 'center' }}>
+              <Image source={{ uri: photo.uri }} style={{ width: 200, height: 200, borderRadius: 24 }} contentFit="cover" />
+            </View>
+          ) : null}
           {busy ? (
             <View style={{ paddingTop: 20 }}>
               <Thinking message={t('Recognizing the machine')} />
@@ -316,6 +323,20 @@ export default function MachineScreen() {
               <Row gap={8} style={{ flexWrap: 'wrap' }}>
                 {MUSCLES_FINE.filter((m) => m !== pri).map((m) => (
                   <Chip key={m} title={`${sec.includes(m) ? '✓ ' : ''}${t(m)}`} on={sec.includes(m)} onPress={() => setSec(sec.includes(m) ? sec.filter((x) => x !== m) : [...sec, m])} />
+                ))}
+              </Row>
+              <Text variant="small" weight={700} color="sec" style={{ marginTop: 16, marginBottom: 8 }}>
+                {t('Type')}
+              </Text>
+              <Row gap={8} style={{ flexWrap: 'wrap' }}>
+                {(
+                  [
+                    ['weighted', 'With weight'],
+                    ['bodyweight', 'Bodyweight'],
+                    ['timed', 'Timed'],
+                  ] as const
+                ).map(([k, label]) => (
+                  <Chip key={k} title={t(label)} on={kind === k} onPress={() => setKind(k)} />
                 ))}
               </Row>
               {pickers}

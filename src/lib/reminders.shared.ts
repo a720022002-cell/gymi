@@ -23,6 +23,8 @@ export type Prefs = {
   meals: { on: boolean };
   /** From the watch: the morning readiness note, and the warning when the body shows signs of getting sick. */
   watch: { morning: boolean; illness: boolean };
+  /** Messages from your coach (push notifications from the server, not scheduled on the phone). */
+  messages: { on: boolean };
 };
 
 export const DEFAULT_PREFS: Prefs = {
@@ -38,6 +40,7 @@ export const DEFAULT_PREFS: Prefs = {
   friends: { on: true, prs: true, challenges: true, cheers: false, sound: 'yeahbuddy' },
   meals: { on: true },
   watch: { morning: true, illness: true },
+  messages: { on: true },
 };
 
 /** Names, icons and the sample text a preview shows (design: NCAT). */
@@ -154,6 +157,7 @@ function migrate(raw: Record<string, unknown>): Prefs {
     friends: merge('friends'),
     meals: merge('meals'),
     watch: merge('watch'),
+    messages: merge('messages'),
   };
   const every = p.water?.every;
   if (every && !(raw.water as { freq?: string }).freq) out.water.freq = `${Math.min(3, Math.max(1, every))}h` as WaterFreq;

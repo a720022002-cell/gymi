@@ -10,6 +10,7 @@ import { Avatar } from '@/components/social/Avatar';
 import { ReportSheet } from '@/components/social/ReportSheet';
 import { List, ListRow } from '@/components/social/List';
 import { PartnerCycles } from '@/components/social/PartnerCycles';
+import { SocialInvites } from '@/components/social/SocialInvites';
 import { Text } from '@/components/Text';
 import { GroupWorkoutsCard } from '@/components/train/GroupWorkoutsCard';
 import { useToast } from '@/components/Toast';
@@ -36,8 +37,10 @@ import {
   myFriendsOrNull,
   myGroups,
   myGroupSessions,
+  mySocialInvites,
   removeFriendship,
   sendRequest,
+  type SocialInvite,
   timeAgo,
 } from '@/lib/social';
 import { useSettings } from '@/theme/settings';
@@ -56,15 +59,17 @@ export default function Friends() {
   const [items, setItems] = useState<FeedItem[] | null>(null);
   const [adding, setAdding] = useState(false);
   const [live, setLive] = useState<Awaited<ReturnType<typeof myGroupSessions>>>([]);
+  const [invites, setInvites] = useState<SocialInvite[]>([]);
 
   // No connection: say so with a retry, instead of an empty "add friends" page.
   const [offline, setOffline] = useState(false);
   const load = useCallback(async () => {
     try {
-      const [f, g, c, a, ls] = await Promise.all([myFriendsOrNull(), myGroups(), myChallenges(), feed(), myGroupSessions()]);
+      const [f, g, c, a, ls, inv] = await Promise.all([myFriendsOrNull(), myGroups(), myChallenges(), feed(), myGroupSessions(), mySocialInvites()]);
       if (!f) return setOffline(true);
       setOffline(false);
       setLive(ls);
+      setInvites(inv);
       setFriends(f);
       setGroups(g);
       setChallenges(c);
@@ -102,6 +107,7 @@ export default function Friends() {
           </Text>
         </Card>
       ))}
+      <SocialInvites items={invites} onDone={load} />
       <GroupWorkoutsCard />
       <Segmented<Tab>
         value={tab}

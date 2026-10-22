@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { siteUrl } from './config';
+import { inviteUrl } from './links';
 import { supabase } from './supabase';
 
 /** A free month of Adro+ for every 5 friends who join with your code (design: REF_GOAL). */
@@ -27,8 +27,8 @@ export async function claimInvite(code: string): Promise<ClaimResult> {
   return data as ClaimResult;
 }
 
-/** The link friends open: it carries your code and fills it in for them. */
-export const inviteLink = (code: string) => `${siteUrl()}/welcome?ref=${encodeURIComponent(code)}`;
+/** The link friends open: it opens Adro (or the website) with your code filled in. */
+export const inviteLink = (code: string) => inviteUrl(code);
 
 /** Text for Share invite (design: shareInvite). */
 export const inviteText = (code: string, t: (s: string, v?: Record<string, string | number>) => string) =>

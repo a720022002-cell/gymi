@@ -13,7 +13,8 @@ import { Button, Card, Chip, Label, NavButton, Row, Springy, Toggle } from '@/co
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { type Supplement, useHealth } from '@/lib/health';
-import { fmtTime } from '@/lib/nutrition';
+import { fmtTime, localDay } from '@/lib/nutrition';
+import { last7, streakOf, useSupplementLogs } from '@/lib/supplementLogs';
 import { previewNotification } from '@/lib/previewNotify';
 import { onVitDays, saveVitDay, type VitDay, vitaminDays, vitDayDefault, WEEKDAYS } from '@/lib/reminders';
 import { useSettings } from '@/theme/settings';
@@ -31,6 +32,13 @@ export default function VitaminsScreen() {
   const uid = session?.user.id;
   const [draft, setDraft] = useState<Draft | null>(null);
   const act = h.supplements.filter((v) => v.active).length;
+  const today = localDay();
+  const logs = useSupplementLogs(today);
+  const taken = async (v: Supplement) => {
+    const on = await logs.toggle(v.id);
+    if (on == null) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+    if (on) toast(t('{n} taken today', { n: v.name }), { icon: 'pill' });
+  };
   // The day weekly and monthly reminders go off (kept on this phone; a new one gets today).
   const [days, setDays] = useState<{ uid: string; v: Record<string, VitDay> } | null>(null);
   const timed = JSON.stringify(h.supplements.filter((v) => v.freq !== 'Daily').map((v) => ({ id: v.id, name: v.name, time: v.time, freq: v.freq })));
@@ -92,6 +100,9 @@ export default function VitaminsScreen() {
                 </Springy>
                 <Toggle value={v.active} onChange={(x) => quick(v, { active: x })} label={t('I’m taking this now')} />
               </Row>
+              {v.active ? (
+                <TakenRow on={(logs.logs[v.id] ?? []).includes(today)} days={logs.logs[v.id]} today={today} daily={v.freq === 'Daily'} name={v.name} onPress={() => taken(v)} />
+              ) : null}
               {v.active ? (
                 <View style={{ backgroundColor: c.inset, borderRadius: 14, marginTop: 12, paddingHorizontal: 12 }}>
                   <Row style={{ minHeight: 44 }}>
@@ -176,6 +187,40 @@ export default function VitaminsScreen() {
         {draft ? <VitSheet draft={draft} setDraft={setDraft} /> : null}
       </Sheet>
     </Screen>
+  );
+}
+
+/** Tap to mark today's dose taken, with the last 7 days as dots (and the streak for daily ones). */
+function TakenRow({ on, days, today, daily, name, onPress }: { on: boolean; days: string[] | undefined; today: string; daily: boolean; name: string; onPress: () => void }) {
+  const { t } = useT();
+  const { colors: c } = useSettings();
+  const streak = daily ? streakOf(days, today) : 0;
+  return (
+    <Row gap={10} style={{ marginTop: 12 }}>
+      <Springy
+        onPress={onPress}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: on }}
+        accessibilityLabel={t('{n} taken today', { n: name })}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, borderRadius: 18, paddingHorizontal: 14, backgroundColor: on ? c.cobalt : c.inset }}>
+        <Icon name="check" size={15} color={on ? '#FFFFFF' : c.sec} strokeWidth={2.6} />
+        <Text variant="small" weight={700} color={on ? '#FFFFFF' : 'text'}>
+          {t(on ? 'Taken' : 'Mark taken')}
+        </Text>
+      </Springy>
+      <View style={{ flex: 1, alignItems: 'flex-end', gap: 4 }}>
+        <View accessible accessibilityLabel={t('{n} of the last 7 days', { n: last7(days, today).filter((d) => d.on).length })} style={{ flexDirection: 'row', gap: 4 }}>
+          {last7(days, today).map((d) => (
+            <View key={d.day} style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: d.on ? c.cobalt : c.line }} />
+          ))}
+        </View>
+        {streak > 1 ? (
+          <Text variant="xs" weight={700} color="sec">
+            {t('{n} days in a row', { n: streak })}
+          </Text>
+        ) : null}
+      </View>
+    </Row>
   );
 }
 

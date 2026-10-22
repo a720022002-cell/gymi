@@ -67,6 +67,8 @@ export type TrainPlan = {
   queue?: string[];
   /** Set when the plan is your coach's program (and which version of it). */
   coach?: { id: string; updated_at?: string };
+  /** Coach program versions you said "Not now" to (coachVersion), so you're not asked again about the same one. */
+  coachNo?: string[];
   /** The weekly AI check of your results (day it ran), and the last one: what changed and what to put back on Undo. */
   reviewedAt?: string;
   review?: { at: string; summary: string; changes: import('./coach').PlanChange[]; prev: { workouts: Record<string, Workout>; deload?: string; light?: string }; seen?: boolean };
@@ -271,6 +273,9 @@ export function planWithProgram(cur: TrainPlan | null | undefined, prog: { id: s
   };
 }
 
+/** One version of a coach's program: changes each time the coach saves it or assigns another one. */
+export const coachVersion = (p: { id: string; updated_at?: string }) => `${p.id}@${p.updated_at ?? ''}`;
+
 /** A free workout name based on another one: "Push" → "Push 2", "Push 3"… */
 export function copyName(workouts: Record<string, unknown>, base: string) {
   const root = base.replace(/ \d+$/, '');
@@ -466,13 +471,20 @@ export const effectiveWeek = (plan: TrainPlan, start: string) => (plan.override?
  * Give one week its own layout (this week only). Another week's changes move to `overrides` instead of being lost, so
  * a day moved away from in that week never counts as missed later. Weeks older than 16 weeks are let go.
  */
-export function setWeekMoves(plan: TrainPlan, start: string, week: Day[]): Pick<TrainPlan, 'override' | 'overrides'> {
+export function setWeekMoves(plan: TrainPlan, start: string, week: Day[]): Pick<TrainPlan, 'override' | 'overrides' | 'dismiss'> {
   const all = { ...(plan.overrides ?? {}) };
   if (plan.override && plan.override.start !== start) all[plan.override.start] = plan.override.week;
   delete all[start];
   const oldest = addDay(start, -16 * 7);
   const overrides = Object.fromEntries(Object.entries(all).filter(([s]) => s >= oldest));
-  return { override: { start, week }, overrides };
+  // A week let go: the days a workout was moved away from are kept as dismissed, so a long streak never breaks later.
+  let dismiss = plan.dismiss ?? {};
+  for (const [s, wk] of Object.entries(all))
+    if (s < oldest)
+      wk.forEach((d, i) => {
+        if (!d.w && plan.week[i]?.w) dismiss = { ...dismiss, [addDay(s, i)]: true };
+      });
+  return { override: { start, week }, overrides, dismiss };
 }
 
 /**
@@ -483,6 +495,58 @@ export function plannedOn(plan: TrainPlan, day: string) {
   if ((plan.since && day < plan.since) || (plan.weekSince && day < plan.weekSince)) return false;
   if (plan.skipped[day] || plan.dismiss?.[day]) return false;
   return !!effectiveWeek(plan, weekStart(day))[weekdayOf(day)]?.w;
+}
+
+/**
+ * Planned workouts really missed between two days (`done`: days with a workout). A workout done on another day of the
+ * same week (a rest day or a skipped day) counts as that workout moved there, so the earliest missed day it covers
+ * isn't missed. Skipped, dismissed and moved days are never missed (plannedOn).
+ */
+export function missedDays(plan: TrainPlan, done: Set<string>, from: string, to: string) {
+  const out = new Set<string>();
+  if (from > to) return out;
+  for (let s = weekStart(from); s <= to; s = addDay(s, 7)) {
+    const miss: string[] = [];
+    let extra = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = addDay(s, i);
+      const planned = plannedOn(plan, d);
+      if (done.has(d)) {
+        if (!planned) extra++;
+      } else if (planned && d >= from && d <= to) miss.push(d);
+    }
+    miss.slice(extra).forEach((d) => out.add(d));
+  }
+  return out;
+}
+
+/**
+ * Workouts in a row and the best run ever (design: one rule everywhere: Train, Home, Progress, widgets).
+ * A workout adds one; rest days, skipped or dismissed days and moved workouts never break it. A planned workout
+ * missed (see missedDays) does. Today never breaks it until it's over.
+ */
+export function workoutStreak(plan: TrainPlan | null | undefined, done: Set<string>, today: string) {
+  if (!plan) return { streak: 0, best: 0 };
+  const first = [...done].sort()[0] ?? today;
+  const span = Math.min(3650, Math.max(0, Math.round((new Date(`${today}T12:00:00`).getTime() - new Date(`${first}T12:00:00`).getTime()) / 864e5)));
+  const start = addDay(today, -span);
+  const missed = plan.type === 'order' ? new Set<string>() : missedDays(plan, done, start, addDay(today, -1));
+  let run = 0;
+  let best = 0;
+  let gap = 0;
+  for (let i = span; i >= 0; i--) {
+    const d = addDay(today, -i);
+    if (done.has(d)) {
+      run++;
+      gap = 0;
+      best = Math.max(best, run);
+    } else if (i > 0) {
+      gap++;
+      // Plans in order (no fixed days) end it after 3 days in a row without training.
+      if (plan.type === 'order' ? gap >= 3 : missed.has(d)) run = 0;
+    }
+  }
+  return { streak: run, best };
 }
 
 /** The first day workouts were saved with their own "lighter" flag. */

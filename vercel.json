@@ -5,11 +5,19 @@
   "buildCommand": "npx expo export -p web --clear",
   "outputDirectory": "dist",
   "cleanUrls": true,
-  "rewrites": [{ "source": "/:path*", "destination": "/" }],
+  "rewrites": [{ "source": "/((?!\\.well-known/).*)", "destination": "/" }],
   "headers": [
     {
       "source": "/manifest.json",
       "headers": [{ "key": "Content-Type", "value": "application/manifest+json" }]
+    },
+    {
+      "source": "/.well-known/apple-app-site-association",
+      "headers": [{ "key": "Content-Type", "value": "application/json" }]
+    },
+    {
+      "source": "/.well-known/assetlinks.json",
+      "headers": [{ "key": "Content-Type", "value": "application/json" }]
     }
   ]
 }

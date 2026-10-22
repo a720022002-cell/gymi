@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { View } from 'react-native';
 
 import { useT } from '@/i18n';
+import { inviteUrl } from '@/lib/links';
 import { assign, type ClientLink, copyText, type MealPlan, type Program, shareText } from '@/lib/coaching';
 import { useSettings } from '@/theme/settings';
 
@@ -38,7 +39,7 @@ export function InviteCode({ code, coach }: { code: string; coach: string }) {
           title={t('Share')}
           style={{ flex: 1 }}
           onPress={async () => {
-            const r = await shareText(t('{c} invited you to coaching on Adro. Open Adro, go to Find a coach and enter this code: {k}', { c: coach, k: code }));
+            const r = await shareText(`${t('{c} invited you to coaching on Adro. Open Adro, go to Find a coach and enter this code: {k}', { c: coach, k: code })} ${inviteUrl(code, 'coach')}`);
             if (r === 'copied') toast(t('Invite text copied'), { icon: 'copy' });
           }}
         />

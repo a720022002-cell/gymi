@@ -3,7 +3,8 @@ import { ActivityIndicator, View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { injuriesStrained } from '@/lib/coachPlan';
-import { type DbExercise, dbExName, getExercise, searchExercises } from '@/lib/exercisesDb';
+import { customFromPlan, type DbExercise, dbExName, getExercise, isCustom, searchExercises } from '@/lib/exercisesDb';
+import { useTrain } from '@/lib/train';
 import { exMuscle, FILTER_MUSCLES, muscleLabel } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
 
@@ -12,6 +13,7 @@ import { Icon } from '../Icon';
 import { Sheet } from '../Sheet';
 import { Text } from '../Text';
 import { Button, Chip, Row, Springy } from '../ui';
+import { CustomExerciseForm } from './CustomExerciseForm';
 
 // Words that say nothing about the movement itself.
 const PLAIN = new Set(['dumbbell', 'dumbbells', 'barbell', 'cable', 'machine', 'smith', 'seated', 'standing', 'one', 'arm', 'one-arm', 'single', 'single-arm', 'two', 'two-arm', 'alternating', 'with', 'the', 'on', 'to', 'a', 'and', 'lying', 'bands', 'band', 'kettlebell', 'plate', 'plate-loaded', 'ez', 'bar', '-']);
@@ -66,7 +68,10 @@ export function ExercisePicker({
 }) {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
+  const { plan } = useTrain();
   const [all, setAll] = useState(false);
+  // Making your own exercise (no photo needed).
+  const [own, setOwn] = useState(false);
   const [similar, setSimilar] = useState<{ id: string; list: DbExercise[] } | null>(null);
   const showSimilar = !!like && !all;
   const [q, setQ] = useState('');
@@ -103,10 +108,12 @@ export function ExercisePicker({
 
   const close = () => {
     setAll(false);
+    setOwn(false);
     onClose();
   };
   const pick = (e: DbExercise) => {
     setAll(false);
+    setOwn(false);
     onPick(e);
   };
   const hurts = (e: DbExercise) => injuriesStrained(e, injuries ?? []);
@@ -116,6 +123,12 @@ export function ExercisePicker({
     const hurt = hurts(e);
     return (
     <Springy key={e.id} onPress={() => pick(e)} scaleTo={0.99} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 56, paddingVertical: 8, paddingHorizontal: 14, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
+      {isCustom(e.id) ? (
+        // Your own exercise: no picture, a plain mark instead.
+        <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name="train" size={16} color={c.sec} />
+        </View>
+      ) : null}
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text weight={700} numberOfLines={1}>
           {dbExName(e, lang)}
@@ -133,6 +146,17 @@ export function ExercisePicker({
     </Springy>
     );
   };
+
+  if (own)
+    return (
+      <Sheet open={open} onClose={close}>
+        <Text variant="h2">{t('Your own exercise')}</Text>
+        <Text color="sec" style={{ marginTop: 4, marginBottom: 8 }}>
+          {t('Name it, pick the muscle and how you log it. No photo needed.')}
+        </Text>
+        <CustomExerciseForm name={q} submit={replacing ? t('Swap it in') : t('Add exercise')} onDone={pick} onCancel={() => setOwn(false)} />
+      </Sheet>
+    );
 
   if (showSimilar) {
     const sim = similar?.id === like.id ? safeFirst(similar.list.filter((e) => !exclude?.includes(e.id))) : null;
@@ -158,7 +182,17 @@ export function ExercisePicker({
     );
   }
 
-  const list = safeFirst(results.filter((e) => !exclude?.includes(e.id)));
+  // Your own exercises already in your plan come first when they match.
+  const words = q.trim().toLowerCase();
+  const mine = [
+    ...new Map(
+      Object.values(plan?.workouts ?? {})
+        .flatMap((w) => w.ex)
+        .filter((x) => isCustom(x.id) && !exclude?.includes(x.id))
+        .map((x) => [x.id, customFromPlan(x)] as const),
+    ).values(),
+  ].filter((e) => (!m || exMuscle(e.id, e.muscle, e.muscles) === m) && (!words || `${e.name_en} ${e.name_ar ?? ''}`.toLowerCase().includes(words)));
+  const list = [...mine, ...safeFirst(results.filter((e) => !exclude?.includes(e.id)))];
   return (
     <Sheet open={open} onClose={close}>
       <Text variant="h2">{title}</Text>
@@ -168,6 +202,7 @@ export function ExercisePicker({
           <Chip key={x ?? 'all'} title={x ? muscleLabel(x, lang, t) : t('All')} on={m === x} onPress={() => setM(x)} />
         ))}
       </Row>
+      <Button small kind="soft" icon="plus" title={t('Make your own exercise')} color={c.text} style={{ marginTop: 10, alignSelf: 'flex-start' }} onPress={() => setOwn(true)} />
       <View style={{ marginTop: 10, minHeight: 240 }}>
         {loading && !list.length ? (
           <ActivityIndicator color={c.cobalt} style={{ marginTop: 30 }} />

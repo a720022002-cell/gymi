@@ -12,6 +12,7 @@ import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { meetingReply, type Message, messages, sendMessage } from '@/lib/coaching';
 import { fmtTime } from '@/lib/nutrition';
+import { markThreadSeen } from '@/lib/coachUnread';
 import { supabase } from '@/lib/supabase';
 import { DAYS } from '@/lib/training';
 import { timeAgo } from '@/lib/social';
@@ -39,6 +40,8 @@ export default function Thread() {
     const coach = row?.coach_id === me;
     // Ended (or no longer yours): no more messages. A failed load isn't counted as ended.
     setList({ link, m, coach, other: row ? (coach ? row.client_id : row.coach_id) : null, ended: !l.error && row?.status !== 'active' });
+    // Read now (Home shows new messages from your coach until you open the chat).
+    markThreadSeen(link);
   }, [link, me]);
 
   useEffect(() => {

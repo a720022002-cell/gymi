@@ -104,6 +104,22 @@ export default function NotificationsScreen() {
         {t('Tap a type to choose how often it reminds you and whether it plays a sound. If you don’t hear sounds, turn off your phone’s silent mode.')}
       </Text>
 
+      <Label>{t('Messages')}</Label>
+      <View style={{ opacity: p.on ? 1 : 0.5 }}>
+        <List>
+          <ListRow first>
+            <Icon name="send" size={18} />
+            <View style={{ flex: 1 }}>
+              <Text weight={700}>{t('Messages from your coach')}</Text>
+              <Text variant="small" color="sec">
+                {p.messages.on ? t('A notification when your coach sends you a message') : t('Off')}
+              </Text>
+            </View>
+            <Toggle value={p.messages.on} onChange={(v) => put({ ...p, messages: { on: v }, ...(v ? { on: true } : {}) }, v)} label={t('Messages from your coach')} />
+          </ListRow>
+        </List>
+      </View>
+
       <Label>{t('Quiet hours')}</Label>
       <List>
         <ListRow first>

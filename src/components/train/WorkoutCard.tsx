@@ -7,7 +7,7 @@ import { CY_PLAN } from '@/lib/cycle';
 import { useCycleToday } from '@/lib/cyclePhase';
 import { addDays, fmt, localDay } from '@/lib/nutrition';
 import { useTrain } from '@/lib/train';
-import { applyShift, buildWorkout, DAYS_LONG, effectiveWeek, exInfo, shiftPlan, weekdayOf, weekStart, workoutTitle } from '@/lib/training';
+import { applyShift, buildWorkout, DAYS_LONG, effectiveWeek, exInfo, missedDays, shiftPlan, weekdayOf, weekStart, workoutTitle } from '@/lib/training';
 import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
@@ -142,12 +142,14 @@ export function MissedCard() {
   // Today's workout already done: nothing to catch up on today either.
   if (!p || !train.setupDone || train.coach || p.type === 'order' || p.skipped[train.today] || train.todayLog) return null;
   let m: { day: number; w: string; sh: NonNullable<ReturnType<typeof shiftPlan>> } | null = null;
+  // A workout done on another day this week (a rest day) counts as moved there: nothing to catch up on.
+  const missed = missedDays(p, new Set(train.logs.map((l) => l.day)), dateOf(train.today, -train.todayIdx), dateOf(train.today, -1));
   for (let i = train.todayIdx - 1; i >= 0; i--) {
     const w = train.week[i]?.w;
     const date = dateOf(train.today, i - train.todayIdx);
     // Days before the plan, or before its days last changed, were planned differently: never "missed".
     if ((p.since && date < p.since) || (p.weekSince && date < p.weekSince)) break;
-    if (w && !train.doneIdx.has(i) && !p.skipped[date] && !p.dismiss[date]) {
+    if (w && missed.has(date)) {
       const sh = shiftPlan(train.week, train.doneIdx, i, train.todayIdx);
       if (sh) m = { day: i, w, sh };
       break;

@@ -40,10 +40,11 @@ export function needsRecipes(f: FoodPlan, lang: 'en' | 'ar', today: string) {
 const pick = <T,>(xs: T[], n: number) => [...xs].sort(() => Math.random() - 0.5).slice(0, n);
 
 /**
- * Ask for 4 recipes per meal (all at once), and keep only the sound ones. When only some meals are new (and the rest
+ * Ask for 4 recipes per meal (all at once), and keep only the sound ones. `focus`: nutrients that came back low in
+ * your latest blood test (iron, vitamin D...), favoured where they fit. When only some meals are new (and the rest
  * are still fresh), only those are asked for and the others are kept. Null when nothing came back.
  */
-export async function makeRecipes(f: FoodPlan, lang: 'en' | 'ar', today: string): Promise<AiRecipes | null> {
+export async function makeRecipes(f: FoodPlan, lang: 'en' | 'ar', today: string, focus: string[] = []): Promise<AiRecipes | null> {
   const goal = goalKind(f);
   const r0 = f.aiRecipes;
   const onlyNew = !!r0 && r0.key === recipesKey(f) && r0.lang === lang && r0.at >= addDays(today, -KEEP_DAYS) && missingTypes(f).length > 0;
@@ -55,7 +56,7 @@ export async function makeRecipes(f: FoodPlan, lang: 'en' | 'ar', today: string)
     types.map(async (type) => {
       // Different cuisines for each meal, picked at random for you.
       const cuisines = pick(CUISINES, 2).join(', ');
-      const { result } = await askAI<{ recipes?: unknown[] }>('recipes', { lang, meal: type, count: 4, goal, cuisines, allergies, avoid: old }).catch(() => ({ result: null }));
+      const { result } = await askAI<{ recipes?: unknown[] }>('recipes', { lang, meal: type, count: 4, goal, cuisines, allergies, avoid: old, ...(focus.length ? { focus } : {}) }).catch(() => ({ result: null }));
       return (result?.recipes ?? []).map((x) => clean(x, type, f)).filter((x): x is AiRecipe => !!x);
     }),
   );

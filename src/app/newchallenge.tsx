@@ -122,7 +122,7 @@ export default function NewChallenge() {
           const id = await createChallenge(k, DAYS[dur], fr, k === 'exercise' ? { exercise: LIFTS[lift][0], exerciseName: LIFTS[lift][1] } : k === 'weight' ? { goal: goalKg } : undefined);
           setBusy(false);
           if (!id) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
-          toast(t('Challenge sent to your friends'), { icon: 'trophy' });
+          toast(t('Challenge invites sent. Friends join when they accept.'), { icon: 'trophy' });
           router.replace({ pathname: '/challenge', params: { id } });
         }}
       />

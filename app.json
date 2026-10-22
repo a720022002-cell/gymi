@@ -11,6 +11,10 @@
     "ios": {
       "bundleIdentifier": "com.adro.app",
       "supportsTablet": false,
+      "associatedDomains": [
+        "applinks:gymi-inky.vercel.app",
+        "applinks:adro.sa"
+      ],
       "config": {
         "usesNonExemptEncryption": false
       }
@@ -23,6 +27,28 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "gymi-inky.vercel.app",
+              "pathPrefix": "/i/"
+            },
+            {
+              "scheme": "https",
+              "host": "adro.sa",
+              "pathPrefix": "/i/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.health.READ_STEPS",

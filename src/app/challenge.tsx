@@ -9,20 +9,39 @@ import { Field } from '@/components/Field';
 import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
 import { Avatar } from '@/components/social/Avatar';
+import { FriendPicker } from '@/components/social/FriendPicker';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
-import { Button, Card, Row } from '@/components/ui';
+import { Button, Card, NavButton, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
 import { useAuth } from '@/lib/auth';
 import { fmt } from '@/lib/nutrition';
 import { shortDate } from '@/lib/progress';
 import { useWeight } from '@/lib/units';
-import { CH_PCT, CH_UNIT, challengeBoard, challengeInfo, type ChallengeInfo, type ChallengeRow, challengeTitle, daysLeft, leaveChallenge, nudgeChallenge, setChallengeGoal } from '@/lib/social';
+import {
+  CH_PCT,
+  CH_UNIT,
+  challengeBoard,
+  challengeInfo,
+  type ChallengeInfo,
+  challengePeople,
+  type ChallengeRow,
+  challengeTitle,
+  daysLeft,
+  deleteChallenge,
+  displayName,
+  inviteToChallenge,
+  leaveChallenge,
+  nudgeChallenge,
+  type Person,
+  removeChallengeMember,
+  setChallengeGoal,
+} from '@/lib/social';
 import { useSettings } from '@/theme/settings';
 import { goBack } from '@/lib/nav';
 
-type Data = { id: string; info: ChallengeInfo | null; board: ChallengeRow[] };
+type Data = { id: string; info: ChallengeInfo | null; board: ChallengeRow[]; people: Person[] };
 
 const NOTE: Record<ChallengeInfo['kind'], string> = {
   steps: 'Steps count from what each person logs in Cardio and steps.',
@@ -48,11 +67,16 @@ export default function ChallengeScreen() {
   const [nudging, setNudging] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [kick, setKick] = useState<Person | null>(null);
+  const [inviting, setInviting] = useState(false);
+  const [pick, setPick] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
   const W = useWeight();
 
   const load = useCallback(async () => {
-    const [info, board] = await Promise.all([challengeInfo(id), challengeBoard(id)]);
-    setData({ id, info, board: board.sort((a, b) => b.value - a.value) });
+    const [info, board, people] = await Promise.all([challengeInfo(id), challengeBoard(id), challengePeople(id)]);
+    setData({ id, info, board: board.sort((a, b) => b.value - a.value), people });
   }, [id]);
   useEffect(() => {
     let alive = true;
@@ -87,8 +111,19 @@ export default function ChallengeScreen() {
   // The goal is typed in your unit (kg or lb) and saved in kg.
   const goalKg = W.toKg(Number(goal.replace(',', '.')));
   const others = d.board.length > 1;
+  const owner = !!me && ch.creator === me;
+  const answerKick = async () => {
+    if (!kick || busy) return;
+    setBusy(true);
+    const ok = await removeChallengeMember(ch.id, kick.user_id);
+    setBusy(false);
+    setKick(null);
+    if (!ok) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+    toast(kick.pending ? t('Invite taken back') : t('Removed from the challenge'), { icon: 'trophy' });
+    load();
+  };
   return (
-    <Screen title={t('Challenge')} back>
+    <Screen title={t('Challenge')} back right={left > 0 ? <NavButton icon="userplus" label={t('Invite friends')} onPress={() => (setPick([]), setInviting(true))} /> : undefined}>
       <View style={{ alignItems: 'center' }}>
         <Icon name="trophy" size={40} color={c.cobalt} />
         <Text variant="h1" center style={{ marginTop: 8 }}>
@@ -139,6 +174,29 @@ export default function ChallengeScreen() {
       {ch.kind === 'weight' && myRow?.goal != null ? (
         <Button small kind="ghost" title={W.words(t('Your goal: {n} kg. Change', { n: fmt(W.num(myRow.goal)) }))} style={{ alignSelf: 'center', marginTop: 4 }} onPress={() => (setGoal(String(W.num(myRow.goal ?? 0))), setGoalOpen(true))} />
       ) : null}
+      <Text variant="small" weight={700} color="sec" style={{ marginTop: 20, marginBottom: 8, marginHorizontal: 4 }}>
+        {t('People')}
+      </Text>
+      <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden', marginBottom: 12 }}>
+        {d.people.map((m, i) => (
+          <Row key={`${m.user_id}${m.pending ? 'p' : ''}`} gap={12} style={{ paddingVertical: 10, paddingHorizontal: 14, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
+            <Avatar id={m.user_id} name={displayName(m)} size={32} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text variant="small" weight={700} numberOfLines={1}>
+                {m.user_id === me ? t('You') : displayName(m)}
+              </Text>
+              <Text variant="xs" color="sec">
+                {m.pending ? t('Invited, waiting') : m.user_id === ch.creator ? t('Started it') : `@${m.username}`}
+              </Text>
+            </View>
+            {owner && m.user_id !== me ? (
+              <Springy accessibilityLabel={m.pending ? t('Take back invite') : t('Remove {n}', { n: displayName(m) })} onPress={() => setKick(m)} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name="close" size={18} color={c.sec} />
+              </Springy>
+            ) : null}
+          </Row>
+        ))}
+      </View>
       {left > 0 && others ? (
         <Button
           kind="glass"
@@ -163,6 +221,59 @@ export default function ChallengeScreen() {
         style={{ marginTop: 12 }}
         onPress={() => setLeaveOpen(true)}
       />
+      {owner ? <Button kind="ghost" title={t('Delete challenge')} color={c.down} onPress={() => setDeleting(true)} /> : null}
+      <Sheet open={deleting} onClose={() => setDeleting(false)}>
+        <Text variant="h2" center>
+          {t('Delete this challenge?')}
+        </Text>
+        <Text color="sec" center style={{ marginTop: 4 }}>
+          {t('It’s deleted for everyone in it. This can’t be undone.')}
+        </Text>
+        <Button
+          kind="danger"
+          title={t('Delete challenge')}
+          loading={busy}
+          style={{ marginTop: 16 }}
+          onPress={async () => {
+            setBusy(true);
+            const ok = await deleteChallenge(ch.id);
+            setBusy(false);
+            setDeleting(false);
+            if (!ok) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+            toast(t('Challenge deleted'), { icon: 'trophy' });
+            goBack();
+          }}
+        />
+        <Button kind="ghost" title={t('Cancel')} style={{ marginTop: 8 }} onPress={() => setDeleting(false)} />
+      </Sheet>
+      <Sheet open={!!kick} onClose={() => setKick(null)}>
+        <Text variant="h2" center>
+          {kick?.pending ? t('Take back the invite to {n}?', { n: kick ? displayName(kick) : '' }) : t('Remove {n} from the challenge?', { n: kick ? displayName(kick) : '' })}
+        </Text>
+        <Button kind="danger" title={kick?.pending ? t('Take back invite') : t('Remove')} loading={busy} style={{ marginTop: 16 }} onPress={answerKick} />
+        <Button kind="ghost" title={t('Cancel')} style={{ marginTop: 8 }} onPress={() => setKick(null)} />
+      </Sheet>
+      <Sheet open={inviting} onClose={() => setInviting(false)}>
+        <Text variant="h2">{t('Invite to this challenge')}</Text>
+        <Text variant="small" color="sec" style={{ marginTop: 4 }}>
+          {t('They join when they accept your invite.')}
+        </Text>
+        <View style={{ height: 12 }} />
+        <FriendPicker value={pick} onChange={setPick} exclude={d.people.map((p) => p.user_id)} />
+        <Button
+          title={t('Send invites')}
+          disabled={!pick.length}
+          onPress={async () => {
+            let n = 0;
+            for (const u of pick) if (await inviteToChallenge(ch.id, u)) n++;
+            setInviting(false);
+            load();
+            if (!n) return toast(t('Couldn’t invite them. Please try again.'), { icon: 'warn' });
+            if (n < pick.length) return toast(t('Invited {a} of {b}. Some couldn’t be invited.', { a: n, b: pick.length }), { icon: 'warn' });
+            toast(t('Invite sent. They join when they accept.'), { icon: 'trophy' });
+          }}
+        />
+      </Sheet>
       <Sheet open={leaveOpen} onClose={() => setLeaveOpen(false)}>
         <Text variant="h2" center>
           {t('Leave this challenge?')}

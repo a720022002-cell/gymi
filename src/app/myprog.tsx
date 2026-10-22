@@ -12,7 +12,7 @@ import { Button, Card, Row } from '@/components/ui';
 import { useT } from '@/i18n';
 import { myCoachPlans, type Program } from '@/lib/coaching';
 import { useTrain } from '@/lib/train';
-import { exInfo, planWithProgram } from '@/lib/training';
+import { exInfo } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
 
 /** Client: the workout program your coach gave you (design: myprog). */
@@ -46,7 +46,9 @@ export default function MyProgram() {
         </Card>
       </Screen>
     );
-  const using = train.plan?.split === p.name;
+  // Your plan is this program: this very version, or an older one (the coach changed it since).
+  const using = train.plan?.coach?.id === p.id;
+  const current = using && train.plan?.coach?.updated_at === p.updated_at;
   return (
     <Screen title={p.name} back>
       <Text variant="small" color="sec" style={{ marginTop: -8, marginBottom: 12 }}>
@@ -66,7 +68,16 @@ export default function MyProgram() {
           ))}
         </Card>
       ))}
-      <Button icon="check" title={t(using ? 'Update my plan with the latest version' : 'Use as my training plan')} onPress={() => setConfirm(true)} />
+      {current ? (
+        <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <Icon name="check" size={18} color={c.cobalt} />
+          <Text variant="small" style={{ flex: 1 }}>
+            {t('This is your training plan now.')}
+          </Text>
+        </Card>
+      ) : (
+        <Button icon="check" title={t(using ? 'Update my plan with the latest version' : 'Use as my training plan')} onPress={() => setConfirm(true)} />
+      )}
       <Sheet open={confirm} onClose={() => setConfirm(false)}>
         <Text variant="h2" center>
           {t('Use your coach’s program?')}
@@ -78,8 +89,8 @@ export default function MyProgram() {
           title={t('Use it')}
           style={{ marginTop: 16 }}
           onPress={async () => {
-            // Built like the automatic sync: your injuries, skipped days, machines, level and home mode stay.
-            const ok = await train.savePlan(planWithProgram(train.plan, p, train.today), true);
+            // Your injuries, skipped days, machines, level and home mode stay.
+            const ok = await train.acceptCoach(p);
             setConfirm(false);
             toast(ok ? t('Your training plan is now {p}', { p: p.name }) : t('Couldn’t save. Please try again.'), { icon: ok ? 'check' : 'warn' });
             if (ok) router.replace('/train');

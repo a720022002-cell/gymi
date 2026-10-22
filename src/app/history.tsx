@@ -11,7 +11,7 @@ import { fmt } from '@/lib/nutrition';
 import type { WorkoutLog } from '@/lib/train';
 import { workoutTitle } from '@/lib/training';
 import { useWeight } from '@/lib/units';
-import { loadWorkoutPage } from '@/lib/workoutHistory';
+import { loadWorkoutPage, onLogChange } from '@/lib/workoutHistory';
 import { useSettings } from '@/theme/settings';
 
 /** Every workout you've done, newest first, by month. Tap one to see its exercises and sets. */
@@ -48,6 +48,15 @@ export default function WorkoutHistory() {
       live = false;
     };
   }, []);
+
+  // A workout edited or deleted on its page: the list shows it right away.
+  useEffect(
+    () =>
+      onLogChange((id, patch) =>
+        setRows((xs) => xs && (patch ? xs.map((x) => (x.id === id ? { ...x, ...patch } : x)) : xs.filter((x) => x.id !== id))),
+      ),
+    [],
+  );
 
   const month = (day: string) => new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(new Date(`${day}T12:00:00`));
   const date = (day: string) => new Intl.DateTimeFormat(locale, { weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(`${day}T12:00:00`));

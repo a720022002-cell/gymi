@@ -9,6 +9,7 @@ import { Sheet } from '@/components/Sheet';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { CoachBanner } from '@/components/train/CoachBanner';
+import { CoachOfferCard } from '@/components/train/CoachOfferCard';
 import { GroupWorkoutsCard } from '@/components/train/GroupWorkoutsCard';
 import { IllnessCard } from '@/components/health/IllnessCard';
 import { DeloadCard, RecoveryCard } from '@/components/train/RecoveryCard';
@@ -53,6 +54,13 @@ export default function Train() {
         </Card>
       </Screen>
     );
+  // No plan yet and your coach sent one: you're asked first; "Not now" goes on to the usual setup.
+  if (!train.setupDone && !redo && train.coachOffer)
+    return (
+      <Screen title={t('Train')} large tabs>
+        <CoachOfferCard />
+      </Screen>
+    );
   if (!train.setupDone || redo) return <TrainSetup inTab onDone={() => setRedo(false)} onCancel={redo ? () => setRedo(false) : undefined} />;
 
   return (
@@ -70,6 +78,7 @@ export default function Train() {
           </Springy>
         </Row>
       }>
+      <CoachOfferCard />
       <CoachBanner />
       <Card>
         <WeekStrip />

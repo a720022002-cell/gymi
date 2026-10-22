@@ -8,7 +8,7 @@ import { addDays } from '@/lib/nutrition';
 import { type Badge, badgeLevel, badgeProgress, COMMIT_LABEL, type CommitKey } from '@/lib/progress';
 import { getShowcase, saveShowcase, type Showcase } from '@/lib/social';
 import { useTrain } from '@/lib/train';
-import { DAYS, DAYS_LONG, plannedOn, weekStart } from '@/lib/training';
+import { DAYS, DAYS_LONG, missedDays, weekStart } from '@/lib/training';
 import { useStreaks } from '@/lib/useProgress';
 import { useSettings } from '@/theme/settings';
 
@@ -320,13 +320,15 @@ function WorkoutStreak() {
   const s = useStreaks();
   const train = useTrain();
   const ws = weekStart(train.today);
+  // Skipped, dismissed and moved days, days made up on another day this week, and days before the plan or its days
+  // last changed aren't missed (the same rule as the streak).
+  const missed = train.plan ? missedDays(train.plan, new Set(train.logs.map((l) => l.day)), ws, addDays(train.today, -1)) : new Set<string>();
   const cells = DAYS.map((_, i) => {
     const d = addDays(ws, i);
     const w = train.week[i]?.w;
     if (train.doneIdx.has(i)) return { st: 'done' as const };
     if (!w) return { st: 'rest' as const };
-    // Skipped or dismissed days, and days before the plan or its days last changed, aren't missed.
-    if (d < train.today) return { st: train.plan && plannedOn(train.plan, d) ? ('missed' as const) : ('rest' as const) };
+    if (d < train.today) return { st: missed.has(d) ? ('missed' as const) : ('rest' as const) };
     return { st: d === train.today ? ('today' as const) : ('planned' as const), letter: t(w).slice(0, 1) };
   });
   const recent = train.logs.slice(0, 10).reverse();
@@ -353,7 +355,7 @@ function WorkoutStreak() {
         {t('{n} workouts in a row', { n: s.workouts })}
       </Text>
       <Text variant="small" color="sec" center style={{ marginTop: 4 }}>
-        {t('Every planned workout you finish adds one. Rest days don’t break it, only a missed workout does. Best: {n}.', { n: s.bestWorkouts })}
+        {t('Every workout you finish adds one. Rest days, skipped days and moved workouts don’t break it. Only a missed workout does. Best: {n}.', { n: s.bestWorkouts })}
       </Text>
       {train.setupDone ? (
         <WeekDots cells={cells} caption={t('This week: {d} of {p} workouts done', { d: cells.filter((x) => x.st === 'done').length, p: train.week.filter((x) => x?.w).length })} />

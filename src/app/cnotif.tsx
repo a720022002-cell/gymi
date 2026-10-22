@@ -99,6 +99,7 @@ export default function CoachNotifScreen() {
       <View style={{ opacity: n.on ? 1 : 0.45 }} pointerEvents={n.on ? 'auto' : 'none'}>
         {head(t('Client alerts'))}
         <List>
+          {row('send', t('New messages'), t('When a client sends you a message'), n.msgs, (v) => set({ msgs: v }), undefined, true)}
           {row(
             'warn',
             t('Low commitment'),
@@ -111,7 +112,6 @@ export default function CoachNotifScreen() {
               </Text>
               {chips([30, 40, 50, 60, 70, 80], n.low.th, (v) => set({ low: { ...n.low, th: v } }), (v) => `${v}%`)}
             </View>,
-            true,
           )}
           {row(
             'food',

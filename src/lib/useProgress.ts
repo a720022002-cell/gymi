@@ -6,7 +6,7 @@ import { useFood } from './food';
 import { useHealth } from './health';
 import { addDays } from './nutrition';
 import { loadKcalExtras } from './report';
-import { activeDays, badges, bestWorkoutStreak, commitment, overallStreak, type ProgressInput, weeklyCommitment, weeksAbove } from './progress';
+import { activeDays, badges, commitment, overallStreak, type ProgressInput, weeklyCommitment, weeksAbove } from './progress';
 import { useTrain } from './train';
 
 /** Everything the progress math needs, from food, training and health. */
@@ -54,7 +54,8 @@ export function useProgressInput(): ProgressInput {
 /** Streaks, commitment and badges. */
 export function useStreaks() {
   const x = useProgressInput();
-  const { streak: workouts } = useTrain();
+  // Workouts in a row and the best run: the same rule as Train and the widgets (workoutStreak).
+  const { streak: workouts, bestStreak } = useTrain();
   return useMemo(() => {
     const active = activeDays(x);
     const o = overallStreak(active, x.today);
@@ -62,7 +63,7 @@ export function useStreaks() {
     const c30 = commitment(x, 30, active);
     const hist = weeklyCommitment(x, active);
     const above = weeksAbove(hist);
-    const bestWorkouts = bestWorkoutStreak(x, workouts);
+    const bestWorkouts = Math.max(bestStreak, workouts);
     return {
       x,
       active,
@@ -77,5 +78,5 @@ export function useStreaks() {
       above,
       badges: badges(x, o.best),
     };
-  }, [x, workouts]);
+  }, [x, workouts, bestStreak]);
 }

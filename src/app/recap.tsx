@@ -11,18 +11,18 @@ import { Button, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { weekdayLetter } from '@/lib/dates';
 import { useAuth } from '@/lib/auth';
-import { applyPlanChanges, applyTargets, changeLine } from '@/lib/coachPlan';
+import { applyPlanChanges, applyTargets, applyUndo, changeLine, undoPatch } from '@/lib/coachPlan';
 import { useCycleCoach } from '@/lib/cyclePhase';
 import { useFood } from '@/lib/food';
 import { addDays, fmt } from '@/lib/nutrition';
 import { fx } from '@/lib/progress';
 import { balanceMoves, moveDay, remindersSummary, weekDays, withReminder } from '@/lib/recapApply';
-import { firstRecapDay, type Goal, hasRecap, markRecapSeen, REMINDER_NAME, recapDays, recapGoals, type RecapAI, recapRow, recapWeek, saveRecap, type Suggestion, writeRecap } from '@/lib/recap';
+import { firstRecapDay, type Goal, hasRecap, markRecapSeen, REMINDER_NAME, recapDays, recapGoals, type RecapAI, recapRow, type RecapUndo, recapUndo, recapWeek, saveRecap, type Suggestion, writeRecap } from '@/lib/recap';
 import { useReportData, useReportStats } from '@/lib/report';
-import { loadPrefs, savePrefs } from '@/lib/reminders';
+import { loadPrefs, type Prefs, savePrefs } from '@/lib/reminders';
 import { useTrain } from '@/lib/train';
 import { goBack } from '@/lib/nav';
-import { exInfo } from '@/lib/training';
+import { exInfo, type TrainPlan } from '@/lib/training';
 import { useWeight } from '@/lib/units';
 
 // The story is always dark, like a story on any phone.
@@ -53,6 +53,8 @@ export default function Recap() {
   const [ai, setAi] = useState<RecapAI | null>(null);
   const [aiState, setAiState] = useState<'loading' | 'ready' | 'failed'>('loading');
   const [applied, setApplied] = useState<number[] | null>(null);
+  // What Undo puts back (kept with this week's recap, so it works until the next one).
+  const [undo, setUndo] = useState<RecapUndo | null>(null);
   const applying = useRef(false);
   const asked = useRef(false);
   // Joined during or after that week: no recap yet (it would be all zeros).
@@ -68,7 +70,10 @@ export default function Recap() {
     (async () => {
       const row = await recapRow(start).catch(() => null);
       if (!row) markRecapSeen(start, lang).catch(() => {});
-      if (row?.applied) setApplied(row.applied);
+      if (row?.applied) {
+        setApplied(row.applied);
+        recapUndo(start).then((u) => u && setUndo(u)).catch(() => {});
+      }
       // Same language, or you already applied some of it (then it stays as you saw it).
       if (row?.ai && (row.lang === lang || row.applied)) {
         setAi(row.ai);
@@ -232,9 +237,15 @@ export default function Recap() {
                   let planNext = plan;
                   let foodNext = food.plan;
                   const moves: { day: string; kcal: number }[] = [];
+                  const changes: Extract<Suggestion, { type: 'plan' }>['changes'] = [];
+                  let moved = false;
                   for (const j of picked) {
                     const s = sug[j];
-                    if (s?.type === 'plan' && planNext) planNext = applyPlanChanges(planNext, s.changes, food.today);
+                    if (s?.type === 'plan' && planNext) {
+                      planNext = applyPlanChanges(planNext, s.changes, food.today);
+                      changes.push(...s.changes);
+                    }
+                    if (s?.type === 'move' && planNext) moved = true;
                     if (s?.type === 'targets' && !food.coachTargets) foodNext = applyTargets(foodNext, s, food.pregKcal);
                     if (s?.type === 'move' && planNext) planNext = moveDay(planNext, s.from, s.to, food.today);
                     if (s?.type === 'balance') moves.push(...balanceMoves(s, food.today));
@@ -243,22 +254,62 @@ export default function Recap() {
                   if (foodNext !== food.plan && !(await food.savePlan(foodNext))) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
                   setApplied(picked);
                   saveRecap(start, { applied: picked }).catch(() => {});
+                  // For Undo: only what these suggestions touch, taken from before.
+                  const u: RecapUndo = { at: new Date().toISOString() };
+                  if (foodNext !== food.plan) u.food = { kcal: food.plan.kcal, perKg: food.plan.perKg, carbG: food.plan.carbG, water: food.plan.water };
                   // The plan just got its weekly check, so the automatic one waits a week.
-                  if (planNext && planNext !== plan) train.updatePlan({ ...planNext, reviewedAt: food.today });
-                  if (moves.length) await food.addMoves(moves);
+                  if (plan && planNext && planNext !== plan) {
+                    const patch: Partial<TrainPlan> = { ...undoPatch(plan, changes), reviewedAt: plan.reviewedAt };
+                    if (moved) Object.assign(patch, { week: plan.week, override: plan.override, overrides: plan.overrides, weekSince: plan.weekSince, days: plan.days, queue: plan.queue });
+                    u.train = patch;
+                    train.updatePlan({ ...planNext, reviewedAt: food.today });
+                  }
+                  if (moves.length) {
+                    const added = await food.addMoves(moves);
+                    u.moveGrps = [...new Set(added.map((m) => m.grp).filter((g): g is string => !!g))];
+                  }
                   for (const j of picked) {
                     const s = sug[j];
-                    if (s?.type === 'meal') await food.saveMeal({ name: s.name, items: null, ingredients: null, kcal: s.kcal, protein: s.protein, carbs: s.carbs, fat: s.fat });
+                    if (s?.type === 'meal') {
+                      const m = await food.saveMeal({ name: s.name, items: null, ingredients: null, kcal: s.kcal, protein: s.protein, carbs: s.carbs, fat: s.fat });
+                      if (m) u.meals = [...(u.meals ?? []), m.id];
+                    }
                     if (s?.type === 'reminder' && uid) {
                       const prefs = await loadPrefs(uid);
+                      u.prefs ??= prefs;
                       await savePrefs(uid, withReminder(prefs, s.kind, s.time));
                     }
                   }
+                  setUndo(u);
+                  // On its own: an older database without the column still keeps what was applied.
+                  saveRecap(start, { undo: u }).catch(() => {});
                   toast(t(picked.length ? 'Your plan is updated' : 'Nothing changed'), { ai: true });
                 } finally {
                   applying.current = false;
                 }
               }}
+              onUndo={
+                applied?.length && undo
+                  ? async () => {
+                      if (applying.current) return;
+                      applying.current = true;
+                      try {
+                        if (undo.food && !(await food.savePlan({ ...food.plan, ...undo.food }))) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+                        if (undo.train && train.plan) train.updatePlan(applyUndo(train.plan, undo.train));
+                        if (undo.moveGrps?.length) await food.removeMoves([], undo.moveGrps);
+                        for (const id of undo.meals ?? []) await food.deleteMeal(id);
+                        if (undo.prefs && uid) await savePrefs(uid, undo.prefs as Prefs);
+                        setUndo(null);
+                        setApplied(null);
+                        saveRecap(start, { applied: null }).catch(() => {});
+                        saveRecap(start, { undo: null }).catch(() => {});
+                        toast(t('Changed back'), { icon: 'check' });
+                      } finally {
+                        applying.current = false;
+                      }
+                    }
+                  : undefined
+              }
               onDone={close}
             />
           </ScrollView>
@@ -297,6 +348,8 @@ type BodyProps = {
   applied: number[] | null;
   plan: ReturnType<typeof useTrain>['plan'] | null;
   onApply: (picked: number[]) => Promise<unknown>;
+  /** Put back what applying changed (while this is the latest recap). */
+  onUndo?: () => Promise<unknown>;
   onDone: () => void;
 };
 
@@ -604,7 +657,21 @@ function ApplySlide(p: BodyProps) {
       <View style={{ flex: 1 }} />
       {sug.length ? (
         done ? (
-          <StoryButton kind="done" title={t('Applied ✓ Your plan is updated')} onPress={p.onDone} />
+          <>
+            <StoryButton kind="done" title={t('Applied ✓ Your plan is updated')} onPress={p.onDone} />
+            {p.onUndo ? (
+              <StoryButton
+                kind="ghost"
+                title={t('Undo')}
+                loading={busy}
+                onPress={async () => {
+                  setBusy(true);
+                  await p.onUndo?.();
+                  setBusy(false);
+                }}
+              />
+            ) : null}
+          </>
         ) : (
           <>
             <StoryButton

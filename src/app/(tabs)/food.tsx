@@ -7,6 +7,7 @@ import { Icon, type IconName } from '@/components/Icon';
 import { OkChip, Tag, WarnChip } from '@/components/food/Chips';
 import { makeRecipes, needsRecipes, recipesKey, shoppingLock } from '@/lib/aiRecipes';
 import { ALLERGENS } from '@/lib/allergies';
+import { FOCUS_WORDS, lowNutrients } from '@/lib/bloodFood';
 import { MacroBars } from '@/components/food/MacroBars';
 import { MealMenu } from '@/components/food/MealMenu';
 import { ReminderBell } from '@/components/food/ReminderBell';
@@ -110,7 +111,8 @@ function FoodHome() {
       });
     busy.current = true;
     setMaking(true);
-    const r = await makeRecipes(plan, lang, food.today).catch(() => null);
+    // Low iron, vitamin D... on your latest blood test: recipes lean on foods that have them.
+    const r = await makeRecipes(plan, lang, food.today, lowNutrients(health.blood).map((n) => FOCUS_WORDS[n])).catch(() => null);
     busy.current = false;
     setMaking(false);
     if (r) {

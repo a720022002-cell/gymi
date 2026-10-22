@@ -4,7 +4,7 @@ import { AppState } from 'react-native';
 
 import { useAuth } from './auth';
 import { peekCycle, pregnancySafe, setPregAdjust } from './cycle';
-import { myCoach, myCoachPlans } from './coaching';
+import { myCoach, myCoachPlans, type Program } from './coaching';
 import { pullHealth, pushHealth, useDevices, workoutHeart } from './devices';
 import type { DayTotals } from './health';
 import { addDays, localDay } from './nutrition';
@@ -13,8 +13,9 @@ import { stallUp } from './setCoach';
 import { selectAll, supabase } from './supabase';
 import { LB } from './units';
 import { syncWorkoutActivity } from './widgetSync';
+import { emitLogChange, logTotals, recomputePrs } from './workoutHistory';
 import { useSettings } from '@/theme/settings';
-import { buildWorkout, type Day, effectiveWeek, EX, exInfo, isLightLog, type LastSets, lowReps, nextWeight, orderWeek, type PlanEx, plannedOn, planWithProgram, rangePlan, setWeekMoves, STEP_KG, topReps, type TrainPlan, weekdayOf, weekStart, workoutKcal, heartKcal } from './training';
+import { buildWorkout, type Day, effectiveWeek, EX, exInfo, isLightLog, type LastSets, lowReps, nextWeight, orderWeek, type PlanEx, coachVersion, planWithProgram, rangePlan, setWeekMoves, STEP_KG, topReps, type TrainPlan, weekdayOf, weekStart, workoutKcal, workoutStreak, heartKcal } from './training';
 
 /** `light`: done as a lighter day or deload, so its weights don't set next time's numbers. `ar`: its Arabic name
  * (newer logs), for exercises from the full list. `m`: its muscle group (newer logs), so database and your own exercises
@@ -77,6 +78,10 @@ export function isStale(s: Session | null, today = localDay(), now = Date.now())
  * check-in days and best weight on each exercise. Badges and best streaks use it. */
 export type History = { workouts: Pick<WorkoutLog, 'day' | 'started_at' | 'prs'>[]; days: Record<string, DayTotals>; checkins: string[]; best: Record<string, number> };
 
+/** A program (or a new version of it) from your coach, waiting for your answer. `update`: your plan is already an
+ * older version of the same program. */
+export type CoachOffer = { prog: Program; key: string; who: { name: string; link: string }; coachName: string; update: boolean; days: number; workouts: string[]; exercises: number };
+
 type Train = {
   ready: boolean;
   /** The plan couldn't be loaded; `reload` tries again. */
@@ -124,12 +129,25 @@ type Train = {
   history: History | null;
   /** Your coach's program is your plan: their name and your message thread. */
   coach: { name: string; link: string } | null;
+  /** A program from your coach you haven't answered yet (null once you use it or say "Not now"). */
+  coachOffer: CoachOffer | null;
+  /** Your coach's newest program, even after "Not now" (My program shows it). */
+  coachProgram: CoachOffer | null;
+  /** Use your coach's program (the one offered, or the one given) as your plan. */
+  acceptCoach: (prog?: Program) => Promise<boolean>;
+  /** "Not now": keep your plan and don't ask again about this version. */
+  declineCoach: () => void;
   /** Recovery you logged today (stretching, nap…). */
   recTools: string[];
   /** Women only: pregnancy-safe workouts are on (safer exercises, lighter weights, no weight jumps). */
   preg: boolean;
   setPreg: (on: boolean) => Promise<boolean>;
   setRecTools: (tools: string[]) => void;
+  /** Change a past workout's sets or exercises (sets with 0 reps and exercises left with none are dropped). Volume and
+   * records are worked out again. Null when it couldn't be saved. */
+  editLog: (log: WorkoutLog, exercises: LoggedEx[]) => Promise<WorkoutLog | null>;
+  /** Delete a past workout for good. */
+  deleteLog: (log: WorkoutLog) => Promise<boolean>;
   /** Save a finished workout made elsewhere (group workouts). With `group_session`, a second save of the same group
    * workout is refused and the saved one comes back (`dup`). */
   addLog: (row: Omit<WorkoutLog, 'id'> & { group_session?: string }) => Promise<{ log: WorkoutLog; dup?: boolean } | null>;
@@ -143,6 +161,8 @@ const PLAN_KEY = (uid: string) => `adro.trainplan.v1.${uid}`;
 const PENDING_KEY = (uid: string) => `adro.trainplan.pending.v1.${uid}`;
 /** Workouts finished without a connection: kept on this phone and saved when the connection is back. */
 const LOG_PENDING_KEY = (uid: string) => `adro.workoutlogs.pending.v1.${uid}`;
+/** Coach program versions you said "Not now" to before you had a plan (kept on this phone). */
+const COACH_NO_KEY = (uid: string) => `adro.coachno.v1.${uid}`;
 type PendingLog = { local: string; row: Omit<WorkoutLog, 'id'> };
 const readPendingLogs = async (uid: string): Promise<PendingLog[]> => {
   try {
@@ -382,7 +402,24 @@ export function TrainProvider({ children }: PropsWithChildren) {
     };
   }, [userId, loadTry]);
 
-  // Your coach's program is your plan. It updates when the coach changes it.
+  // Your coach's program: you're asked first ("Use it" / "Not now"), for a new program and for each new version of it.
+  // "Not now" is kept per version (on the plan, and on this phone when there's no plan yet), so the same one isn't
+  // asked again; My program still has it.
+  const [offer, setOffer] = useState<CoachOffer | null>(null);
+  const [localNo, setLocalNo] = useState<{ uid: string; keys: string[] } | null>(null);
+  useEffect(() => {
+    if (!userId) return;
+    let alive = true;
+    AsyncStorage.getItem(COACH_NO_KEY(userId))
+      .then((x) => {
+        const keys = JSON.parse(x ?? '[]');
+        if (alive) setLocalNo({ uid: userId, keys: Array.isArray(keys) ? keys : [] });
+      })
+      .catch(() => alive && setLocalNo({ uid: userId, keys: [] }));
+    return () => {
+      alive = false;
+    };
+  }, [userId]);
   const syncCoach = useCallback(async () => {
     if (!userId) return;
     const [plans, link] = await Promise.all([myCoachPlans(), myCoach()]);
@@ -391,6 +428,7 @@ export function TrainProvider({ children }: PropsWithChildren) {
     const cur = planRef.current;
     if (!prog || !prog.days?.some((d) => d.ex.length)) {
       setCoach(null);
+      setOffer(null);
       // The coach took the program back: keep it as your own plan.
       if (cur?.coach) {
         const next = { ...cur, coach: undefined };
@@ -400,16 +438,42 @@ export function TrainProvider({ children }: PropsWithChildren) {
       }
       return;
     }
-    setCoach(link && link.status === 'active' ? { name: link.name || link.username, link: link.id } : { name: '', link: '' });
-    if (cur?.coach?.id === prog.id && cur.coach.updated_at === prog.updated_at) return;
-    // Your own settings stay; a new layout starts being judged today, and this week's moves stay.
-    const next: TrainPlan = planWithProgram(cur, prog, localDay());
-    clearTimeout(saveTimer.current);
-    planRef.current = next;
-    setPlan(next);
-    setSetupDone(true);
-    await queueSave(next, true);
+    const who = link && link.status === 'active' ? { name: link.name || link.username, link: link.id } : { name: '', link: '' };
+    // Your plan is your coach's program (an older version of it, or one they gave you before) until you change it.
+    setCoach(cur?.coach ? who : null);
+    if (cur?.coach?.id === prog.id && cur.coach.updated_at === prog.updated_at) return setOffer(null);
+    const days = prog.days.filter((d) => d.ex.length);
+    setOffer({
+      prog,
+      key: coachVersion(prog),
+      who,
+      coachName: who.name || plans.coach || '',
+      update: cur?.coach?.id === prog.id,
+      days: days.length,
+      workouts: days.map((d) => d.name),
+      exercises: days.reduce((n, d) => n + d.ex.length, 0),
+    });
   }, [userId, queueSave]);
+
+  /** Your coach's program becomes your plan; your injuries, skipped days, machines, level and home mode stay. */
+  const acceptCoach = useCallback(
+    async (prog?: Program) => {
+      const o = offer;
+      const p = prog ?? o?.prog;
+      if (!p) return false;
+      const next = planWithProgram(planRef.current, p, localDay());
+      clearTimeout(saveTimer.current);
+      planRef.current = next;
+      setPlan(next);
+      setSetupDone(true);
+      setOffer(null);
+      setCoach(o?.who ?? { name: '', link: '' });
+      const ok = await queueSave(next, true);
+      // Saved later when there's no connection: the plan is already yours on this phone.
+      return ok || !!pending.current;
+    },
+    [offer, queueSave],
+  );
 
   useEffect(() => {
     if (!ready) return;
@@ -465,6 +529,19 @@ export function TrainProvider({ children }: PropsWithChildren) {
     },
     [queueSave],
   );
+
+  const declined = useMemo(() => new Set([...(plan?.coachNo ?? []), ...(localNo && localNo.uid === userId ? localNo.keys : [])]), [plan?.coachNo, localNo, userId]);
+  const declineCoach = useCallback(() => {
+    const o = offer;
+    if (!o || !userId) return;
+    const keys = [...(localNo && localNo.uid === userId ? localNo.keys : []).filter((k) => k !== o.key), o.key].slice(-10);
+    setLocalNo({ uid: userId, keys });
+    AsyncStorage.setItem(COACH_NO_KEY(userId), JSON.stringify(keys)).catch(() => {});
+    const cur = planRef.current;
+    if (cur) updatePlan({ coachNo: [...(cur.coachNo ?? []).filter((k) => k !== o.key), o.key].slice(-10) });
+  }, [offer, userId, localNo, updatePlan]);
+  // Asked once this phone's answers have loaded, so a "Not now" never shows the card again for a moment.
+  const coachOffer = offer && localNo?.uid === userId && !declined.has(offer.key) ? offer : null;
 
   const start = weekStart(today);
   const todayIdx = weekdayOf(today);
@@ -526,31 +603,13 @@ export function TrainProvider({ children }: PropsWithChildren) {
     return { last, best, top, pregLast };
   }, [logs, light, deload, lifetimeBest]);
 
-  // Workouts in a row: a planned workout missed (not done, not skipped or dismissed) ends the run.
-  // Each day is judged by that week's plan, with moves for that week only. Plans in order (no fixed days) end it after 3 days in a row without training.
+  // Workouts in a row: one rule for every screen and the widgets (workoutStreak). Rest days, skipped days and moved
+  // workouts never break it; a planned workout missed does. Each day is judged by that week's plan.
   const lifeWorkouts = history?.workouts;
-  const { streak, bestStreak } = useMemo(() => {
-    if (!plan) return { streak: 0, bestStreak: 0 };
-    const days = new Set([...logs.map((l) => l.day), ...(lifeWorkouts ?? []).map((l) => l.day)]);
-    const first = [...days].sort()[0] ?? today;
-    const span = Math.min(3650, Math.max(0, Math.round((new Date(`${today}T12:00:00`).getTime() - new Date(`${first}T12:00:00`).getTime()) / 864e5)));
-    let run = 0;
-    let best = 0;
-    let gap = 0;
-    for (let i = span; i >= 0; i--) {
-      const d = addDays(today, -i);
-      if (days.has(d)) {
-        run++;
-        gap = 0;
-        best = Math.max(best, run);
-      } else if (i > 0) {
-        gap++;
-        const missed = plan.type === 'order' ? gap >= 3 : plannedOn(plan, d);
-        if (missed) run = 0;
-      }
-    }
-    return { streak: run, bestStreak: best };
-  }, [logs, lifeWorkouts, plan, today]);
+  const { streak, best: bestStreak } = useMemo(
+    () => workoutStreak(plan, new Set([...logs.map((l) => l.day), ...(lifeWorkouts ?? []).map((l) => l.day)]), today),
+    [logs, lifeWorkouts, plan, today],
+  );
 
   const setSession = useCallback(
     (s: Session | null) => {
@@ -828,6 +887,65 @@ export function TrainProvider({ children }: PropsWithChildren) {
     });
   }, [dev.connected, dev.prefs.last_sync, logs, profile?.date_of_birth, profile?.weight_kg, female]);
 
+  // A past workout changed or was deleted: the recent list, your whole history and your best lifts follow, so streaks,
+  // progress, recovery and next time's weights all come from what's saved. Records are worked out again for it and
+  // every later workout with the same exercises.
+  const refreshBest = useCallback(async () => {
+    const { data } = await supabase.rpc('my_best_lifts');
+    if (!Array.isArray(data)) return;
+    const b: Record<string, number> = {};
+    for (const r of data as { id: string; w: number }[]) if (r.id) b[r.id] = Number(r.w) || 0;
+    setHist((h) => h && { ...h, best: b });
+  }, []);
+  const saveLaterPrs = useCallback(async (prs: Record<string, { started_at: string; prs: WorkoutLog['prs'] }>, skip: string) => {
+    const later = Object.entries(prs).filter(([id]) => id !== skip);
+    await Promise.all(later.map(([id, x]) => supabase.from('workout_logs').update({ prs: x.prs }).eq('id', id)));
+    const byStart = new Map(Object.values(prs).map((x) => [x.started_at, x.prs]));
+    setLogs((xs) => xs.map((x) => (prs[x.id] && x.id !== skip ? { ...x, prs: prs[x.id].prs } : x)));
+    setHist((h) => h && { ...h, workouts: h.workouts.map((w) => (byStart.has(w.started_at) ? { ...w, prs: byStart.get(w.started_at)! } : w)) });
+    later.forEach(([id, x]) => emitLogChange(id, { prs: x.prs }));
+  }, []);
+
+  const editLog = useCallback(
+    async (log: WorkoutLog, exercises: LoggedEx[]): Promise<WorkoutLog | null> => {
+      // Not saved to your account yet (finished offline).
+      if (log.id.startsWith('local-')) return null;
+      const kept = exercises.map((x) => ({ ...x, sets: x.sets.filter((y) => y.r > 0) })).filter((x) => x.sets.length);
+      if (!kept.length) return null;
+      const draft: WorkoutLog = { ...log, ...logTotals(kept), exercises: kept };
+      const ids = [...new Set([...log.exercises.map((x) => x.id), ...kept.map((x) => x.id)])];
+      const prs = await recomputePrs(ids, log.started_at, draft);
+      if (!prs) return null;
+      const next: WorkoutLog = { ...draft, prs: prs[log.id]?.prs ?? log.prs };
+      const { error } = await supabase.from('workout_logs').update({ exercises: next.exercises, volume: next.volume, sets_done: next.sets_done, prs: next.prs }).eq('id', log.id);
+      if (error) return null;
+      setLogs((xs) => xs.map((x) => (x.id === log.id ? next : x)));
+      emitLogChange(log.id, next);
+      await saveLaterPrs(prs, log.id).catch(() => {});
+      refreshBest().catch(() => {});
+      return next;
+    },
+    [saveLaterPrs, refreshBest],
+  );
+
+  const deleteLog = useCallback(
+    async (log: WorkoutLog) => {
+      if (log.id.startsWith('local-')) return false;
+      const { error } = await supabase.from('workout_logs').delete().eq('id', log.id);
+      if (error) return false;
+      setLogs((xs) => xs.filter((x) => x.id !== log.id));
+      setHist((h) => h && { ...h, workouts: h.workouts.filter((w) => w.started_at !== log.started_at) });
+      emitLogChange(log.id, null);
+      // Off the phone's health app too.
+      pullHealth('workout', log.id);
+      const prs = await recomputePrs([...new Set(log.exercises.map((x) => x.id))], log.started_at, null).catch(() => null);
+      if (prs) await saveLaterPrs(prs, log.id).catch(() => {});
+      refreshBest().catch(() => {});
+      return true;
+    },
+    [saveLaterPrs, refreshBest],
+  );
+
   const finishWorkout = useCallback(
     (names: Record<string, string>) => {
       if (!finishing.current) finishing.current = saveWorkout(names).finally(() => (finishing.current = null));
@@ -837,8 +955,8 @@ export function TrainProvider({ children }: PropsWithChildren) {
   );
 
   const value = useMemo<Train>(
-    () => ({ ready, loadError, reload: () => setLoadTry((n) => n + 1), setupDone, plan, savePlan, changePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, best, top, session, rest, setRest, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, recTools, setRecTools, addLog, preg, setPreg }),
-    [ready, loadError, setupDone, plan, savePlan, changePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, best, top, session, rest, setRest, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, recTools, setRecTools, addLog, preg, setPreg],
+    () => ({ ready, loadError, reload: () => setLoadTry((n) => n + 1), setupDone, plan, savePlan, changePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, best, top, session, rest, setRest, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, coachOffer, coachProgram: offer, acceptCoach, declineCoach, recTools, setRecTools, addLog, editLog, deleteLog, preg, setPreg }),
+    [ready, loadError, setupDone, plan, savePlan, changePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, best, top, session, rest, setRest, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, coachOffer, offer, acceptCoach, declineCoach, recTools, setRecTools, addLog, editLog, deleteLog, preg, setPreg],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

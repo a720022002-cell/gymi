@@ -1,4 +1,4 @@
-import { siteUrl } from './config';
+import { LINK_BASE } from './links';
 import { supabase } from './supabase';
 
 export type Share = { workouts: boolean; prs: boolean; streak: boolean; weight: boolean; body: boolean; photos: boolean };
@@ -35,7 +35,7 @@ export type Group = { id: string; name: string; owner: string; members: number; 
 export type BoardRow = { user_id: string; name: string | null; username: string; workouts: number | null; volume: number | null };
 export type ChallengeKind = 'exercise' | 'weight' | 'steps' | 'progress' | 'workouts' | 'volume';
 export type Challenge = { id: string; kind: ChallengeKind; start_day: string; end_day: string; members: number; creator_name: string | null; exercise_name: string | null; my_rank: number | null };
-export type ChallengeInfo = Pick<Challenge, 'id' | 'kind' | 'start_day' | 'end_day' | 'exercise_name'>;
+export type ChallengeInfo = Pick<Challenge, 'id' | 'kind' | 'start_day' | 'end_day' | 'exercise_name'> & { creator: string };
 export type ChallengeRow = { user_id: string; name: string | null; value: number; has_goal: boolean; goal: number | null };
 
 const rpc = async <T>(fn: string, args?: Record<string, unknown>) => {
@@ -132,8 +132,61 @@ export async function createGroup(name: string, members: string[]) {
   return (await rpc<string>('create_group', { p_name: name, p_members: members })).data;
 }
 
+/** Invite a friend to a group you're in (they join when they accept). */
 export async function addGroupMember(group: string, user: string) {
   return !!(await rpc<boolean>('add_group_member', { p_group: group, p_user: user })).data;
+}
+
+/** A group's or challenge's members, and invites still waiting (shown to the owner and to whoever sent them). */
+export type Person = { user_id: string; name: string | null; username: string; pending: boolean };
+export async function groupPeople(group: string) {
+  return (await rpc<Person[]>('group_people', { p_group: group })).data ?? [];
+}
+export async function challengePeople(id: string) {
+  return (await rpc<Person[]>('challenge_people', { p_id: id })).data ?? [];
+}
+
+/** The owner removes someone (or takes back their invite). */
+export async function removeGroupMember(group: string, user: string) {
+  return !!(await rpc<boolean>('remove_group_member', { p_group: group, p_user: user })).data;
+}
+export async function removeChallengeMember(id: string, user: string) {
+  return !!(await rpc<boolean>('remove_challenge_member', { p_id: id, p_user: user })).data;
+}
+
+/** The owner deletes it for everyone. */
+export async function deleteGroup(group: string) {
+  return !!(await rpc<boolean>('delete_group', { p_group: group })).data;
+}
+export async function deleteChallenge(id: string) {
+  return !!(await rpc<boolean>('delete_challenge', { p_id: id })).data;
+}
+
+/** Invite a friend (or group mate) to a challenge you're in. */
+export async function inviteToChallenge(id: string, user: string) {
+  return !!(await rpc<boolean>('invite_to_challenge', { p_id: id, p_user: user })).data;
+}
+
+/** Invites to groups and challenges waiting for your answer. */
+export type SocialInvite = {
+  kind: 'group' | 'challenge';
+  id: string;
+  title: string | null;
+  challenge_kind: ChallengeKind | null;
+  exercise_name: string | null;
+  end_day: string | null;
+  from_id: string | null;
+  from_name: string | null;
+  members: number;
+  created_at: string;
+};
+export async function mySocialInvites() {
+  return (await rpc<SocialInvite[]>('my_social_invites')).data ?? [];
+}
+/** Accept or decline. 'joined', 'declined', 'gone' (taken back or deleted), 'ended', 'blocked', or 'failed' (offline). */
+export async function respondInvite(kind: 'group' | 'challenge', id: string, accept: boolean) {
+  const { data, error } = kind === 'group' ? await rpc<string>('respond_group_invite', { p_group: id, p_accept: accept }) : await rpc<string>('respond_challenge_invite', { p_id: id, p_accept: accept });
+  return error ? 'failed' : (data ?? 'failed');
 }
 
 export async function leaveGroup(group: string, userId: string) {
@@ -178,7 +231,7 @@ export async function challengeBoard(id: string): Promise<ChallengeRow[]> {
 }
 
 export async function challengeInfo(id: string) {
-  const { data } = await supabase.from('challenges').select('id,kind,start_day,end_day,exercise_name').eq('id', id).maybeSingle();
+  const { data } = await supabase.from('challenges').select('id,kind,start_day,end_day,exercise_name,creator').eq('id', id).maybeSingle();
   return data as ChallengeInfo | null;
 }
 
@@ -265,8 +318,8 @@ export async function friendShowcase(id: string) {
   return (data as Showcase | null) ?? null;
 }
 
-// The same site address as the other invite links (from config).
-export const INVITE_BASE = `${siteUrl()}/welcome?ref=`;
+// The same address as the other invite links (a code or a username after it).
+export const INVITE_BASE = `${LINK_BASE}/i/`;
 export async function myReferrals() {
   const { data } = await supabase.rpc('my_referrals');
   return (data as { name: string | null; username: string; joined: string }[] | null) ?? [];

@@ -2,16 +2,21 @@ import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
+import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
+import { Sheet } from '@/components/Sheet';
 import { ShareWorkoutSheet } from '@/components/social/ShareWorkoutSheet';
 import { Text } from '@/components/Text';
+import { EditLog } from '@/components/train/EditLog';
 import { LoggedExercises } from '@/components/train/LoggedExercises';
-import { Button, Card } from '@/components/ui';
+import { useToast } from '@/components/Toast';
+import { Button, Card, Row } from '@/components/ui';
 import { useT } from '@/i18n';
 import { fmt } from '@/lib/nutrition';
 import { type WorkoutLog, useTrain } from '@/lib/train';
 import { workoutTitle } from '@/lib/training';
 import { useWeight } from '@/lib/units';
+import { goBack } from '@/lib/nav';
 import { loadWorkout } from '@/lib/workoutHistory';
 import { useSettings } from '@/theme/settings';
 
@@ -26,6 +31,9 @@ export default function WorkoutLogScreen() {
   const known = train.logs.find((l) => l.id === id) ?? null;
   const [fetched, setFetched] = useState<{ id: string; log: WorkoutLog | null } | null>(null);
   const [share, setShare] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const toast = useToast();
 
   useEffect(() => {
     if (known || !id) return;
@@ -36,7 +44,9 @@ export default function WorkoutLogScreen() {
     };
   }, [id, known]);
 
-  const log = known ?? (fetched?.id === id ? fetched.log : undefined);
+  // Edited here when it's older than the last 120 days (the Train store only keeps those).
+  const [saved, setSaved] = useState<WorkoutLog | null>(null);
+  const log = known ?? (saved?.id === id ? saved : fetched?.id === id ? fetched.log : undefined);
   if (log === undefined)
     return (
       <Screen title={t('Workout')} back>
@@ -51,6 +61,7 @@ export default function WorkoutLogScreen() {
     );
 
   const locale = lang === 'ar' ? 'ar-u-nu-latn' : 'en-US';
+  const local = log.id.startsWith('local-');
   const when = new Intl.DateTimeFormat(locale, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date(`${log.day}T12:00:00`));
   const time = log.started_at ? new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit' }).format(new Date(log.started_at)) : '';
   const stats: [string, string][] = [
@@ -81,9 +92,64 @@ export default function WorkoutLogScreen() {
       <Text variant="small" weight={700} color="sec" style={{ marginTop: 22, marginBottom: 8, marginHorizontal: 4 }}>
         {t('Exercises, in the order you did them')}
       </Text>
-      <LoggedExercises log={log} />
-      <Button kind="glass" icon="share" title={t('Share your workout')} style={{ marginTop: 16 }} onPress={() => setShare(true)} />
+      {editing ? (
+        <EditLog
+          log={log}
+          onCancel={() => setEditing(false)}
+          onSave={async (exercises) => {
+            const next = await train.editLog(log, exercises);
+            if (!next) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+            setSaved(next);
+            setEditing(false);
+            toast(t('Workout updated'), { icon: 'check' });
+          }}
+        />
+      ) : (
+        <View>
+          <LoggedExercises log={log} />
+          <Button kind="glass" icon="share" title={t('Share your workout')} style={{ marginTop: 16 }} onPress={() => setShare(true)} />
+          {local ? (
+            <Text variant="small" color="sec" center style={{ marginTop: 12 }}>
+              {t('Still saving this workout. You can change it once you’re online.')}
+            </Text>
+          ) : (
+            <Row gap={8} style={{ marginTop: 8 }}>
+              <View style={{ flex: 1 }}>
+                <Button kind="soft" icon="edit" title={t('Edit')} style={{ alignSelf: 'stretch' }} onPress={() => setEditing(true)} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Button kind="soft" icon="trash" title={t('Delete')} color={c.down} style={{ alignSelf: 'stretch' }} onPress={() => setConfirmDel(true)} />
+              </View>
+            </Row>
+          )}
+        </View>
+      )}
       <ShareWorkoutSheet log={log} open={share} onClose={() => setShare(false)} />
+      <Sheet open={confirmDel} onClose={() => setConfirmDel(false)}>
+        <View style={{ alignItems: 'center' }}>
+          <Icon name="warn" size={30} color={c.down} />
+        </View>
+        <Text variant="h2" center style={{ marginTop: 8 }}>
+          {t('Delete this workout?')}
+        </Text>
+        <Text color="sec" center style={{ marginTop: 6 }}>
+          {t('It comes off your history, streaks and records. This can’t be undone.')}
+        </Text>
+        <Button
+          kind="danger"
+          icon="trash"
+          title={t('Delete workout')}
+          style={{ marginTop: 16 }}
+          onPress={async () => {
+            const ok = await train.deleteLog(log);
+            setConfirmDel(false);
+            if (!ok) return toast(t('Couldn’t delete. Please try again.'), { icon: 'warn' });
+            toast(t('Workout deleted'), { icon: 'trash' });
+            goBack();
+          }}
+        />
+        <Button kind="glass" title={t('Keep it')} style={{ marginTop: 8 }} onPress={() => setConfirmDel(false)} />
+      </Sheet>
     </Screen>
   );
 }

@@ -63,23 +63,6 @@ export function overallStreak(active: Set<string>, today: string) {
   return { streak, best: Math.max(best, streak) };
 }
 
-/** Best run of planned workouts without missing one, since the plan was made. */
-export function bestWorkoutStreak(x: ProgressInput, current: number) {
-  const p = x.plan;
-  if (!p) return current;
-  const done = new Set(allWorkouts(x).map((l) => l.day));
-  x.logs.forEach((l) => done.add(l.day));
-  let best = 0;
-  let run = 0;
-  const first = [...done].sort()[0];
-  if (!first) return current;
-  for (let d = p.since && p.since > first ? p.since : first; d <= x.today; d = addDays(d, 1)) {
-    if (done.has(d)) best = Math.max(best, ++run);
-    else if (d < x.today && plannedOn(p, d)) run = 0;
-  }
-  return Math.max(best, current);
-}
-
 export const COMMIT_WEIGHT = { work: 0.35, cal: 0.25, prot: 0.2, water: 0.1, sleep: 0.1 } as const;
 export type CommitKey = keyof typeof COMMIT_WEIGHT;
 export const COMMIT_LABEL: Record<CommitKey, [string, string, string]> = {

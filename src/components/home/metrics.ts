@@ -8,7 +8,7 @@ import { useFood } from '@/lib/food';
 import { type RingKey, useHomeLayout } from '@/lib/homeLayout';
 import { recLabel } from '@/lib/recovery';
 import { useTrain } from '@/lib/train';
-import { plannedOn } from '@/lib/training';
+import { missedDays } from '@/lib/training';
 import { fx } from '@/lib/progress';
 import { useStreaks } from '@/lib/useProgress';
 import { fmt } from '@/lib/nutrition';
@@ -44,7 +44,7 @@ export function useMetrics(): Record<RingKey, Metric> {
   const done = train.doneIdx.size;
   // An earlier day: that day's workout (planned only when it really was: breaks and skipped days don't count).
   const dayDone = train.logs.some((l) => l.day === food.day);
-  const dayPlanned = !!train.plan && plannedOn(train.plan, food.day);
+  const dayPlanned = !!train.plan && missedDays(train.plan, new Set(train.logs.map((l) => l.day)), food.day, food.day).has(food.day);
   const c7 = s.c7.pct ?? 0;
   return {
     calories: { v: e.k, max: goal + food.burned, big: fmt(Math.max(0, food.kcalLeft)), txt: t('{n} kcal left', { n: fmt(Math.max(0, food.kcalLeft)) }), go: () => router.push('/food') },

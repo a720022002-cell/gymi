@@ -16,6 +16,7 @@ import { type ErrorBoundaryProps, router, Stack, useRootNavigationState, useSegm
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 
 import { keysReady } from '@/lib/renameKeys';
 // Defines the background health sync first thing, so it also exists when the phone starts Adro in the background.
@@ -29,8 +30,10 @@ import { CheckinSheet } from '@/components/health/CheckinSheet';
 import { FriendAlerts } from '@/components/FriendAlerts';
 import { NotifyBanner } from '@/components/NotifyBanner';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { PushSync } from '@/components/PushSync';
 import { ReferralClaim } from '@/components/ReferralClaim';
 import { ReminderSync } from '@/components/ReminderSync';
+import { Suspended } from '@/components/Suspended';
 import { ToastProvider } from '@/components/Toast';
 import { AiConsentSheet } from '@/components/ai/AiConsentSheet';
 import { UpdateBanner } from '@/components/UpdateBanner';
@@ -92,12 +95,12 @@ export default function RootLayout() {
   );
 }
 
-/** Screens you can open without being logged in. Everything else sends you to Welcome. */
-const PUBLIC = ['welcome', 'login', 'signup', 'language', 'account-type', 'reset-password', 'legal', '+not-found'];
+/** Screens you can open without being logged in (i = an invite link). Everything else sends you to Welcome. */
+const PUBLIC = ['welcome', 'login', 'signup', 'language', 'account-type', 'reset-password', 'legal', '+not-found', 'i'];
 
 function AppStack({ ready }: { ready: boolean }) {
   const { colors, isDark, ready: settingsReady, langChosen, setLang } = useSettings();
-  const { configured, loading, session, profile } = useAuth();
+  const { configured, loading, session, profile, refreshProfile } = useAuth();
   const show = ready && settingsReady;
   const nav = useRootNavigationState();
   const navReady = !!nav?.key;
@@ -129,6 +132,18 @@ function AppStack({ ready }: { ready: boolean }) {
       .catch(() => {});
   }, [started]);
 
+  // Back in the app: check the account again now and then (so a suspension shows without restarting).
+  useEffect(() => {
+    if (!session) return;
+    let last = Date.now();
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st !== 'active' || Date.now() - last < 10 * 60 * 1000) return;
+      last = Date.now();
+      refreshProfile().catch(() => {});
+    });
+    return () => sub.remove();
+  }, [session, refreshProfile]);
+
   // Language saved in your account, on a phone where it wasn't chosen yet: use it.
   useEffect(() => {
     if (!settingsReady || langChosen || !profile?.language) return;
@@ -136,6 +151,14 @@ function AppStack({ ready }: { ready: boolean }) {
   }, [settingsReady, langChosen, profile?.language, setLang]);
 
   if (!show) return null;
+  // Suspended by the Adro team: only the "Your account is suspended" page (support and Log out).
+  if (session && profile?.suspended_at)
+    return (
+      <>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <Suspended />
+      </>
+    );
   return (
     <>
       <StatusBar style={isDark ? 'light' : 'dark'} />
@@ -155,6 +178,7 @@ function AppStack({ ready }: { ready: boolean }) {
       <RingClosed />
       <CheckinSheet />
       <ReminderSync />
+      <PushSync />
       <WorkoutLive />
       <ReferralClaim />
       <FriendAlerts />

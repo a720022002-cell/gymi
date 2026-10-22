@@ -8,7 +8,7 @@ import { FreeMonthAlert } from '@/components/FreeMonthAlert';
 import { RecapGate } from '@/components/RecapGate';
 import { InviteCodeSheet } from '@/components/InviteCodeSheet';
 import { CalendarButton, DayNav } from '@/components/DayNav';
-import { CheckinCard, CoachAppCard, CoachCard, CoachSetCard } from '@/components/home/CoachCards';
+import { CheckinCard, CoachAppCard, CoachCard, CoachRow, CoachSetCard } from '@/components/home/CoachCards';
 import { DayRecap } from '@/components/home/DayRecap';
 import { CycleCard, ReadingsCard, StreaksCard, TipCard, WaterCard } from '@/components/home/InfoCards';
 import { MainCard } from '@/components/home/MainCard';
@@ -23,9 +23,14 @@ import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { useCoachMode } from '@/lib/coachMode';
 import { type Application, type MyCoach, myApplication, myCoach } from '@/lib/coaching';
-import { useHomeLayout } from '@/lib/homeLayout';
+import { coachUnread } from '@/lib/coachUnread';
+import { type HomeCard, useHomeLayout } from '@/lib/homeLayout';
 import { fastTimes } from '@/lib/prayer';
 import { fmtTime } from '@/lib/nutrition';
+import { useSettings } from '@/theme/settings';
+
+/** At most this many cards besides the rings show at once on today's Home (things to do first, then info). */
+const MAX_CONTEXT = 3;
 
 function greeting() {
   const h = new Date().getHours();
@@ -34,6 +39,7 @@ function greeting() {
 
 export default function Home() {
   const { t, lang } = useT();
+  const { colors: c } = useSettings();
   const { profile } = useAuth();
   const food = useFood();
   const health = useHealth();
@@ -44,12 +50,21 @@ export default function Home() {
   const [askCode, setAskCode] = useState(welcome === '1');
   const [coach, setCoach] = useState<MyCoach | null>(null);
   const [app, setApp] = useState<Application | null | undefined>(undefined);
+  const [unread, setUnread] = useState(0);
+  // Info cards past the first few fold under "More".
+  const [more, setMore] = useState(false);
   const uid = profile?.id;
   useFocusEffect(
     useCallback(() => {
       if (!uid) return;
       let alive = true;
-      myCoach().then((k) => alive && setCoach(k && k.status === 'active' ? k : null));
+      myCoach().then((k) => {
+        if (!alive) return;
+        const on = k && k.status === 'active' ? k : null;
+        setCoach(on);
+        if (on) coachUnread(on.id, on.coach_id).then((n) => alive && setUnread(n));
+        else setUnread(0);
+      });
       myApplication().then((a) => alive && setApp(a));
       return () => {
         alive = false;
@@ -64,6 +79,43 @@ export default function Home() {
   const past = !food.isToday;
   const ramadan = food.plan.ramadan ? fastTimes(food.plan.city, food.today) : null;
   const rings = layout.rings;
+  const needCheckin = health.ready && health.todayCheckin?.score == null && !askCode;
+  const cards = layout.order
+    .filter((k) => !layout.hidden.includes(k) && !(k === 'water' && rings.length > 1 && rings.includes('water')))
+    .filter((k) => !past || k === 'calories' || k === 'water' || k === 'workout')
+    .filter((k) => k !== 'cycle' || profile?.gender === 'female')
+    .filter((k) => k !== 'insight' || food.setupDone);
+  // Today: the rings and today's workout always show; with things to do (check-in, workout), fewer info cards do.
+  // Without a coach of your own the coach tip (it opens the AI coach) comes first. The rest fold under "More".
+  const info = cards.filter((k) => k !== 'calories' && k !== 'workout');
+  const todo = Number(needCheckin) + Number(cards.includes('workout'));
+  const ranked = coach ? info : [...info.filter((k) => k === 'insight'), ...info.filter((k) => k !== 'insight')];
+  const showN = Math.max(1, MAX_CONTEXT - todo);
+  const folded: HomeCard[] = past ? [] : ranked.slice(showN);
+  const visible = cards.filter((k) => !folded.includes(k));
+  const card = (k: HomeCard) =>
+    k === 'calories' ? (
+      <MainCard key={k} />
+    ) : k === 'water' ? (
+      <WaterCard key={k} />
+    ) : k === 'workout' ? (
+      past ? (
+        <DayRecap key={k} />
+      ) : (
+        <View key={k}>
+          <MissedCard />
+          <WorkoutCard />
+        </View>
+      )
+    ) : k === 'cycle' ? (
+      <CycleCard key={k} />
+    ) : k === 'readings' ? (
+      <ReadingsCard key={k} />
+    ) : k === 'streak' ? (
+      <StreaksCard key={k} />
+    ) : (
+      <TipCard key={k} />
+    );
 
   return (
     <Screen
@@ -96,9 +148,10 @@ export default function Home() {
       {past ? null : (
         <>
           {/* Until today's check-in is done (only a sleep logged from the chat has no score yet). */}
-          {health.ready && health.todayCheckin?.score == null && !askCode ? <CheckinCard onStart={() => health.setCheckinOpen(true)} /> : null}
+          {needCheckin ? <CheckinCard onStart={() => health.setCheckinOpen(true)} /> : null}
           <CoachAppCard app={app} />
-          {coach ? <CoachCard k={coach} /> : food.coachTargets ? <CoachSetCard name={food.coachTargets.name} /> : null}
+          {/* Your coach as one row (the full card with plans and gym hours is under More). */}
+          {coach ? <CoachRow k={coach} unread={unread} /> : food.coachTargets ? <CoachSetCard name={food.coachTargets.name} /> : null}
         </>
       )}
       {!past && ramadan ? (
@@ -112,34 +165,27 @@ export default function Home() {
           </Text>
         </Card>
       ) : null}
-      {layout.order
-        .filter((k) => !layout.hidden.includes(k) && !(k === 'water' && rings.length > 1 && rings.includes('water')))
-        .filter((k) => !past || k === 'calories' || k === 'water' || k === 'workout')
-        .filter((k) => k !== 'cycle' || profile?.gender === 'female')
-        .map((k) =>
-          k === 'calories' ? (
-            <MainCard key={k} />
-          ) : k === 'water' ? (
-            <WaterCard key={k} />
-          ) : k === 'workout' ? (
-            past ? (
-              <DayRecap key={k} />
-            ) : (
-              <View key={k}>
-                <MissedCard />
-                <WorkoutCard />
-              </View>
-            )
-          ) : k === 'cycle' ? (
-            <CycleCard key={k} />
-          ) : k === 'readings' ? (
-            <ReadingsCard key={k} />
-          ) : k === 'streak' ? (
-            <StreaksCard key={k} />
-          ) : food.setupDone ? (
-            <TipCard key={k} />
-          ) : null,
-        )}
+      {visible.map(card)}
+      {!past && (folded.length || coach) ? (
+        <>
+          <Springy
+            onPress={() => setMore(!more)}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: more }}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10 }}>
+            <Text variant="small" weight={700} color="sec">
+              {more ? t('Show less') : t('More ({n})', { n: folded.length + (coach ? 1 : 0) })}
+            </Text>
+            <Icon name={more ? 'chevup' : 'chevd'} size={14} color={c.sec} />
+          </Springy>
+          {more ? (
+            <>
+              {coach ? <CoachCard k={coach} /> : null}
+              {folded.map(card)}
+            </>
+          ) : null}
+        </>
+      ) : null}
       {past && layout.hidden.includes('workout') ? <DayRecap /> : null}
       {past ? null : <Button title={t('Edit home')} icon="sliders" kind="glass" style={{ marginTop: 8 }} onPress={() => router.push('/customize')} />}
       <InviteCodeSheet

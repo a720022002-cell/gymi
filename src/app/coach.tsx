@@ -21,7 +21,9 @@ import { type ChatAction, type ChatMsg, cleanCard, groupChats, guessCard, loadCh
 import { useCycleCoach } from '@/lib/cyclePhase';
 import { deviceBrief, useDevices } from '@/lib/devices';
 import { useFood } from '@/lib/food';
+import { flaggedMarkers, healthFoodTips } from '@/lib/bloodFood';
 import { MEAS, useHealth } from '@/lib/health';
+import { last7, useSupplementLogs } from '@/lib/supplementLogs';
 import { addDays, fmt, GOALS, localDay } from '@/lib/nutrition';
 import { daysBetween } from '@/lib/report';
 import { fx, weekAvg } from '@/lib/progress';
@@ -55,6 +57,7 @@ export default function Coach() {
   const food = useFood();
   const train = useTrain();
   const health = useHealth();
+  const supLogs = useSupplementLogs(food.today);
   const streaks = useStreaks();
   const { r: rec } = useRecovery();
   // Cycle data kept only on this phone (private mode) is never sent to the AI.
@@ -236,7 +239,12 @@ export default function Coach() {
           .slice(0, 20)
           .map((v) => `${v.name}: ${v.value} ${v.unit}${v.flag ? (v.flag > 0 ? ' (high)' : ' (low)') : ''}`),
       })),
-      supplements: health.supplements.filter((x) => x.active).map((x) => `${x.name} ${x.dose}${x.unit} ${x.freq}`),
+      supplements: health.supplements
+        .filter((x) => x.active)
+        .map((x) => `${x.name} ${x.dose}${x.unit} ${x.freq}${supLogs.ok ? `, taken ${last7(supLogs.logs[x.id], today).filter((d) => d.on).length} of the last 7 days${(supLogs.logs[x.id] ?? []).includes(today) ? ' (taken today)' : ''}` : ''}`),
+      // The latest result of each marker that's out of range, and food ideas for the low ones (food only, never doses).
+      flaggedBloodMarkers: flaggedMarkers(health.blood).map((m) => `${m.name}: ${m.value} ${m.unit} (${m.flag}, ${m.day})`),
+      foodTipsFromLabs: healthFoodTips(health.blood, health.supplements, food.plan.allergies, food.plan.allergyNote).map((x) => x.text),
       coachManagesFood: !!food.coachTargets,
       foodAllergies: allergiesText(food.plan.allergies, food.plan.allergyNote) || 'none',
       reminders: remindersSummary(prefs) ?? null,

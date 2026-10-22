@@ -9,7 +9,7 @@ import { Button, Label } from '@/components/ui';
 import { useT } from '@/i18n';
 import { createGroup } from '@/lib/social';
 
-/** New group with friends (design: SH.newgroup). */
+/** New group with friends (design: SH.newgroup). Friends get an invite and join when they accept. */
 export default function NewGroup() {
   const { t } = useT();
   const toast = useToast();
@@ -23,7 +23,7 @@ export default function NewGroup() {
       <Label>{t('Add friends')}</Label>
       <FriendPicker value={m} onChange={setM} />
       <Button
-        title={m.length ? t('Create group with {n} people', { n: m.length + 1 }) : t('Pick at least one friend')}
+        title={m.length ? t(m.length > 1 ? 'Create group and invite {n} friends' : 'Create group and invite 1 friend', { n: m.length }) : t('Pick at least one friend')}
         disabled={!m.length}
         loading={busy}
         style={{ marginTop: 8 }}
@@ -33,7 +33,7 @@ export default function NewGroup() {
           const id = await createGroup(name.trim(), m);
           setBusy(false);
           if (!id) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
-          toast(t('Group “{n}” created', { n: name.trim() }), { icon: 'users' });
+          toast(t('Group “{n}” created. Friends join when they accept your invite.', { n: name.trim() }), { icon: 'users' });
           router.replace({ pathname: '/group', params: { id } });
         }}
       />

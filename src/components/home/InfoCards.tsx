@@ -12,6 +12,7 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { allergensIn, noteHit } from '@/lib/allergies';
+import { healthFoodTips } from '@/lib/bloodFood';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { fx } from '@/lib/progress';
@@ -161,8 +162,12 @@ export function StreaksCard() {
 export function TipCard() {
   const { t } = useT();
   const { colors: c } = useSettings();
-  const { eaten, target, kcalLeft, plan } = useFood();
+  const { eaten, target, kcalLeft, plan, today } = useFood();
+  const h = useHealth();
   const left = Math.round(target.p - eaten.p);
+  // From low blood markers and the supplements you take: one a day, in turn.
+  const extra = healthFoodTips(h.blood, h.supplements, plan.allergies, plan.allergyNote);
+  const health = extra.length ? extra[Math.floor(new Date(`${today}T12:00:00Z`).getTime() / 864e5) % extra.length] : null;
   // The first protein idea without any of your allergens (or the words in your own allergy note).
   const safe = (tips: [string[], string][]) =>
     tips.find(([foods]) => !allergensIn(foods, plan.allergies).length && !noteHit(foods, plan.allergyNote))?.[1] ?? 'You still need {n} g of protein. Add some to your next meal.';
@@ -198,6 +203,11 @@ export function TipCard() {
         <Text weight={600} style={{ marginTop: 4 }}>
           {tip}
         </Text>
+        {health ? (
+          <Text variant="small" color="sec" style={{ marginTop: 6 }}>
+            {t(health.text)}
+          </Text>
+        ) : null}
       </View>
     </Card>
   );

@@ -4,11 +4,11 @@ import { loadDeviceBrief } from './devices';
 import { allergensIn, allergiesText, noteHit } from './allergies';
 import type { ChatAction } from './coach';
 import { prepareSuggestions } from './coachPlan';
-import { addDays, localDay } from './nutrition';
+import { addDays, type FoodPlan, localDay } from './nutrition';
 import type { ReportStats } from './report';
 import { supabase } from './supabase';
 import type { WorkoutLog } from './train';
-import { EX, exInfo, plannedOn, type TrainPlan, weekStart } from './training';
+import { EX, exInfo, missedDays, type TrainPlan, weekStart } from './training';
 
 /** What the recap can apply: plan changes and food targets (as in the coach chat), and moving a workout day,
  * turning on a reminder, saving a meal idea, or spreading calories over the coming week. */
@@ -27,7 +27,20 @@ export const MAX_SUGGESTIONS = 3;
 export type RecapNote = { title: string; detail: string };
 /** What the AI wrote for the week (kept, so it's written once). */
 export type RecapAI = { headline: string; wins: string[]; problems: RecapNote[]; tips: RecapNote[]; suggest: Suggestion[] };
-export type RecapRow = { week_start: string; lang: 'en' | 'ar'; ai: RecapAI | null; applied: number[] | null; seen_at: string };
+export type RecapRow = { week_start: string; lang: 'en' | 'ar'; ai: RecapAI | null; applied: number[] | null; seen_at: string; undo?: RecapUndo | null };
+/**
+ * What Undo puts back after applying a recap's suggestions (kept with that week's recap, so it works until the next
+ * one): the parts of the training plan they touched, the food targets, the calorie moves and meals they added, and
+ * your reminders as they were.
+ */
+export type RecapUndo = {
+  at: string;
+  train?: Partial<TrainPlan>;
+  food?: Pick<FoodPlan, 'kcal' | 'perKg' | 'carbG' | 'water'>;
+  moveGrps?: string[];
+  meals?: string[];
+  prefs?: unknown;
+};
 
 /** Last week: Sunday to Saturday before this one. */
 export function recapWeek(today: string) {
@@ -72,10 +85,12 @@ export function recapGoals(s: ReportStats, goal: number, hasPlan: boolean): Goal
 /** Each day of the week: trained, a planned workout missed, or a rest day. */
 export function recapDays(plan: TrainPlan | null, logs: WorkoutLog[], start: string): ('ok' | 'miss' | 'rest')[] {
   const done = new Set(logs.map((l) => l.day));
+  // Same rule as the streak: a skipped, moved or made-up day isn't a miss.
+  const missed = plan ? missedDays(plan, done, start, addDays(start, 6)) : new Set<string>();
   return Array.from({ length: 7 }, (_, i) => {
     const d = addDays(start, i);
     if (done.has(d)) return 'ok';
-    return plan && plannedOn(plan, d) ? 'miss' : 'rest';
+    return missed.has(d) ? 'miss' : 'rest';
   });
 }
 
@@ -89,8 +104,15 @@ export async function markRecapSeen(start: string, lang: 'en' | 'ar') {
   await supabase.from('weekly_recaps').upsert({ week_start: start, lang, seen_at: new Date().toISOString() }, { onConflict: 'user_id,week_start', ignoreDuplicates: true });
 }
 
-export async function saveRecap(start: string, patch: Partial<Pick<RecapRow, 'ai' | 'applied' | 'lang'>>) {
-  await supabase.from('weekly_recaps').upsert({ week_start: start, ...patch }, { onConflict: 'user_id,week_start' });
+export async function saveRecap(start: string, patch: Partial<Pick<RecapRow, 'ai' | 'applied' | 'lang' | 'undo'>>) {
+  const { error } = await supabase.from('weekly_recaps').upsert({ week_start: start, ...patch }, { onConflict: 'user_id,week_start' });
+  return !error;
+}
+
+/** The week's Undo, if there is one (read on its own: a database without the column still shows the recap). */
+export async function recapUndo(start: string): Promise<RecapUndo | null> {
+  const { data, error } = await supabase.from('weekly_recaps').select('undo').eq('week_start', start).maybeSingle();
+  return error ? null : (((data as { undo?: RecapUndo | null } | null)?.undo ?? null) as RecapUndo | null);
 }
 
 /** Ask the AI for the week's story. Suggestions are checked against the plan (real workouts, real exercises, injury-safe). */

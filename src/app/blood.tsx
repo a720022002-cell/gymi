@@ -1,16 +1,19 @@
 import { useState } from 'react';
-import { Linking, Platform, View } from 'react-native';
+import { Linking, Platform, Pressable, View } from 'react-native';
 
 import { Thinking } from '@/components/food/Thinking';
 import { ConfirmSheet } from '@/components/health/Confirm';
+import { MarkerChart } from '@/components/health/MarkerChart';
 import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
+import { Sheet } from '@/components/Sheet';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, ErrorText, Row } from '@/components/ui';
 import { useT } from '@/i18n';
 import { type AiError, aiErrorText, askAI } from '@/lib/ai';
 import { useAuth } from '@/lib/auth';
+import { healthFoodTips, markerHistory } from '@/lib/bloodFood';
 import { useFood } from '@/lib/food';
 import { useCycleCoach } from '@/lib/cyclePhase';
 import { ageFromIso } from '@/lib/nutrition';
@@ -204,6 +207,9 @@ function Report({ b }: { b: BloodTest }) {
     if (Platform.OS === 'web') globalThis.open?.(url, '_blank');
     else Linking.openURL(url).catch(() => toast(t('Couldn’t open the file. Please try again.'), { icon: 'warn' }));
   };
+  const food = useFood();
+  const [marker, setMarker] = useState<string | null>(null);
+  const tips = healthFoodTips(h.blood, [], food.plan.allergies, food.plan.allergyNote);
   const bad = b.values.filter((v) => v.flag !== 0);
   const range = (v: BloodValue) => (v.low != null && v.high != null ? `${v.low}–${v.high}` : v.low != null ? `> ${v.low}` : v.high != null ? `< ${v.high}` : null);
   // Only call a value normal when we could actually place it in the range ("Negative" can't be).
@@ -240,7 +246,12 @@ function Report({ b }: { b: BloodTest }) {
       </Text>
       <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden', marginBottom: 12 }}>
         {b.values.map((v, i) => (
-          <View key={`${v.name}${i}`} style={{ paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
+          <Pressable
+            key={`${v.name}${i}`}
+            onPress={() => setMarker(v.name)}
+            accessibilityRole="button"
+            accessibilityHint={t('Shows this value over time')}
+            style={({ pressed }) => ({ paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: i ? 1 : 0, borderTopColor: c.line, opacity: pressed ? 0.7 : 1 })}>
             <Row style={{ alignItems: 'flex-start' }}>
               <View style={{ flex: 1 }}>
                 <Text weight={700}>{v.name}</Text>
@@ -267,11 +278,89 @@ function Report({ b }: { b: BloodTest }) {
                 <Text variant="small">{t('This value is outside the normal range. Please check with your doctor.')}</Text>
               </View>
             ) : null}
-          </View>
+          </Pressable>
         ))}
       </View>
+      {tips.length ? (
+        <Card>
+          <Row gap={8} style={{ marginBottom: 6 }}>
+            <Icon name="food" size={18} color={c.cobalt} />
+            <Text weight={700}>{t('Food ideas')}</Text>
+          </Row>
+          {tips.map((x) => (
+            <Text key={x.key} variant="small" style={{ marginTop: 4 }}>
+              {t(x.text)}
+            </Text>
+          ))}
+        </Card>
+      ) : null}
+      <Sheet open={!!marker} onClose={() => setMarker(null)}>
+        {marker ? <MarkerHistory name={marker} /> : null}
+      </Sheet>
       <Text variant="xs" color="sec">
         {t('Adro reads values only. It never suggests treatment or doses. Check the numbers against your report.')}
+      </Text>
+    </View>
+  );
+}
+
+/** One marker across all your reports: a small chart with the normal range, and the change since the one before. */
+function MarkerHistory({ name }: { name: string }) {
+  const { t, lang } = useT();
+  const { colors: c } = useSettings();
+  const h = useHealth();
+  const pts = markerHistory(h.blood, name);
+  const last = pts.at(-1);
+  const prev = pts.at(-2);
+  const diff = last && prev ? Math.round((last.value - prev.value) * 100) / 100 : null;
+  const range = last ? (last.low != null && last.high != null ? `${last.low}–${last.high}` : last.low != null ? `> ${last.low}` : last.high != null ? `< ${last.high}` : null) : null;
+  return (
+    <View>
+      <Text variant="h2">{name}</Text>
+      {last ? (
+        <>
+          <Text num size={28} style={{ marginTop: 6 }}>
+            {last.raw}{' '}
+            <Text variant="small" color="sec">
+              {last.unit}
+            </Text>
+          </Text>
+          <Text variant="small" color="sec">
+            {diff == null
+              ? t('Only one result so far. Upload another report to see the trend.')
+              : diff === 0
+                ? t('Same as {d}', { d: shortDate(prev!.day, lang) })
+                : t(diff > 0 ? 'Up {n} since {d}' : 'Down {n} since {d}', { n: Math.abs(diff), d: shortDate(prev!.day, lang) })}
+          </Text>
+          <View style={{ marginTop: 14 }}>
+            <MarkerChart points={pts} labels={pts.map((p, i) => (i === 0 || i === pts.length - 1 ? shortDate(p.day, lang) : ''))} />
+          </View>
+          {range ? (
+            <Row gap={6} style={{ marginTop: 6 }}>
+              <View style={{ width: 14, height: 10, borderRadius: 3, backgroundColor: c.up, opacity: 0.25 }} />
+              <Text variant="xs" color="sec">
+                {t('Normal: {r} {u}', { r: range, u: last.unit })}
+              </Text>
+            </Row>
+          ) : null}
+          <View style={{ backgroundColor: c.inset, borderRadius: 16, marginTop: 14, overflow: 'hidden' }}>
+            {[...pts].reverse().map((p, i) => (
+              <Row key={`${p.day}${i}`} style={{ paddingHorizontal: 14, paddingVertical: 10, borderTopWidth: i ? 1 : 0, borderTopColor: c.line, justifyContent: 'space-between' }}>
+                <Text variant="small">{shortDate(p.day, lang)}</Text>
+                <Text variant="small" weight={700} color={p.flag ? 'down' : 'text'}>
+                  {`${p.raw} ${p.unit}${p.flag ? ` · ${t(p.flag < 0 ? 'Low' : 'High')}` : ''}`}
+                </Text>
+              </Row>
+            ))}
+          </View>
+        </>
+      ) : (
+        <Text color="sec" style={{ marginTop: 6 }}>
+          {t('This result isn’t a number, so it can’t be shown as a chart.')}
+        </Text>
+      )}
+      <Text variant="xs" color="sec" style={{ marginTop: 12 }}>
+        {t('Talk to your doctor about your results. Not medical advice.')}
       </Text>
     </View>
   );

@@ -135,6 +135,37 @@ export function CoachCard({ k }: { k: MyCoach }) {
   );
 }
 
+/** Your coach, as one compact row at the top of Home: opens My coach; the chat button shows new messages. */
+export function CoachRow({ k, unread }: { k: MyCoach; unread: number }) {
+  const { t } = useT();
+  const { colors: c } = useSettings();
+  const name = k.name || k.username;
+  const chat = () => router.push({ pathname: '/thread', params: { link: k.id, name } });
+  return (
+    <Card onPress={() => router.push('/mycoach')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <Avatar id={k.coach_id} name={name} size={40} />
+      <View style={{ flex: 1 }}>
+        <Text weight={700} numberOfLines={1}>
+          {t('Your coach {n}', { n: name })}
+        </Text>
+        <Text variant="small" color={unread ? 'link' : 'sec'} weight={unread ? 700 : undefined} numberOfLines={1}>
+          {unread ? t(unread === 1 ? '1 new message' : '{n} new messages', { n: unread }) : t('Your plans, chat and check-ins')}
+        </Text>
+      </View>
+      <Springy onPress={chat} accessibilityLabel={unread ? t('{n} new messages', { n: unread }) : t('Message')} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: unread ? c.cobalt : c.inset, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name="send" size={17} color={unread ? '#FFFFFF' : c.text} />
+        {unread ? (
+          <View style={{ position: 'absolute', top: -4, right: -4, minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 5, backgroundColor: c.down, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: c.card }}>
+            <Text size={11} weight={700} color="#FFFFFF">
+              {String(unread)}
+            </Text>
+          </View>
+        ) : null}
+      </Springy>
+    </Card>
+  );
+}
+
 export function CheckinCard({ onStart }: { onStart: () => void }) {
   const { t } = useT();
   const { colors: c } = useSettings();

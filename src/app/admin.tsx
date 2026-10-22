@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Linking, TextInput, View } from 'react-native';
 
+import { ModerateSheet } from '@/components/admin/ModerateSheet';
 import { hoursText } from '@/components/coach/GymHours';
 
 import { Thinking } from '@/components/food/Thinking';
@@ -296,6 +297,8 @@ function Users() {
   const { colors: c } = useSettings();
   const [q, setQ] = useState('');
   const [res, setRes] = useState<{ q: string; list: AdminUser[] } | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
+  const [tick, setTick] = useState(0);
   useEffect(() => {
     let alive = true;
     const id = setTimeout(() => adminUsers(q.trim()).then((list) => alive && setRes({ q, list })), 300);
@@ -303,7 +306,7 @@ function Users() {
       alive = false;
       clearTimeout(id);
     };
-  }, [q]);
+  }, [q, tick]);
   return (
     <View>
       <Row gap={8} style={{ height: 48, borderRadius: 16, backgroundColor: c.card, paddingHorizontal: 14, marginBottom: 12 }}>
@@ -315,22 +318,25 @@ function Users() {
       ) : (
         <List>
           {res.list.map((u, i) => (
-            <ListRow key={u.id} first={!i}>
+            <ListRow key={u.id} first={!i} onPress={() => setOpen(u.id)}>
               <Avatar id={u.id} name={u.name || u.username} size={36} />
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text weight={700} numberOfLines={1}>
                   {u.name || u.username}
                   {u.is_admin ? <Text variant="xs" weight={700} color={c.cobalt}>{`  ${t('Admin')}`}</Text> : null}
+                  {u.suspended_at ? <Text variant="xs" weight={700} color={c.down}>{`  ${t('Suspended')}`}</Text> : null}
                 </Text>
                 <Text variant="xs" color="sec" numberOfLines={1}>{`@${u.username} · ${u.email ?? ''}`}</Text>
                 <Text variant="xs" color="sec">
                   {`${t(u.account_type === 'coach' ? (u.coach_status === 'approved' ? 'Coach' : 'Coach (under review)') : 'Member')} · ${t('Joined {d}', { d: shortDate(u.joined.slice(0, 10), lang) })}${u.last_day ? ` · ${t('Last logged {d}', { d: shortDate(u.last_day, lang) })}` : ''}`}
                 </Text>
               </View>
+              <Icon name="chev" size={18} color={c.sec} />
             </ListRow>
           ))}
         </List>
       )}
+      <ModerateSheet user={open} onClose={() => setOpen(null)} onChanged={() => setTick((n) => n + 1)} />
     </View>
   );
 }

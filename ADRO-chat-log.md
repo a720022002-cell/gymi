@@ -179,6 +179,17 @@ Passwords and keys are left out on purpose.
 - AI function update: deployed (version 75).
 - Code pushed to main. The full report with the 20 open decisions: docs/Adro-final-audit-2026-10-21.pdf.
 
+### Owner decisions built (22 Oct 2026)
+- Admin moderation (Apple 1.2): suspend/unsuspend accounts (the person sees a "suspended" screen and disappears from friends, search, groups, challenges, coaches and messages), hide group posts and coach messages, reset an offensive profile, report actions (resolve/dismiss/reopen) and an action log.
+- Name: Adro+ everywhere (app, site, store notes). Phone number optional. Ramadan mode hidden for now (one switch: RAMADAN_LIVE in src/lib/nutrition.ts).
+- Streak: skipping or moving a workout (or making it up the same week) never breaks it; same rule on Home, widgets, Train, Progress and the recap.
+- Coach program: the client is asked first ("Use it" / "Not now"), per program version.
+- Edit or delete a past workout (records, volume and next weights recalculated). Custom exercise without a photo.
+- Group and challenge invites need Accept; owner can remove members and delete; members can leave.
+- Push notifications for coach messages (needs one-time setup). Invite links (gymi-inky.vercel.app/i/CODE, ready for adro.sa).
+- Home: at most 3 cards plus "More", coach row with unread count. Recap Undo. Blood markers over time, vitamins "Taken today", food tips from low blood markers.
+- New database changes (moderation, social_decisions, home_health): dry run OK, waiting for your OK to apply. Code waits on the work branch until then.
+
 ---
 
 ## Still waiting on you

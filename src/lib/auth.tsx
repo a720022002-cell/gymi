@@ -7,6 +7,7 @@ import { resetSignupForm } from '@/components/signup/form';
 import { clearAiConsent } from './aiConsent';
 import { setAvatarUrl } from './avatars';
 import { cancelAllReminders } from './reminders';
+import { unregisterPush } from './push';
 import { EMAIL_CODES, siteUrl } from './config';
 import { friendlyAuthError, supabase, supabaseConfigured } from './supabase';
 
@@ -35,6 +36,9 @@ export type Profile = {
   avatar_url?: string | null;
   bio?: string | null;
   invite_code?: string | null;
+  /** Set by the Adro team: the app shows "Your account is suspended" instead. */
+  suspended_at?: string | null;
+  suspend_reason?: string | null;
 };
 
 /**
@@ -305,7 +309,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       async updateProfile(patch) {
         if (!session) return { error: 'Please log in again.' };
-        const { id: _id, email: _e, account_type: _a, coach_status: _c, invite_code: _i, ...allowed } = patch;
+        const { id: _id, email: _e, account_type: _a, coach_status: _c, invite_code: _i, suspended_at: _s, suspend_reason: _r, ...allowed } = patch;
         const { data, error } = await supabase.from('profiles').update(allowed).eq('id', session.user.id).select('*').single();
         // 23505: someone already has that username.
         if (error) return { error: error.code === '23505' ? USERNAME_TAKEN : 'Couldn’t save. Please try again.' };
@@ -326,6 +330,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
         // Your reminders and the copies kept for offline use stay with you, not on this phone.
         const uid = session?.user.id;
         await cancelAllReminders();
+        // This phone stops getting your messages (needs the session, so before signing out).
+        await unregisterPush();
         if (uid) await AsyncStorage.multiRemove([PROFILE_KEY(uid), `adro.trainplan.v1.${uid}`]).catch(() => {});
         await clearAiConsent();
         resetSignupForm();

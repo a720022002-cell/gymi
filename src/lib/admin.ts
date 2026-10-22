@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import type { IconName } from '@/components/Icon';
 
 import { useAuth } from './auth';
+import type { AdminReport } from './social';
 import { supabase } from './supabase';
 
 export type AdminStats = { users: number; new_week: number; active_today: number; coaches: number; pending: number; workouts_week: number; meals_week: number; ai_today: number };
@@ -13,7 +14,7 @@ export type CoachQueueRow = {
 };
 /** Reasons the team can pick when a coach isn't approved (design: adminreject). */
 export const REJECT_REASONS = ['Certificate not readable', 'Certificate not recognized', 'Missing gym details', 'Not enough experience'];
-export type AdminUser = { id: string; name: string | null; username: string; email: string | null; account_type: string; coach_status: string | null; joined: string; last_day: string | null; is_admin: boolean };
+export type AdminUser = { id: string; name: string | null; username: string; email: string | null; account_type: string; coach_status: string | null; joined: string; last_day: string | null; is_admin: boolean; suspended_at?: string | null; suspend_reason?: string | null };
 
 const rpc = async <T>(fn: string, args?: Record<string, unknown>) => {
   const { data, error } = await supabase.rpc(fn, args);
@@ -24,6 +25,30 @@ export const adminStats = () => rpc<AdminStats>('admin_stats');
 export const coachQueue = async () => (await rpc<CoachQueueRow[]>('admin_coach_queue')) ?? [];
 export const decideCoach = async (user: string, approve: boolean, reason?: string) => !!(await rpc<boolean>('admin_decide_coach', { p_user: user, p_approve: approve, p_reason: reason ?? null }));
 export const adminUsers = async (q: string) => (await rpc<AdminUser[]>('admin_users', { p_q: q })) ?? [];
+
+// ---------------------------------------------------------------------------
+// Moderation: reports, suspending accounts, hiding content (all checked on the server)
+// ---------------------------------------------------------------------------
+export type ReportStatus = 'open' | 'done' | 'dismissed';
+export type ModReport = Omit<AdminReport, 'status'> & { status: ReportStatus; reported_suspended?: boolean };
+/** The team's list of reports (null when it couldn't load). */
+export const modReports = () => rpc<ModReport[]>('admin_reports');
+export const setReportStatus = async (id: string, status: ReportStatus) => !!(await rpc<boolean>('admin_set_report', { p_id: id, p_status: status }));
+/** Suspend (with an optional reason) or unsuspend an account. Admins can't be suspended. */
+export const suspendUser = async (user: string, suspend: boolean, reason?: string) =>
+  !!(await rpc<boolean>('admin_suspend', { p_user: user, p_suspend: suspend, p_reason: reason?.trim() || null }));
+export type ResetField = 'name' | 'username' | 'bio' | 'photo' | 'coach';
+export const resetProfile = async (user: string, fields: ResetField[]) => !!(await rpc<boolean>('admin_reset_profile', { p_user: user, p_fields: fields }));
+export const hideContent = async (kind: 'post' | 'message', id: string, hide: boolean) => !!(await rpc<boolean>('admin_hide_content', { p_kind: kind, p_id: id, p_hide: hide }));
+export type ModItem = { id: string; text: string; created_at: string; hidden_at: string | null; group_name?: string | null };
+export type ModUser = {
+  id: string; name: string | null; username: string; email: string | null; bio: string | null; avatar_url: string | null; account_type: string;
+  suspended_at: string | null; suspend_reason: string | null; is_admin: boolean; reports: number;
+  coach: { bio: string; headline: string; about: string; listed: boolean } | null;
+  posts: ModItem[]; messages: ModItem[]; actions: { action: string; note: string | null; created_at: string; admin: string | null }[];
+};
+/** One person for the team: profile text, recent group posts, messages (only when reported) and past actions. */
+export const modUser = (user: string) => rpc<ModUser>('admin_user_content', { p_user: user });
 
 /** Is the logged-in person a Adro admin? (checked on the server) */
 export function useIsAdmin() {
