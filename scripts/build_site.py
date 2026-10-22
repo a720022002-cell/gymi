@@ -442,8 +442,8 @@ def home():
     devices = [('Apple Health', 1), ('Apple Watch', 0), ('Health Connect', 1), ('WHOOP', 1), ('Oura', 1), ('Polar', 1), ('Galaxy Watch', 0), ('Garmin', 0), ('Fitbit', 0), ('Withings', 0)]
     devs = ''.join(f'<span class="{"on" if on else ""}">{d}</span>' for d, on in devices)
     faqs = [
-        ('Is Adro free?', 'هل ادرو مجاني؟', 'Yes. You can plan workouts, log food and track your progress for free. Adro Pro adds more AI and deeper watch insights.',
-         'نعم. تقدر تخطط تمارينك وتسجّل أكلك وتتابع تقدّمك مجاناً. Adro Pro يضيف ذكاء اصطناعي أكثر وتحليل أعمق من ساعتك.'),
+        ('Is Adro free?', 'هل ادرو مجاني؟', 'Yes. You can plan workouts, log food and track your progress for free. Adro+ adds more AI and deeper watch insights.',
+         'نعم. تقدر تخطط تمارينك وتسجّل أكلك وتتابع تقدّمك مجاناً. Adro+ يضيف ذكاء اصطناعي أكثر وتحليل أعمق من ساعتك.'),
         ('Which watches and rings work?', 'أي ساعات وخواتم تشتغل؟', 'Anything that saves to Apple Health or Health Connect, like Apple Watch, Galaxy Watch, Garmin and Fitbit. WHOOP, Oura and Polar also connect directly.',
          'أي جهاز يحفظ في Apple Health أو Health Connect، مثل Apple Watch و Galaxy Watch و Garmin و Fitbit. و WHOOP و Oura و Polar ترتبط مباشرة بعد.'),
         ('Does it work in Arabic?', 'يشتغل بالعربي؟', 'Fully. The whole app, the AI coach and the food list work in Arabic and English.',
@@ -510,11 +510,11 @@ def home():
 
 <section id="pricing" class="center" style="padding:120px 0"><div class="wrap">
 <h2 class="big rv">{t('Start free.', 'ابدأ مجاناً.')}</h2>
-<p class="sub2 rv d1">{t('Go Pro when you want more.', 'واشترك في Pro لما تبي أكثر.')}</p>
+<p class="sub2 rv d1">{t('Go Adro+ when you want more.', 'واشترك في Adro+ لما تبي أكثر.')}</p>
 <div class="plans">
 <div class="plan rv"><h3>{t('Free', 'مجاني')}</h3><div class="amount">0 <small>{t('SAR', 'ريال')}</small></div><div class="per">{t('Forever', 'للأبد')}</div>
 <ul><li>{t('Workout plans and the set coach', 'خطط التمارين ومدرب المجموعات')}</li><li>{t('Food log, calories and macros', 'تسجيل الأكل والسعرات والماكروز')}</li><li>{t('Recovery score and progress', 'درجة الاستشفاء والتقدّم')}</li><li>{t('A taste of the AI coach every day', 'تجربة يومية للمدرب الذكي')}</li></ul></div>
-<div class="plan pro rv d1"><h3>Adro Pro</h3><div class="amount">39 <small>{t('SAR / month', 'ريال / شهر')}</small></div><div class="per">{t('or 299 SAR a year', 'أو 299 ريال بالسنة')}</div>
+<div class="plan pro rv d1"><h3>Adro+</h3><div class="amount">39 <small>{t('SAR / month', 'ريال / شهر')}</small></div><div class="per">{t('or 299 SAR a year', 'أو 299 ريال بالسنة')}</div>
 <ul><li>{t('More AI coach and food photos', 'مدرب ذكي وصور أكل أكثر')}</li><li>{t('Morning readiness note from your watch', 'ملاحظة الجاهزية كل صباح من ساعتك')}</li><li>{t('3-month trends and PDF reports', 'رسوم 3 شهور وتقارير PDF')}</li><li>{t('Weekly recap with one-tap changes', 'ملخص أسبوعي وتعديل بضغطة')}</li></ul></div>
 </div>
 </div></section>
@@ -569,7 +569,7 @@ def support():
         ('Download your data', 'تنزيل بياناتك', 'You, then Privacy and data, then Download my data.', 'أنت، ثم الخصوصية والبيانات، ثم تنزيل بياناتي.'),
         ('Connect a watch or ring', 'ربط ساعة أو خاتم', 'You, then Connections. Apple Health, Health Connect, WHOOP, Oura and Polar are there.',
          'أنت، ثم Connections. فيها Apple Health و Health Connect و WHOOP و Oura و Polar.'),
-        ('Cancel Adro Pro', 'إلغاء Adro Pro', 'Subscriptions are managed by the store: iPhone Settings, then your name, then Subscriptions. On Android: Google Play, then Payments and subscriptions.',
+        ('Cancel Adro+', 'إلغاء Adro+', 'Subscriptions are managed by the store: iPhone Settings, then your name, then Subscriptions. On Android: Google Play, then Payments and subscriptions.',
          'الاشتراك يُدار من المتجر: في الآيفون الإعدادات، ثم اسمك، ثم الاشتراكات. وفي أندرويد: Google Play، ثم الدفعات والاشتراكات.'),
         ('Report someone', 'الإبلاغ عن شخص', 'Tap their name, then Report or Block. Our team reviews reports within 24 hours.',
          'اضغط على اسمه، ثم إبلاغ أو حظر. فريقنا يراجع البلاغات خلال 24 ساعة.'),

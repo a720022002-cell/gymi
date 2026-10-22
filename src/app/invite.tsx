@@ -91,9 +91,9 @@ export default function Invite() {
           ))}
         </Row>
         <Text variant="small" color="sec" style={{ marginTop: 12 }}>
-          {t('Every {n} friends who join with your code gives you 1 month of Adro Premium free.', { n: REF_GOAL })}{' '}
+          {t('Every {n} friends who join with your code gives you 1 month of Adro+ free.', { n: REF_GOAL })}{' '}
           {t('A friend counts once they’ve used Adro on 2 different days.')}
-          {PAID_PLANS_LIVE ? null : ` ${t('Free months start when Adro Premium launches. We keep count until then.')}`}
+          {PAID_PLANS_LIVE ? null : ` ${t('Free months start when Adro+ launches. We keep count until then.')}`}
         </Text>
         {inv?.waiting ? (
           <Text variant="small" color="sec" style={{ marginTop: 6 }}>
@@ -107,7 +107,7 @@ export default function Invite() {
               <Text variant="small" weight={700}>
                 {earned > 1 ? t('{n} free months earned.', { n: earned }) : t('1 free month earned.')}
               </Text>{' '}
-              {t(PAID_PLANS_LIVE ? 'Added to your subscription.' : 'Saved for when Adro Premium launches.')}
+              {t(PAID_PLANS_LIVE ? 'Added to your subscription.' : 'Saved for when Adro+ launches.')}
             </Text>
           </Row>
         ) : null}

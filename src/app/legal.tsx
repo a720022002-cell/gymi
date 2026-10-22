@@ -23,7 +23,7 @@ const TERMS: [string, string][] = [
   ['No abuse', 'There is zero tolerance for harassment, hate, nudity, spam or other objectionable content or behaviour. You can report or block anyone. Our team reviews reports within 24 hours and removes content and accounts that break these rules.'],
   ['Not medical advice', 'Calories, plans and AI answers are estimates for healthy adults. Stop and see a doctor if you feel pain, dizziness or anything unusual.'],
   ['Coaches', 'Coaches are checked by our team before they appear, but they are independent. Payments with a coach are between you and them for now.'],
-  ['Subscriptions', 'Adro Premium renews until you cancel in your App Store or Google Play settings. Free trials turn into paid plans unless cancelled first.'],
+  ['Subscriptions', 'Adro+ renews until you cancel in your App Store or Google Play settings. Free trials turn into paid plans unless cancelled first.'],
   ['Changes', 'We may update these terms. We’ll tell you in the app when something important changes.'],
 ];
 

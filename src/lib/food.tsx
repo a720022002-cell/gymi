@@ -16,6 +16,7 @@ import {
   hhmmOf,
   isMinor,
   isRamadan,
+  RAMADAN_LIVE,
   kcalFloor,
   localDay,
   type Macros,
@@ -365,7 +366,7 @@ export function FoodProvider({ children }: PropsWithChildren) {
       // on again next Ramadan).
       if (!p.error) {
         if (newer) loaded = planRef.current;
-        setPlan(isRamadan(today) ? loaded : { ...loaded, ramadan: false });
+        setPlan(RAMADAN_LIVE && isRamadan(today) ? loaded : { ...loaded, ramadan: false });
         if (!newer) setSetupDone(!!p.data?.setup_done);
       }
       if (!l.error) {

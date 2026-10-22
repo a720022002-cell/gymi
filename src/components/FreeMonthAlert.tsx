@@ -42,8 +42,8 @@ export function FreeMonthAlert({ months }: { months?: number }) {
         <Text color="sec" center style={{ marginTop: 6 }}>
           {/* Before paid plans are on sale, the month is kept for later (same as the Invite screen says). */}
           {PAID_PLANS_LIVE
-            ? t('{n} friends joined with your code. 1 month of Adro Premium is added to your account.', { n: REF_GOAL })
-            : t('{n} friends joined with your code. 1 month of Adro Premium is saved for when it launches.', { n: REF_GOAL })}
+            ? t('{n} friends joined with your code. 1 month of Adro+ is added to your account.', { n: REF_GOAL })
+            : t('{n} friends joined with your code. 1 month of Adro+ is saved for when it launches.', { n: REF_GOAL })}
         </Text>
       </View>
       <Button title={t('Nice')} style={{ marginTop: 16 }} onPress={() => setOpen(false)} />

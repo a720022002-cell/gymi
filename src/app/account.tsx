@@ -341,8 +341,8 @@ function PhoneSheet({ onClose }: { onClose: () => void }) {
         onPress={async () => {
           setCheck(true);
           if (phoneMessage(iso, digits, true)[0] === 'bad') return;
-          const p = fullPhone(iso, digits);
-          if (p === profile?.phone) return setErr(t('That’s already your number.'));
+          const p = digits ? fullPhone(iso, digits) : null;
+          if (p === (profile?.phone || null)) return setErr(t('That’s already your number.'));
           setBusy(true);
           const r = await updateProfile({ phone: p });
           setBusy(false);

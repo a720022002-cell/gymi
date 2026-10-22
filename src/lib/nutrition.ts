@@ -19,6 +19,9 @@ export const ACTIVITY: [string, string][] = [
 ];
 const ACT_FACTOR = [1.25, 1.4, 1.55, 1.75];
 
+/** Ramadan mode is hidden until it's ready for launch: no switch, no Ramadan meals or cards. Turn on to bring it back. */
+export const RAMADAN_LIVE = false;
+
 // Ramadan (month 9 of the Umm al-Qura calendar), for when the phone can't tell: about the first and last day.
 const RAMADAN_FALLBACK: [string, string][] = [
   ['2027-02-08', '2027-03-08'],
@@ -45,7 +48,7 @@ export function isRamadan(day = localDay()) {
 }
 
 /** Ramadan meals are used on this day: you turned Ramadan mode on, and it's Ramadan. */
-export const ramadanOn = (f: Pick<FoodPlan, 'ramadan'>, day = localDay()) => !!f.ramadan && isRamadan(day);
+export const ramadanOn = (f: Pick<FoodPlan, 'ramadan'>, day = localDay()) => RAMADAN_LIVE && !!f.ramadan && isRamadan(day);
 
 /** `id`: stays the same when other meals are removed, so picks, swapped recipes and logs stay with the right meal. */
 export type Meal = { n: string; t: string; type?: string; id?: number };
@@ -462,4 +465,4 @@ export function addDays(day: string, n: number) {
 export const fmt = (n: number) => Math.round(n).toLocaleString('en-US');
 
 /** Ramadan mode can be turned on (only during Ramadan). Worked out when the app starts; use isRamadan(day) for a given day. */
-export const RAMADAN_SWITCH = isRamadan();
+export const RAMADAN_SWITCH = RAMADAN_LIVE && isRamadan();

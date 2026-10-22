@@ -14,7 +14,7 @@ const PRO = { m: 39, y: 299 };
 const FREE = ['Calories, macros and water', 'Barcode scan and food search', 'Workout plan, logging and records', 'Weight, sleep and streaks', 'Gym Bros friends and cheers', 'Cycle tracking'];
 const PLUS = ['AI coach chat, no limits', 'Meal photo: the AI finds the ingredients', 'Label, machine and blood test photos', 'Recovery score with Apple Health and WHOOP', 'Groups, challenges and train together', 'Weekly reports and PDF export'];
 
-/** Adro Pro plans (design: subscription). Payments open when the phone apps are in the stores. */
+/** Adro+ plans (design: subscription). Payments open when the phone apps are in the stores. */
 export default function Subscription() {
   const { t } = useT();
   const { colors: c } = useSettings();
@@ -32,7 +32,7 @@ export default function Subscription() {
   const month = yr ? Math.round(PRO.y / 12) : PRO.m;
   const save = Math.round((1 - PRO.y / (PRO.m * 12)) * 100);
   return (
-    <Screen title={t('Adro Pro')} back>
+    <Screen title={t('Adro+')} back>
       <Text color="sec" style={{ marginTop: -8 }}>
         {t('Start free. Upgrade when you want the full AI coach.')}
       </Text>
@@ -64,7 +64,7 @@ export default function Subscription() {
               {t('Most popular')}
             </Text>
             <Text variant="h2" style={{ marginTop: 6 }}>
-              {t('Pro')}
+              {'Adro+'}
             </Text>
             <Text variant="small" color="sec">
               {t('Your full AI coach')}
@@ -95,7 +95,7 @@ export default function Subscription() {
             </Text>
           </Row>
         ))}
-        <Button kind="cobalt" title={t('Try Pro free for 7 days')} style={{ marginTop: 12 }} onPress={() => toast(t('Subscriptions open when Adro launches on the App Store and Google Play. Everything is free until then.'), { icon: 'star' })} />
+        <Button kind="cobalt" title={t('Try Adro+ free for 7 days')} style={{ marginTop: 12 }} onPress={() => toast(t('Subscriptions open when Adro launches on the App Store and Google Play. Everything is free until then.'), { icon: 'star' })} />
         <Text variant="xs" color="sec" center style={{ marginTop: 8 }}>
           {yr ? t('Then {n} SAR a year. Cancel any time before it renews.', { n: PRO.y }) : t('Then {n} SAR a month. Cancel any time before it renews.', { n: PRO.m })}
         </Text>

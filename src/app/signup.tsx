@@ -328,7 +328,7 @@ function Verify({ onBack, onVerified }: { onBack: () => void; onVerified: () => 
       password: form.password,
       username: form.username,
       name: form.name,
-      phone: fullPhone(form.iso, form.phone),
+      phone: form.phone ? fullPhone(form.iso, form.phone) : '',
       accountType: accountType ?? 'member',
       language: lang,
     });

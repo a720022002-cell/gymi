@@ -59,7 +59,7 @@ export function PhoneField({
 
   return (
     <View>
-      <Label>{t('Phone number')}</Label>
+      <Label>{t('Phone number (optional)')}</Label>
       <View style={{ flexDirection: 'row', gap: 8, direction: 'ltr' } as object}>
         <Pressable
           onPress={() => setOpen(true)}

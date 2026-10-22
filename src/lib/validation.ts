@@ -44,7 +44,8 @@ export const fullPhone = (iso: string, digits: string) => `+${country(iso).code}
 /** Returns [kind, message, vars] for the line under the phone field. */
 export function phoneMessage(iso: string, digits: string, final = false): ['ok' | 'bad' | '', string, Record<string, string | number>?] {
   const c = country(iso);
-  if (!digits) return final ? ['bad', 'Enter your phone number.'] : ['', 'We’ll send a code to check it’s yours.'];
+  // Optional for now (no text-message check yet): empty is fine.
+  if (!digits) return ['', 'Optional.'];
   if (c.starts && digits[0] !== c.starts) return ['bad', '{country} mobile numbers start with {d}.', { country: c.en, d: c.starts }];
   if (digits.length > c.len)
     return ['bad', 'Too many digits. {country} numbers have {n} digits after +{code}.', { country: c.en, n: c.len, code: c.code }];
