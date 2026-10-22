@@ -26,7 +26,7 @@ import { MEAS, useHealth } from '@/lib/health';
 import { last7, useSupplementLogs } from '@/lib/supplementLogs';
 import { addDays, fmt, GOALS, localDay } from '@/lib/nutrition';
 import { daysBetween } from '@/lib/report';
-import { fx, weekAvg } from '@/lib/progress';
+import { fx, goalsFor, weekAvg } from '@/lib/progress';
 import { supabase } from '@/lib/supabase';
 import { useTrain } from '@/lib/train';
 import { useWeight } from '@/lib/units';
@@ -417,6 +417,13 @@ export default function Coach() {
     toast(t('Changed back'), { icon: 'check' });
   };
 
+  // A suggestion keeps what it proposed; next to it, what you have now (until it's applied).
+  const nowNote = (cur: string | number | null | undefined, proposed: string | number) => (cur === undefined || String(cur) === String(proposed) ? '' : ` ${cur === null ? t('(now off)') : t('(now {n})', { n: typeof cur === 'number' ? fmt(cur) : cur })}`);
+  const reminderNow = (kind: Extract<Suggestion, { type: 'reminder' }>['kind']) => {
+    if (!prefs || kind === 'food') return undefined;
+    const r = kind === 'water' ? { on: prefs.water.on, time: prefs.water.from } : prefs[kind];
+    return prefs.on && r.on ? r.time : null;
+  };
   const suggestionCard = (m: ChatMsg, a: Suggestion, i: number) => (
     <View key={i} style={{ marginTop: 10, backgroundColor: c.bg, borderRadius: 16, padding: 12, opacity: a.state === 'dismissed' ? 0.5 : 1 }}>
       <Row gap={8}>
@@ -428,8 +435,12 @@ export default function Coach() {
       {(a.type === 'plan'
         ? a.changes.map((ch) => changeLine(ch, isWholePlan(a.prev) ? a.prev : train.plan, lang, t))
         : a.type === 'reminder'
-          ? [t('Reminder: {x} at {time}', { x: t(REMINDER_NAME[a.kind]), time: a.time })]
-          : [a.kcal ? t('Calories: {n} kcal', { n: fmt(a.kcal) }) : null, a.protein ? t('Protein: {n} g', { n: a.protein }) : null, a.water ? t('Water: {n} ml', { n: fmt(a.water) }) : null].filter((x): x is string => !!x)
+          ? [t('Reminder: {x} at {time}', { x: t(REMINDER_NAME[a.kind]), time: a.time }) + (a.state ? '' : nowNote(reminderNow(a.kind), a.time))]
+          : [
+              a.kcal ? t('Calories: {n} kcal', { n: fmt(a.kcal) }) + (a.state ? '' : nowNote(food.setupDone ? Math.round(food.target.k) : undefined, a.kcal)) : null,
+              a.protein ? t('Protein: {n} g', { n: a.protein }) + (a.state ? '' : nowNote(food.setupDone ? Math.round(food.target.p) : undefined, a.protein)) : null,
+              a.water ? t('Water: {n} ml', { n: fmt(a.water) }) + (a.state ? '' : nowNote(food.setupDone ? food.plan.water || 2800 : undefined, a.water)) : null,
+            ].filter((x): x is string => !!x)
       ).map((line, j) => (
         <Text key={j} variant="small" color="sec" style={{ marginTop: 6 }}>
           {`• ${line}`}
@@ -551,7 +562,7 @@ export default function Coach() {
                     </Row>
                   );
                 })}
-                {m.card ? <ChatCard card={m.card} /> : null}
+                {m.card ? <ChatCard card={m.card} day={localDay(new Date(m.created_at))} kcalGoal={goalsFor(streaks.x, localDay(new Date(m.created_at))).kcal} /> : null}
               </View>
             </Row>
           ),

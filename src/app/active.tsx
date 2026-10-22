@@ -11,6 +11,7 @@ import { Sheet } from '@/components/Sheet';
 import { fontFor, Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { ExercisePicker } from '@/components/train/ExercisePicker';
+import { CutLine, LastNoteLine, NoteInput } from '@/components/train/ExNotes';
 import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { histFor, logSet, ltrNums, REST, setAdvice } from '@/lib/activeWorkout';
@@ -61,6 +62,8 @@ export default function Active() {
   const [removeFor, setRemoveFor] = useState<number | null>(null);
   const food = useFood();
   const [waterOpen, setWaterOpen] = useState(false);
+  // The note being written: an exercise ("2") or one of its sets ("2:1").
+  const [noteAt, setNoteAt] = useState<string | null>(null);
 
   // Coach advice, history and the up/down arrow for each exercise, worked out when the workout changes (not every second).
   const perEx = useMemo(
@@ -88,7 +91,8 @@ export default function Active() {
 
   const update = (fn: (x: Session) => Session) => train.setSession(fn(s));
   // Change the order mid-workout: move an exercise up or down (its sets go with it).
-  const move = (ei: number, d: -1 | 1) =>
+  const move = (ei: number, d: -1 | 1) => {
+    setNoteAt(null);
     update((x) => {
       const j = ei + d;
       if (j < 0 || j >= x.ex.length) return x;
@@ -96,6 +100,7 @@ export default function Active() {
       [ex[ei], ex[j]] = [ex[j], ex[ei]];
       return { ...x, ex };
     });
+  };
   // Water you drink while training goes to today's water.
   const drink = async (ml: number) => {
     setWaterOpen(false);
@@ -105,6 +110,9 @@ export default function Active() {
   const setField = (ei: number, si: number, k: 'w' | 'r', v: string) =>
     update((x) => ({ ...x, ex: x.ex.map((e, i) => (i !== ei ? e : { ...e, sets: e.sets.map((st, j) => (j === si ? { ...st, [k]: v } : st)) })) }));
 
+  // A note on an exercise, or on one set (si). Saved with the workout.
+  const setNote = (ei: number, si: number | null, v: string) =>
+    update((x) => ({ ...x, ex: x.ex.map((e, i) => (i !== ei ? e : si == null ? { ...e, note: v } : { ...e, sets: e.sets.map((st, j) => (j === si ? { ...st, note: v } : st)) })) }));
   const editSets = (ei: number, fn: (sets: SessionEx['sets']) => SessionEx['sets']) => update((x) => ({ ...x, ex: x.ex.map((e, i) => (i !== ei ? e : { ...e, sets: fn(e.sets) })) }));
   // "Remove set": the last working set you haven't done yet (or the last set if they're all done). One set always stays.
   const removeSet = (ei: number) =>
@@ -158,6 +166,7 @@ export default function Active() {
   const removeEx = (ei: number, fromPlan: boolean) => {
     const old = s.ex[ei];
     setRemoveFor(null);
+    setNoteAt(null);
     if (!old) return;
     update((x) => ({ ...x, ex: x.ex.filter((_, i) => i !== ei) }));
     const p = train.plan;
@@ -277,6 +286,8 @@ export default function Active() {
                   {lang === 'ar' ? mach[1] : mach[0]}
                 </Text>
               ) : null}
+              <LastNoteLine note={train.lastNotes[x.id]} />
+              <CutLine cut={x.cut} deload={!!s.deload} />
               <View style={{ flexDirection: 'row', marginTop: 12, marginBottom: 4 }}>
                 <Text variant="xs" weight={700} color="sec" center style={{ width: 36 }}>
                   {t('Set')}
@@ -290,57 +301,70 @@ export default function Active() {
                 <View style={{ width: 52 }} />
               </View>
               {x.sets.map((st, si) => (
-                <View key={si} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, opacity: st.done ? 0.65 : 1 }}>
-                  <Springy
-                    onPress={() => setSetMenu({ ei, si })}
-                    scaleTo={0.9}
-                    accessibilityLabel={t(st.warm ? 'Warm-up set options' : 'Set {n} options', { n: x.sets.slice(0, si + 1).filter((y) => !y.warm).length })}
-                    style={{ width: 28, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: st.warm ? 'rgba(245,158,11,0.18)' : 'transparent' }}>
-                    {st.warm ? (
-                      <Text weight={800} style={{ color: '#F59E0B' }}>
-                        {t('W')}
+                <View key={si}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, opacity: st.done ? 0.65 : 1 }}>
+                    <Springy
+                      onPress={() => setSetMenu({ ei, si })}
+                      scaleTo={0.9}
+                      accessibilityLabel={t(st.warm ? 'Warm-up set options' : 'Set {n} options', { n: x.sets.slice(0, si + 1).filter((y) => !y.warm).length })}
+                      style={{ width: 28, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: st.warm ? 'rgba(245,158,11,0.18)' : 'transparent' }}>
+                      {st.warm ? (
+                        <Text weight={800} style={{ color: '#F59E0B' }}>
+                          {t('W')}
+                        </Text>
+                      ) : (
+                        <Text num center>
+                          {x.sets.slice(0, si + 1).filter((y) => !y.warm).length}
+                        </Text>
+                      )}
+                    </Springy>
+                    <WeightInput
+                      key={`${si}-${W.unit}`}
+                      inputRef={(r) => {
+                        wRefs.current[`${ei}:${si}`] = r;
+                      }}
+                      value={st.w}
+                      W={W}
+                      editable={!info.timed}
+                      onChange={(v) => setField(ei, si, 'w', v)}
+                      placeholder={info.timed ? '—' : st.lw ? W.show(st.lw) : '—'}
+                      placeholderTextColor={c.sec}
+                      inputMode="decimal"
+                      keyboardType="decimal-pad"
+                      accessibilityLabel={t('Weight set {n}', { n: si + 1 })}
+                      style={{ flex: 1, flexBasis: 0, minWidth: 0, width: 0, height: 44, borderRadius: 12, backgroundColor: c.inset, textAlign: 'center', fontFamily: fontFor('sora', 600), fontSize: 17, color: c.text, outlineStyle: 'none' } as object}
+                    />
+                    <TextInput
+                      value={st.r}
+                      onChangeText={(v) => setField(ei, si, 'r', digits(v, false))}
+                      placeholder={String(st.lr)}
+                      placeholderTextColor={c.sec}
+                      inputMode="numeric"
+                      keyboardType="number-pad"
+                      accessibilityLabel={t('Reps set {n}', { n: si + 1 })}
+                      style={{ flex: 1, flexBasis: 0, minWidth: 0, width: 0, height: 44, borderRadius: 12, backgroundColor: c.inset, textAlign: 'center', fontFamily: fontFor('sora', 600), fontSize: 17, color: c.text, outlineStyle: 'none' } as object}
+                    />
+                    <Springy
+                      onPress={() => markSet(ei, si)}
+                      scaleTo={0.9}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: st.done }}
+                      accessibilityLabel={t('Finish set {n}', { n: si + 1 })}
+                      style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: st.done ? c.cobalt : c.inset }}>
+                      <Icon name="check" size={20} color={st.done ? '#FFFFFF' : c.sec} strokeWidth={2.6} />
+                    </Springy>
+                  </View>
+                  {noteAt === `${ei}:${si}` ? (
+                    <View style={{ marginTop: 6, marginStart: 36 }}>
+                      <NoteInput autoFocus value={st.note ?? ''} onChange={(v) => setNote(ei, si, v)} onDone={() => setNoteAt(null)} placeholder={t('Note for this set')} />
+                    </View>
+                  ) : st.note?.trim() ? (
+                    <Springy onPress={() => setNoteAt(`${ei}:${si}`)} accessibilityRole="button" accessibilityLabel={t('Edit note')} style={{ marginTop: 4, marginStart: 36 }}>
+                      <Text variant="xs" color="sec" numberOfLines={2}>
+                        {st.note}
                       </Text>
-                    ) : (
-                      <Text num center>
-                        {x.sets.slice(0, si + 1).filter((y) => !y.warm).length}
-                      </Text>
-                    )}
-                  </Springy>
-                  <WeightInput
-                    key={`${si}-${W.unit}`}
-                    inputRef={(r) => {
-                      wRefs.current[`${ei}:${si}`] = r;
-                    }}
-                    value={st.w}
-                    W={W}
-                    editable={!info.timed}
-                    onChange={(v) => setField(ei, si, 'w', v)}
-                    placeholder={info.timed ? '—' : st.lw ? W.show(st.lw) : '—'}
-                    placeholderTextColor={c.sec}
-                    inputMode="decimal"
-                    keyboardType="decimal-pad"
-                    accessibilityLabel={t('Weight set {n}', { n: si + 1 })}
-                    style={{ flex: 1, flexBasis: 0, minWidth: 0, width: 0, height: 44, borderRadius: 12, backgroundColor: c.inset, textAlign: 'center', fontFamily: fontFor('sora', 600), fontSize: 17, color: c.text, outlineStyle: 'none' } as object}
-                  />
-                  <TextInput
-                    value={st.r}
-                    onChangeText={(v) => setField(ei, si, 'r', digits(v, false))}
-                    placeholder={String(st.lr)}
-                    placeholderTextColor={c.sec}
-                    inputMode="numeric"
-                    keyboardType="number-pad"
-                    accessibilityLabel={t('Reps set {n}', { n: si + 1 })}
-                    style={{ flex: 1, flexBasis: 0, minWidth: 0, width: 0, height: 44, borderRadius: 12, backgroundColor: c.inset, textAlign: 'center', fontFamily: fontFor('sora', 600), fontSize: 17, color: c.text, outlineStyle: 'none' } as object}
-                  />
-                  <Springy
-                    onPress={() => markSet(ei, si)}
-                    scaleTo={0.9}
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: st.done }}
-                    accessibilityLabel={t('Finish set {n}', { n: si + 1 })}
-                    style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: st.done ? c.cobalt : c.inset }}>
-                    <Icon name="check" size={20} color={st.done ? '#FFFFFF' : c.sec} strokeWidth={2.6} />
-                  </Springy>
+                    </Springy>
+                  ) : null}
                 </View>
               ))}
               <Row gap={8} style={{ marginTop: 10 }}>
@@ -367,6 +391,20 @@ export default function Active() {
                   </Text>
                 </Springy>
               </Row>
+              {noteAt === `${ei}` ? (
+                <View style={{ marginTop: 10 }}>
+                  <NoteInput autoFocus value={x.note ?? ''} onChange={(v) => setNote(ei, null, v)} onDone={() => setNoteAt(null)} placeholder={t('Like “narrow grip” or “shoulder hurt”')} />
+                </View>
+              ) : (
+                <Springy onPress={() => setNoteAt(`${ei}`)} accessibilityRole="button" accessibilityLabel={t(x.note?.trim() ? 'Edit note' : 'Add note')} style={{ marginTop: 10, flexDirection: 'row', alignItems: 'flex-start', gap: 6, alignSelf: x.note?.trim() ? 'stretch' : 'flex-start' }}>
+                  <View style={{ marginTop: 2 }}>
+                    <Icon name="edit" size={14} color={c.cobalt} />
+                  </View>
+                  <Text variant="small" weight={x.note?.trim() ? 400 : 700} color={x.note?.trim() ? 'text' : 'link'} style={x.note?.trim() ? { flex: 1 } : undefined}>
+                    {x.note?.trim() ? x.note : t('Add note')}
+                  </Text>
+                </Springy>
+              )}
               {(() => {
                 const adv = perEx[ei]?.adv;
                 if (!adv) return null;
@@ -480,6 +518,17 @@ export default function Active() {
                   }}
                 />
                 <Button
+                  kind="soft"
+                  icon="edit"
+                  title={t(st.note?.trim() ? 'Edit note' : 'Add a note to this set')}
+                  color={c.text}
+                  style={{ marginTop: 8 }}
+                  onPress={() => {
+                    setNoteAt(`${ei}:${si}`);
+                    setSetMenu(null);
+                  }}
+                />
+                <Button
                   kind="ghost"
                   icon="trash"
                   title={t('Delete set')}
@@ -489,6 +538,7 @@ export default function Active() {
                   style={{ marginTop: 8 }}
                   onPress={() => {
                     editSets(ei, (sets) => sets.filter((_, j) => j !== si));
+                    setNoteAt(null);
                     setSetMenu(null);
                   }}
                 />

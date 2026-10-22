@@ -5,18 +5,21 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Glass } from '@/components/Glass';
 import { Icon } from '@/components/Icon';
+import { MealPick } from '@/components/food/MealPick';
 import { PortionSheet } from '@/components/food/PortionSheet';
+import { useLogAgain } from '@/components/food/useLogAgain';
 import { Screen } from '@/components/Screen';
 import { fontFor, Text } from '@/components/Text';
 import { Button, Card, Chip, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
-import { useFood } from '@/lib/food';
+import { type FoodLog, useFood } from '@/lib/food';
 import { productAllergies } from '@/lib/allergies';
 import { useProgressive } from '@/lib/useProgressive';
 import { type DbFood, foodName, foodSource, listRestaurants, type Restaurant, searchFoods, servingLabel } from '@/lib/foodsDb';
 import { myNames, type RecentFood, recentFoods } from '@/lib/nutrients';
 import { fmt } from '@/lib/nutrition';
 import { canListen, listen, stopListening } from '@/lib/speech';
+import { supabase } from '@/lib/supabase';
 import { useSettings } from '@/theme/settings';
 
 const CATS: [string | null, string][] = [
@@ -47,13 +50,29 @@ export default function FoodSearch() {
   // What you logged lately, and the names you gave foods (only you see them). Fresh each time you come back.
   const [recent, setRecent] = useState<RecentFood[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
+  // The last time you logged each recent food (same amount), for one-tap "Log again".
+  const [lastLog, setLastLog] = useState<Record<string, FoodLog>>({});
+  const logAgain = useLogAgain();
   useFocusEffect(
     useCallback(() => {
       let alive = true;
-      Promise.all([recentFoods(20), myNames()]).then(([r, n]) => {
+      const lastRows = supabase
+        .from('food_logs')
+        .select('*')
+        .or('food_id.not.is.null,barcode.not.is.null')
+        .order('created_at', { ascending: false })
+        .limit(150)
+        .then(({ data }) => (data as FoodLog[] | null) ?? []);
+      Promise.all([recentFoods(20), myNames(), lastRows]).then(([r, n, ls]) => {
         if (!alive) return;
         setRecent(r);
         setNames(n);
+        const m: Record<string, FoodLog> = {};
+        for (const l of ls) {
+          const k = l.food_id ?? `bc:${l.barcode}`;
+          if (!m[k]) m[k] = l;
+        }
+        setLastLog(m);
       });
       return () => {
         alive = false;
@@ -101,7 +120,8 @@ export default function FoodSearch() {
   return (
     <View style={{ flex: 1 }}>
       <Screen title={t('Search food')} back>
-        <Row gap={8} style={{ flexWrap: 'wrap' }}>
+        <MealPick />
+        <Row gap={8} style={{ flexWrap: 'wrap', marginTop: 12 }}>
           {CATS.map(([k, l]) => (
             <Chip key={l} title={t(l)} on={cat === k} onPress={() => setCat(k)} />
           ))}
@@ -121,20 +141,34 @@ export default function FoodSearch() {
                 {t(ql ? 'Yours' : 'Recent')}
               </Text>
               <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden', marginBottom: 16 }}>
-                {shownMine.map((r, i) => (
+                {shownMine.map((r, i) => {
+                  const last = lastLog[r.key];
+                  return (
                   <Springy key={r.key} onPress={() => openRecent(r)} scaleTo={0.99} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 56, paddingVertical: 10, paddingHorizontal: 16, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
                     <Icon name={r.food ? 'clock' : 'barcode'} size={18} color={c.sec} />
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <Text weight={700} numberOfLines={2}>
                         {nameOf(r)}
                       </Text>
-                      {r.food ? (
+                      {last ? (
+                        <Text variant="small" color="sec" numberOfLines={1}>
+                          {t('Last time: {k} kcal', { k: fmt(+last.kcal) })}
+                        </Text>
+                      ) : r.food ? (
                         <Text variant="small" color="sec" numberOfLines={1}>
                           {[foodSource(r.food, lang), servingLabel(r.food, lang)].filter(Boolean).join(t(', '))}
                         </Text>
                       ) : null}
                     </View>
-                    {r.food ? (
+                    {last ? (
+                      // One tap: the same amount as last time, to the day and meal above.
+                      <Springy onPress={() => logAgain(last)} accessibilityLabel={t('Log {name} again', { name: nameOf(r) })} style={{ height: 36, paddingHorizontal: 12, borderRadius: 18, backgroundColor: c.inset, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Icon name="plus" size={14} strokeWidth={2.4} color={c.link} />
+                        <Text variant="small" weight={700} color="link">
+                          {t('Log again')}
+                        </Text>
+                      </Springy>
+                    ) : r.food ? (
                       <>
                         <Text num>{fmt((r.food.kcal_100 * r.food.serving_g) / 100)}</Text>
                         <Text variant="small" color="sec">
@@ -145,7 +179,8 @@ export default function FoodSearch() {
                       <Icon name="chev" size={16} color={c.sec} />
                     )}
                   </Springy>
-                ))}
+                  );
+                })}
               </View>
               {!ql ? (
                 <Text variant="small" weight={700} color="sec" style={{ marginBottom: 8, marginHorizontal: 4 }}>

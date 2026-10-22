@@ -13,6 +13,7 @@ import { weekdayLetter } from '@/lib/dates';
 import { useAuth } from '@/lib/auth';
 import { applyPlanChanges, applyTargets, applyUndo, changeLine, undoPatch } from '@/lib/coachPlan';
 import { useCycleCoach } from '@/lib/cyclePhase';
+import { goalsOn } from '@/lib/dayGoals';
 import { useFood } from '@/lib/food';
 import { addDays, fmt } from '@/lib/nutrition';
 import { fx } from '@/lib/progress';
@@ -89,7 +90,7 @@ export default function Recap() {
         coachFood: !!food.coachTargets,
         lang,
         // Each day with its own calorie goal, and watch sleep on nights without a check-in.
-        days: data ? weekDays(start, data, days).map((d) => ({ ...d, sleepH: d.sleepH ?? (data.watchSleep[d.day] != null ? Math.round(data.watchSleep[d.day] * 10) / 10 : null), kcalGoal: food.setupDone ? Math.round(food.target.k + (data.kcalExtra[d.day] ?? 0)) : null })) : [],
+        days: data ? weekDays(start, data, days).map((d) => ({ ...d, sleepH: d.sleepH ?? (data.watchSleep[d.day] != null ? Math.round(data.watchSleep[d.day] * 10) / 10 : null), kcalGoal: food.setupDone ? Math.round((goalsOn(data.goals, d.day)?.kcal ?? food.target.k) + (data.kcalExtra[d.day] ?? 0)) : null })) : [],
         reminders: uid ? remindersSummary(await loadPrefs(uid).catch(() => null)) : undefined,
         savedMeals: food.saved.map((m) => m.name).slice(0, 30),
         allergies: food.plan.allergies,
@@ -225,7 +226,7 @@ export default function Recap() {
               days={days}
               ai={ai}
               aiState={aiState}
-              targets={{ k: food.target.k, p: food.target.p, w: food.plan.water || 2800 }}
+              targets={{ k: stats.calorieGoal ?? food.target.k, p: stats.proteinGoal ?? food.target.p, w: food.plan.water || 2800 }}
               applied={applied}
               plan={plan}
               onApply={async (picked) => {

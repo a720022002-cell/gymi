@@ -17,6 +17,7 @@ import { Sheet } from '../Sheet';
 import { Text } from '../Text';
 import { useToast } from '../Toast';
 import { Button, Card, Chip, Option, Row, Springy } from '../ui';
+import { CutLine } from './ExNotes';
 import { useRecovery } from './RecoveryCard';
 
 /** Today's workout: home mode and short version apply. */
@@ -433,21 +434,25 @@ export function WorkoutCard() {
         </View>
       ) : null}
       {first ? (
-        <Row style={{ justifyContent: 'space-between', marginTop: 12 }}>
-          <Text style={{ flex: 1 }} numberOfLines={1}>
-            {exInfo(first, lang).name}
-          </Text>
-          {first.target ? (
-            <Row gap={2}>
-              <Icon name="up" size={15} color={c.up} strokeWidth={2.4} />
-              <Text num weight={700} color="up" size={15}>{`${W.show(first.target)} ${W.label}`}</Text>
-            </Row>
-          ) : (
-            <Text variant="small" color="sec">
-              {t('Pick your weight')}
+        <View style={{ marginTop: 12 }}>
+          <Row style={{ justifyContent: 'space-between' }}>
+            <Text style={{ flex: 1 }} numberOfLines={1}>
+              {exInfo(first, lang).name}
             </Text>
-          )}
-        </Row>
+            {first.target ? (
+              <Row gap={2}>
+                <Icon name="up" size={15} color={c.up} strokeWidth={2.4} />
+                <Text num weight={700} color="up" size={15}>{`${W.show(first.target)} ${W.label}`}</Text>
+              </Row>
+            ) : (
+              <Text variant="small" color="sec">
+                {t('Pick your weight')}
+              </Text>
+            )}
+          </Row>
+          {/* Lighter day or deload week: what changed on the first exercise, before → after. */}
+          <CutLine cut={first.cut} deload={today.deload} />
+        </View>
       ) : (
         <Springy onPress={() => router.push({ pathname: '/day-edit', params: { d: String(train.todayIdx) } })} style={{ marginTop: 12 }}>
           <Text variant="small" weight={700} color="link">

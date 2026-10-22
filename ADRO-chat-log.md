@@ -190,6 +190,13 @@ Passwords and keys are left out on purpose.
 - Home: at most 3 cards plus "More", coach row with unread count. Recap Undo. Blood markers over time, vitamins "Taken today", food tips from low blood markers.
 - New database changes (moderation, social_decisions, home_health): dry run OK, waiting for your OK to apply. Code waits on the work branch until then.
 
+### Food shortcuts, set notes, deload numbers, past-day goals, live chat cards (22 Oct 2026)
+- Food: "Log again" (item screen, past-day rows, recent items in search), "Copy yesterday" (all or one meal, skips what's already there, Undo), and pick the meal (Breakfast/Lunch/Dinner/Snack) when logging, including past days.
+- Training: notes on an exercise or a set during a workout, "Last time: …" next time, shown and editable in past workouts. Lighter day and deload week show before → after (80 → 50 kg · 4 → 3 sets).
+- Past days keep their own goals (new daily_goals table): rings, kcal left, progress, report and recap judge each day by the goal it had.
+- AI coach chat: data cards show the message's own week (dated); target suggestions show what you have now.
+- Database change goal_snapshots added to the waiting list (dry run OK).
+
 ---
 
 ## Still waiting on you

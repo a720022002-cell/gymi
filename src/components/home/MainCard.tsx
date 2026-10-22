@@ -135,11 +135,11 @@ function HeroCard({ k, sw }: { k: RingKey; sw: React.ReactNode }) {
     toast(t('Added {n} ml water', { n: ml }), { icon: 'drop' });
   };
   if (k === 'protein') {
-    big = String(Math.max(0, Math.round(food.target.p - food.eaten.p)));
+    big = String(Math.max(0, Math.round(food.dayTarget.p - food.eaten.p)));
     unit = t('g protein left');
     stats = [
       [`${Math.round(food.eaten.p)} g`, t('Eaten')],
-      [`${food.target.p} g`, t('Goal')],
+      [`${food.dayTarget.p} g`, t('Goal')],
       [String(food.logs.length), t('Meals logged')],
     ];
     action = <Button small kind="glass" icon="plus" title={t('Log food')} style={{ marginTop: 12, alignSelf: 'center' }} onPress={() => food.setLogOpen(true)} />;

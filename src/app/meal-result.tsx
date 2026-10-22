@@ -69,7 +69,8 @@ export default function MealResult() {
   const [photo, setPhoto] = useState<Photo | null>(() => takePendingPhoto());
   const planned = planMeals(food.plan);
   const mealNames = mealChoices(planned);
-  const [meal, setMeal] = useState(() => mealAt(planned, hhmmOf()));
+  // The meal picked when you started logging; else the one for this time of day (an earlier day: a snack).
+  const [meal, setMeal] = useState(() => food.mealPick ?? (food.isToday ? mealAt(planned, hhmmOf()) : 'Snack'));
   const [picking, setPicking] = useState(false);
   const [res, setRes] = useState<Result | null>(null);
   const [rows, setRows] = useState<Row_[]>([]);
@@ -294,7 +295,15 @@ export default function MealResult() {
           <Label>{t('Add to')}</Label>
           <Row gap={8} style={{ flexWrap: 'wrap' }}>
             {mealNames.map((m) => (
-              <Chip key={m} title={t(m)} on={meal === m} onPress={() => setMeal(m)} />
+              <Chip
+                key={m}
+                title={t(m)}
+                on={meal === m}
+                onPress={() => {
+                  setMeal(m);
+                  food.setMealPick(m);
+                }}
+              />
             ))}
           </Row>
           <Button title={t('Add {n} kcal', { n: fmt(tot.k) })} disabled={!rows.length || tot.k <= 0} style={{ marginTop: 16 }} onPress={add} />

@@ -18,8 +18,11 @@ import { useSettings } from '@/theme/settings';
 
 const TABLES = [
   'profiles', 'food_plans', 'food_logs', 'saved_meals', 'calorie_moves', 'water_logs', 'train_plans', 'workout_logs', 'cardio_logs', 'step_logs',
-  'chat_messages', 'checkins', 'measurements', 'progress_photos', 'supplements', 'blood_tests', 'friend_share', 'activities', 'cycle_settings', 'cycle_periods', 'cycle_logs', 'food_facts_mine', 'weekly_recaps',
+  'chat_messages', 'checkins', 'measurements', 'progress_photos', 'supplements', 'blood_tests', 'friend_share', 'activities', 'cycle_settings', 'cycle_periods', 'cycle_logs', 'food_facts_mine', 'weekly_recaps', 'daily_goals', 'supplement_logs',
 ];
+
+/** The table isn't on the server yet (a newer app before its migration): left out of the file instead of failing it. */
+const missingTable = (e: { code?: string; message?: string }) => e.code === 'PGRST205' || e.code === '42P01' || /does not exist|could not find the table/i.test(e.message ?? '');
 
 /** Privacy and data: download everything, or delete the account (design: privacy). */
 export default function Privacy() {
@@ -41,6 +44,7 @@ export default function Privacy() {
     const out: Record<string, unknown> = { exported_at: new Date().toISOString(), user: { id: session.user.id, email: session.user.email } };
     for (const tb of TABLES) {
       const { data, error } = await supabase.from(tb).select('*').limit(10000);
+      if (error && missingTable(error)) continue;
       // A file with parts missing would look complete: stop instead.
       if (error) {
         setBusy(false);

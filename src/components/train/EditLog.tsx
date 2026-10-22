@@ -3,7 +3,7 @@ import { TextInput, View } from "react-native";
 
 import { useT } from "@/i18n";
 import { toLatinDigits } from "@/lib/latinDigits";
-import type { LoggedEx, WorkoutLog } from "@/lib/train";
+import { cleanNote, type LoggedEx, type WorkoutLog } from "@/lib/train";
 import { EX } from "@/lib/training";
 import { useWeight } from "@/lib/units";
 import { loggedExName } from "@/lib/workoutHistory";
@@ -12,12 +12,15 @@ import { useSettings } from "@/theme/settings";
 import { Icon } from "../Icon";
 import { fontFor, Text } from "../Text";
 import { Button, Row, Springy } from "../ui";
+import { NoteInput } from "./ExNotes";
 
 /** `kg`, `shown`: the saved weight and how it showed, so an unchanged weight stays exactly the same (lb rounding). */
 type Draft = {
   id: string;
   ex: LoggedEx;
-  sets: { w: string; r: string; kg: number; shown: string }[];
+  /** Your note on the exercise, and on each set (only sets that had one can be changed here). */
+  note: string;
+  sets: { w: string; r: string; kg: number; shown: string; note?: string }[];
 }[];
 
 /** Change a past workout: weight and reps of each set, take off a set or a whole exercise. Weights in your unit. */
@@ -37,9 +40,10 @@ export function EditLog({
     log.exercises.map((ex, i) => ({
       id: `${ex.id}-${i}`,
       ex,
+      note: ex.note ?? "",
       sets: ex.sets.map((s) => {
         const shown = s.w ? String(W.num(s.w)) : "";
-        return { w: shown, r: String(s.r), kg: s.w, shown };
+        return { w: shown, r: String(s.r), kg: s.w, shown, ...(s.note != null ? { note: s.note } : {}) };
       }),
     })),
   );
@@ -71,6 +75,16 @@ export function EditLog({
               ),
             }
           : x,
+      ),
+    );
+  const setNote = (i: number, j: number | null, v: string) =>
+    setDraft((d) =>
+      d.map((x, a) =>
+        a !== i
+          ? x
+          : j == null
+            ? { ...x, note: v }
+            : { ...x, sets: x.sets.map((s, b) => (b === j ? { ...s, note: v } : s)) },
       ),
     );
   const dropSet = (i: number, j: number) =>
@@ -118,6 +132,13 @@ export function EditLog({
                 <Icon name="trash" size={18} color={c.down} />
               </Springy>
             </Row>
+            <View style={{ marginTop: 8 }}>
+              <NoteInput
+                value={x.note}
+                onChange={(v) => setNote(i, null, v)}
+                placeholder={t("Add note")}
+              />
+            </View>
             <Row gap={8} style={{ marginTop: 8, paddingStart: 52 }}>
               <Text
                 variant="xs"
@@ -137,38 +158,49 @@ export function EditLog({
               </Text>
             </Row>
             {x.sets.map((s, j) => (
-              <Row key={j} gap={8} style={{ marginTop: 6 }}>
-                <Text variant="small" color="sec" style={{ width: 44 }}>
-                  {t("Set {n}", { n: j + 1 })}
-                </Text>
-                <TextInput
-                  value={s.w}
-                  onChangeText={(v) => setVal(i, j, "w", v)}
-                  keyboardType="decimal-pad"
-                  placeholder="0"
-                  placeholderTextColor={c.sec}
-                  accessibilityLabel={`${t("Set {n}", { n: j + 1 })}, ${W.label}`}
-                  style={input}
-                />
-                <TextInput
-                  value={s.r}
-                  onChangeText={(v) => setVal(i, j, "r", v)}
-                  keyboardType="number-pad"
-                  placeholder="0"
-                  placeholderTextColor={c.sec}
-                  accessibilityLabel={`${t("Set {n}", { n: j + 1 })}, ${t(timed ? "Seconds" : "Reps")}`}
-                  style={input}
-                />
-                <View style={{ flex: 1 }} />
-                <Springy
-                  onPress={() => dropSet(i, j)}
-                  accessibilityRole="button"
-                  accessibilityLabel={t("Remove set {n}", { n: j + 1 })}
-                  style={{ padding: 6 }}
-                >
-                  <Icon name="close" size={16} color={c.sec} />
-                </Springy>
-              </Row>
+              <View key={j}>
+                <Row gap={8} style={{ marginTop: 6 }}>
+                  <Text variant="small" color="sec" style={{ width: 44 }}>
+                    {t("Set {n}", { n: j + 1 })}
+                  </Text>
+                  <TextInput
+                    value={s.w}
+                    onChangeText={(v) => setVal(i, j, "w", v)}
+                    keyboardType="decimal-pad"
+                    placeholder="0"
+                    placeholderTextColor={c.sec}
+                    accessibilityLabel={`${t("Set {n}", { n: j + 1 })}, ${W.label}`}
+                    style={input}
+                  />
+                  <TextInput
+                    value={s.r}
+                    onChangeText={(v) => setVal(i, j, "r", v)}
+                    keyboardType="number-pad"
+                    placeholder="0"
+                    placeholderTextColor={c.sec}
+                    accessibilityLabel={`${t("Set {n}", { n: j + 1 })}, ${t(timed ? "Seconds" : "Reps")}`}
+                    style={input}
+                  />
+                  <View style={{ flex: 1 }} />
+                  <Springy
+                    onPress={() => dropSet(i, j)}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("Remove set {n}", { n: j + 1 })}
+                    style={{ padding: 6 }}
+                  >
+                    <Icon name="close" size={16} color={c.sec} />
+                  </Springy>
+                </Row>
+                {s.note != null ? (
+                  <View style={{ marginTop: 6, marginStart: 52 }}>
+                    <NoteInput
+                      value={s.note}
+                      onChange={(v) => setNote(i, j, v)}
+                      placeholder={t("Note for this set")}
+                    />
+                  </View>
+                ) : null}
+              </View>
             ))}
           </View>
         );
@@ -184,16 +216,18 @@ export function EditLog({
         disabled={!left}
         onPress={() =>
           onSave(
-            draft.map((x) => ({
-              ...x.ex,
+            draft.map(({ ex: { note: _n, ...ex }, note, sets }) => ({
+              ...ex,
+              ...(cleanNote(note) ? { note: cleanNote(note) } : {}),
               // Weights back to kg; a set with no reps is dropped.
-              sets: x.sets
+              sets: sets
                 .map((s) => ({
                   w:
                     s.w === s.shown
                       ? s.kg
                       : Math.round(W.toKg(num(s.w)) * 100) / 100,
                   r: Math.round(num(s.r)),
+                  ...(cleanNote(s.note) ? { note: cleanNote(s.note) } : {}),
                 }))
                 .filter((s) => s.r > 0),
             })),

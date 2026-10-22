@@ -15,12 +15,18 @@ import { LB } from './units';
 import { syncWorkoutActivity } from './widgetSync';
 import { emitLogChange, logTotals, recomputePrs } from './workoutHistory';
 import { useSettings } from '@/theme/settings';
-import { buildWorkout, type Day, effectiveWeek, EX, exInfo, isLightLog, type LastSets, lowReps, nextWeight, orderWeek, type PlanEx, coachVersion, planWithProgram, rangePlan, setWeekMoves, STEP_KG, topReps, type TrainPlan, weekdayOf, weekStart, workoutKcal, workoutStreak, heartKcal } from './training';
+import { buildWorkout, type Cut, type Day, effectiveWeek, EX, exInfo, isLightLog, type LastSets, lowReps, nextWeight, orderWeek, type PlanEx, coachVersion, planWithProgram, rangePlan, setWeekMoves, STEP_KG, topReps, type TrainPlan, weekdayOf, weekStart, workoutKcal, workoutStreak, heartKcal } from './training';
 
 /** `light`: done as a lighter day or deload, so its weights don't set next time's numbers. `ar`: its Arabic name
  * (newer logs), for exercises from the full list. `m`: its muscle group (newer logs), so database and your own exercises
  * count toward muscle recovery. `time`: a timed hold (reps are seconds). `preg`: done with pregnancy-safe workouts on. */
-export type LoggedEx = { id: string; n: string; ar?: string; light?: boolean; m?: string; time?: boolean; preg?: boolean; sets: { w: number; r: number }[] };
+export type LoggedEx = { id: string; n: string; ar?: string; light?: boolean; m?: string; time?: boolean; preg?: boolean; note?: string; sets: { w: number; r: number; note?: string }[] };
+/** Longest note on an exercise or a set. */
+export const NOTE_MAX = 120;
+/** A note as it's saved: one line, trimmed, at most NOTE_MAX characters. Empty means none. */
+export const cleanNote = (s?: string | null) => (s ?? '').replace(/\s+/g, ' ').trim().slice(0, NOTE_MAX);
+/** The notes you left on an exercise last time you did it: on the exercise, and on sets (by set number). */
+export type LastNote = { note?: string; sets: { n: number; note: string }[] };
 export type WorkoutLog = {
   id: string;
   day: string;
@@ -41,11 +47,12 @@ export type WorkoutLog = {
 
 /** One set in the workout. Warm-up sets (warm) don't count toward volume, records or next time's numbers.
  * `lw`, `lr`: today's target. `pw`, `pr`: what you did last time (newer workouts; none without history). */
-export type SessionSet = { w: string; r: string; done: boolean; lw: number; lr: number; pw?: number; pr?: number; warm?: boolean };
-export type SessionEx = Omit<PlanEx, 'sets'> & { tip: boolean; sets: SessionSet[] };
+export type SessionSet = { w: string; r: string; done: boolean; lw: number; lr: number; pw?: number; pr?: number; warm?: boolean; note?: string };
+/** `note`: your note on it today. `cut`: what a lighter day or deload week changed (before → after). */
+export type SessionEx = Omit<PlanEx, 'sets'> & { tip: boolean; sets: SessionSet[]; note?: string; cut?: Cut };
 /** The workout in progress. Saved on the device so a reload doesn't lose it.
  * `day` is the day it counts for: the day you pressed Start (or the earlier day you picked), even if you finish after midnight. */
-export type Session = { name: string; start: number; home: boolean; ex: SessionEx[]; day?: string; light?: boolean; preg?: boolean; lastAt?: number };
+export type Session = { name: string; start: number; home: boolean; ex: SessionEx[]; day?: string; light?: boolean; deload?: boolean; preg?: boolean; lastAt?: number };
 /** The rest between sets: when it ends and how long it was (seconds). */
 export type Rest = { end: number; total: number };
 
@@ -106,6 +113,8 @@ type Train = {
   todayLog: WorkoutLog | null;
   logs: WorkoutLog[];
   last: LastSets;
+  /** The notes from the last time you did each exercise (only when that time had some). */
+  lastNotes: Record<string, LastNote>;
   /** Best weight ever on each exercise. */
   best: Record<string, number>;
   /** Heaviest weight in your last few normal (not lighter or deload) sessions on each exercise. */
@@ -603,6 +612,20 @@ export function TrainProvider({ children }: PropsWithChildren) {
     return { last, best, top, pregLast };
   }, [logs, light, deload, lifetimeBest]);
 
+  // Notes from the last time you did each exercise (lighter sessions too: a note like "shoulder hurt" still matters).
+  const lastNotes = useMemo(() => {
+    const out: Record<string, LastNote> = {};
+    const seen = new Set<string>();
+    for (const l of logs)
+      for (const x of l.exercises ?? []) {
+        if (seen.has(x.id)) continue;
+        seen.add(x.id);
+        const sets = (x.sets ?? []).flatMap((y, i) => (y.note ? [{ n: i + 1, note: y.note }] : []));
+        if (x.note || sets.length) out[x.id] = { ...(x.note ? { note: x.note } : {}), sets };
+      }
+    return out;
+  }, [logs]);
+
   // Workouts in a row: one rule for every screen and the widgets (workoutStreak). Rest days, skipped days and moved
   // workouts never break it; a planned workout missed does. Each day is judged by that week's plan.
   const lifeWorkouts = history?.workouts;
@@ -653,6 +676,7 @@ export function TrainProvider({ children }: PropsWithChildren) {
         day: opts?.day ?? localDay(),
         home,
         ...(lighter ? { light: true } : {}),
+        ...(opts?.deload ? { deload: true } : {}),
         ...(preg && !lighter ? { preg: true } : {}),
         ex: wo.ex.map(({ swapped: _s, target, last: ls, sets, ...x }) => {
           const timed = !!(x.time || EX[x.id]?.time);
@@ -797,7 +821,8 @@ export function TrainProvider({ children }: PropsWithChildren) {
         }
       }
       for (const x of s.ex) {
-        const d = x.sets.filter((y) => y.done && !y.warm).map((y) => ({ w: +y.w || 0, r: +y.r || 0 }));
+        const d = x.sets.filter((y) => y.done && !y.warm).map((y) => ({ w: +y.w || 0, r: +y.r || 0, ...(cleanNote(y.note) ? { note: cleanNote(y.note) } : {}) }));
+        const note = cleanNote(x.note);
         if (!d.length) continue;
         setsDone += d.length;
         d.forEach((y) => (volume += y.w * y.r));
@@ -821,6 +846,7 @@ export function TrainProvider({ children }: PropsWithChildren) {
           ...(info.timed ? { time: true } : {}),
           ...(s.light ? { light: true } : {}),
           ...(s.preg ? { preg: true } : {}),
+          ...(note ? { note } : {}),
           sets: d,
         });
       }
@@ -955,8 +981,8 @@ export function TrainProvider({ children }: PropsWithChildren) {
   );
 
   const value = useMemo<Train>(
-    () => ({ ready, loadError, reload: () => setLoadTry((n) => n + 1), setupDone, plan, savePlan, changePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, best, top, session, rest, setRest, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, coachOffer, coachProgram: offer, acceptCoach, declineCoach, recTools, setRecTools, addLog, editLog, deleteLog, preg, setPreg }),
-    [ready, loadError, setupDone, plan, savePlan, changePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, best, top, session, rest, setRest, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, coachOffer, offer, acceptCoach, declineCoach, recTools, setRecTools, addLog, editLog, deleteLog, preg, setPreg],
+    () => ({ ready, loadError, reload: () => setLoadTry((n) => n + 1), setupDone, plan, savePlan, changePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, lastNotes, best, top, session, rest, setRest, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, coachOffer, coachProgram: offer, acceptCoach, declineCoach, recTools, setRecTools, addLog, editLog, deleteLog, preg, setPreg }),
+    [ready, loadError, setupDone, plan, savePlan, changePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, lastNotes, best, top, session, rest, setRest, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, coachOffer, offer, acceptCoach, declineCoach, recTools, setRecTools, addLog, editLog, deleteLog, preg, setPreg],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

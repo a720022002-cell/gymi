@@ -374,7 +374,10 @@ export function exInfo(x: { id: string; n?: string; ar?: string | null; m?: stri
 
 export type LastSets = Record<string, { w: number; r: number }[]>;
 
-export type BuiltEx = PlanEx & { swapped: boolean; target: number; last: { w: number; r: number }[] };
+/** A lighter day or deload week's change on one exercise: weight (kg, 0 with no history) and sets before → after. */
+export type Cut = { w: number; toW: number; sets: number; toSets: number };
+/** `cut`: what a lighter day or deload week changed (shown as "80 → 50 kg, 4 → 3 sets"). */
+export type BuiltEx = PlanEx & { swapped: boolean; target: number; last: { w: number; r: number }[]; cut?: Cut };
 
 /**
  * Pregnancy-safe swaps (common guidance, like ACOG's): nothing lying flat on the back or on the belly, no heavy
@@ -445,7 +448,14 @@ export function buildWorkout(plan: TrainPlan, name: string, opts: { home?: boole
   // Pregnant and lighter (or deload) together: the lightest of them, so it's never heavier than pregnant alone.
   const cut = Math.min(opts.deload ? 0.6 : 1, opts.light ? 0.9 : 1, opts.preg ? 0.8 : 1);
   const fewer = !!(opts.light || opts.deload);
-  if (cut < 1) ex = ex.map((x) => ({ ...x, sets: fewer ? Math.max(1, x.sets - 1) : x.sets, target: Math.round((Math.max(x.target, opts.top?.[x.id] ?? 0) * cut) / 2.5) * 2.5 }));
+  if (cut < 1)
+    ex = ex.map((x) => {
+      const from = Math.max(x.target, opts.top?.[x.id] ?? 0);
+      const sets = fewer ? Math.max(1, x.sets - 1) : x.sets;
+      const target = Math.round((from * cut) / 2.5) * 2.5;
+      // Before → after, so a lighter day or deload week shows what it changed.
+      return { ...x, sets, target, ...(fewer ? { cut: { w: from, toW: target, sets: x.sets, toSets: sets } } : {}) };
+    });
   let min = home ? WK.Home.min : (plan.workouts[name]?.min ?? workoutMinutes(base));
   if (cut < 1) min = Math.round((min * 0.85) / 5) * 5;
   if (opts.short && ex.length > 3) {

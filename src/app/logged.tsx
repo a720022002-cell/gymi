@@ -5,6 +5,7 @@ import { View } from 'react-native';
 import { Field } from '@/components/Field';
 import { WarnChip } from '@/components/food/Chips';
 import { NutritionFacts, useMyFacts } from '@/components/food/NutritionFacts';
+import { useLogAgain } from '@/components/food/useLogAgain';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
@@ -30,6 +31,7 @@ export default function LoggedScreen() {
   // Editing the name and numbers (strings while you type).
   const [edit, setEdit] = useState<{ name: string; k: string; p: string; c: string; f: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const logAgain = useLogAgain();
 
   const foodId = log?.food_id ?? null;
   // A scanned product that isn't in our food list: its label from Open Food Facts.
@@ -169,14 +171,18 @@ export default function LoggedScreen() {
           </Row>
         </View>
       ) : (
-        <Button
-          kind="soft"
-          icon="edit"
-          title={t('Edit')}
-          color={c.text}
-          style={{ marginTop: 12 }}
-          onPress={() => setEdit({ name: log.name, k: String(Math.round(+log.kcal)), p: String(+log.protein), c: String(+log.carbs), f: String(+log.fat) })}
-        />
+        <Row gap={8} style={{ marginTop: 12 }}>
+          <Button
+            kind="soft"
+            icon="edit"
+            title={t('Edit')}
+            color={c.text}
+            style={{ flex: 1 }}
+            onPress={() => setEdit({ name: log.name, k: String(Math.round(+log.kcal)), p: String(+log.protein), c: String(+log.carbs), f: String(+log.fat) })}
+          />
+          {/* The same amount again, today, to the same meal. */}
+          <Button kind="soft" icon="plus" title={t(log.day === food.today ? 'Log again' : 'Log again today')} color={c.text} style={{ flex: 1 }} onPress={() => logAgain(log, { on: food.today, meal: curMeal })} />
+        </Row>
       )}
 
       {meal ? (

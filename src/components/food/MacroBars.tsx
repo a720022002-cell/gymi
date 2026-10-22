@@ -12,7 +12,7 @@ import { Text } from '../Text';
 export function MacroBars() {
   const { t } = useT();
   const { colors: c } = useSettings();
-  const { eaten, target } = useFood();
+  const { eaten, dayTarget: target } = useFood();
   return (
     <View style={{ flexDirection: 'row', gap: 10 }}>
       {(

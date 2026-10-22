@@ -10,6 +10,7 @@ import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
+import { CutLine, LastNoteLine } from '@/components/train/ExNotes';
 import { StaleSessionChoice, useStaleSession, useToday } from '@/components/train/WorkoutCard';
 import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
@@ -119,9 +120,11 @@ export default function WorkoutScreen() {
                       <OkChip label={t('Swapped for your injury')} />
                     </View>
                   ) : null}
+                  <LastNoteLine note={train.lastNotes[x.id]} />
                 </Springy>
                 <Text num>{`${x.sets} × ${x.reps}${info.timed ? ` ${t('s')}` : ''}`}</Text>
               </Row>
+              <CutLine cut={x.cut} deload={!!deload} style={{ marginTop: 8 }} />
               <Row style={{ justifyContent: 'space-between', marginTop: 12 }}>
                 <Text variant="small" color="sec">
                   {l ? (info.timed ? t('Last time: {r} s', { r: l.r }) : l.w ? W.words(t('Last time: {w} kg × {r}', { w: W.show(l.w), r: l.r })) : t('Last time: {r} reps', { r: l.r })) : t('New exercise')}

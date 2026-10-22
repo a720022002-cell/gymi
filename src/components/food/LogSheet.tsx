@@ -13,6 +13,7 @@ import { Icon, type IconName } from '../Icon';
 import { Sheet } from '../Sheet';
 import { fontFor, Text } from '../Text';
 import { Button, Chip, Row, Springy } from '../ui';
+import { MealPick } from './MealPick';
 
 /** "Log food" menu (design: SH.log menu). */
 export function LogSheet() {
@@ -138,9 +139,12 @@ export function LogSheet() {
       ) : (
         <View>
           <Text variant="h2">{t('Log food')}</Text>
-          <Text variant="small" color="sec" style={{ marginTop: 4, marginBottom: 16 }}>
+          <Text variant="small" color="sec" style={{ marginTop: 4, marginBottom: 12 }}>
             {t('Pick the fastest way for you.')}
           </Text>
+          {/* Which meal (and day) this goes to: every way below uses it. */}
+          <MealPick />
+          <View style={{ height: 14 }} />
           <Springy
             onPress={() => go('/food-search')}
             scaleTo={0.985}

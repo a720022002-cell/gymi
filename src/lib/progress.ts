@@ -1,3 +1,4 @@
+import { type DayGoals, goalsOn, type GoalRow } from './dayGoals';
 import type { Checkin, DayTotals, Measure } from './health';
 import { addDays } from './nutrition';
 import type { History, WorkoutLog } from './train';
@@ -22,10 +23,17 @@ export type ProgressInput = {
   kcalExtra?: Record<string, number>;
   /** Sleep from the watch, for nights without a check-in. */
   watchSleep?: Record<string, number>;
+  /** Goals saved for each day (oldest first): earlier days are judged by the goals they had then. */
+  goals?: GoalRow[] | null;
 };
 
-/** A day's own calorie goal: your target plus calories moved to it and burned in cardio. */
-export const dayKcalGoal = (x: Pick<ProgressInput, 'kcal' | 'kcalExtra'>, d: string) => x.kcal + (x.kcalExtra?.[d] ?? 0);
+type GoalInput = Pick<ProgressInput, 'today' | 'kcal' | 'protein' | 'water' | 'goals'>;
+
+/** The base goals that counted on a day: today your goals now; an earlier day what it saved (see dayGoals.ts), else your goals now. */
+export const goalsFor = (x: GoalInput, d: string): DayGoals => (d < x.today ? goalsOn(x.goals, d) : null) ?? { kcal: x.kcal, protein: x.protein, water: x.water };
+
+/** A day's own calorie goal: that day's target plus calories moved to it and burned in cardio. */
+export const dayKcalGoal = (x: GoalInput & Pick<ProgressInput, 'kcalExtra'>, d: string) => goalsFor(x, d).kcal + (x.kcalExtra?.[d] ?? 0);
 
 /** Last night's sleep: what you logged, or else your watch. */
 export const sleepOn = (x: Pick<ProgressInput, 'checkins' | 'watchSleep'>, d: string) => x.checkins.find((c) => c.day === d)?.sleep_h ?? x.watchSleep?.[d] ?? null;
@@ -101,9 +109,9 @@ export function commitWindow(x: ProgressInput, from: string, to: string, first: 
     if (x.foodSetup) {
       const goal = dayKcalGoal(x, d);
       add('cal', !!v && v.k > 0 && Math.abs(v.k - goal) <= goal * 0.1, d);
-      add('prot', !!v && v.p >= x.protein * 0.9, d);
+      add('prot', !!v && v.p >= goalsFor(x, d).protein * 0.9, d);
     }
-    add('water', !!v && v.w >= x.water, d);
+    add('water', !!v && v.w >= goalsFor(x, d).water, d);
     // Only nights you told us about (or your watch measured) count.
     const h = sleep.get(d);
     if (h != null) add('sleep', h >= 7, d);
@@ -160,7 +168,7 @@ export type Badge = { id: string; name: string; unit: string; tiers: number[]; v
 export function badges(x: ProgressInput, bestStreak: number): Badge[] {
   const days = allDays(x);
   const logs = allWorkouts(x);
-  const daysHit = (f: (v: DayTotals) => boolean) => Object.values(days).filter(f).length;
+  const daysHit = (f: (v: DayTotals, g: DayGoals) => boolean) => Object.entries(days).filter(([d, v]) => f(v, goalsFor(x, d))).length;
   const months: Record<string, number> = {};
   logs.forEach((l) => (months[l.day.slice(0, 7)] = (months[l.day.slice(0, 7)] ?? 0) + 1));
   const w = x.measures.filter((m) => m.kind === 'weight');
@@ -169,10 +177,10 @@ export function badges(x: ProgressInput, bestStreak: number): Badge[] {
   return [
     { id: 'workouts', name: 'Workouts', unit: 'workouts', tiers: [1, 10, 50, 100, 250], v: logs.length, icon: 'train' },
     { id: 'streak', name: 'Streak', unit: 'days in a row', tiers: [7, 30, 100, 365], v: bestStreak, icon: 'flame' },
-    { id: 'protein', name: 'Protein pro', unit: 'days hitting protein', tiers: [5, 30, 100], v: x.foodSetup ? daysHit((v) => v.p >= x.protein * 0.9) : 0, icon: 'food' },
+    { id: 'protein', name: 'Protein pro', unit: 'days hitting protein', tiers: [5, 30, 100], v: x.foodSetup ? daysHit((v, g) => v.p >= g.protein * 0.9) : 0, icon: 'food' },
     { id: 'early', name: 'Early bird', unit: 'workouts before 8 AM', tiers: [1, 10, 30], v: logs.filter((l) => new Date(l.started_at).getHours() < 8).length, icon: 'sun' },
     { id: 'prs', name: 'Record breaker', unit: 'personal records', tiers: [1, 5, 25, 50], v: logs.reduce((a, l) => a + (l.prs?.length ?? 0), 0), icon: 'trophy' },
-    { id: 'water', name: 'Hydrated', unit: 'days hitting water', tiers: [7, 30, 100], v: daysHit((v) => v.w >= x.water), icon: 'drop' },
+    { id: 'water', name: 'Hydrated', unit: 'days hitting water', tiers: [7, 30, 100], v: daysHit((v, g) => v.w >= g.water), icon: 'drop' },
     { id: 'iron', name: 'Iron month', unit: 'months with 12+ workouts', tiers: [1, 3, 6, 12], v: Object.values(months).filter((n) => n >= 12).length, icon: 'bolt' },
     { id: 'lost', name: x.goal <= 1 ? 'Stronger' : 'Lighter', unit: 'kg toward your goal', tiers: [1, 5, 10, 20], v: Math.max(0, Math.round(toward * 10) / 10), icon: 'scale' },
   ];

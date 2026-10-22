@@ -5,6 +5,8 @@ import { View } from 'react-native';
 import { Glass } from '@/components/Glass';
 import { Icon, type IconName } from '@/components/Icon';
 import { OkChip, Tag, WarnChip } from '@/components/food/Chips';
+import { CopyDaySheet } from '@/components/food/CopyDaySheet';
+import { useLogAgain } from '@/components/food/useLogAgain';
 import { makeRecipes, needsRecipes, recipesKey, shoppingLock } from '@/lib/aiRecipes';
 import { ALLERGENS } from '@/lib/allergies';
 import { FOCUS_WORDS, lowNutrients } from '@/lib/bloodFood';
@@ -77,6 +79,8 @@ function FoodHome() {
   const logFood = useLogFood();
   const [tab, setTab] = useState<'logged' | 'plan'>('logged');
   const [menuFor, setMenuFor] = useState<PlannedMeal | null>(null);
+  const [copyOpen, setCopyOpen] = useState(false);
+  const logAgain = useLogAgain();
   const coach = food.coach;
   const fast = ramadanOn(food.plan, food.today) ? fastTimes(food.plan.city, food.today) : null;
   // The phone's clock isn't on the chosen city's time zone: you're likely somewhere else, so say whose times these are.
@@ -396,15 +400,29 @@ function FoodHome() {
       ) : null}
       {tab === 'logged' ? (
         <View>
-          <Text variant="small" weight={700} color="sec" style={{ marginTop: 16, marginBottom: 10, marginHorizontal: 4 }}>
-            {food.logs.length ? t('{n} items, {k} kcal', { n: food.logs.length, k: fmt(food.eaten.k) }) : t(food.isToday ? 'What you ate today' : 'Nothing logged this day.')}
-          </Text>
+          <Row style={{ justifyContent: 'space-between', marginTop: 16, marginBottom: 10, marginHorizontal: 4 }}>
+            <Text variant="small" weight={700} color="sec" style={{ flex: 1 }}>
+              {food.logs.length ? t('{n} items, {k} kcal', { n: food.logs.length, k: fmt(food.eaten.k) }) : t(food.isToday ? 'What you ate today' : 'Nothing logged this day.')}
+            </Text>
+            <Springy onPress={() => setCopyOpen(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Icon name="copy" size={14} color={c.link} />
+              <Text variant="small" weight={700} color="link">
+                {t(food.isToday ? 'Copy yesterday' : 'Copy the day before')}
+              </Text>
+            </Springy>
+          </Row>
           {food.logs.length ? (
             // One card per meal (breakfast, lunch, dinner, snacks), in the order you ate them.
             byMeal.map(([meal, items]) => (
               <View key={meal}>
                 <Row style={{ justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 4, marginBottom: 8, marginHorizontal: 4 }}>
-                  <Text weight={700}>{t(meal)}</Text>
+                  <Row gap={6}>
+                    <Text weight={700}>{t(meal)}</Text>
+                    {/* Add more to this meal: logging starts with it picked. */}
+                    <Springy onPress={() => food.openLog(meal)} accessibilityLabel={t('Add to {meal}', { meal: t(meal) })} style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon name="plus" size={16} strokeWidth={2.2} />
+                    </Springy>
+                  </Row>
                   <View style={{ alignItems: 'flex-end' }}>
                     <Text variant="small" weight={700} color="sec" num>
                       {`${fmt(items.reduce((a, x) => a + +x.kcal, 0))} ${t('kcal')}`}
@@ -435,6 +453,12 @@ function FoodHome() {
                         ) : null}
                       </View>
                       <Text num>{fmt(x.kcal)}</Text>
+                      {/* An earlier day: one tap logs the same thing again today, to the same meal. */}
+                      {!food.isToday ? (
+                        <Springy onPress={() => logAgain(x, { on: food.today, meal: mealOf(x) })} accessibilityLabel={t('Log {name} again today', { name: x.name })} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
+                          <Icon name="plus" size={18} color={c.link} strokeWidth={2.2} />
+                        </Springy>
+                      ) : null}
                       <Springy
                         onPress={async () => {
                           const removed = await food.deleteLog(x.id);
@@ -617,6 +641,7 @@ function FoodHome() {
         {t('Food data: USDA FoodData Central and Open Food Facts. Saudi dishes are Adro estimates.')}
       </Text>
 
+      <CopyDaySheet open={copyOpen} onClose={() => setCopyOpen(false)} />
       <MealMenu meal={menuFor} logged={!!menuFor && loggedKeys.has(menuFor.key)} onClose={() => setMenuFor(null)} />
     </Screen>
   );

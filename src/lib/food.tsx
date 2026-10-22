@@ -6,6 +6,7 @@ import { useAuth } from './auth';
 import { newId } from './coach';
 import type { MealPlan } from './coaching';
 import { cycleVersion, peekCycle, weekNow } from './cycle';
+import { type DayGoals, goalsOn, type GoalRow, loadGoalRows, saveDayGoals } from './dayGoals';
 import {
   addDays,
   ageFromIso,
@@ -135,7 +136,11 @@ type Food = {
   logs: FoodLog[];
   eaten: Macros;
   target: Macros;
-  /** Today's calorie goal including calories moved from or to other days. */
+  /** The targets of the day on screen: today your targets now, an earlier day the ones it had (see dayGoals.ts). */
+  dayTarget: Macros;
+  /** A day's base goals (before moves, cardio and a training day's water): today your goals now, an earlier day the ones it had. */
+  goalsFor: (day: string) => DayGoals;
+  /** A day's calorie goal including calories moved from or to other days (an earlier day starts from the goal it had). */
   dayGoal: (day: string) => number;
   /** Calories and protein set by your coach, or the totals of the coach's meal plan (they replace your own targets). */
   coachTargets: { kcal: number; protein: number; name: string } | null;
@@ -190,6 +195,15 @@ type Food = {
   /** Text to open "Type what you ate" with (null = open the menu). */
   typeSeed: string | null;
   openTyping: (text: string) => void;
+  /** The meal new food goes to in this logging flow (for the day on screen). Null: the one for this time of day (today) or a snack. */
+  mealPick: string | null;
+  setMealPick: (meal: string | null) => void;
+  /** Open "Log food" for one meal (its + on the Food tab), or with the usual meal when none is given. */
+  openLog: (meal?: string) => void;
+  /** Copy logged food to a day as new rows (same names, amounts and meals). Returns the new rows. */
+  copyLogs: (rows: FoodLog[], to: string) => Promise<FoodLog[]>;
+  /** Remove several logged foods at once (undo for a copy). */
+  removeLogs: (ids: string[]) => Promise<void>;
 };
 
 const Ctx = createContext<Food | null>(null);
@@ -229,12 +243,21 @@ export function FoodProvider({ children }: PropsWithChildren) {
   const [balance, openBalance] = useState<'over' | 'under' | null>(null);
   const [logOpen, setLogOpenState] = useState(false);
   const [typeSeed, setTypeSeed] = useState<string | null>(null);
+  // The meal picked for this logging flow, and the day it was picked for (it never follows you to another day).
+  const [pick, setPick] = useState<{ day: string; meal: string | null } | null>(null);
+  const mealPick = pick && pick.day === day ? pick.meal : null;
+  const mealPickRef = useRef(mealPick);
+  useEffect(() => {
+    mealPickRef.current = mealPick;
+  }, [mealPick]);
   // What the coach set: typed numbers, else the meal plan's totals (either may be missing).
   const [coachSet, setCoachSet] = useState<{ kcal: number | null; protein: number | null; name: string } | null>(null);
   const [trained, setTrained] = useState<{ day: string; on: boolean } | null>(null);
   const [coach, setCoach] = useState<Food['coach']>(null);
   const [coachMeals, setCoachMeals] = useState<MealPlan | null>(null);
   const [weightNote, setWeightNote] = useState<number | null>(null);
+  // Goals saved for each day (from a week before the day on screen), so earlier days keep the goals they had.
+  const [goalRows, setGoalRows] = useState<{ uid: string; rows: GoalRow[] } | null>(null);
   const clearWeightNote = useCallback(() => setWeightNote(null), []);
   // Pregnancy mode lives with the cycle data; re-read when it changes (checked every minute and when the app comes back).
   const [cycleVer, setCycleVer] = useState(cycleVersion());
@@ -243,10 +266,34 @@ export function FoodProvider({ children }: PropsWithChildren) {
   const preg = female && !!cyc && cyc.uid === userId && cyc.mode === 'preg';
   const nursing = female && !!cyc && cyc.uid === userId && cyc.mode === 'post';
   const pregKcal = pregExtra(preg ? 'preg' : nursing ? 'post' : null, cyc?.pregWeek);
-  const setLogOpen = useCallback((v: boolean) => {
-    setLogOpenState(v);
-    if (!v) setTypeSeed(null);
-  }, []);
+  const setMealPick = useCallback(
+    (meal: string | null) => {
+      setPick({ day, meal });
+      mealPickRef.current = meal;
+    },
+    [day],
+  );
+  const setLogOpen = useCallback(
+    (v: boolean) => {
+      // Opening "Log food" starts a new flow: today, the meal for the time of day; an earlier day, the first main
+      // meal with nothing logged yet (else a snack). You can pick another one in the sheet.
+      if (v) {
+        const has = (m: string) => loadedDay === day && logs.some((l) => l.meal === m);
+        setMealPick(day < localDay() ? (['Breakfast', 'Lunch', 'Dinner'].find((m) => !has(m)) ?? 'Snack') : null);
+      }
+      setLogOpenState(v);
+      if (!v) setTypeSeed(null);
+    },
+    [day, logs, loadedDay, setMealPick],
+  );
+  const openLog = useCallback(
+    (meal?: string) => {
+      if (!meal) return setLogOpen(true);
+      setMealPick(meal);
+      setLogOpenState(true);
+    },
+    [setLogOpen, setMealPick],
+  );
   const openTyping = useCallback((text: string) => {
     setTypeSeed(text);
     setLogOpenState(true);
@@ -475,7 +522,17 @@ export function FoodProvider({ children }: PropsWithChildren) {
     () => logs.reduce((a, x) => ({ k: a.k + +x.kcal, p: a.p + +x.protein, c: a.c + +x.carbs, f: a.f + +x.fat }), { k: 0, p: 0, c: 0, f: 0 }),
     [logs],
   );
-  const dayGoal = useCallback((day: string) => target.k + moves.filter((m) => m.day === day).reduce((a, m) => a + m.kcal, 0), [target.k, moves]);
+  // Earlier days are judged by the goals they had (today by your goals now).
+  const pastGoals = useCallback((d: string) => (d < today && goalRows && goalRows.uid === userId ? goalsOn(goalRows.rows, d) : null), [today, goalRows, userId]);
+  const goalsFor = useCallback((d: string): DayGoals => pastGoals(d) ?? { kcal: target.k, protein: target.p, water: plan.water || 2800 }, [pastGoals, target.k, target.p, plan.water]);
+  const dayTarget = useMemo<Macros>(() => {
+    const g = pastGoals(day);
+    if (!g || (g.kcal === target.k && g.protein === target.p)) return target;
+    // Fat keeps its share of the calories, carbs the rest.
+    const f = target.k > 0 ? Math.round((target.f * g.kcal) / target.k) : 0;
+    return { k: g.kcal, p: g.protein, f, c: Math.max(0, Math.round((g.kcal - g.protein * 4 - f * 9) / 4)) };
+  }, [pastGoals, day, target]);
+  const dayGoal = useCallback((day: string) => (pastGoals(day)?.kcal ?? target.k) + moves.filter((m) => m.day === day).reduce((a, m) => a + m.kcal, 0), [pastGoals, target.k, moves]);
   const water = useMemo(() => waterLogs.reduce((a, x) => a + x.ml, 0), [waterLogs]);
   // The watch fills in what you didn't log: its steps when higher, its cardio workouts, and calories you moved off
   // beyond your usual day (your goal already covers a normal day's activity).
@@ -495,11 +552,41 @@ export function FoodProvider({ children }: PropsWithChildren) {
   const burned = netCardio + moveKcal;
   const cardioMin = cardio.reduce((a, x) => a + (+x.minutes || 0), 0);
   const waterExtra = (trained?.day === day && trained.on ? 500 : 0) + Math.round(cardioMin * 10) + (preg ? 300 : nursing ? 700 : 0);
-  const waterGoal = (plan.water || 2800) + waterExtra;
+  const waterGoal = (pastGoals(day)?.water ?? (plan.water || 2800)) + waterExtra;
   const kcalLeft = dayGoal(day) + burned - eaten.k;
   useEffect(() => {
     stepsNow.current = steps;
   }, [steps]);
+
+  // Load the saved goals for the week around the day on screen (the day picker shows its whole week).
+  const goalsFrom = addDays(day < today ? day : today, -7);
+  useEffect(() => {
+    if (!userId) return;
+    let alive = true;
+    loadGoalRows(goalsFrom, today).then((rows) => alive && setGoalRows({ uid: userId, rows }));
+    return () => {
+      alive = false;
+    };
+  }, [userId, goalsFrom, today]);
+
+  // Save today's goals as they are now: when the app opens, a new day starts, or a goal changes (coach's targets,
+  // pregnancy and weight updates included). The base goal only; moves, cardio and a training day's water are added
+  // from that day's own logs.
+  const savedGoals = useRef('');
+  const tk = Math.round(target.k);
+  const tp = Math.round(target.p);
+  const tw = plan.water || 2800;
+  useEffect(() => {
+    if (!userId || !ready || !setupDone || loadError) return;
+    const key = `${userId}|${today}|${tk}|${tp}|${tw}`;
+    if (savedGoals.current === key) return;
+    // A moment later: goals settle right after loading (coach, pregnancy), and changes in a row save once.
+    const id = setTimeout(() => {
+      savedGoals.current = key;
+      saveDayGoals(userId, today, { kcal: tk, protein: tp, water: tw });
+    }, 1500);
+    return () => clearTimeout(id);
+  }, [userId, ready, setupDone, loadError, today, tk, tp, tw]);
 
   const addLog = useCallback(
     async (l: NewLog, on?: string) => {
@@ -507,7 +594,8 @@ export function FoodProvider({ children }: PropsWithChildren) {
         day: on ?? day,
         // No meal picked: the one for this time of day (from your meal plan), or a snack.
         // An earlier day: the clock now says nothing about when it was eaten, so a snack.
-        meal: l.meal ?? ((on ?? day) < today ? 'Snack' : mealAt(planMeals(planRef.current), hhmmOf())),
+        // The meal picked in this logging flow (for this day) comes first.
+        meal: l.meal ?? ((on ?? day) === day ? mealPickRef.current : null) ?? ((on ?? day) < today ? 'Snack' : mealAt(planMeals(planRef.current), hhmmOf())),
         name: l.name.slice(0, 200),
         kcal: Math.round(l.kcal),
         protein: Math.round(l.protein * 10) / 10,
@@ -534,6 +622,42 @@ export function FoodProvider({ children }: PropsWithChildren) {
     await supabase.from('food_logs').delete().eq('id', id);
     pullHealth('meal', id);
     return removed;
+  }, []);
+
+  const copyLogs = useCallback(
+    async (rows: FoodLog[], to: string) => {
+      if (!rows.length) return [];
+      const ins = rows.map((l) => ({
+        day: to,
+        // Food logged without a meal keeps the one it showed under (by the time it was logged).
+        meal: l.meal || mealAt(planMeals(planRef.current), hhmmOf(new Date(l.created_at))),
+        name: l.name,
+        kcal: Math.round(+l.kcal),
+        protein: +l.protein,
+        carbs: +l.carbs,
+        fat: +l.fat,
+        sugar_high: !!l.sugar_high,
+        fat_high: !!l.fat_high,
+        food_id: l.food_id ?? null,
+        // A plan meal's key would mark that day's planned meal as logged (it may be another dish by then).
+        plan_key: null,
+        barcode: l.barcode ?? null,
+      }));
+      const { data, error } = await supabase.from('food_logs').insert(ins).select('*');
+      if (error || !data) return [];
+      const added = data as FoodLog[];
+      if (to === day) setLogs((xs) => [...xs, ...added].sort((a, b) => a.created_at.localeCompare(b.created_at)));
+      added.forEach((x) => pushHealth(mealCopy(x)));
+      return added;
+    },
+    [day],
+  );
+
+  const removeLogs = useCallback(async (ids: string[]) => {
+    if (!ids.length) return;
+    setLogs((xs) => xs.filter((x) => !ids.includes(x.id)));
+    await supabase.from('food_logs').delete().in('id', ids);
+    ids.forEach((id) => pullHealth('meal', id));
   }, []);
 
   const setLogMeal = useCallback(async (id: string, meal: string) => {
@@ -702,6 +826,8 @@ export function FoodProvider({ children }: PropsWithChildren) {
       logs,
       eaten,
       target,
+      dayTarget,
+      goalsFor,
       dayGoal,
       coachTargets,
       coach,
@@ -738,8 +864,13 @@ export function FoodProvider({ children }: PropsWithChildren) {
       setLogOpen,
       typeSeed,
       openTyping,
+      mealPick,
+      setMealPick,
+      openLog,
+      copyLogs,
+      removeLogs,
     }),
-    [loadError, reload, nursing, pregKcal, waterGoal, waterExtra, day, setDay, isToday, loadedDay, balance, logOpen, setLogOpen, typeSeed, openTyping, coach, coachMeals, addMealByCode, ready, today, setupDone, plan, person, draft, savePlan, applyWeight, weightNote, clearWeightNote, preg, updatePlan, logs, eaten, target, dayGoal, coachTargets, kcalLeft, addLog, deleteLog, setLogMeal, updateLog, restoreLog, saved, saveMeal, updateMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, moveKcal, addCardio, deleteCardio, steps, setSteps, addSteps, addWater],
+    [mealPick, setMealPick, openLog, copyLogs, removeLogs, loadError, reload, nursing, pregKcal, waterGoal, waterExtra, day, setDay, isToday, loadedDay, balance, logOpen, setLogOpen, typeSeed, openTyping, coach, coachMeals, addMealByCode, ready, today, setupDone, plan, person, draft, savePlan, applyWeight, weightNote, clearWeightNote, preg, updatePlan, logs, eaten, target, dayTarget, goalsFor, dayGoal, coachTargets, kcalLeft, addLog, deleteLog, setLogMeal, updateLog, restoreLog, saved, saveMeal, updateMeal, deleteMeal, moves, addMoves, removeMoves, water, waterLogs, deleteWater, cardio, burned, moveKcal, addCardio, deleteCardio, steps, setSteps, addSteps, addWater],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -758,14 +889,16 @@ export const OVER_KCAL = 100;
 export function useLogFood() {
   const food = useFood();
   return useCallback(
-    async (item: NewLog, toast: (m: string, o?: { ai?: boolean; undo?: () => void; icon?: 'warn' }) => void, t: (s: string, v?: Record<string, string | number>) => string) => {
+    async (item: NewLog, toast: (m: string, o?: { ai?: boolean; undo?: () => void; icon?: 'warn' }) => void, t: (s: string, v?: Record<string, string | number>) => string, on?: string) => {
       const wasOver = food.kcalLeft < 0;
-      const row = await food.addLog(item);
+      const row = await food.addLog(item, on);
       if (!row) {
         toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
         return null;
       }
       toast(t('Logged to Food: {n} kcal', { n: Math.round(item.kcal) }), { ai: true, undo: () => food.deleteLog(row.id) });
+      // Logged to another day than the one on screen (Log again today from an earlier day): no checks for this day.
+      if (on && on !== food.day) return row;
       // A big coffee, energy drink or pre-workout: warn about the caffeine first.
       const caf = food.isToday ? caffeineCheck(caffeineOf(item.parts?.length ? item.parts.join(', ') : item.name), caffeineToday(food.logs.map((l) => l.name), food.waterLogs), new Date().getHours() >= 15) : null;
       if (caf) {

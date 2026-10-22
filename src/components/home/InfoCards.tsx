@@ -162,7 +162,7 @@ export function StreaksCard() {
 export function TipCard() {
   const { t } = useT();
   const { colors: c } = useSettings();
-  const { eaten, target, kcalLeft, plan, today } = useFood();
+  const { eaten, dayTarget: target, kcalLeft, plan, today } = useFood();
   const h = useHealth();
   const left = Math.round(target.p - eaten.p);
   // From low blood markers and the supplements you take: one a day, in turn.

@@ -8,6 +8,7 @@ import { useWatchSleep } from '@/lib/devices';
 import { useFood, useLogFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { addDays, fmt } from '@/lib/nutrition';
+import { shortDate } from '@/lib/progress';
 import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
@@ -74,8 +75,12 @@ function MealCard({ card }: { card: Extract<Card, { type: 'meal' }> }) {
   );
 }
 
-/** A small chart or card under a coach reply, drawn from your real data (design: chat miniCard). */
-export function ChatCard({ card }: { card: Card }) {
+/**
+ * A small chart or card under a coach reply, drawn from your real data (design: chat miniCard).
+ * Charts end on the message's day: live on the day it was sent, and that day's numbers (with its date) later on.
+ * `kcalGoal`: the calorie goal that day had (else your goal now).
+ */
+export function ChatCard({ card, day, kcalGoal }: { card: Card; day?: string; kcalGoal?: number | null }) {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
   const health = useHealth();
@@ -84,22 +89,26 @@ export function ChatCard({ card }: { card: Card }) {
   const { session } = useAuth();
   const watch = useWatchSleep(session?.user.id);
   const box = (children: ReactNode) => <View style={{ backgroundColor: c.bg, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12, marginTop: 10, minWidth: 220 }}>{children}</View>;
-  const week = Array.from({ length: 7 }, (_, i) => addDays(food.today, i - 6));
+  // The message's day (never after today); an earlier day shows its date next to the title.
+  const end = day && day < food.today ? day : food.today;
+  const title = (s: string) => (end === food.today ? s : `${s} · ${shortDate(end, lang)}`);
+  const week = Array.from({ length: 7 }, (_, i) => addDays(end, i - 6));
   const letters = week.map((d) => new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { weekday: 'narrow' }).format(new Date(`${d}T12:00:00`)));
 
   if (card.type === 'meal') return box(<MealCard card={card} />);
 
   if (card.type === 'weight') {
-    const from = addDays(food.today, -13);
-    const w = health.weights.filter((x) => x.day >= from);
-    const series = (w.length > 1 ? w : health.weights.slice(-8)).map((x) => x.value);
+    const from = addDays(end, -13);
+    const upTo = health.weights.filter((x) => x.day <= end);
+    const w = upTo.filter((x) => x.day >= from);
+    const series = (w.length > 1 ? w : upTo.slice(-8)).map((x) => x.value);
     if (series.length < 2) return null;
     const d = series.at(-1)! - series[0];
     return box(
       <>
         <Row style={{ justifyContent: 'space-between' }}>
           <Text variant="xs" weight={700} color="sec">
-            {t(w.length > 1 ? 'Weight, 2 weeks' : 'Weight, recent')}
+            {title(t(w.length > 1 ? 'Weight, 2 weeks' : 'Weight, recent'))}
           </Text>
           <Row gap={2}>
             <Icon name={d <= 0 ? 'down' : 'up'} size={12} strokeWidth={2.6} color={c.cobalt} />
@@ -119,7 +128,7 @@ export function ChatCard({ card }: { card: Card }) {
     return box(
       <>
         <Text variant="xs" weight={700} color="sec">
-          {t('Sleep, last 7 nights')}
+          {title(t('Sleep, last 7 nights'))}
         </Text>
         <BarChart values={nights} labels={letters} height={80} max={10} goal={7.5} highlight={6} />
       </>,
@@ -131,9 +140,9 @@ export function ChatCard({ card }: { card: Card }) {
   return box(
     <>
       <Text variant="xs" weight={700} color="sec">
-        {t('Calories, last 7 days')}
+        {title(t('Calories, last 7 days'))}
       </Text>
-      <BarChart values={kc} labels={letters} height={80} goal={food.setupDone ? Math.round(food.target.k) : undefined} highlight={6} />
+      <BarChart values={kc} labels={letters} height={80} goal={food.setupDone ? Math.round(kcalGoal ?? food.target.k) : undefined} highlight={6} />
     </>,
   );
 }

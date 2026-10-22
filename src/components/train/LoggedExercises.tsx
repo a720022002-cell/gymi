@@ -50,18 +50,35 @@ export function LoggedExercises({ log }: { log: WorkoutLog }) {
               </View>
               {own ? null : <Icon name="chev" size={18} color={c.sec} />}
             </View>
+            {ex.note ? (
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 8, paddingStart: 42 }}>
+                <View style={{ marginTop: 2 }}>
+                  <Icon name="edit" size={14} color={c.sec} />
+                </View>
+                <Text variant="small" color="sec" style={{ flex: 1 }}>
+                  {ex.note}
+                </Text>
+              </View>
+            ) : null}
             <View style={{ marginTop: 10, gap: 6 }}>
               {ex.sets.map((s, j) => {
                 const best = pr != null && s.w === pr;
                 return (
-                  <View key={j} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingStart: 42 }}>
-                    <Text variant="small" color="sec" numberOfLines={1} style={{ minWidth: 76 }}>
-                      {t('Set {n}', { n: j + 1 })}
-                    </Text>
-                    <View style={{ flex: 1, alignItems: 'flex-start' }}>
-                      <SetValue w={s.w} r={s.r} timed={!!(ex.time || EX[ex.id]?.time)} />
+                  <View key={j}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingStart: 42 }}>
+                      <Text variant="small" color="sec" numberOfLines={1} style={{ minWidth: 76 }}>
+                        {t('Set {n}', { n: j + 1 })}
+                      </Text>
+                      <View style={{ flex: 1, alignItems: 'flex-start' }}>
+                        <SetValue w={s.w} r={s.r} timed={!!(ex.time || EX[ex.id]?.time)} />
+                      </View>
+                      {best ? <Icon name="trophy" size={16} color={c.cobalt} /> : null}
                     </View>
-                    {best ? <Icon name="trophy" size={16} color={c.cobalt} /> : null}
+                    {s.note ? (
+                      <Text variant="xs" color="sec" style={{ paddingStart: 128, marginTop: 2 }}>
+                        {s.note}
+                      </Text>
+                    ) : null}
                   </View>
                 );
               })}
