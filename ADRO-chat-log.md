@@ -175,8 +175,9 @@ Passwords and keys are left out on purpose.
 - Health and AI: pregnancy week, check-in card, past-day rings, report caching, AI pregnancy/luteal rules.
 - Social: privacy checks only answer about yourself, coach approval required for coach actions, one open coach request, block ends coaching, clearer coach-sharing wording.
 - Arabic: 751 exercise names translated, 142 new strings, lift names in the report and recap now in Arabic.
-- Database changes ready (food_fixes, social_fixes, train_fixes): tested in a dry run (no errors), NOT applied yet: waiting for your OK. The app code waits on the work branch until then, so the live site doesn't break.
-- AI function update checked, not deployed yet (same OK).
+- Database changes (food_fixes, social_fixes, train_fixes): applied after your OK (22 Oct), checked.
+- AI function update: deployed (version 75).
+- Code pushed to main. The full report with the 20 open decisions: docs/Adro-final-audit-2026-10-21.pdf.
 
 ---
 
