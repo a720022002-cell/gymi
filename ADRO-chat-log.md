@@ -219,6 +219,11 @@ Passwords and keys are left out on purpose.
 - Built-in tips (no AI): 3 more per sport, focused on improving. AI function deployed.
 - After reviewing 32 real replies: stop-and-go sports no longer get "ease off" for a spike, sets won/lost are counted on the server, live tips max 15 words (no more cut-offs), sport targets for racket/team/combat (not zone 2 minutes), pregnancy + unsafe sport always gets a safer suggestion, Arabic uses Arabic sport names and feminine forms for women.
 
+### Expo project linked again (23 Oct 2026)
+- The link was removed during the Gymi → Adro rename. New Expo project: @ahmed.2002/adro (ID 80a242f0-4c0c-4457-ab37-7097568977c9), with over-the-air updates.
+- Database settings (EXPO_PUBLIC_SUPABASE_URL and the public anon key) added for production, preview and development.
+- Push notifications can now get a phone token (the project ID was what was missing).
+
 ---
 
 ## Still waiting on you

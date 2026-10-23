@@ -221,6 +221,15 @@
     },
     "runtimeVersion": {
       "policy": "appVersion"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "80a242f0-4c0c-4457-ab37-7097568977c9"
+      }
+    },
+    "owner": "ahmed.2002",
+    "updates": {
+      "url": "https://u.expo.dev/80a242f0-4c0c-4457-ab37-7097568977c9"
     }
   }
 }
