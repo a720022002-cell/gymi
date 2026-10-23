@@ -217,6 +217,7 @@ Passwords and keys are left out on purpose.
 - It doesn't repeat what it already said this session, and switches topics (effort, technique, breathing, pacing, recovery).
 - Start: a cue to start well with a target from last time. Halfway: how it's going and one change. Off target 2+ minutes: how to fix it. End: recap with real numbers vs last time + one target for next time.
 - Built-in tips (no AI): 3 more per sport, focused on improving. AI function deployed.
+- After reviewing 32 real replies: stop-and-go sports no longer get "ease off" for a spike, sets won/lost are counted on the server, live tips max 15 words (no more cut-offs), sport targets for racket/team/combat (not zone 2 minutes), pregnancy + unsafe sport always gets a safer suggestion, Arabic uses Arabic sport names and feminine forms for women.
 
 ---
 

@@ -156,6 +156,7 @@ function aiData(s: CardioSessionState, phase: 'start' | 'half' | 'change' | 'end
     goal: s.goal,
     readiness: s.readiness,
     age: s.age,
+    female: s.female || undefined,
     injuries: s.injuries,
     pregnancy: s.preg ? 'pregnant' : s.nursing ? 'after birth' : undefined,
     ...(past.length ? { pastSessions: past } : {}),
