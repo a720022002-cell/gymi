@@ -4861,4 +4861,5 @@ export const AR: Record<string, string> = {
   "Zone 3: moderate, short sentences": "المنطقة 3: متوسط، تقدر تقول جمل قصيرة",
   "Round": "جولة",
   "Nice work: 1 minute done. A heart rate sensor makes the coaching more exact next time.": "شغل حلو: دقيقة وحدة خلصت. حساس النبض يخلي التدريب أدق المرة الجاية.",
+  "Whole session so far: about zone {z} on average. Good work rate": "التمرين كامل لين الحين: متوسطك تقريباً المنطقة {z}. مجهود ممتاز",
 };

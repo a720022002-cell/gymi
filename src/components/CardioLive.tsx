@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 import { useT } from '@/i18n';
 import { askAI } from '@/lib/ai';
 import { useAiConsent } from '@/lib/aiConsent';
-import { avgZone, guidance, type Line, phaseAt, phaseCue, rpeZone, ruleNote, ruleTip, zoneNow } from '@/lib/cardioCoach';
+import { guidance, type Line, phaseAt, phaseCue, rpeZone, ruleNote, ruleTip, zoneNow } from '@/lib/cardioCoach';
 import { startGps, stopGps } from '@/lib/cardioGps';
 import {
   addHr,
@@ -77,7 +77,8 @@ export function zoneOf(s: CardioSessionState, now = Date.now()) {
 
 /**
  * What the session screen and the Lock Screen both show: the zone to be in, the zone you're in, and the coach's effort
- * line. Stop-and-go sports (padel, football, boxing…) are judged on the last 2.5 minutes' average, not every spike.
+ * line. Stop-and-go sports (padel, football, boxing…) are judged on the whole session so far (average heart rate, or how
+ * hard it felt on average), not on any one spike.
  */
 export function sessionGuide(s: CardioSessionState, now = Date.now()) {
   const sec = movingMs(s, now) / 1000;
@@ -85,8 +86,9 @@ export function sessionGuide(s: CardioSessionState, now = Date.now()) {
   const ph = s.kind === 'intervals' ? phaseAt(sec, s.planMin, s.sport) : null;
   const want = zoneNow(s.target, s.cap, s.kind, ph);
   const zone = zoneOf(s, now);
-  const fresh = s.hr != null && s.hrAt != null && now - s.hrAt < 15_000;
-  const judged = loose && fresh ? (avgZone(s.hrRecent ?? [], s.age, now) ?? zone) : zone;
+  // Whole session: from 2 minutes of heart rate, or from how hard it felt on average; until then, right now.
+  const whole = s.hrSec >= 120 && avgHr(s) != null ? hrZone(avgHr(s)!, s.age) : s.source === 'none' && s.rpeSec >= 120 && avgRpe(s) != null ? rpeZone(avgRpe(s)!) : null;
+  const judged = loose ? (whole ?? zone) : zone;
   return { sec, ph, want, zone, judged, loose, g: guidance(judged, want, s.cap, loose) };
 }
 
@@ -114,7 +116,7 @@ function aiData(s: CardioSessionState, phase: 'start' | 'half' | 'change' | 'end
     rpe: s.source === 'none' ? avgRpe(s) : null,
     sportGroup: sportInfo(s.sport).group,
     stopAndGo: sportInfo(s.sport).intermittent || undefined,
-    avgZoneLast3Min: sportInfo(s.sport).intermittent ? sessionGuide(s, now).judged : undefined,
+    avgZoneWholeSession: sportInfo(s.sport).intermittent ? sessionGuide(s, now).judged : undefined,
     ...(sportInfo(s.sport).counter ? { [sportInfo(s.sport).counter?.label === 'Round' ? 'roundsDone' : 'setsDone']: s.rounds } : {}),
     goal: s.goal,
     readiness: s.readiness,

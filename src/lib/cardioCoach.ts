@@ -131,14 +131,14 @@ export function zoneNow(target: number, cap: number, kind: CardioKind, ph: Phase
 
 /**
  * What the screen says about your effort right now: speed up, ease off or right in the zone. For stop-and-go sports
- * `zone` is the average of the last few minutes and spikes above the target are fine (only above the safe zone isn't).
+ * `zone` is the whole session's average and spikes above the target are fine (only above the safe zone isn't).
  */
 export function guidance(zone: number | null, want: number, cap: number, intermittent = false): { line: Line; tone: 'up' | 'ok' | 'down' } | null {
   if (zone == null) return null;
   if (zone > cap) return { line: { key: 'Slow down: stay at zone {z} or below today', vars: { z: cap } }, tone: 'down' };
   if (intermittent) {
     if (zone < want - 1) return { line: { key: 'Keep moving between points and plays' }, tone: 'up' };
-    return { line: { key: 'Good work rate: about zone {z} on average', vars: { z: zone } }, tone: 'ok' };
+    return { line: { key: 'Whole session so far: about zone {z} on average. Good work rate', vars: { z: zone } }, tone: 'ok' };
   }
   if (zone > want) return { line: { key: 'Ease off a little: aim for zone {z}', vars: { z: want } }, tone: 'down' };
   if (zone < want) return { line: { key: 'Speed up a little: aim for zone {z}', vars: { z: want } }, tone: 'up' };
