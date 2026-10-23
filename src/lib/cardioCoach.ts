@@ -178,7 +178,7 @@ const GOAL_TIPS: Record<CardioGoal, string[]> = {
   maintain: ['Zone 2 builds your base. A few zone 4 pushes make your heart stronger.', 'A pace you can hold and still talk is perfect for your heart.'],
 };
 const STOP_GO_TIPS: Record<CardioGoal, string[]> = {
-  cut: ['Keep moving between points: total active time burns the most.', 'Walk around between plays instead of standing still.'],
+  cut: ['Keep moving between points: total active time burns the most.', 'Keep moving between points, plays and rounds instead of standing still.'],
   gain: ['Don’t overdo it before leg day: ease up if your legs feel heavy.', 'Have fun, but keep a little in the tank for lifting.'],
   maintain: ['Hard bursts and easy breaks: great for your heart.', 'Recover in the breaks so your next burst is strong.'],
 };

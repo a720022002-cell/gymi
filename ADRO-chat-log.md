@@ -205,6 +205,12 @@ Passwords and keys are left out on purpose.
 - New packages: expo-location, expo-speech, expo-keep-awake, react-native-ble-plx (needs a new phone build). Small Expo patch updates.
 - Database change cardio_live applied and AI function deployed (23 Oct, after your OK). Live heart rate, GPS and the Lock Screen need a new phone build.
 
+### Score for racket sports + screenshots of every sport (23 Oct 2026)
+- Padel, tennis, squash, badminton and volleyball: a small score row in the set card ("You 3 · Them 2"; tap to add a point, "−" to take it back). "Set done" keeps the set's score; finished sets show small ("Sets: 6-4 · 4-6"). The summary and today's cardio list show the score, and the coach knows it.
+- Wording: "1 set done" / "1 round done"; the stop-and-go tip now says "between points, plays and rounds".
+- Screenshots (English, simulated Polar H10 strap): docs/screens/adro-all-sports-live-en.jpg (all 22 sports), adro-cardio-sports-en.jpg (plan to summary), adro-workout-features-en.jpg.
+- Waiting on your OK: database change cardio_score (saves the score; the session saves without it) and deploying the AI function.
+
 ---
 
 ## Still waiting on you

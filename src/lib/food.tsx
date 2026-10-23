@@ -80,7 +80,7 @@ export type WaterLog = { id: string; ml: number; kind: string; created_at: strin
 
 export type Cardio = { id: string; kind: 'Walk' | 'Run' | 'Bike' | 'Swim' | 'Other'; name?: string | null; minutes: number; intensity: number; kcal: number; created_at: string; /** Recorded by the watch (not saved in Adro, can't be deleted here), with its heart rate when measured. */ watch?: boolean; avg_hr?: number | null; max_hr?: number | null;
   /** From a live cardio session (cardio-live): the exact sport, distance, seconds in zones 1–5, heart rate source, the cardio plan item, the coach's note and when it started. */
-  sport?: string | null; distance_m?: number | null; zones?: number[] | null; source?: 'ble' | 'apple' | 'none' | null; plan_ref?: string | null; ai_note?: string | null; started_at?: string | null };
+  sport?: string | null; distance_m?: number | null; zones?: number[] | null; source?: 'ble' | 'apple' | 'none' | null; plan_ref?: string | null; ai_note?: string | null; started_at?: string | null; /** Racket sports: each set's score, "6-4, 3-6". */ score?: string | null };
 
 export type NewLog = {
   name: string;

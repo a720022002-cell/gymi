@@ -4863,4 +4863,12 @@ export const AR: Record<string, string> = {
   "Nice work: 1 minute done. A heart rate sensor makes the coaching more exact next time.": "شغل حلو: دقيقة وحدة خلصت. حساس النبض يخلي التدريب أدق المرة الجاية.",
   "Whole session so far: about zone {z} on average. Good work rate": "التمرين كامل لين الحين: متوسطك تقريباً المنطقة {z}. مجهود ممتاز",
   "Whole session so far: zone {z} on average. Short spikes are normal in this sport.": "التمرين كامل لين الحين: متوسطك المنطقة {z}. الارتفاعات القصيرة طبيعية في هالرياضة.",
+  "Them": "الخصم",
+  "Sets: {x}": "الأشواط: {x}",
+  "Score": "النتيجة",
+  "Add a point: {x}": "زد نقطة: {x}",
+  "Take a point back: {x}": "شيل نقطة: {x}",
+  "Keep moving between points, plays and rounds instead of standing still.": "تحرك بين النقاط واللعبات والجولات بدل ما توقف.",
+  "1 round done": "خلصت جولة وحدة",
+  "1 set done": "خلص شوط واحد",
 };

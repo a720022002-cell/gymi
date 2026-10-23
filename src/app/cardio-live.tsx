@@ -21,6 +21,7 @@ import {
   type CardioSessionState,
   clearCardio,
   clockText,
+  addScore,
   endRound,
   finishCardio,
   kmText,
@@ -28,6 +29,7 @@ import {
   paceText,
   pauseCardio,
   resumeCardio,
+  scoreText,
   sessionKcal,
   setRpe,
   setSaved,
@@ -435,7 +437,7 @@ function RoundCard({ s, now, counter }: { s: CardioSessionState; now: number; co
             {resting ? clockText((s.restUntil as number) - now) : left != null ? clockText(left) : s.roundAt ? clockText(now - s.roundAt) : '0:00'}
           </Text>
           <Text variant="xs" color={resting ? '#FFFFFF' : 'sec'}>
-            {round ? t('{n} rounds done', { n: s.rounds }) : t('{n} sets done', { n: s.rounds })}
+            {round ? t(s.rounds === 1 ? '1 round done' : '{n} rounds done', { n: s.rounds }) : t(s.rounds === 1 ? '1 set done' : '{n} sets done', { n: s.rounds })}
           </Text>
         </View>
         {resting ? (
@@ -444,7 +446,47 @@ function RoundCard({ s, now, counter }: { s: CardioSessionState; now: number; co
           <Button small title={round ? t('End round') : t('Set done')} onPress={() => endRound(counter.rest)} />
         )}
       </Row>
+      {!round ? <ScoreRow s={s} light={resting} /> : null}
     </Card>
+  );
+}
+
+/** The score, small: tap your side or theirs to add a point (game in padel and tennis), "−" takes the last one back. */
+function ScoreRow({ s, light }: { s: CardioSessionState; light: boolean }) {
+  const { t } = useT();
+  const { colors: c } = useSettings();
+  const sc = s.score ?? [0, 0];
+  const done = (s.setScores ?? []).map(([a, b]) => `${a}-${b}`).join('  ·  ');
+  const fg = light ? '#FFFFFF' : c.text;
+  const side = (i: 0 | 1, label: string) => (
+    <Row style={{ flex: 1, gap: 6, alignItems: 'center' }}>
+      <Springy onPress={() => addScore(i)} accessibilityLabel={t('Add a point: {x}', { x: label })} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, height: 36, borderRadius: 18, backgroundColor: light ? 'rgba(255,255,255,0.18)' : c.inset }}>
+        <Text variant="xs" weight={700} color={light ? '#FFFFFF' : 'sec'} numberOfLines={1}>
+          {label}
+        </Text>
+        <Text num weight={700} size={18} color={fg}>
+          {sc[i]}
+        </Text>
+      </Springy>
+      <Springy onPress={() => addScore(i, -1)} hitSlop={6} accessibilityLabel={t('Take a point back: {x}', { x: label })} style={{ width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }}>
+        <Text weight={700} color={light ? '#FFFFFF' : 'sec'}>
+          −
+        </Text>
+      </Springy>
+    </Row>
+  );
+  return (
+    <View style={{ marginTop: 10 }}>
+      <Row style={{ gap: 8 }}>
+        {side(0, t('You'))}
+        {side(1, t('Them'))}
+      </Row>
+      {done ? (
+        <Text variant="xs" color={light ? '#FFFFFF' : 'sec'} style={{ marginTop: 6, writingDirection: 'ltr' } as object}>
+          {t('Sets: {x}', { x: done })}
+        </Text>
+      ) : null}
+    </View>
   );
 }
 
@@ -702,6 +744,7 @@ function Summary({ s }: { s: CardioSessionState }) {
           s.hrMax >= 30 ? { k: t('Max heart rate'), v: String(s.hrMax), u: t('bpm') } : null,
           { k: t('Calories'), v: String(kcal), u: t('kcal') },
           sportInfo(s.sport).counter && s.rounds ? { k: sportInfo(s.sport).counter?.label === 'Round' ? t('Rounds') : t('Sets'), v: String(s.rounds), u: '' } : null,
+          scoreText(s) ? { k: t('Score'), v: (scoreText(s) as string).replace(/, /g, ' · '), u: '' } : null,
         ]
           .filter((x): x is { k: string; v: string; u: string } => !!x)
           .map((x) => (

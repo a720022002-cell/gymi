@@ -63,6 +63,9 @@ export type CardioSessionState = {
   aiCalls: number;
   /** Sets or rounds done (racket, combat), when the current one started, and the end of the rest between them. */
   rounds: number;
+  /** Racket sports and volleyball: the current set's score [you, them] and the finished sets' scores. */
+  score?: [number, number];
+  setScores?: [number, number][];
   roundAt: number | null;
   restUntil: number | null;
   hrStatus: HrStatus;
@@ -273,7 +276,23 @@ export const setTip = (tip: CardioTip) => patch({ tip });
 export function endRound(rest: number) {
   const s = state;
   if (!s || s.endedAt) return;
-  patch({ rounds: s.rounds + 1, roundAt: null, restUntil: Date.now() + rest * 1000 }, true);
+  const sc = s.score ?? [0, 0];
+  // A set with a score keeps it; a set left at 0–0 just counts.
+  const setScores = sc[0] || sc[1] ? [...(s.setScores ?? []), sc] : (s.setScores ?? []);
+  patch({ rounds: s.rounds + 1, roundAt: null, restUntil: Date.now() + rest * 1000, score: [0, 0], setScores }, true);
+}
+/** Score of the current set: +1 (or −1 to undo) for you (0) or them (1). */
+export function addScore(side: 0 | 1, by: 1 | -1 = 1) {
+  const s = state;
+  if (!s || s.endedAt) return;
+  const sc: [number, number] = [...(s.score ?? [0, 0])] as [number, number];
+  sc[side] = Math.max(0, Math.min(99, sc[side] + by));
+  patch({ score: sc });
+}
+/** Every set's score so far, the current one too when it has points: "6-4, 3-6, 2-1". Null when nothing was scored. */
+export function scoreText(s: Pick<CardioSessionState, 'score' | 'setScores'>) {
+  const all = [...(s.setScores ?? []), ...(s.score && (s.score[0] || s.score[1]) ? [s.score] : [])];
+  return all.length ? all.map(([a, b]) => `${a}-${b}`).join(', ') : null;
 }
 /** The next set or round starts (rest over or skipped). */
 export function startRound() {

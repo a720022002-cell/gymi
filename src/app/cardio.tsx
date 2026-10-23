@@ -286,6 +286,7 @@ export default function CardioScreen() {
                     {x.watch ? t('{n} min · from your watch', { n: x.minutes }) : t('{n} min', { n: x.minutes })}
                     {x.avg_hr ? ` · ${t('Zone {z} · {h} bpm', { z: hrZone(x.avg_hr, age), h: x.avg_hr })}` : ''}
                     {x.distance_m ? ` · ${t('{n} km', { n: `⁦${(x.distance_m / 1000).toFixed(2)}⁩` })}` : ''}
+                    {x.score ? ` · ${t('Score')} ⁦${x.score}⁩` : ''}
                   </Text>
                 </View>
                 <Text num>{`${x.kcal} ${t('kcal')}`}</Text>
