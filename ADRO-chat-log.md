@@ -197,6 +197,14 @@ Passwords and keys are left out on purpose.
 - AI coach chat: data cards show the message's own week (dated); target suggestions show what you have now.
 - Database change goal_snapshots applied. Push function deployed with its secret set (never shown). AI function deployed. Pushed to main. Walkthrough of 54 pages in Arabic and English: no errors.
 
+### Live cardio and sports with the AI coach + cardio and sports plan (23 Oct 2026)
+- Start any activity: classic cardio (run, walk, hike, bike, swim, row, elliptical, stairs, jump rope, HIIT) and sports (padel, tennis, squash, badminton, football, basketball, volleyball, boxing, martial arts, yoga, pilates).
+- Live readings: Bluetooth heart-rate sensors (chest straps, Polar/Garmin/WHOOP broadcast) about every second; Apple Watch every few seconds while a workout runs on the watch; phone GPS for distance and pace (run, walk, hike, bike). Without a live source: time plus "how hard does it feel" 1–10.
+- Coach tips during the session by goal (cut/maintain/gain), pregnancy, recovery, age and injuries, and by sport (stop-and-go sports judged on a 2.5-minute average). Spoken tips (Arabic voice in Arabic). Set and round counters. Up to 4 AI tips per session, rule tips otherwise. Lock Screen Live Activity with Pause/Finish.
+- Training setup now asks "Add cardio and sports?": sports you play (e.g. padel twice a week) count toward the week, and the plan fills the rest by goal, keeping hard sessions away from leg days. Shows on Train, week plan and Home; missing a session never breaks the streak.
+- New packages: expo-location, expo-speech, expo-keep-awake, react-native-ble-plx (needs a new phone build). Small Expo patch updates.
+- Waiting on your OK: database change cardio_live (extra cardio columns; the app works without it) and deploying the AI function (AI tips; rule tips work without it).
+
 ---
 
 ## Still waiting on you

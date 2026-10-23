@@ -21,6 +21,9 @@ import { AppState } from 'react-native';
 import { keysReady } from '@/lib/renameKeys';
 // Defines the background health sync first thing, so it also exists when the phone starts Adro in the background.
 import '@/lib/backgroundSync';
+// The live cardio session's GPS task, defined first too (the phone hands it locations while the screen is locked).
+import '@/lib/cardioGps';
+import { CardioLive } from '@/components/CardioLive';
 import { ErrorScreen } from '@/components/ErrorScreen';
 import { BalanceSheet } from '@/components/food/BalanceSheet';
 import { CaffeineSheet } from '@/components/food/CaffeineSheet';
@@ -180,6 +183,7 @@ function AppStack({ ready }: { ready: boolean }) {
       <ReminderSync />
       <PushSync />
       <WorkoutLive />
+      <CardioLive />
       <ReferralClaim />
       <FriendAlerts />
       <OfflineBanner />

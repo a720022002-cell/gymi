@@ -6,6 +6,7 @@ import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
+import { CardioPlanSheet, CardioWeekCard, sportIcon } from '@/components/train/CardioPlan';
 import { CoachBanner } from '@/components/train/CoachBanner';
 import { DaySheet } from '@/components/train/DaySheet';
 import { Button, Card, Row, Springy } from '@/components/ui';
@@ -15,6 +16,7 @@ import { useHealth } from '@/lib/health';
 import { addDays } from '@/lib/nutrition';
 import { runReview } from '@/lib/planReview';
 import { useTrain } from '@/lib/train';
+import { useCardioWeek } from '@/lib/useCardioWeek';
 import { goalWord } from '@/components/train/PlanReviewCard';
 import { DAYS, DAYS_LONG, type Day, onceNote, splitRepeats } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
@@ -35,7 +37,20 @@ export default function WeekPlan() {
   const [open, setOpen] = useState<number | null>(null);
   const [over, setOver] = useState<number | null>(null);
   const [dragging, setDragging] = useState<number | null>(null);
+  const [cardioOpen, setCardioOpen] = useState(false);
+  const cw = useCardioWeek();
   const week = train.week;
+  // A small mark on days with planned cardio (a tick once it's done).
+  const cardioMark = (i: number) => {
+    const s = cw.sessions.find((x) => x.day === i);
+    if (!s) return null;
+    const done = cw.done.has(s.id);
+    return (
+      <View accessibilityLabel={t(done ? 'Cardio done' : 'Cardio')} style={{ width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: done ? c.cobalt : c.inset }}>
+        <Icon name={done ? 'check' : sportIcon(s.sport)} size={14} color={done ? '#FFFFFF' : c.cobalt} strokeWidth={done ? 2.6 : undefined} />
+      </View>
+    );
+  };
   if (!train.plan) return <Screen title={t('Weekly plan')} back />;
   const plan = train.plan;
   const seq = week.filter((d) => d.w).map((d) => d.w as string);
@@ -63,10 +78,13 @@ export default function WeekPlan() {
                   {t('{n} min', { n: plan.workouts[d.w]?.min ?? 0 })}
                 </Text>
               ) : null}
+              {cardioMark(i)}
               <Icon name="chev" size={16} color={c.sec} />
             </Springy>
           ))}
         </View>
+        <CardioWeekCard onEdit={() => setCardioOpen(true)} />
+        <CardioPlanSheet open={cardioOpen} onClose={() => setCardioOpen(false)} />
         <DaySheet d={open} onClose={() => setOpen(null)} />
       </Screen>
     );
@@ -159,6 +177,7 @@ export default function WeekPlan() {
                 minutes={d.w ? (train.plan!.workouts[d.w]?.min ?? 0) : 0}
               />
             </View>
+            {cardioMark(i)}
             <Springy
               onPress={() => lock((x, j) => (j === i ? !d.lock : x.lock))}
               accessibilityLabel={t(d.lock ? 'Unlock {day}' : 'Lock {day}', { day: t(DAYS_LONG[i]) })}
@@ -173,7 +192,8 @@ export default function WeekPlan() {
         <Button small kind="soft" icon="unlock" title={t('Unlock all')} onPress={() => lock(() => false)} />
       </Row>
       </View>
-      <Card style={{ marginTop: 20 }}>
+      <CardioWeekCard onEdit={() => setCardioOpen(true)} />
+      <Card style={{ marginTop: 12 }}>
         <Text weight={700}>{t('Update the plan from your results')}</Text>
         <Text variant="small" color="sec" style={{ marginTop: 4 }}>
           {t('Every week the AI looks at your workouts: lifts that stopped going up, missed days and recovery. It changes the plan only where it helps, and you can undo it.')}
@@ -203,6 +223,7 @@ export default function WeekPlan() {
         ) : null}
       </Card>
       <Button title={t('Save plan')} style={{ marginTop: 12 }} onPress={() => (fresh ? router.replace('/train') : goBack())} />
+      <CardioPlanSheet open={cardioOpen} onClose={() => setCardioOpen(false)} />
       <DaySheet d={open} onClose={() => setOpen(null)} />
     </Screen>
   );

@@ -6,6 +6,7 @@ import { RCOL, useDayRings, useMetrics } from '@/components/home/metrics';
 import { RingPickSheet } from '@/components/home/RingPickSheet';
 import { Icon } from '@/components/Icon';
 import { Ring } from '@/components/Ring';
+import { SPORT_LABEL, startCardio } from '@/components/train/CardioPlan';
 import { useRecovery } from '@/components/train/RecoveryCard';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
@@ -18,6 +19,8 @@ import { useFood } from '@/lib/food';
 import { RING_NAMES, type RingKey } from '@/lib/homeLayout';
 import { recLabel } from '@/lib/recovery';
 import { useTrain } from '@/lib/train';
+import { useCardioWeek } from '@/lib/useCardioWeek';
+import { forReadiness } from '@/lib/cardioPlan';
 import { fx } from '@/lib/progress';
 import { useStreaks } from '@/lib/useProgress';
 import { fmt } from '@/lib/nutrition';
@@ -123,6 +126,7 @@ function HeroCard({ k, sw }: { k: RingKey; sw: React.ReactNode }) {
   const train = useTrain();
   const s = useStreaks();
   const { r } = useRecovery();
+  const cw = useCardioWeek();
   const m = useMetrics()[k];
   const wGoal = food.waterGoal;
   let big = m.big;
@@ -182,10 +186,16 @@ function HeroCard({ k, sw }: { k: RingKey; sw: React.ReactNode }) {
     unit = t('workouts this week');
     stats = [
       [String(train.streak), t('In a row')],
-      [train.todayName ? t(train.todayName) : t('Rest'), t('Today')],
+      // No workout today but cardio planned: today shows the cardio.
+      [train.todayName ? t(train.todayName) : cw.today ? t(cw.today.fixed ? SPORT_LABEL[cw.today.sport] : 'Cardio') : t('Rest'), t('Today')],
       [String(Math.max(0, (train.plan?.days ?? 0) - train.doneIdx.size)), t('To go')],
     ];
     if (train.todayName && !train.todayLog) action = <Button small title={t('Start {w} day', { w: t(train.todayName) })} style={{ marginTop: 12, alignSelf: 'center' }} onPress={() => router.push('/train')} />;
+    else if (!train.todayName && cw.today && !cw.todayDone) {
+      // Easier when recovery is low (same as the Train tab).
+      const s = { ...forReadiness(cw.today, r.score), id: cw.today.id };
+      action = <Button small kind="glass" icon="run" title={t('Start {sport} · {n} min', { sport: t(SPORT_LABEL[s.sport]), n: s.min })} style={{ marginTop: 12, alignSelf: 'center' }} onPress={() => startCardio(s)} />;
+    }
   } else if (k === 'commit') {
     unit = t('commitment this week');
     const p = s.c7.parts;

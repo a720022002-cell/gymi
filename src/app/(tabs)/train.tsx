@@ -8,6 +8,7 @@ import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
+import { CardioPlanSheet, CardioTodayCard, sessionText, sportIcon } from '@/components/train/CardioPlan';
 import { CoachBanner } from '@/components/train/CoachBanner';
 import { CoachOfferCard } from '@/components/train/CoachOfferCard';
 import { GroupWorkoutsCard } from '@/components/train/GroupWorkoutsCard';
@@ -23,6 +24,7 @@ import { useAuth } from '@/lib/auth';
 import { useFood } from '@/lib/food';
 import { addDays, fmt } from '@/lib/nutrition';
 import { useTrain } from '@/lib/train';
+import { useCardioWeek } from '@/lib/useCardioWeek';
 import { shortDate } from '@/lib/progress';
 import { DAYS, workoutTitle } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
@@ -33,6 +35,8 @@ export default function Train() {
   const train = useTrain();
   const [redo, setRedo] = useState(false);
   const [confirm, setConfirm] = useState(false);
+  const [cardioOpen, setCardioOpen] = useState(false);
+  const cw = useCardioWeek();
 
   if (!train.ready)
     return (
@@ -88,6 +92,7 @@ export default function Train() {
       <RecoveryCard />
       <MissedCard />
       <WorkoutCard />
+      <CardioTodayCard onEdit={() => setCardioOpen(true)} />
       <GroupWorkoutsCard />
       <DeloadCard />
       <HomeModeCard />
@@ -97,6 +102,7 @@ export default function Train() {
       <List
         rows={[
           ['cal', t('Weekly plan'), train.plan!.type === 'order' ? t('{split}, next workout in order', { split: t(train.plan!.split) }) : t('{split}, {n} days a week', { split: t(train.plan!.split), n: train.plan!.week.filter((d) => d.w).length }), () => router.push('/weekplan')],
+          [cw.plan ? sportIcon(cw.plan.sport) : 'run', t('Cardio and sports'), cw.plan ? t('{n} sessions · {m} min a week', { n: cw.summary.sessions, m: cw.summary.minutes }) + (cw.sessions[0] ? `${t(', ')}${sessionText(cw.sessions[0], t)}` : '') : t('Add cardio and sports that fit your goal'), () => setCardioOpen(true)],
           ['clock', t('Workout history'), train.logs.length ? t('Last: {w}, {d}', { w: workoutTitle(train.logs[0].name, t), d: shortDate(train.logs[0].day, lang) }) : t('Every workout, with every set'), () => router.push('/history')],
           ['friends', t('Train together'), t('One workout, the right sets for each person'), () => router.push('/together')],
         ]}
@@ -105,6 +111,7 @@ export default function Train() {
       <ToolsList />
       {train.coach ? null : <Button kind="ghost" title={t('Redo training setup')} style={{ marginTop: 8 }} onPress={() => setConfirm(true)} />}
 
+      <CardioPlanSheet open={cardioOpen} onClose={() => setCardioOpen(false)} />
       <Sheet open={confirm} onClose={() => setConfirm(false)}>
         <View style={{ alignItems: 'center' }}>
           <Icon name="warn" size={30} color={c.down} />

@@ -192,6 +192,27 @@
             }
           ]
         }
+      ],
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": false,
+          "modes": [
+            "central"
+          ],
+          "neverForLocation": true,
+          "bluetoothAlwaysPermission": "Adro connects to your Bluetooth heart rate sensor (a chest strap, or a watch broadcasting heart rate) to show your heart rate live during cardio."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Adro uses your location only during an outdoor cardio session you start, to measure distance and pace, also while your phone is locked.",
+          "locationAlwaysAndWhenInUsePermission": "Adro uses your location only during an outdoor cardio session you start, to measure distance and pace, also while your phone is locked.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": false,
+          "isAndroidForegroundServiceEnabled": true
+        }
       ]
     ],
     "experiments": {

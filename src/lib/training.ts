@@ -74,6 +74,8 @@ export type TrainPlan = {
   review?: { at: string; summary: string; changes: import('./coach').PlanChange[]; prev: { workouts: Record<string, Workout>; deload?: string; light?: string }; seen?: boolean };
   /** Training level you picked (Train together uses it). */
   level?: Level;
+  /** Your weekly cardio plan (src/lib/cardioPlan.ts), if you added one. */
+  cardio?: import('./cardioPlan').CardioPlan;
 };
 
 /** A muscle group's name. In Arabic, "Back" alone would mean the back button, so it has its own key. */
@@ -269,6 +271,8 @@ export function planWithProgram(cur: TrainPlan | null | undefined, prog: { id: s
     // Your injuries and home mode are yours, not the program's (injured exercises keep being swapped).
     injuries: cur?.injuries ?? [],
     homeMode: cur?.homeMode ?? false,
+    // Your cardio plan stays (a coach's program has no cardio of its own); its days follow the new workouts.
+    cardio: cur?.cardio,
     coach: { id: prog.id, updated_at: prog.updated_at },
   };
 }
@@ -668,6 +672,9 @@ export const CARDIO: [('Walk' | 'Run' | 'Bike' | 'Swim'), number][] = [
   ['Swim', 7.5],
 ];
 export const cardioKcal = (kind: number, intensity: number, weightKg: number, minutes: number) => Math.round(CARDIO[kind][1] * [0.8, 1, 1.25][intensity] * weightKg * (minutes / 60));
+
+// Every sport for live sessions and the cardio plan lives in sports.ts (re-exported here for convenience).
+export { type SportId as CardioSport, SPORTS as CARDIO_SPORTS, sportFrom as cardioSport, sportInfo, sportKcal } from './sports';
 
 /** Top weight of each finished session for an exercise, newest first. */
 export function topWeights(logs: { day: string; exercises: { id: string; sets: { w: number }[] }[] }[], id: string) {

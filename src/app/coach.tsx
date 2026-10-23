@@ -29,6 +29,8 @@ import { daysBetween } from '@/lib/report';
 import { fx, goalsFor, weekAvg } from '@/lib/progress';
 import { supabase } from '@/lib/supabase';
 import { useTrain } from '@/lib/train';
+import { useCardioWeek } from '@/lib/useCardioWeek';
+import { sessionLine } from '@/lib/cardioPlan';
 import { useWeight } from '@/lib/units';
 import { useStreaks } from '@/lib/useProgress';
 import { allergensIn, allergiesText, noteHit } from '@/lib/allergies';
@@ -60,6 +62,7 @@ export default function Coach() {
   const supLogs = useSupplementLogs(food.today);
   const streaks = useStreaks();
   const { r: rec } = useRecovery();
+  const cw = useCardioWeek();
   // Cycle data kept only on this phone (private mode) is never sent to the AI.
   const cyc = useCycleCoach();
   const cycle = cyc && !cyc.anon ? cyc.cycle : null;
@@ -217,6 +220,21 @@ export default function Coach() {
             workouts: Object.fromEntries(
               Object.entries(train.plan.workouts).map(([k, w]) => [k, w.ex.map((x) => ({ id: x.id, name: exInfo(x, 'en').name, sets: x.sets, reps: x.reps, bestKg: train.best[x.id] ?? null }))]),
             ),
+            // The weekly cardio plan (null: none yet; they can add one in the Train tab or weekly plan). Missing cardio
+            // never breaks the workout streak.
+            cardioPlan: cw.plan
+              ? {
+                  goal: cw.plan.goal,
+                  sport: cw.plan.sport,
+                  sessionsPerWeek: cw.plan.per,
+                  // Sports they play on fixed days (count toward the week; classic cardio fills the rest).
+                  sportsTheyPlay: (cw.plan.play ?? []).map((x) => `${x.sport} ${x.days.length}x a week (${x.days.map((d) => DAYS_LONG[d]).join(', ')}), ${x.min} min`),
+                  minutesThisWeek: cw.summary.minutes,
+                  doneThisWeek: `${cw.doneCount} of ${cw.sessions.length}`,
+                  buildingUp: !!cw.plan.ramp,
+                  thisWeek: cw.sessions.map((x) => sessionLine(x, cw.status(x))),
+                }
+              : null,
           }
         : null,
       daysSinceLastWorkout: train.logs[0] ? daysBetween(train.logs[0].day, today) - 1 : null,

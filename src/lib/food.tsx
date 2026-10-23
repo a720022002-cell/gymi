@@ -78,7 +78,9 @@ export type Move = { id: string; day: string; kcal: number; grp?: string | null;
 
 export type WaterLog = { id: string; ml: number; kind: string; created_at: string };
 
-export type Cardio = { id: string; kind: 'Walk' | 'Run' | 'Bike' | 'Swim' | 'Other'; name?: string | null; minutes: number; intensity: number; kcal: number; created_at: string; /** Recorded by the watch (not saved in Adro, can't be deleted here), with its heart rate when measured. */ watch?: boolean; avg_hr?: number | null; max_hr?: number | null };
+export type Cardio = { id: string; kind: 'Walk' | 'Run' | 'Bike' | 'Swim' | 'Other'; name?: string | null; minutes: number; intensity: number; kcal: number; created_at: string; /** Recorded by the watch (not saved in Adro, can't be deleted here), with its heart rate when measured. */ watch?: boolean; avg_hr?: number | null; max_hr?: number | null;
+  /** From a live cardio session (cardio-live): the exact sport, distance, seconds in zones 1–5, heart rate source, the cardio plan item, the coach's note and when it started. */
+  sport?: string | null; distance_m?: number | null; zones?: number[] | null; source?: 'ble' | 'apple' | 'none' | null; plan_ref?: string | null; ai_note?: string | null; started_at?: string | null };
 
 export type NewLog = {
   name: string;
@@ -178,7 +180,7 @@ type Food = {
   burned: number;
   /** From the watch: active calories beyond your usual day that no cardio explains. */
   moveKcal: number;
-  addCardio: (c: Omit<Cardio, 'id' | 'created_at'>, on?: string) => Promise<Cardio | null>;
+  addCardio: (c: Omit<Cardio, 'id' | 'created_at'>, on?: string, opts?: { /** false: don't copy it to the phone's health app. */ health?: boolean }) => Promise<Cardio | null>;
   deleteCardio: (id: string) => Promise<void>;
   /** Steps today: your watch's count, or what you typed in (plus about 110 per minute of walking) when that's higher. */
   steps: number;
@@ -377,7 +379,8 @@ export function FoodProvider({ children }: PropsWithChildren) {
         // From the day you're looking at (a past day's own moves count for its goal) to a week ahead.
         supabase.from('calorie_moves').select('id,day,kcal,grp,kind').gte('day', from).lte('day', weekEnd),
         supabase.from('water_logs').select('id,ml,kind,created_at').eq('day', day).order('created_at'),
-        supabase.from('cardio_logs').select('id,kind,name,minutes,intensity,kcal,created_at').eq('day', day).order('created_at'),
+        // All columns: live sessions add heart rate, distance and zones (and it still works before that migration is applied).
+        supabase.from('cardio_logs').select('*').eq('day', day).order('created_at'),
         supabase.from('step_logs').select('steps').eq('day', day).maybeSingle(),
         supabase.rpc('my_coach'),
         supabase.rpc('my_coach_plans'),
@@ -767,14 +770,20 @@ export function FoodProvider({ children }: PropsWithChildren) {
   }, []);
 
   const addCardio = useCallback(
-    async (c: Omit<Cardio, 'id' | 'created_at'>, on?: string) => {
+    async (c: Omit<Cardio, 'id' | 'created_at'>, on?: string, opts?: { health?: boolean }) => {
       const d = on ?? day;
-      const { data, error } = await supabase.from('cardio_logs').insert({ ...c, day: d }).select('id,kind,name,minutes,intensity,kcal,created_at').single();
+      let { data, error } = await supabase.from('cardio_logs').insert({ ...c, day: d }).select('*').single();
+      // A live session's extra columns before their migration is applied: saved without them (the basics still count).
+      if (error && (error.code === 'PGRST204' || error.code === '42703')) {
+        const { kind, name, minutes, intensity, kcal } = c;
+        ({ data, error } = await supabase.from('cardio_logs').insert({ kind, name, minutes, intensity, kcal, day: d }).select('*').single());
+      }
       if (error || !data) return null;
       if (d === day) setCardio((xs) => [...xs, data as Cardio]);
-      // Cardio typed into Adro goes to the health app as a workout that ended when it was logged.
+      // Cardio typed into Adro goes to the health app as a workout that ended when it was logged. Not when the watch
+      // recorded it itself (a live session with the Apple Watch): the health app has it already.
       const end = loggedAt(d, (data as Cardio).created_at);
-      pushHealth({ type: 'workout', id: (data as Cardio).id, start: new Date(end.getTime() - c.minutes * 6e4), end, kind: c.kind, kcal: c.kcal });
+      if (opts?.health !== false) pushHealth({ type: 'workout', id: (data as Cardio).id, start: new Date(end.getTime() - c.minutes * 6e4), end, kind: c.kind, kcal: c.kcal });
       return data as Cardio;
     },
     [day],

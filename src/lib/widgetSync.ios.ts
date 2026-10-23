@@ -2,6 +2,7 @@
 // Island) up to date. Widgets are only reloaded when what they show changes, so iOS doesn't run out of updates.
 import { addUserInteractionListener, type LiveActivity } from 'expo-widgets';
 
+import CardioActivity, { type CardioAction, type CardioActivityProps } from '@/widgets/CardioActivity';
 import TodayWidget, { type TodayProps } from '@/widgets/TodayWidget';
 import TrainWidget, { type TrainProps } from '@/widgets/TrainWidget';
 import WorkoutActivity, { type WorkoutAction, type WorkoutActivityProps } from '@/widgets/WorkoutActivity';
@@ -54,6 +55,40 @@ export function onWorkoutAction(fn: (a: WorkoutAction) => void) {
   try {
     const sub = addUserInteractionListener((e) => {
       if (ACTIONS.includes(e.target)) fn(e.target as WorkoutAction);
+    });
+    return () => sub.remove();
+  } catch {
+    return () => {};
+  }
+}
+
+let cardio: LiveActivity<CardioActivityProps> | null = null;
+
+/** Start, update or (with null) end the live cardio session on the Lock Screen and in the Dynamic Island. */
+export function syncCardioActivity(p: CardioActivityProps | null) {
+  try {
+    if (!cardio) cardio = CardioActivity.getInstances()[0] ?? null;
+    if (!p) {
+      delete sent.cardio;
+      for (const a of CardioActivity.getInstances()) a.end('immediate').catch(() => {});
+      cardio = null;
+      return;
+    }
+    if (!changed('cardio', p)) return;
+    if (cardio) cardio.update(p).catch(() => {});
+    else cardio = CardioActivity.start(p, 'adro://cardio-live');
+  } catch {
+    // Live Activities off or not supported: the session screen works the same.
+  }
+}
+
+const CARDIO_ACTIONS: string[] = ['c-pause', 'c-resume', 'c-finish'];
+
+/** A button on the cardio Live Activity was tapped (iOS 17 and later). Returns a function that stops listening. */
+export function onCardioAction(fn: (a: CardioAction) => void) {
+  try {
+    const sub = addUserInteractionListener((e) => {
+      if (CARDIO_ACTIONS.includes(e.target)) fn(e.target as CardioAction);
     });
     return () => sub.remove();
   } catch {

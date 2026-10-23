@@ -63,6 +63,7 @@ const TASK_TOKENS: Record<string, number> = {
   blood: 7000,
   plan: 16000,
   recipes: 12000,
+  cardio_tip: 400,
 };
 const timedOut = (e: unknown) => (e as Error)?.name === 'TimeoutError' || (e as Error)?.name === 'AbortError';
 const openrouterKey = () => env('OPENROUTER_API_KEY') || env('OpenRouter') || env('OPENROUTER');
@@ -423,6 +424,7 @@ function goodBody(task: string, b: Record<string, unknown>) {
   if (task === 'chat') return Array.isArray(b.messages) && arr(b.messages, 200);
   if (task === 'recipes') return arr(b.avoid, 60);
   if (task === 'machine') return arr(b.catalog, 400);
+  if (task === 'cardio_tip') return !!b.data && typeof b.data === 'object' && !Array.isArray(b.data) && JSON.stringify(b.data).length < 4000;
   return true;
 }
 
@@ -500,6 +502,7 @@ When the person asks for a change, or a change would help (they are coming back 
   Dates: "today" and "todayWeekday" are in the data and "trainingPlan.next14Days" lists the coming days. "Stop this week and start again on Sunday" = {"op":"rest","from":today,"to":the Saturday before that Sunday}. Moving a workout to another day for good = "days".
   Never ask about a plan change only in words: when the person asks to change their plan or schedule, always add the suggestion card so they can apply it with one tap.
   Use the exact workout names and exercise ids from "trainingPlan".
+  Cardio plan ("trainingPlan.cardioPlan"): this week's planned cardio and sports sessions (sport, minutes, zone 2 easy or zone 4 intervals; "sport they play" for padel, football and the like, which count toward their cardio) with done, missed, today or planned. Talk about it when it helps: say how many are done, suggest an easy make-up session for a missed one (never two hard sessions in a row, never intervals the day before legs), and keep today's cardio easy (zone 2) when recovery is low. If it is null and they want to lose fat faster or get fitter, tell them they can add a cardio plan in the Train tab (weekly plan). Missed cardio never breaks the workout streak.
   Recovery rule: if there is a workout today that isn't done and isn't already lighter ("todayWorkoutLighter"), and last night's sleep ("sleepLastNightH") is under 6 h, or "recoveryToday" is under 60 (the app says "Take it easier today" under 60 and "Rest or go very light" under 40), or soreness is "very sore", say it plainly (e.g. "you slept 5 h, your recovery is 48") and ask if they want today's workout lighter, with a {"op":"light"} suggestion. Do this even if they didn't ask about training. Example: back after 2+ weeks off: deload plus one set less on all workouts for the first week or two.
 - food targets: {"type":"targets","title":"short reason","kcal":n,"protein":n,"water":ml} (only the ones that change; never when "coachManagesFood" is true).
 - reminder: {"type":"reminder","title":"short reason","kind":"sleep|workout|water|checkin|food","time":"HH:MM"} (turns that daily reminder on at that time; "reminders" in the data shows which are on).
@@ -750,6 +753,7 @@ Use only these numbers and say them plainly (for example "you trained 2 of 4 day
 "devices" (when present) is the watch, ring or band: use its sleep, HRV, resting heart rate, recovery, steps and recorded workouts in wins, problems, tips and suggestions (like a bedtime reminder for sleep debt, or a lighter week when recovery stayed low), and name the device. Every sentence is short and simple. Never give medical advice.
 ${BODY_RULES}
 "phase" (when present) is the cycle phase now: in "Luteal" a flat or higher weight is expected, not a plateau.
+"cardio" (when present) is their weekly cardio plan: sessions done of planned last week. Mention it in wins or problems when it matters.
 - "headline": one short line to the person about their week (max 8 words). Celebrate if "allHit" is true; be kind and practical if not.
 - "wins": 1 to 3 real things that went well, even in a hard week.
 - "problems": only if not all goals were hit: up to 3 things that got in the way, each {"title","detail"}, found in the numbers (missed workout days and which weekdays, days far over or under calories, weekend vs weekdays, low protein, short sleep, low recovery). Otherwise [].
@@ -777,6 +781,34 @@ ${BODY_RULES}
         },
         required: ['headline', 'wins', 'problems', 'tips', 'suggest'],
       });
+    }
+    case 'cardio_tip': {
+      // One short coaching line during a live cardio session (start, halfway, a big change) or a recap at the end.
+      // The app calls this at most about 4 times a session and shows its own rule-based tips the rest of the time.
+      const system = `You are Adro, a cardio coach talking to the person through their earphones DURING a cardio session (or right after it, when "phase" is "end"). ${LANG(lang)}${lang === 'ar' ? ' Use a warm, casual Gulf/Saudi tone (like a friend who coaches: يا بطل، كفو، شد حيلك، على راحتك).' : ''}
+Answer with ONE short line of at most 120 characters that can be read aloud: no emoji, no lists, no quotes, no markdown.
+You get the session as JSON: "sport", "phase" (start, half, change or end), "minute", "plannedMin", "kind" (steady or intervals), "hr" and "zone" now (heart rate zones 1 to 5 from their age), "targetZone", "maxZone", "zonesMin" (minutes spent in zones 1 to 5), "paceMinKm" or "speedKmh", "distKm", "rpe" (how hard it feels 1 to 10, when there's no heart rate), "goal" (cut = losing fat, maintain, gain = building muscle), "readiness" (recovery 0 to 100), "age", "injuries", "pregnancy".
+Coach by the goal:
+- cut: mostly zone 2 (easy pace they can talk at) burns the most fat; short zone 4 pushes only if "kind" is intervals. Never suggest eating less.
+- gain: keep it short and easy (zone 1 to 2) so the legs recover for lifting.
+- maintain: zone 2 base with an occasional zone 4 push for heart health.
+- readiness under 50: easy only, never push.
+- Never push above "maxZone". If "zone" is above "targetZone", tell them to ease off; below it, to speed up a little; in it, encourage them.
+- Add one practical form or breathing cue for the sport when it fits (run: tall posture, quick light steps; bike: cadence 80 to 90; swim: breathe out under water; row: legs, body, arms; HIIT: full effort on work, deep breaths on rest; jump rope: small light jumps; hike: short steps uphill).
+- Stop-and-go sports ("stopAndGo" true; "sportGroup" Racket sports, Team sports or Combat): spikes to zone 4 to 5 are normal, so judge effort by "avgZoneLast3Min" and time in zones, never tell them to ease off for a spike (only above "maxZone"). Padel, tennis, squash, badminton: recover between points, stay light on the feet, split-step, drink between sets ("setsDone"), warm up shoulders and wrists. Football, basketball, volleyball: sprint then recover is normal, drink at every break, land softly. Boxing and martial arts: hands up, breathe out on each strike, full rest between rounds ("roundsDone"). On a cut: keep moving between points and plays (total active time counts). Building muscle: don't overdo it before leg day.
+- Yoga and Pilates ("sportGroup" Mind and body): slow nose breathing, zone 1 to 2, never into pain.
+- "phase" end: one sentence recapping the session with its real numbers (minutes, zone 2 time, distance) and one thing for next time.
+Use only the numbers given; never invent heart rate, pace or distance. If something hurts, or they feel dizzy or short of breath, tell them to stop. Never diagnose.
+${BODY_RULES}
+With "pregnancy": talk test (they must be able to speak full sentences), never above zone 3, sip water, stop if dizzy, short of breath or in pain; no contact sports or fall risk (football, basketball, boxing, martial arts, squash) and no jumping or high impact: if the sport is one of these, kindly suggest a safer one. After birth: easy walking only until the doctor clears them.`;
+      const r = await ask(task, system, [{ role: 'user', parts: [{ text: JSON.stringify(b.data).slice(0, 4000) }] }], {
+        type: 'object',
+        properties: { tip: { type: 'string' } },
+        required: ['tip'],
+      });
+      const tip = String((r as { tip?: unknown })?.tip ?? '').replace(/\s+/g, ' ').trim();
+      if (!tip) throw new Error('empty_tip');
+      return { tip: tip.length > 140 ? `${tip.slice(0, 139).trimEnd()}…` : tip };
     }
     case 'report':
       return ask(task, `You are a friendly fitness coach writing a short progress report. ${LANG(lang)} Use simple words and the real numbers given. Each point is one short sentence. Never give medical advice. "well": 2 or 3 things that went well. "improve": 2 or 3 things to improve, each with one small action. "focus": one clear goal for the next period.`, [

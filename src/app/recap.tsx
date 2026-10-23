@@ -89,6 +89,7 @@ export default function Recap() {
         targets: food.setupDone ? { kcal: Math.round(food.target.k), protein: Math.round(food.target.p), water: food.plan.water } : null,
         coachFood: !!food.coachTargets,
         lang,
+        start,
         // Each day with its own calorie goal, and watch sleep on nights without a check-in.
         days: data ? weekDays(start, data, days).map((d) => ({ ...d, sleepH: d.sleepH ?? (data.watchSleep[d.day] != null ? Math.round(data.watchSleep[d.day] * 10) / 10 : null), kcalGoal: food.setupDone ? Math.round((goalsOn(data.goals, d.day)?.kcal ?? food.target.k) + (data.kcalExtra[d.day] ?? 0)) : null })) : [],
         reminders: uid ? remindersSummary(await loadPrefs(uid).catch(() => null)) : undefined,

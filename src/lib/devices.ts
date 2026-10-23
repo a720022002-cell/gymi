@@ -278,14 +278,16 @@ export function cardioKind(type: string): WatchCardio['kind'] | 'skip' {
  * Cardio the watch recorded on a day, as cardio entries. One you also logged yourself (same kind, about the same
  * length) is left out, so it isn't counted twice.
  */
-export function watchCardio(d: DeviceDay | undefined, logged: { kind: string; minutes: number }[]): WatchCardio[] {
+export function watchCardio(d: DeviceDay | undefined, logged: { kind: string; minutes: number; sport?: string | null }[]): WatchCardio[] {
   if (!d) return [];
   const left = [...logged];
   const out: WatchCardio[] = [];
   for (const w of d.workouts) {
     const kind = cardioKind(w.type);
     if (kind === 'skip' || w.minutes < 5) continue;
-    const i = left.findIndex((l) => l.kind === kind && Math.abs(l.minutes - w.minutes) <= Math.max(10, w.minutes * 0.35));
+    // A live session in Adro (it has a sport) is matched more loosely: the watch often counts the warm-up or pauses
+    // differently, and the same run must never count twice.
+    const i = left.findIndex((l) => l.kind === kind && Math.abs(l.minutes - w.minutes) <= (l.sport ? Math.max(15, w.minutes * 0.5) : Math.max(10, w.minutes * 0.35)));
     if (i >= 0) {
       left.splice(i, 1);
       continue;

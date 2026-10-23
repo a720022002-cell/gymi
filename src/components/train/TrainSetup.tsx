@@ -8,6 +8,7 @@ import { useFood } from '@/lib/food';
 import { ageFromIso } from '@/lib/nutrition';
 import { useTrain } from '@/lib/train';
 import { aiErrorText, askAI } from '@/lib/ai';
+import { type CardioInput, makeCardioPlan } from '@/lib/cardioPlan';
 import { aiSplit, DAYS, type Day, EX, INJURIES, LEVEL_DESC, type Level, onceNote, planFromSplit, planOwn, SPLITS, SPREAD, type TrainPlan, workoutMinutes } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
 
@@ -17,6 +18,7 @@ import { Screen } from '../Screen';
 import { Text } from '../Text';
 import { useToast } from '../Toast';
 import { Button, Card, Chip, Option, ProgDots, Row, Springy } from '../ui';
+import { type CardioChoice, CardioEditor } from './CardioPlan';
 import { goalWord } from './PlanReviewCard';
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -35,6 +37,9 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
   const [injuries, setInjuries] = useState<string[]>(train.plan?.injuries ?? []);
   const [pick, setPick] = useState<number | 'own' | 'ai' | null>(null);
   const [thinking, setThinking] = useState<string | null>(null);
+  // Redoing setup starts from the cardio plan you have (if any).
+  const oldCardio = train.plan?.cardio;
+  const [cardio, setCardio] = useState<CardioChoice>(() => (oldCardio ? { sport: oldCardio.sport, per: oldCardio.per, days: oldCardio.days, play: oldCardio.play } : {}));
 
   const split = aiSplit(days, { level, goal: goalWord(food.plan.goal), age: ageFromIso(profile?.date_of_birth) });
 
@@ -71,7 +76,13 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
     return { days, injuries, split: split.label, week, workouts, machines: {}, homeMode: false, skipped: {}, dismiss: {}, level: level ?? undefined };
   };
 
-  const build = async () => {
+  // The training week the cardio step plans around: the same days every plan uses (SPREAD).
+  const names = pick === 'ai' ? split.names : pick === 'own' ? (SPREAD[days] ?? []).map((_, i) => `Workout ${String.fromCharCode(65 + i)}`) : typeof pick === 'number' ? (SPLITS[days]?.[pick]?.[1] ?? []) : [];
+  const draftWeek: (string | null)[] = DAYS.map(() => null);
+  (SPREAD[days] ?? []).forEach((d, i) => (draftWeek[d] = names[i] ?? null));
+  const cardioInput: CardioInput = { goal: goalWord(food.plan.goal) as CardioInput['goal'], level, age: ageFromIso(profile?.date_of_birth), preg: train.preg, injuries, week: draftWeek };
+
+  const build = async (withCardio: boolean) => {
     if (pick === null) return;
     const steps = pick === 'ai' ? ['Choosing your split', 'Spreading it across the week', 'Picking your exercises'] : ['Spreading it across the week', 'Picking your exercises'];
     setThinking(steps[0]);
@@ -90,7 +101,9 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
     // Redoing setup keeps what's yours: days off and breaks, machines you picked, and home mode.
     const cur = train.plan;
     const keep = cur ? { skipped: { ...cur.skipped, ...plan.skipped }, dismiss: { ...cur.dismiss, ...plan.dismiss }, machines: { ...cur.machines, ...plan.machines }, homeMode: cur.homeMode } : {};
-    const ok = await train.savePlan({ ...plan, ...keep, since: train.today }, true);
+    // The cardio plan is placed around the plan's real days (moved when workouts move).
+    const cardioPlan = withCardio ? makeCardioPlan({ ...cardioInput, week: plan.week.map((d) => d.w), ...cardio }, train.today) : undefined;
+    const ok = await train.savePlan({ ...plan, ...keep, since: train.today, cardio: cardioPlan && oldCardio ? { ...cardioPlan, start: oldCardio.start } : cardioPlan }, true);
     setThinking(null);
     setStep(0);
     if (!ok) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
@@ -116,9 +129,9 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
 
   return (
     <Screen title={title} back={!!back} onBack={back} tabs={inTab}>
-      <ProgDots step={step} total={4} />
+      <ProgDots step={step} total={5} />
       <Text variant="small" weight={700} color="sec">
-        {t('Step {n} of {total}', { n: step + 1, total: 4 })}
+        {t('Step {n} of {total}', { n: step + 1, total: 5 })}
       </Text>
 
       {step === 0 ? (
@@ -216,7 +229,24 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
             <Option key={label} title={t(label)} subtitle={t(onceNote(seq) ? 'Each muscle once a week' : 'Each muscle about twice a week')} selected={pick === i} onPress={() => setPick(i)} />
           ))}
           <Option icon="edit" title={t('I’ll build it myself')} subtitle={t('Pick your days, name your workouts and choose every exercise.')} selected={pick === 'own'} onPress={() => setPick('own')} />
-          <Button title={t(pick === 'own' ? 'Start building' : 'Build my plan')} disabled={pick === null} style={{ marginTop: 16 }} onPress={build} />
+          <Button title={t('Next')} disabled={pick === null} style={{ marginTop: 16 }} onPress={() => setStep(4)} />
+        </View>
+      ) : null}
+
+      {step === 4 ? (
+        <View>
+          <Text variant="h1" style={{ marginTop: 4 }}>
+            {t('Add cardio and sports?')}
+          </Text>
+          <Text color="sec" style={{ marginTop: 4, marginBottom: 12 }}>
+            {t('Cardio and sports that fit your goal get you there faster. Add the sports you play, and we fill the rest. Here’s your week:')}
+          </Text>
+          <CardioEditor input={cardioInput} value={cardio} onChange={setCardio} today={train.today} />
+          <Button title={t('Yes, add it')} style={{ marginTop: 20 }} onPress={() => build(true)} />
+          <Button kind="glass" title={t('Not now')} style={{ marginTop: 8 }} onPress={() => build(false)} />
+          <Text variant="xs" color="sec" center style={{ marginTop: 8 }}>
+            {t('You can add or change it later in your weekly plan.')}
+          </Text>
         </View>
       ) : null}
     </Screen>

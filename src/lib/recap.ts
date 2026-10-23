@@ -8,7 +8,8 @@ import { addDays, type FoodPlan, localDay } from './nutrition';
 import type { ReportStats } from './report';
 import { supabase } from './supabase';
 import type { WorkoutLog } from './train';
-import { EX, exInfo, missedDays, type TrainPlan, weekStart } from './training';
+import { cardioDone, cardioWeek } from './cardioPlan';
+import { effectiveWeek, EX, exInfo, missedDays, type TrainPlan, weekStart } from './training';
 
 /** What the recap can apply: plan changes and food targets (as in the coach chat), and moving a workout day,
  * turning on a reminder, saving a meal idea, or spreading calories over the coming week. */
@@ -94,6 +95,18 @@ export function recapDays(plan: TrainPlan | null, logs: WorkoutLog[], start: str
   });
 }
 
+/** The week's planned cardio: sessions done of planned (any cardio logged that day, or one tied to the session).
+ * Null without a cardio plan or when it can't be read. */
+export async function recapCardio(plan: TrainPlan | null, start: string): Promise<{ done: number; planned: number; minutesPlanned: number } | null> {
+  if (!plan?.cardio) return null;
+  const sessions = cardioWeek(plan.cardio, effectiveWeek(plan, start), start);
+  if (!sessions.length) return null;
+  const { data, error } = await supabase.from('cardio_logs').select('*').gte('day', start).lte('day', addDays(start, 6)).limit(200);
+  if (error) return null;
+  const logs = ((data as { day: string; plan_ref?: string | null }[] | null) ?? []).map((r) => ({ day: r.day, plan_ref: typeof r.plan_ref === 'string' ? r.plan_ref : null }));
+  return { done: cardioDone(sessions, logs).size, planned: sessions.length, minutesPlanned: sessions.reduce((a, x) => a + x.min, 0) };
+}
+
 /** Due: a whole week after you joined, with something logged that week, and not shown yet (on any phone). */
 export async function recapRow(start: string): Promise<RecapRow | null> {
   const { data } = await supabase.from('weekly_recaps').select('week_start,lang,ai,applied,seen_at').eq('week_start', start).maybeSingle();
@@ -138,6 +151,8 @@ export async function writeRecap(
     pregnancy?: { mode: 'preg' | 'post'; week: number | null } | null;
     /** Today's cycle phase (same rule). */
     phase?: string | null;
+    /** The week's Sunday: planned cardio done vs planned is added when there's a cardio plan. */
+    start?: string;
   },
 ): Promise<RecapAI | null> {
   const p = x.plan;
@@ -163,9 +178,10 @@ export async function writeRecap(
     exercises: p && !p.coach ? Object.values(EX).filter((e) => !(e.stress ?? []).some((s) => p.injuries.includes(s))).map((e) => ({ id: e.id, name: e.en, muscle: e.m })) : [],
   };
   const devices = await loadDeviceBrief({ luteal: x.phase === 'Luteal' });
+  const cardio = x.start ? await recapCardio(p, x.start).catch(() => null) : null;
   // No fewer calories while pregnant, after birth or in the luteal phase.
   const noCut = !!x.pregnancy || x.phase === 'Luteal';
-  const { result } = await askAI<{ headline?: string; wins?: unknown[]; problems?: unknown[]; tips?: unknown[]; suggest?: unknown[] }>('recap', { data: { ...data, devices }, lang: x.lang });
+  const { result } = await askAI<{ headline?: string; wins?: unknown[]; problems?: unknown[]; tips?: unknown[]; suggest?: unknown[] }>('recap', { data: { ...data, ...(cardio ? { cardio } : {}), devices }, lang: x.lang });
   if (!result) return null;
   const str = (v: unknown, n: number) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
   const notes = (v: unknown, max: number) =>

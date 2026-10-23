@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { TextInput, View } from 'react-native';
 
@@ -11,6 +12,7 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Row, Segmented, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
+import { useCardioSession } from '@/lib/cardioSession';
 import { hrZone, useStepGoal } from '@/lib/devices';
 import { useFood } from '@/lib/food';
 import { fmt } from '@/lib/nutrition';
@@ -108,6 +110,7 @@ export default function CardioScreen() {
   const toast = useToast();
   const food = useFood();
   const { profile } = useAuth();
+  const live = useCardioSession();
   // Heart rate zones use your age (30 when it isn't set).
   const [now] = useState(() => Date.now());
   const age = profile?.date_of_birth ? Math.max(14, Math.floor((now - new Date(profile.date_of_birth).getTime()) / 3.15576e10)) : 30;
@@ -132,6 +135,23 @@ export default function CardioScreen() {
     <Screen title={t('Cardio and steps')} back>
       <DayNav />
       <StepsCard />
+      {/* A live session: timer, heart rate and zones from your sensor or watch, GPS and the coach's tips. */}
+      <Card onPress={() => router.push('/cardio-live')} style={{ backgroundColor: c.cobalt }}>
+        <Row gap={14}>
+          <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name={live && !live.endedAt ? 'pulse' : 'play'} size={22} color="#FFFFFF" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text weight={700} size={18} color="#FFFFFF">
+              {live && !live.endedAt ? t('Cardio session running') : live ? t('Cardio done') : t('Start cardio')}
+            </Text>
+            <Text variant="small" color="rgba(255,255,255,0.85)">
+              {live ? t('Tap to open') : t('Live heart rate, zones and coach tips as you move')}
+            </Text>
+          </View>
+          <Icon name="chev" size={18} color="#FFFFFF" />
+        </Row>
+      </Card>
       <Text variant="small" weight={700} color="sec" style={{ marginTop: 8, marginBottom: 8, marginHorizontal: 4 }}>
         {t('Log cardio')}
       </Text>
@@ -265,6 +285,7 @@ export default function CardioScreen() {
                   <Text variant="small" color="sec">
                     {x.watch ? t('{n} min · from your watch', { n: x.minutes }) : t('{n} min', { n: x.minutes })}
                     {x.avg_hr ? ` · ${t('Zone {z} · {h} bpm', { z: hrZone(x.avg_hr, age), h: x.avg_hr })}` : ''}
+                    {x.distance_m ? ` · ${t('{n} km', { n: `⁦${(x.distance_m / 1000).toFixed(2)}⁩` })}` : ''}
                   </Text>
                 </View>
                 <Text num>{`${x.kcal} ${t('kcal')}`}</Text>
