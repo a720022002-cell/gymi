@@ -4862,4 +4862,5 @@ export const AR: Record<string, string> = {
   "Round": "جولة",
   "Nice work: 1 minute done. A heart rate sensor makes the coaching more exact next time.": "شغل حلو: دقيقة وحدة خلصت. حساس النبض يخلي التدريب أدق المرة الجاية.",
   "Whole session so far: about zone {z} on average. Good work rate": "التمرين كامل لين الحين: متوسطك تقريباً المنطقة {z}. مجهود ممتاز",
+  "Whole session so far: zone {z} on average. Short spikes are normal in this sport.": "التمرين كامل لين الحين: متوسطك المنطقة {z}. الارتفاعات القصيرة طبيعية في هالرياضة.",
 };

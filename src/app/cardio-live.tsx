@@ -544,7 +544,7 @@ function LiveView({ s }: { s: CardioSessionState }) {
           </View>
           {loose && judged ? (
             <Text variant="xs" color="sec" style={{ marginTop: 8 }}>
-              {t('Last 2–3 minutes: zone {z} on average. Short spikes are normal in this sport.', { z: judged })}
+              {t('Whole session so far: zone {z} on average. Short spikes are normal in this sport.', { z: judged })}
             </Text>
           ) : null}
         </Card>
