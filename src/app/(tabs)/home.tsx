@@ -8,6 +8,7 @@ import { FreeMonthAlert } from '@/components/FreeMonthAlert';
 import { RecapGate } from '@/components/RecapGate';
 import { InviteCodeSheet } from '@/components/InviteCodeSheet';
 import { CalendarButton, DayNav } from '@/components/DayNav';
+import { CardioHomeCard } from '@/components/home/CardioHomeCard';
 import { CheckinCard, CoachAppCard, CoachCard, CoachRow, CoachSetCard } from '@/components/home/CoachCards';
 import { DayRecap } from '@/components/home/DayRecap';
 import { CycleCard, ReadingsCard, StreaksCard, TipCard, WaterCard } from '@/components/home/InfoCards';
@@ -87,7 +88,7 @@ export default function Home() {
     .filter((k) => k !== 'insight' || food.setupDone);
   // Today: the rings and today's workout always show; with things to do (check-in, workout), fewer info cards do.
   // Without a coach of your own the coach tip (it opens the AI coach) comes first. The rest fold under "More".
-  const info = cards.filter((k) => k !== 'calories' && k !== 'workout');
+  const info = cards.filter((k) => k !== 'calories' && k !== 'workout' && k !== 'cardio');
   const todo = Number(needCheckin) + Number(cards.includes('workout'));
   const ranked = coach ? info : [...info.filter((k) => k === 'insight'), ...info.filter((k) => k !== 'insight')];
   const showN = Math.max(1, MAX_CONTEXT - todo);
@@ -107,6 +108,8 @@ export default function Home() {
           <WorkoutCard />
         </View>
       )
+    ) : k === 'cardio' ? (
+      <CardioHomeCard key={k} />
     ) : k === 'cycle' ? (
       <CycleCard key={k} />
     ) : k === 'readings' ? (

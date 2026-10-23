@@ -4937,4 +4937,7 @@ export const AR: Record<string, string> = {
   "Add a few minutes each week to keep improving.": "زد كم دقيقة كل أسبوع عشان تتطور.",
   "Warm up for 5 minutes before going harder.": "سخّن 5 دقايق قبل لا تزيد الجهد.",
   "Cool down easy for 2 to 3 minutes at the end.": "هدّي دقيقتين لـ 3 بالنهاية.",
+  "Live heart rate, zones and coach tips as you move.": "نبض مباشر وزونات ونصايح الكوتش وأنت تتحرك.",
+  "Running now": "شغال الحين",
+  "Start a session": "ابدأ جلسة",
 };

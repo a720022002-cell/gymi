@@ -224,6 +224,9 @@ Passwords and keys are left out on purpose.
 - Database settings (EXPO_PUBLIC_SUPABASE_URL and the public anon key) added for production, preview and development.
 - Push notifications can now get a phone token (the project ID was what was missing).
 
+### Home: "Start cardio" card (23 Oct 2026)
+- New Home card, on by default and in Edit home (move it or turn it off): today's planned cardio or sport with Start, otherwise "Start a session" plus quick picks (your plan's sports first, then Run, Walk, Bike, Padel). While a session runs it shows the sport and time with Open. It never folds under "More".
+
 ---
 
 ## Still waiting on you
