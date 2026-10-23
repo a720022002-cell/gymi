@@ -203,7 +203,7 @@ Passwords and keys are left out on purpose.
 - Coach tips during the session by goal (cut/maintain/gain), pregnancy, recovery, age and injuries, and by sport (stop-and-go sports judged on a 2.5-minute average). Spoken tips (Arabic voice in Arabic). Set and round counters. Up to 4 AI tips per session, rule tips otherwise. Lock Screen Live Activity with Pause/Finish.
 - Training setup now asks "Add cardio and sports?": sports you play (e.g. padel twice a week) count toward the week, and the plan fills the rest by goal, keeping hard sessions away from leg days. Shows on Train, week plan and Home; missing a session never breaks the streak.
 - New packages: expo-location, expo-speech, expo-keep-awake, react-native-ble-plx (needs a new phone build). Small Expo patch updates.
-- Waiting on your OK: database change cardio_live (extra cardio columns; the app works without it) and deploying the AI function (AI tips; rule tips work without it).
+- Database change cardio_live applied and AI function deployed (23 Oct, after your OK). Live heart rate, GPS and the Lock Screen need a new phone build.
 
 ---
 
