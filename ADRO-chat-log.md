@@ -209,7 +209,14 @@ Passwords and keys are left out on purpose.
 - Padel, tennis, squash, badminton and volleyball: a small score row in the set card ("You 3 · Them 2"; tap to add a point, "−" to take it back). "Set done" keeps the set's score; finished sets show small ("Sets: 6-4 · 4-6"). The summary and today's cardio list show the score, and the coach knows it.
 - Wording: "1 set done" / "1 round done"; the stop-and-go tip now says "between points, plays and rounds".
 - Screenshots (English, simulated Polar H10 strap): docs/screens/adro-all-sports-live-en.jpg (all 22 sports), adro-cardio-sports-en.jpg (plan to summary), adro-workout-features-en.jpg.
-- Waiting on your OK: database change cardio_score (saves the score; the session saves without it) and deploying the AI function.
+- Database change cardio_score applied (23 Oct, after your OK).
+
+### Smarter AI coach for every sport (23 Oct 2026)
+- The coach now has a guide for each of the 22 sports (technique, common mistakes, how to improve week to week) and gets your last 5 sessions of the same sport.
+- The server works out the comparisons itself (pace per km, minutes, zone 2 minutes, last score) so the coach never gets a number wrong; it only words them.
+- It doesn't repeat what it already said this session, and switches topics (effort, technique, breathing, pacing, recovery).
+- Start: a cue to start well with a target from last time. Halfway: how it's going and one change. Off target 2+ minutes: how to fix it. End: recap with real numbers vs last time + one target for next time.
+- Built-in tips (no AI): 3 more per sport, focused on improving. AI function deployed.
 
 ---
 

@@ -93,8 +93,41 @@ export function sessionGuide(s: CardioSessionState, now = Date.now()) {
   return { sec, ph, want, zone, judged, loose, g: guidance(judged, want, s.cap, loose) };
 }
 
-/** The session as the AI sees it (numbers only, nothing that names the person). */
-function aiData(s: CardioSessionState, phase: 'start' | 'half' | 'change' | 'end') {
+/** Your last sessions of this sport (before this one), so the coach can compare and set a target to beat. */
+type PastSession = { daysAgo: number; min: number; km?: number; paceMinKm?: string; speedKmh?: number; avgHr?: number; zone2Min?: number; hardMin?: number; score?: string };
+const pastCache = new Map<string, Promise<PastSession[]>>();
+function loadPast(s: CardioSessionState): Promise<PastSession[]> {
+  const hit = pastCache.get(s.id);
+  if (hit) return hit;
+  const p = (async () => {
+    const { data, error } = await supabase
+      .from('cardio_logs')
+      .select('created_at,minutes,avg_hr,distance_m,zones,score')
+      .eq('sport', s.sport)
+      .lt('created_at', new Date(s.startedAt).toISOString())
+      .order('created_at', { ascending: false })
+      .limit(5);
+    if (error || !data) return [];
+    return (data as { created_at: string; minutes: number; avg_hr: number | null; distance_m: number | null; zones: number[] | null; score: string | null }[]).map((r) => {
+      const km = r.distance_m ? Math.round(r.distance_m / 10) / 100 : undefined;
+      const pace = km && r.minutes ? r.minutes / km : null;
+      return {
+        daysAgo: Math.max(0, Math.round((s.startedAt - new Date(r.created_at).getTime()) / 864e5)),
+        min: r.minutes,
+        ...(km ? { km } : {}),
+        ...(pace ? (s.sport === 'Bike' ? { speedKmh: Math.round((km! / r.minutes) * 600) / 10 } : { paceMinKm: `${Math.floor(pace)}:${String(Math.round((pace % 1) * 60)).padStart(2, '0')}` }) : {}),
+        ...(r.avg_hr ? { avgHr: r.avg_hr } : {}),
+        ...(r.zones ? { zone2Min: Math.round((r.zones[1] ?? 0) / 60), hardMin: Math.round(((r.zones[3] ?? 0) + (r.zones[4] ?? 0)) / 60) } : {}),
+        ...(r.score ? { score: r.score } : {}),
+      };
+    });
+  })().catch(() => []);
+  pastCache.set(s.id, p);
+  return p;
+}
+
+/** The session as the AI sees it (numbers only, nothing that names the person), with your past sessions of this sport and what the coach already said. */
+function aiData(s: CardioSessionState, phase: 'start' | 'half' | 'change' | 'end', past: PastSession[] = [], said: string[] = []) {
   const now = s.endedAt ?? Date.now();
   const { sec, want, zone } = sessionGuide(s, now);
   const sp = phase === 'end' ? (s.dist > 0 ? s.dist / Math.max(1, sec) : null) : speedNow(s, now);
@@ -125,11 +158,13 @@ function aiData(s: CardioSessionState, phase: 'start' | 'half' | 'change' | 'end
     age: s.age,
     injuries: s.injuries,
     pregnancy: s.preg ? 'pregnant' : s.nursing ? 'after birth' : undefined,
+    ...(past.length ? { pastSessions: past } : {}),
+    ...(said.length ? { alreadySaid: said.slice(-6) } : {}),
   };
 }
 
-type Coach = { id: string; started: boolean; lastTipAt: number; n: number; lastPhase: string | null; lastZone: number | null; offSince: number | null; lastGuideAt: number; aiStart: boolean; aiHalf: boolean; aiChange: boolean };
-const freshCoach = (id: string): Coach => ({ id, started: false, lastTipAt: 0, n: 0, lastPhase: null, lastZone: null, offSince: null, lastGuideAt: 0, aiStart: false, aiHalf: false, aiChange: false });
+type Coach = { id: string; said: string[]; started: boolean; lastTipAt: number; n: number; lastPhase: string | null; lastZone: number | null; offSince: number | null; lastGuideAt: number; aiStart: boolean; aiHalf: boolean; aiChange: boolean };
+const freshCoach = (id: string): Coach => ({ id, said: [], started: false, lastTipAt: 0, n: 0, lastPhase: null, lastZone: null, offSince: null, lastGuideAt: 0, aiStart: false, aiHalf: false, aiChange: false });
 
 /**
  * The live cardio session, whatever screen you're on (mounted once in the root layout): reads heart rate and GPS,
@@ -187,6 +222,7 @@ export function CardioLive() {
       const { t, lang } = latest.current;
       setTip({ ...line, at: now });
       c.lastTipAt = now;
+      c.said.push(t(line.key, line.vars));
       if (getCardio()?.speak) say(t(line.key, line.vars), lang);
     };
     const ai = (phase: 'start' | 'half' | 'change') => {
@@ -195,13 +231,16 @@ export function CardioLive() {
       // Only when AI was already allowed (no question pops up mid-run), and one call is kept for the end note.
       if (!s0 || consent !== 'yes' || s0.aiCalls >= 3) return;
       countAi();
-      askAI<{ tip: string }>('cardio_tip', { lang, data: aiData(s0, phase) }).then((r) => {
+      loadPast(s0)
+        .then((past) => askAI<{ tip: string }>('cardio_tip', { lang, data: aiData(getCardio() ?? s0, phase, past, coach.current.said) }))
+        .then((r) => {
         const s1 = getCardio();
         const tip = r.result?.tip?.trim();
         if (!tip || !s1 || s1.id !== id || s1.endedAt) return;
         const now = Date.now();
         setTip({ key: '', text: tip, ai: true, at: now });
         coach.current.lastTipAt = now;
+        coach.current.said.push(tip);
         if (s1.speak) say(tip, latest.current.lang);
       });
     };
@@ -352,7 +391,7 @@ export function CardioLive() {
       let ai = false;
       if (consent === 'yes' && cur.aiCalls < 4) {
         countAi();
-        const r = await askAI<{ tip: string }>('cardio_tip', { lang, data: aiData(cur, 'end') });
+        const r = await askAI<{ tip: string }>('cardio_tip', { lang, data: aiData(cur, 'end', await loadPast(cur), coach.current.said) });
         text = r.result?.tip?.trim() || null;
         ai = !!text;
       }

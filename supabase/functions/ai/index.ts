@@ -63,7 +63,7 @@ const TASK_TOKENS: Record<string, number> = {
   blood: 7000,
   plan: 16000,
   recipes: 12000,
-  cardio_tip: 400,
+  cardio_tip: 500,
 };
 const timedOut = (e: unknown) => (e as Error)?.name === 'TimeoutError' || (e as Error)?.name === 'AbortError';
 const openrouterKey = () => env('OPENROUTER_API_KEY') || env('OpenRouter') || env('OPENROUTER');
@@ -458,6 +458,33 @@ const DEVICE_RULES = `Device data ("devices", when present) comes from the perso
 - No "devices" in the data means nothing is connected: never invent watch numbers; if useful, mention they can connect one in Connections.`;
 
 // Pregnancy, after birth and the luteal phase: shared by the chat and the weekly recap so both stay safe.
+
+/** What a good coach knows about each sport: what to watch, the usual mistakes, and how to get better week to week. */
+const SPORT_GUIDE: Record<string, string> = {
+  Run: 'Form: tall posture, slight forward lean from the ankles, quick light steps (about 170 to 180 a minute), land under the hips, relaxed hands and shoulders, arms swing front to back. Mistakes: starting too fast, overstriding (heel far in front), tense shoulders, holding the breath. Improve: most runs easy in zone 2; grow weekly time or distance about 10%; one session a week of strides or tempo once the base is there; negative splits (second half a little faster); hills build strength.',
+  Walk: 'Form: tall, eyes ahead, arms bent about 90 degrees swinging, push off the toes, shorter quicker steps to go faster. Mistakes: looking down, long slow strides, carrying weights in the hands. Improve: add 5 minutes or a little pace each week, brisk intervals (2 min fast, 2 min easy), incline or hills for more effort without running.',
+  Hike: 'Form: short steps uphill and lean slightly forward, small controlled steps downhill with soft knees, poles help on steep ground. Pacing: a pace you can keep for hours, breathe through the nose when possible. Fuel and water: sip every 15 to 20 minutes, a small snack each hour on long hikes. Improve: longer routes and more climbing step by step, a light backpack later.',
+  Bike: 'Form: cadence about 80 to 95, shift early to keep it smooth instead of grinding, relaxed grip and elbows, knees in line with feet, saddle height so the knee is slightly bent at the bottom. Mistakes: big gears at low cadence, bouncing, pushing hard at the start. Improve: longer zone 2 rides, one session with 3 to 5 x 4 minutes harder, track average speed on the same route.',
+  Swim: 'Form: head down and hips high, breathe out under water and turn (not lift) to breathe, long relaxed strokes, kick from the hips with soft ankles, reach and pull past the hip. Mistakes: holding the breath, lifting the head, kicking from the knees, rushing strokes. Improve: rest between lengths at first, then sets (for example 4 x 50 m with 20 s rest), count strokes per length and try to lower it, add drills.',
+  Row: 'Order: legs, then body, then arms; back the other way: arms, body, legs. Legs give about 60% of the power. Straight back, shoulders down, smooth not jerky, stroke rate about 20 to 26 for steady work. Mistakes: pulling with the arms first, rounding the back, rushing the slide forward. Improve: steady 20 to 30 minutes, then intervals (for example 500 m pieces), watch split time per 500 m.',
+  Elliptical: 'Form: stand tall, light hands or no hands, push through the heels, full smooth strides, resistance high enough to feel the legs. Mistakes: leaning on the handles, tiny fast strides with no resistance. Improve: raise resistance or time, add a few 1-minute harder pushes, try backwards for variety.',
+  Stairs: 'Form: tall, whole foot on each step, drive through the heel and glute, hold the rails lightly only for balance. Mistakes: leaning on the rails (it cuts the effort a lot), tiny tiptoe steps. Improve: longer time at a steady pace, then short faster blocks, skip a step for strength.',
+  JumpRope: 'Form: small low jumps on the balls of the feet, elbows close, turn the rope with the wrists, look ahead, soft knees. Mistakes: jumping too high, big arm circles, landing flat or heavy. Improve: rounds of 30 to 60 s with rest, grow work time, then add skills (alternate feet, high knees, double unders).',
+  HIIT: 'Rules: real effort on work, true rest on rest (slow breaths), form first, land softly. Mistakes: going too hard in round 1 and fading, sloppy form when tired, not resting enough. Improve: keep the same work quality in the last round as the first, then add a round or 5 to 10 seconds of work; max 2 to 3 HIIT sessions a week.',
+  Padel: 'Game: split-step as the other side hits, stay low with bent knees, move with small steps, play from the back wall with patience, recover to a good position after each shot, communicate with the partner. Body: warm up shoulders, wrists and calves; lob and volley need shoulder care; stay light on the feet. Fitness: rally intervals build it; between points slow nose breaths. Improve: better footwork and recovery between points, more time in zone 3 over the match, sharper first steps.',
+  Tennis: 'Game: split-step as they hit, unit turn with the shoulders, legs drive the shot, recover to the middle after each shot, breathe out on contact. Body: warm up shoulders, wrists and calves, hydrate at every change of ends. Fitness: points are 5 to 10 s bursts, so recovery between points matters (slow breaths, routine). Improve: faster recovery steps, consistent depth, holding form late in long matches.',
+  Squash: 'Game: return to the T after every shot, low lunge with knee over foot, short quick steps, watch the ball. Very intense: heart rate stays high; breathe deep between rallies, drink between games. Improve: faster recovery to the T, ghosting drills (movement without the ball), longer rallies with good form.',
+  Badminton: 'Game: ready stance on the toes, return to base after each shot, lunge with knee over foot, use the wrist and forearm, breathe out on smashes. Improve: footwork to the 4 corners, faster recovery, endurance for long rallies.',
+  Football: 'Game: sprints then recovery are normal; keep moving at low speed instead of standing; scan before receiving; drink at every break. Body: warm up hips, groin and hamstrings, land and turn with bent knees. Improve: repeated sprint ability (recovering faster between sprints), more distance covered at easy pace, fewer minutes standing still.',
+  Basketball: 'Game: stay low on defense, short quick steps, land softly on both feet from jumps, sprint back on transition, breathe during free throws and timeouts. Body: ankles and knees need warm-up; drink at every break. Improve: recover faster between bursts, keep jump height late in the game.',
+  Volleyball: 'Game: ready position low and on the toes, move to the ball before playing it, land on both feet with soft knees, arm swing from the shoulder with good warm-up. Improve: jump landing technique, first step speed, shoulder care.',
+  Boxing: 'Form: hands up, chin down, punches come from the hips and feet, breathe out sharply on every punch, stay on the balls of the feet. Rounds: 3 minutes on, 1 minute full rest with slow breathing. Mistakes: holding the breath, dropping the hands when tired, flat feet. Improve: keep punch quality in the last round, add a round, shorter rest later.',
+  MartialArts: 'Form: relaxed until the moment of effort, breathe out on each strike or throw, stable base, control over speed. Improve: technique quality when tired, more rounds, flexibility for kicks; full rest between rounds.',
+  Yoga: 'Breath leads the movement: slow nose breathing, never into pain, steady gaze, relax the jaw and shoulders, hold poses with ease. Improve: longer holds, deeper range little by little, balance poses; great for recovery days.',
+  Pilates: 'Core gently tight, breathe out as you work, slow and controlled, neck long, quality over number of reps. Improve: better control and alignment, then more reps or harder versions.',
+  Other: 'Keep an effort you can hold, relaxed shoulders, deep breathing, stop if anything hurts; build time or effort a little each week.',
+};
+
 const BODY_RULES = `Pregnancy ("pregnancy" in the data, with "stage" pregnant or after birth and the "week"):
 - Never suggest a calorie deficit, eating less or a lower calorie target (no "targets" with fewer kcal, no calories moved away). Pregnancy needs about 300 kcal more a day from the second trimester; breastfeeding about 400 to 500 kcal more.
 - No new heavy loads, no heavier weights than they already use, no max lifts or PR attempts, no holding the breath, no contact sports, and from week 20 no long time lying flat on the back. Moderate effort only: they should be able to talk while training.
@@ -785,30 +812,71 @@ ${BODY_RULES}
     case 'cardio_tip': {
       // One short coaching line during a live cardio session (start, halfway, a big change) or a recap at the end.
       // The app calls this at most about 4 times a session and shows its own rule-based tips the rest of the time.
-      const system = `You are Adro, a cardio coach talking to the person through their earphones DURING a cardio session (or right after it, when "phase" is "end"). ${LANG(lang)}${lang === 'ar' ? ' Use a warm, casual Gulf/Saudi tone (like a friend who coaches: يا بطل، كفو، شد حيلك، على راحتك).' : ''}
-Answer with ONE short line of at most 120 characters that can be read aloud: no emoji, no lists, no quotes, no markdown.
-You get the session as JSON: "sport", "phase" (start, half, change or end), "minute", "plannedMin", "kind" (steady or intervals), "hr" and "zone" now (heart rate zones 1 to 5 from their age), "targetZone", "maxZone", "zonesMin" (minutes spent in zones 1 to 5), "paceMinKm" or "speedKmh", "distKm", "rpe" (how hard it feels 1 to 10, when there's no heart rate), "goal" (cut = losing fat, maintain, gain = building muscle), "readiness" (recovery 0 to 100), "age", "injuries", "pregnancy".
+      const d = (b.data ?? {}) as Record<string, unknown>;
+      const end = d.phase === 'end';
+      // The comparisons are worked out here (the model only words them): this session so far vs. the last one of this sport.
+      const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+      const paceSec = (v: unknown) => (typeof v === 'string' && /^\d+:\d\d$/.test(v) ? Number(v.split(':')[0]) * 60 + Number(v.split(':')[1]) : null);
+      const zm = Array.isArray(d.zonesMin) ? (d.zonesMin as unknown[]).map((v) => num(v) ?? 0) : null;
+      const nowStats = {
+        minutes: num(d.minute),
+        zone2Min: zm ? Math.round(zm[1]) : null,
+        hardMin: zm ? Math.round((zm[3] ?? 0) + (zm[4] ?? 0)) : null,
+        km: num(d.distKm),
+        paceSec: paceSec(d.paceMinKm),
+        speedKmh: num(d.speedKmh),
+      };
+      const last = Array.isArray(d.pastSessions) ? ((d.pastSessions as Record<string, unknown>[])[0] ?? null) : null;
+      const diff = (a: number | null, b: unknown) => (a != null && num(b) != null ? Math.round((a - (num(b) as number)) * 10) / 10 : undefined);
+      const vsLast = last
+        ? {
+            daysAgo: num(last.daysAgo),
+            ...(end ? { minutesMore: diff(nowStats.minutes, last.min), kmMore: diff(nowStats.km, last.km) } : {}),
+            ...(end && nowStats.zone2Min != null ? { zone2MinMore: diff(nowStats.zone2Min, last.zone2Min) } : {}),
+            ...(end && nowStats.hardMin != null ? { hardMinMore: diff(nowStats.hardMin, last.hardMin) } : {}),
+            ...(nowStats.paceSec != null && paceSec(last.paceMinKm) != null ? { paceSecPerKmFaster: (paceSec(last.paceMinKm) as number) - nowStats.paceSec } : {}),
+            ...(nowStats.speedKmh != null && num(last.speedKmh) != null ? { speedKmhFaster: diff(nowStats.speedKmh, last.speedKmh) } : {}),
+            ...(typeof last.score === 'string' ? { lastScore: last.score } : {}),
+          }
+        : null;
+      const facts = { thisSession: nowStats, vsLastSession: vsLast, sessionsBefore: Array.isArray(d.pastSessions) ? (d.pastSessions as unknown[]).length : 0 };
+      const guideText = SPORT_GUIDE[String(d.sport)] ?? SPORT_GUIDE.Other;
+      const system = `You are Adro, an expert coach for this sport talking to the person through their earphones DURING a session (or right after it, when "phase" is "end"). ${LANG(lang)}${lang === 'ar' ? ' Use a warm, casual Gulf/Saudi tone (like a friend who coaches: يا بطل، كفو، شد حيلك، على راحتك). Keep sport words people use in the Gulf (بادل، سيت، زون).' : ''}
+${end ? 'Answer with at most 2 short sentences (max 220 characters): what went well with real numbers, then ONE specific target for next time.' : 'Answer with ONE short sentence of at most 100 characters that can be read aloud in a few seconds.'} No emoji, no lists, no quotes, no markdown. Write numbers with Western digits (0-9).
+You get the session as JSON: "sport", "phase" (start, half, change or end), "minute", "plannedMin", "kind" (steady or intervals), "hr" and "zone" now (heart rate zones 1 to 5 from their age), "targetZone", "maxZone", "zonesMin" (minutes spent in zones 1 to 5), "paceMinKm" or "speedKmh", "distKm", "rpe" (how hard it feels 1 to 10, when there's no heart rate), "goal" (cut = losing fat, maintain, gain = building muscle), "readiness" (recovery 0 to 100), "age", "injuries", "pregnancy", "pastSessions" (their last sessions of this same sport, newest first: daysAgo, min, km, paceMinKm or speedKmh, avgHr, zone2Min, hardMin, score) and "alreadySaid" (what the coach already told them this session).
+What a great coach knows about ${String(d.sport ?? 'this sport')}: ${guideText}
+Make every tip genuinely useful and specific to this moment, never generic filler:
+- Pick the ONE thing that matters most right now: effort vs. target zone first if they are off, else a technique cue from the sport knowledge above, else pacing, breathing or recovery between efforts.
+- Never repeat or rephrase anything in "alreadySaid"; rotate topics (effort, technique, breathing, pacing, mindset, hydration).
+- Comparisons: use ONLY the ready-made numbers in "facts" (sent with the session): "thisSession" and "vsLastSession" (positive = more or faster than last time, negative = less or slower). Never calculate or guess a comparison yourself, and never call a negative number more. Say it concretely, e.g. "15 seconds per km faster than last time" or "4 minutes less in zone 2 than last time". If "sessionsBefore" is 0, it is their first one: say what to focus on to improve.
+- "phase" start: one cue to start well (warm-up and the first minutes' pace or a key technique point), with a target from "pastSessions" if any.
+- "phase" half: how it is going vs. target and past sessions, and one adjustment for the second half.
+- "phase" change: they have been off target for 2+ minutes: tell them clearly how to fix it (slow down, shorten the stride, easier gear, longer recovery between points).
+- "phase" end: recap with real numbers (minutes, distance, zone 2 time, score) and compare with the last session; then one concrete target for next time that helps them improve (for example 5 more minutes in zone 2, hold 5:10 per km for 20 minutes, one more round, faster recovery between points).
 Coach by the goal:
-- cut: mostly zone 2 (easy pace they can talk at) burns the most fat; short zone 4 pushes only if "kind" is intervals. Never suggest eating less.
+- cut: mostly zone 2 (easy pace they can talk at) burns the most fat; short zone 4 pushes only if "kind" is intervals; more active minutes matter. Never suggest eating less.
 - gain: keep it short and easy (zone 1 to 2) so the legs recover for lifting.
 - maintain: zone 2 base with an occasional zone 4 push for heart health.
 - readiness under 50: easy only, never push.
-- Never push above "maxZone". If "zone" is above "targetZone", tell them to ease off; below it, to speed up a little; in it, encourage them.
-- Add one practical form or breathing cue for the sport when it fits (run: tall posture, quick light steps; bike: cadence 80 to 90; swim: breathe out under water; row: legs, body, arms; HIIT: full effort on work, deep breaths on rest; jump rope: small light jumps; hike: short steps uphill).
-- Stop-and-go sports ("stopAndGo" true; "sportGroup" Racket sports, Team sports or Combat): spikes to zone 4 to 5 are normal, so judge effort by the whole session so far ("avgZoneWholeSession" and time in zones), never tell them to ease off for a spike (only above "maxZone"). Padel, tennis, squash, badminton: recover between points, stay light on the feet, split-step, drink between sets ("setsDone"), warm up shoulders and wrists. "score" is each set's score (you-them, e.g. "6-4, 3-6"); you may mention it briefly and kindly (never about winning being the point). Football, basketball, volleyball: sprint then recover is normal, drink at every break, land softly. Boxing and martial arts: hands up, breathe out on each strike, full rest between rounds ("roundsDone"). On a cut: keep moving between points and plays (total active time counts). Building muscle: don't overdo it before leg day.
-- Yoga and Pilates ("sportGroup" Mind and body): slow nose breathing, zone 1 to 2, never into pain.
-- "phase" end: one sentence recapping the session with its real numbers (minutes, zone 2 time, distance) and one thing for next time.
-Use only the numbers given; never invent heart rate, pace or distance. If something hurts, or they feel dizzy or short of breath, tell them to stop. Never diagnose.
+- Never push above "maxZone". In steady sports: above "targetZone" ease off; below it speed up a little; in it, encourage and add a technique cue.
+- Stop-and-go sports ("stopAndGo" true; "sportGroup" Racket sports, Team sports or Combat): spikes to zone 4 to 5 are normal, so judge effort by the whole session so far ("avgZoneWholeSession" and time in zones) and never tell them to ease off for a spike (only above "maxZone"). "score" is each set's score (you-them, e.g. "6-4, 3-6"); mention it briefly and kindly when useful (never that winning is the point). "setsDone" or "roundsDone" count sets or rounds.
+- Yoga and Pilates ("sportGroup" Mind and body): slow breathing, zone 1 to 2, never into pain.
+Use only the numbers given; never invent heart rate, pace, distance or past results. If something hurts, or they feel dizzy or short of breath, tell them to stop. Never diagnose.
 ${BODY_RULES}
 With "pregnancy": talk test (they must be able to speak full sentences), never above zone 3, sip water, stop if dizzy, short of breath or in pain; no contact sports or fall risk (football, basketball, boxing, martial arts, squash) and no jumping or high impact: if the sport is one of these, kindly suggest a safer one. After birth: easy walking only until the doctor clears them.`;
-      const r = await ask(task, system, [{ role: 'user', parts: [{ text: JSON.stringify(b.data).slice(0, 4000) }] }], {
+      const r = await ask(task, system, [{ role: 'user', parts: [{ text: `${JSON.stringify(b.data).slice(0, 4000)}\nfacts: ${JSON.stringify(facts)}` }] }], {
         type: 'object',
         properties: { tip: { type: 'string' } },
         required: ['tip'],
       });
       const tip = String((r as { tip?: unknown })?.tip ?? '').replace(/\s+/g, ' ').trim();
       if (!tip) throw new Error('empty_tip');
-      return { tip: tip.length > 140 ? `${tip.slice(0, 139).trimEnd()}…` : tip };
+      // Too long: cut at the end of a sentence (or a comma) rather than mid-word.
+      const max = end ? 260 : 140;
+      if (tip.length <= max) return { tip };
+      const cut = tip.slice(0, max);
+      const at = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('، '), cut.lastIndexOf(', '), cut.lastIndexOf('؛ '));
+      return { tip: at > max * 0.5 ? cut.slice(0, at + 1).replace(/[،,؛]$/, '.') : `${cut.slice(0, max - 1).trimEnd()}…` };
     }
     case 'report':
       return ask(task, `You are a friendly fitness coach writing a short progress report. ${LANG(lang)} Use simple words and the real numbers given. Each point is one short sentence. Never give medical advice. "well": 2 or 3 things that went well. "improve": 2 or 3 things to improve, each with one small action. "focus": one clear goal for the next period.`, [
