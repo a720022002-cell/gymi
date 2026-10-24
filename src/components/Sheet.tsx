@@ -1,9 +1,10 @@
 import { type PropsWithChildren, useEffect, useState } from 'react';
-import { Animated, Modal, Pressable, ScrollView, View } from 'react-native';
+import { Animated, Modal, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useSettings } from '@/theme/settings';
 import { useT } from '@/i18n';
+import { useKeyboardHeight } from '@/lib/useKeyboard';
 
 import { Glass } from './Glass';
 
@@ -12,6 +13,10 @@ export function Sheet({ open, onClose, children }: PropsWithChildren<{ open: boo
   const { colors: c } = useSettings();
   const { t } = useT();
   const insets = useSafeAreaInsets();
+  // With the keyboard open the sheet sits right above it and shrinks to the space left, so the field you type in and
+  // the buttons stay visible.
+  const kb = useKeyboardHeight();
+  const { height: winH } = useWindowDimensions();
   const a = useState(() => new Animated.Value(0))[0];
   const [mounted, setMounted] = useState(open);
   // Mount as soon as it opens; unmount after the closing animation.
@@ -36,8 +41,8 @@ export function Sheet({ open, onClose, children }: PropsWithChildren<{ open: boo
           position: 'absolute',
           start: 8,
           end: 8,
-          bottom: 8 + insets.bottom,
-          maxHeight: '85%',
+          bottom: kb ? kb + 8 : 8 + insets.bottom,
+          maxHeight: kb ? winH - kb - insets.top - 24 : '85%',
           transform: [{ translateY: a.interpolate({ inputRange: [0, 1], outputRange: [700, 0] }) }],
         }}>
         <Glass sheet style={{ borderRadius: 40, overflow: 'hidden', flexShrink: 1 }}>

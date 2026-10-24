@@ -1,7 +1,7 @@
 import type React from 'react';
 import { router } from 'expo-router';
 import { createContext, type PropsWithChildren, type ReactNode, useContext, useRef, useState } from 'react';
-import { Animated, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { Animated, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useT } from '@/i18n';
@@ -61,9 +61,12 @@ export function Screen({ title, large, pre, back, left, onBack, right, tabs, bar
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={{ flex: 1 }}>
+        {/* iOS: room for the keyboard is added below the content and the field you tap scrolls into view. Android
+            resizes the window for the keyboard by itself. */}
         <ScrollView
           ref={scrollRef}
+          automaticallyAdjustKeyboardInsets
           onScroll={(e) => onScroll(e.nativeEvent.contentOffset.y)}
           scrollEventThrottle={16}
           keyboardShouldPersistTaps="handled"
@@ -84,7 +87,7 @@ export function Screen({ title, large, pre, back, left, onBack, right, tabs, bar
           ) : null}
           {children}
         </ScrollView>
-      </KeyboardAvoidingView>
+      </View>
 
       {!bare ? (
         <View pointerEvents="box-none" style={{ position: 'absolute', top: 0, start: 0, end: 0, paddingTop: st + 2, paddingHorizontal: 12 }}>

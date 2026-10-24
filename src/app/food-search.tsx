@@ -20,6 +20,7 @@ import { myNames, type RecentFood, recentFoods } from '@/lib/nutrients';
 import { fmt } from '@/lib/nutrition';
 import { canListen, listen, stopListening } from '@/lib/speech';
 import { supabase } from '@/lib/supabase';
+import { useKeyboardHeight } from '@/lib/useKeyboard';
 import { useSettings } from '@/theme/settings';
 
 const CATS: [string | null, string][] = [
@@ -34,6 +35,7 @@ export default function FoodSearch() {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
   const insets = useSafeAreaInsets();
+  const kb = useKeyboardHeight();
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<string | null>(null);
   const [results, setResults] = useState<DbFood[]>([]);
@@ -231,7 +233,8 @@ export default function FoodSearch() {
         </View>
       </Screen>
 
-      <View pointerEvents="box-none" style={{ position: 'absolute', start: 16, end: 16, bottom: 24 + insets.bottom }}>
+      {/* Above the keyboard while it's open (iOS), else above the home bar. */}
+      <View pointerEvents="box-none" style={{ position: 'absolute', start: 16, end: 16, bottom: kb ? kb + 8 : 24 + insets.bottom }}>
         <Glass style={{ borderRadius: 32, padding: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <View style={{ paddingStart: 8 }}>
             <Icon name="search" size={20} color={c.sec} />
