@@ -171,12 +171,11 @@ def page(title_en, title_ar, desc, body, path, dark=False):
 <a href="/site" aria-label="Adro">{logo(24)}</a>
 <div class="links"><a href="/site#all">{t('Features', 'المميزات')}</a><a href="/site#devices">{t('Watches', 'الساعات')}</a><a href="/site#pricing">{t('Pricing', 'الأسعار')}</a><a href="/site#faq">{t('FAQ', 'الأسئلة')}</a></div>
 <button class="lang" type="button" onclick="setLang(document.documentElement.lang==='ar'?'en':'ar')" aria-label="Change language">{t('ع', 'EN')}</button>
-<a class="btn dark" href="{APP_URL}">{t('Open Adro', 'افتح ادرو')}</a>
 </div></nav>
 {body}
 <footer><div class="wrap foot">
 <div style="display:flex;align-items:center;gap:14px">{logo(20)}<span>© 2026 Adro</span></div>
-<nav aria-label="Footer"><a href="/site/privacy">{t('Privacy', 'الخصوصية')}</a><a href="/site/terms">{t('Terms', 'الشروط')}</a><a href="/site/support">{t('Support', 'الدعم')}</a><a href="{APP_URL}">{t('Web app', 'نسخة الويب')}</a></nav>
+<nav aria-label="Footer"><a href="/site/privacy">{t('Privacy', 'الخصوصية')}</a><a href="/site/terms">{t('Terms', 'الشروط')}</a><a href="/site/support">{t('Support', 'الدعم')}</a></nav>
 </div></footer>
 {HOME_JS if dark else ""}
 </body>
@@ -452,8 +451,8 @@ def home():
          'نعم. ما نبيع بياناتك وما نعرض إعلانات. البيانات الصحية ما تُستخدم للتسويق أبداً. وتقدر تنزّل أو تحذف كل شي متى ما تبي.'),
         ('Is it medical advice?', 'هل هو استشارة طبية؟', 'No. Adro is for healthy adults who want to train and eat better. Ask your doctor about health questions.',
          'لا. ادرو للبالغين الأصحاء اللي يبون يتمرنون وياكلون أفضل. اسأل دكتورك عن الأسئلة الصحية.'),
-        ('When is it on the App Store and Google Play?', 'متى ينزل على App Store و Google Play؟', 'Very soon. Until then you can use Adro on the web from any phone.',
-         'قريب جداً. لين ذاك الوقت تقدر تستخدم ادرو من الويب على أي جوال.'),
+        ('When is it on the App Store and Google Play?', 'متى ينزل على App Store و Google Play؟', 'Very soon, for iPhone first.',
+         'قريب جداً، على الآيفون أول.'),
     ]
     faq = ''.join(f'<details><summary>{t(a, b)}</summary><p>{t(c, d)}</p></details>' for a, b, c, d in faqs)
     body = f'''
@@ -462,7 +461,7 @@ def home():
 <div class="k rv" style="color:#8FA3FF">{t('Introducing Adro', 'نقدّم لك ادرو')}</div>
 <h1 class="mega rv d1" style="margin-top:14px">{t('Your AI<br><span class="grad">gym coach.</span>', 'مدربك <span class="grad">الذكي</span><br>في الجم.')}</h1>
 <p class="sub2 rv d2">{t('Training, food and recovery in one app. Built for the Gulf, in Arabic and English.', 'التمرين والأكل والاستشفاء في تطبيق واحد. مصمم للخليج، بالعربي والإنجليزي.')}</p>
-<div class="ctas rv d3"><a class="btn blue" href="{APP_URL}">{t('Start free', 'ابدأ مجاناً')}</a>{store_buttons()}</div>
+<div class="ctas rv d3">{store_buttons()}</div>
 <div class="h-stage">
 <div class="phone side l"><img src="/site/img/food-en.webp" data-en="/site/img/food-en.webp" data-ar="/site/img/food-ar.webp" width="585" height="1266" alt=""></div>
 <div class="phone side r"><img src="/site/img/recovery-en.webp" data-en="/site/img/recovery-en.webp" data-ar="/site/img/recovery-ar.webp" width="585" height="1266" alt=""></div>
@@ -509,7 +508,7 @@ def home():
 {all_features()}
 
 <section id="pricing" class="center" style="padding:120px 0"><div class="wrap">
-<h2 class="big rv">{t('Start free.', 'ابدأ مجاناً.')}</h2>
+<h2 class="big rv">{t('Simple pricing.', 'أسعار واضحة.')}</h2>
 <p class="sub2 rv d1">{t('Go Adro+ when you want more.', 'واشترك في Adro+ لما تبي أكثر.')}</p>
 <div class="plans">
 <div class="plan rv"><h3>{t('Free', 'مجاني')}</h3><div class="amount">0 <small>{t('SAR', 'ريال')}</small></div><div class="per">{t('Forever', 'للأبد')}</div>
@@ -527,7 +526,7 @@ def home():
 <section class="end blk center"><div class="wrap">
 {ring(64, 'var(--blue)', 20)}
 <h2 class="mega rv" style="margin-top:26px">{t('Your next workout<br>is ready.', 'تمرينك الجاي<br>جاهز.')}</h2>
-<div class="ctas rv d1"><a class="btn blue" href="{APP_URL}">{t('Start free', 'ابدأ مجاناً')}</a>{store_buttons()}</div>
+<div class="ctas rv d1">{store_buttons()}</div>
 </div></section>
 </main>'''
     return page('Adro: your AI gym coach', 'ادرو: مدربك الذكي في الجم',
