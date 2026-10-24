@@ -289,6 +289,12 @@ Passwords and keys are left out on purpose.
 - You → Replay app tour. Seen tours are kept on the phone. Arabic and English, checked with screenshots on the web build.
 - Waits for build 7 (the Live Activity fix changed native code, so no OTA to build 6).
 
+### Meal photo accuracy + model test (24 Oct)
+- Fixes (ai v96): real food is never "decorative"; yellow-fruit look-alikes; measure the portion instead of assuming a full plate; calories and macros from the foods table (USDA + Gulf) by weight when the match is close; calories fit the macros. Admin-only model switch (BENCH_MODELS) for tests.
+- Test: 40 lab-weighed dishes from Google Nutrition5k (US cafeteria food). On the 23 every model answered, median calorie error: Haiku before 76%, Haiku after 76% (weight error 61% -> 46%), Sonnet 5.5 39% (weight 23%), Opus 5.5 53% (weight 28%).
+- Real cost per photo: Haiku $0.0009, Sonnet $0.012, Opus $0.022.
+- OpenRouter balance: $5 total, $3.47 used (~$1.5 left). Needs a top-up.
+
 ---
 
 
