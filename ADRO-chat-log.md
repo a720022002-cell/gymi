@@ -306,6 +306,10 @@ Passwords and keys are left out on purpose.
 - Build 7: Xcode refused a plain "import ExpoWidgets" next to "internal import" elsewhere. Build 8: "a static dependency conflicts with LiveActivityUserInteraction", which shows the app already had the intent through expo-widgets: the "app doesn't declare it" theory was wrong. The app-target copy (plugin) is removed.
 - Added a check instead of guessing again: every Lock Screen tap records when it ran, the button, the process (app or widget) and whether the app was listening; the app records when it got it. Shown on You → Widgets for admins ("Button check").
 
+### Build 9 + OTA (24 Oct)
+- Build 9 on TestFlight. Owner's Button check after tapping +: all dashes, so iOS never runs the button's intent at all (not in the app, not in the widget). Next: the iPhone's Console log to see why.
+- OTA b8f86285 to build 9: the tour welcome card's Skip/Start no longer sit under the "Don't show tutorials again" link.
+
 ---
 
 
