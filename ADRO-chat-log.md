@@ -242,6 +242,12 @@ Passwords and keys are left out on purpose.
 - adroapp.com shows the company site at /, /privacy, /terms and /support (edge middleware, no redirect). "Start free", "Open Adro" and "Web app" links removed.
 - The web app is no longer public: on adroapp.com and gymi-inky.vercel.app every app page shows the company site, except invite links (/i/…), the sign-up email page (/signup) and password reset (/reset-password), which the phone app needs. Vercel preview deployments keep the full web app for testing.
 
+### Sleep page + AI analysis on every reading (24 Oct)
+- Progress → Overall → Sleep tile opens a new Sleep page: last night (your log or the watch), deep/REM stages, week or 30-day chart, Adro's analysis, Log sleep.
+- Sleep removed from the Recovery tab (recovery score and history only).
+- Every reading page (steps, calories burned, weight, sleep, recovery, workouts, heart rate, resting HR, HRV, sleep efficiency, time in bed, VO2 max) shows "Adro's analysis": a summary, 2–3 insights and one tip, from the last 30 days. Comparisons are worked out on the server; the answer is kept until the numbers change.
+- New AI task `reading_insight` (needs the ai function deployed). App part waits for the next update.
+
 ---
 
 
