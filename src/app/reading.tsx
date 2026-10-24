@@ -3,16 +3,19 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { BarChart, LineChart } from '@/components/Charts';
+import { ReadingInsight } from '@/components/health/ReadingInsight';
 import { DEVICE_FIELD, INFO, type ReadingKey } from '@/components/health/readings';
 import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
+import { SleepStages } from '@/components/sleep/SleepStages';
 import { Text } from '@/components/Text';
 import { Button, Card, Row, Segmented } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
-import { type DeviceDay, sleepDetail, sourceName, useDevices, useStepGoal, vo2Level } from '@/lib/devices';
+import { type DeviceDay, sourceName, useDevices, useStepGoal, vo2Level } from '@/lib/devices';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
+import { goalOf } from '@/lib/cardioCoach';
 import { addDays, fmt } from '@/lib/nutrition';
 import { fx } from '@/lib/progress';
 import { supabase } from '@/lib/supabase';
@@ -131,11 +134,11 @@ export default function Reading() {
     steps: ['Log cardio or steps', () => router.push('/cardio')],
     burned: ['Log cardio or steps', () => router.push('/cardio')],
     weight: ['Open weight in Progress', () => router.push({ pathname: '/progress', params: { tab: 'body' } })],
-    sleep: ['Open sleep in Progress', () => router.push({ pathname: '/progress', params: { tab: 'recovery' } })],
+    sleep: ['Open sleep', () => router.push('/sleep')],
     recovery: ['Open recovery', () => router.push('/recovery')],
     workouts: ['Open Train', () => router.push('/train')],
-    bed: ['Open sleep in Progress', () => router.push({ pathname: '/progress', params: { tab: 'recovery' } })],
-    sleepEff: ['Open sleep in Progress', () => router.push({ pathname: '/progress', params: { tab: 'recovery' } })],
+    bed: ['Open sleep', () => router.push('/sleep')],
+    sleepEff: ['Open sleep', () => router.push('/sleep')],
   };
   const [btn, go] = open[k] ?? [];
   // Where today's reading came from: the phone's health app, or a band or ring linked directly (its own readings,
@@ -145,6 +148,38 @@ export default function Reading() {
   const wearWins: (keyof DeviceDay)[] = ['hrv', 'hr_rest', 'sleep_h', 'in_bed_h', 'sleep_eff', 'spo2', 'temp_dev'];
   const fromWear = !!devToday?.wearable && (!phoneDay || (!!field && (wearOnly.includes(field) || (dev.prefs.primary !== 'phone' && wearWins.includes(field)))));
   const srcName = fromWear && devToday?.wearable ? wearableName(devToday.wearable) : phoneDay ? sourceName(phoneDay) : null;
+
+  // What the coach reads for its analysis: the last 30 days (today last) and a few other averages for context.
+  const last30 = Array.from({ length: 30 }, (_, i) => {
+    const v = by.get(addDays(today, i - 29));
+    return v == null ? (counted ? 0 : null) : Math.round(v * 10) / 10;
+  });
+  const mean = (xs: (number | null | undefined)[]) => {
+    const v = xs.filter((x): x is number => x != null && x > 0);
+    return v.length ? Math.round((v.reduce((a, b) => a + b, 0) / v.length) * 10) / 10 : null;
+  };
+  const wk = Array.from({ length: 7 }, (_, i) => addDays(today, i - 7));
+  const other = {
+    sleepHours7Days: mean(wk.map((d) => health.checkins.find((x) => x.day === d)?.sleep_h ?? dev.days.find((x) => x.day === d)?.sleep_h)),
+    steps7Days: mean(wk.map((d) => dev.days.find((x) => x.day === d)?.steps)),
+    recoveryToday: health.checkins.find((x) => x.day === today)?.score ?? null,
+    restingHr7Days: mean(wk.map((d) => dev.days.find((x) => x.day === d)?.hr_rest)),
+    workoutsPlannedPerWeek: train.plan?.days ?? null,
+  };
+  const aiData = {
+    name: info.name,
+    unit: unit || null,
+    series: last30,
+    counted,
+    dir,
+    goal: goalLine ?? null,
+    goalType: goalOf(goal),
+    age: ageOf(profile?.date_of_birth),
+    sex: profile?.gender ?? null,
+    female: profile?.gender === 'female',
+    device: srcName,
+    other: Object.fromEntries(Object.entries(other).filter(([key, v]) => v != null && key !== k)),
+  };
 
   return (
     <Screen title={t(info.name)} back>
@@ -226,10 +261,11 @@ export default function Reading() {
           ))}
         </Row>
       ) : null}
-      {k === 'sleep' ? <SleepMore days={dev.days} today={today} /> : null}
+      {k === 'sleep' ? <SleepStages days={dev.days} today={today} /> : null}
       {k === 'vo2' && devLatestVo2(dev.days) != null ? (
         <Vo2More vo2={devLatestVo2(dev.days) as number} age={ageOf(profile?.date_of_birth)} female={profile?.gender === 'female'} />
       ) : null}
+      <ReadingInsight id={k} day={today} data={aiData} ready={rows != null && health.ready} />
       <Text variant="small" weight={700} color="sec" style={{ marginTop: 8, marginBottom: 8, marginHorizontal: 4 }}>
         {t('What it means')}
       </Text>
@@ -258,61 +294,6 @@ export default function Reading() {
 
 const devLatestVo2 = (days: DeviceDay[]) => [...days].reverse().find((d) => d.vo2 != null)?.vo2 ?? null;
 const ageOf = (dob?: string | null) => (dob ? Math.max(14, Math.floor((Date.now() - new Date(dob).getTime()) / 3.15576e10)) : 30);
-/** Minutes from midnight (negative = before it) as a clock time, like 23:15. */
-const clock = (m: number) => {
-  const v = ((m % 1440) + 1440) % 1440;
-  return `${String(Math.floor(v / 60)).padStart(2, '0')}:${String(v % 60).padStart(2, '0')}`;
-};
-
-/** Sleep stages from the watch, and how steady your bedtime is. */
-function SleepMore({ days, today }: { days: DeviceDay[]; today: string }) {
-  const { t } = useT();
-  const sd = sleepDetail(days, today);
-  if (!sd || (sd.deep == null && sd.rem == null && sd.bedUsual == null)) return null;
-  const h = (v: number | null) => {
-    if (v == null) return '–';
-    // Whole minutes first, so 1.999 h is 2 h 0 min, not 1 h 60 min.
-    const m = Math.round(v * 60);
-    return t('{h} h {m} min', { h: Math.floor(m / 60), m: m % 60 });
-  };
-  const steady = sd.bedSpread == null ? null : sd.bedSpread < 30 ? 'Very steady' : sd.bedSpread < 60 ? 'Fairly steady' : 'Changes a lot';
-  return (
-    <Card>
-      <Text weight={700}>{t('Last night')}</Text>
-      <Row gap={8} style={{ marginTop: 10 }}>
-        {(
-          [
-            ['Deep sleep', sd.deep, sd.deepWeek],
-            ['REM sleep', sd.rem, sd.remWeek],
-          ] as const
-        ).map(([a, v, wk]) => (
-          <View key={a} style={{ flex: 1 }}>
-            <Text num size={18}>
-              {h(v)}
-            </Text>
-            <Text variant="xs" weight={700} color="sec">
-              {t(a)}
-            </Text>
-            {wk != null ? (
-              <Text variant="xs" color="sec">
-                {t('This week {v}', { v: h(wk) })}
-              </Text>
-            ) : null}
-          </View>
-        ))}
-      </Row>
-      {sd.bedUsual != null ? (
-        <Text variant="small" style={{ marginTop: 12 }}>
-          {t('You usually fall asleep around {c}.', { c: clock(sd.bedUsual) })} {steady ? t(steady === 'Very steady' ? 'Your bedtime is very steady.' : steady === 'Fairly steady' ? 'Your bedtime is fairly steady.' : 'Your bedtime moves about {n} min from night to night. A steadier bedtime sleeps better.', { n: sd.bedSpread ?? 0 }) : null}
-        </Text>
-      ) : null}
-      <Text variant="xs" color="sec" style={{ marginTop: 8 }}>
-        {t('Most adults get 1 to 2 h of deep sleep and 1.5 to 2 h of REM.')}
-      </Text>
-    </Card>
-  );
-}
-
 /** Where your VO2 max stands for your age and sex. */
 function Vo2More({ vo2, age, female }: { vo2: number; age: number; female: boolean }) {
   const { t } = useT();

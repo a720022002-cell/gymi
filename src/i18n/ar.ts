@@ -4943,4 +4943,10 @@ export const AR: Record<string, string> = {
   "{n} isn’t connected yet. Tap it again and finish signing in on the {n} page.": "{n} ما انربط للحين. اضغط عليه مرة ثانية وكمّل تسجيل الدخول في صفحة {n}.",
   "Hi. Tell me what you ate, how you trained, or ask me anything.": "هلا. قل لي وش أكلت، وكيف تمرنت، أو اسألني أي شي.",
   "Couldn’t open that link. It may be private or removed. Upload the video instead.": "ما قدرت أفتح الرابط. ممكن يكون خاص أو محذوف. ارفع الفيديو بداله.",
+  "Adro’s analysis": "تحليل Adro",
+  "Log your sleep or connect a watch to see it here.": "سجّل نومك أو اربط ساعتك عشان يطلع هنا.",
+  "Try this": "جرّب هذا",
+  "Open sleep": "افتح النوم",
+  "Reading your numbers…": "يقرأ أرقامك…",
+  "Getting your numbers…": "يجمع أرقامك…",
 };

@@ -64,6 +64,7 @@ const TASK_TOKENS: Record<string, number> = {
   plan: 16000,
   recipes: 12000,
   cardio_tip: 500,
+  reading_insight: 1200,
 };
 const timedOut = (e: unknown) => (e as Error)?.name === 'TimeoutError' || (e as Error)?.name === 'AbortError';
 const openrouterKey = () => env('OPENROUTER_API_KEY') || env('OpenRouter') || env('OPENROUTER');
@@ -445,6 +446,7 @@ function goodBody(task: string, b: Record<string, unknown>) {
   if (task === 'chat') return Array.isArray(b.messages) && arr(b.messages, 200);
   if (task === 'recipes') return arr(b.avoid, 60);
   if (task === 'machine') return arr(b.catalog, 400);
+  if (task === 'reading_insight') return !!b.data && typeof b.data === 'object' && !Array.isArray(b.data) && JSON.stringify(b.data).length < 6000;
   if (task === 'cardio_tip') return !!b.data && typeof b.data === 'object' && !Array.isArray(b.data) && JSON.stringify(b.data).length < 4000;
   return true;
 }
@@ -914,6 +916,55 @@ With "pregnancy": talk test (they must be able to speak full sentences), never a
       const cut = tip.slice(0, max);
       const at = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('، '), cut.lastIndexOf(', '), cut.lastIndexOf('؛ '));
       return { tip: at > max * 0.5 ? cut.slice(0, at + 1).replace(/[،,؛]$/, '.') : `${cut.slice(0, max - 1).trimEnd()}…` };
+    }
+    case 'reading_insight': {
+      // A short coach analysis of one reading (steps, sleep, heart rate…) from its last 30 days, shown on the reading's page.
+      const d = (b.data ?? {}) as Record<string, unknown>;
+      const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+      const series = Array.isArray(d.series) ? (d.series as unknown[]).slice(-30).map(num) : [];
+      // Counted readings (steps, minutes, calories) are 0 on a day with nothing; today isn't over, so it is left out of averages.
+      const counted = d.counted === true;
+      const past = counted ? series.slice(0, -1) : series;
+      const r1 = (v: number | null) => (v == null ? null : Math.round(v * 10) / 10);
+      const avg = (xs: (number | null)[]) => {
+        const v = xs.filter((x): x is number => x != null && (!counted || x > 0));
+        return v.length ? v.reduce((a, c) => a + c, 0) / v.length : null;
+      };
+      const last7 = avg(past.slice(-7));
+      const prev7 = avg(past.slice(-14, -7));
+      const all = past.filter((x): x is number => x != null && (!counted || x > 0));
+      const goal = num(d.goal);
+      const dir = num(d.dir) ?? 0;
+      // The comparisons are worked out here (the model only words them).
+      const facts = {
+        today: r1(series.at(-1) ?? null),
+        average7Days: r1(last7),
+        averageWeekBefore: r1(prev7),
+        changeVsWeekBefore: last7 != null && prev7 != null ? r1(last7 - prev7) : null,
+        average30Days: r1(avg(past)),
+        lowest30Days: all.length ? r1(Math.min(...all)) : null,
+        highest30Days: all.length ? r1(Math.max(...all)) : null,
+        daysWithData: all.length,
+        ...(goal != null ? { goal, daysAtGoal: all.filter((x) => (dir < 0 ? x <= goal : x >= goal)).length } : {}),
+        higherIsBetter: dir > 0 ? true : dir < 0 ? false : null,
+      };
+      const system = `You are Adro, a warm, expert fitness and health coach. You look at ONE of the person's readings over the last 30 days and explain what it shows and how to improve it. ${LANG(lang)}${lang === 'ar' ? ` Use a warm, simple Gulf/Saudi tone${d.female === true ? ', talking to a woman in feminine forms' : ''}.` : ''}
+You get the reading ("name", "unit", "series" = the last 30 days oldest first, null = no data, the last one is today), "facts" (worked out for you), "goal" (their target line for this reading, when there is one), and context: "goalType" (cut = losing fat, maintain, gain = building muscle), "age", "sex", "other" (the person's other recent averages, like sleep, steps, recovery, workouts) and "device" (where it comes from).
+Use ONLY the numbers in "facts" for comparisons and never calculate or guess one yourself; a negative change means lower than the week before. Write numbers with Western digits (0-9) and the unit. Never invent numbers.
+- "summary": one or two short sentences: where they are now and the trend (up, down or steady), with the real numbers.
+- "points": 2 or 3 short insights that are specific to THIS person's numbers: patterns (weekdays vs weekend, low days, streaks, how far from the goal), and what it means for their goal and training. Link to another reading in "other" when it clearly explains it (like short sleep and low recovery).
+- "tip": ONE concrete, doable action for the next days to improve this reading, with a number when it fits (like "a 15-minute walk after dinner adds about 2,000 steps").
+If "daysWithData" is under 3, say kindly there isn't enough data yet and give one tip to start; "points" is [].
+Every sentence is short and simple, no emoji, no markdown. Never diagnose; for a reading far outside normal that keeps repeating (like resting heart rate above 100 or blood oxygen under 92%), suggest seeing a doctor.
+${BODY_RULES}`;
+      const r = (await ask(task, system, [{ role: 'user', parts: [{ text: `${JSON.stringify({ ...d, series }).slice(0, 6000)}\nfacts: ${JSON.stringify(facts)}` }] }], {
+        type: 'object',
+        properties: { summary: { type: 'string' }, points: { type: 'array', items: { type: 'string' } }, tip: { type: 'string' } },
+        required: ['summary', 'points', 'tip'],
+      })) as { summary?: unknown; points?: unknown; tip?: unknown };
+      const summary = String(r?.summary ?? '').trim();
+      if (!summary) throw new Error('empty_insight');
+      return { summary, points: (Array.isArray(r.points) ? r.points : []).map((x) => String(x).trim()).filter(Boolean).slice(0, 3), tip: String(r?.tip ?? '').trim() };
     }
     case 'report':
       return ask(task, `You are a friendly fitness coach writing a short progress report. ${LANG(lang)} Use simple words and the real numbers given. Each point is one short sentence. Never give medical advice. "well": 2 or 3 things that went well. "improve": 2 or 3 things to improve, each with one small action. "focus": one clear goal for the next period.`, [

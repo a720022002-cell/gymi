@@ -137,7 +137,7 @@ export function Overall({ go }: { go: (t: PTab, sub?: number) => void }) {
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 2 }}>
         {tile('scale', t('Weight'), cur ? `${W.show(cur)} ${W.label}` : '–', hasDw ? `${arrow(dw)} ${W.show(Math.abs(dw))} ${W.label}` : t('Log your weight'), () => go('body'), goodW)}
         {tile('ruler', t('Waist'), waist.length ? `${fx(waist.at(-1)!.value)} cm` : '–', waist.length > 1 ? `${arrow(dWaist)} ${fx(Math.abs(dWaist))} cm` : t('Add measurements'), () => go('body'), waist.length > 1 ? dWaist < 0 : null)}
-        {tile('moon', t('Sleep'), sAvg != null ? `${fx(sAvg)} ${t('h')}` : '–', t('Average, last 7 nights'), () => go('recovery'), sAvg != null ? sAvg >= 7 : null)}
+        {tile('moon', t('Sleep'), sAvg != null ? `${fx(sAvg)} ${t('h')}` : '–', t('Average, last 7 nights'), () => router.push('/sleep'), sAvg != null ? sAvg >= 7 : null)}
         {tile('bolt', t('Recovery'), `${r.score}%`, t(recLabel(r.score)[0]), () => go('recovery'), r.score >= 60)}
         {tile('flame', t('Streak'), t('{n} days', { n: s.overall }), t('Best {n}', { n: s.best }), () => go('streaks', 0), s.overall > 0 ? true : null)}
         {tile('check', t('Commitment'), cm == null ? '–' : `${cm}%`, t('Last 30 days'), () => go('streaks', 2), cm == null ? null : cm >= 80)}
