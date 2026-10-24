@@ -8,6 +8,7 @@ import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
 import { Avatar } from '@/components/social/Avatar';
 import { Text } from '@/components/Text';
+import { replayTours } from '@/components/tour/Tour';
 import { Button, Label, Segmented, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useIsAdmin } from '@/lib/admin';
@@ -171,6 +172,16 @@ export default function You() {
 
       <Label>{t('Settings')}</Label>
       <List>
+        <Item
+          icon="info"
+          title={t('Replay app tour')}
+          sub={t('The short tour of each tab')}
+          onPress={async () => {
+            await replayTours();
+            router.navigate('/home');
+          }}
+          chevron
+        />
         <Item icon="globe" title={t('Language')} value={s.lang === 'ar' ? 'العربية' : 'English'} onPress={() => router.push('/language')} chevron />
         <Item
           icon="food"

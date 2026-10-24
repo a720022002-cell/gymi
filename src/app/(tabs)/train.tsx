@@ -8,6 +8,7 @@ import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
+import { TourTarget, useTour } from '@/components/tour/Tour';
 import { CardioPlanSheet, CardioTodayCard, sessionText, sportIcon } from '@/components/train/CardioPlan';
 import { CoachBanner } from '@/components/train/CoachBanner';
 import { CoachOfferCard } from '@/components/train/CoachOfferCard';
@@ -37,6 +38,8 @@ export default function Train() {
   const [confirm, setConfirm] = useState(false);
   const [cardioOpen, setCardioOpen] = useState(false);
   const cw = useCardioWeek();
+  // Only once the plan is set up (the setup comes first).
+  useTour('train', train.ready && !train.loadError && train.setupDone && !redo);
 
   if (!train.ready)
     return (
@@ -74,24 +77,32 @@ export default function Train() {
       tabs
       right={
         <Row gap={8}>
-          <WorkoutBell />
-          <Springy onPress={() => router.push('/weekplan')} scaleTo={1.08} accessibilityLabel={t('Weekly plan')}>
-            <Glass style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name="cal" size={22} />
-            </Glass>
-          </Springy>
+          <TourTarget id="train.bell">
+            <WorkoutBell />
+          </TourTarget>
+          <TourTarget id="train.plan">
+            <Springy onPress={() => router.push('/weekplan')} scaleTo={1.08} accessibilityLabel={t('Weekly plan')}>
+              <Glass style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name="cal" size={22} />
+              </Glass>
+            </Springy>
+          </TourTarget>
         </Row>
       }>
       <CoachOfferCard />
       <CoachBanner />
-      <Card>
-        <WeekStrip />
-      </Card>
+      <TourTarget id="train.week">
+        <Card>
+          <WeekStrip />
+        </Card>
+      </TourTarget>
       <PlanReviewCard />
       <IllnessCard />
       <RecoveryCard />
       <MissedCard />
-      <WorkoutCard />
+      <TourTarget id="train.workout">
+        <WorkoutCard />
+      </TourTarget>
       <CardioTodayCard onEdit={() => setCardioOpen(true)} />
       <GroupWorkoutsCard />
       <DeloadCard />

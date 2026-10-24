@@ -20,6 +20,7 @@ import { DayNav } from '@/components/DayNav';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
+import { TourTarget, useTour } from '@/components/tour/Tour';
 import { Button, Card, Row, Segmented, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { lutealHold, useCycleToday } from '@/lib/cyclePhase';
@@ -70,6 +71,7 @@ export default function Food() {
 }
 
 function FoodHome() {
+  useTour('food');
   const { t, lang } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
@@ -164,15 +166,21 @@ function FoodHome() {
       tabs
       right={
         <Row gap={6}>
-          <ReminderBell kind="meals" />
-          <Springy onPress={() => food.setLogOpen(true)} scaleTo={1.08} accessibilityLabel={t('Log food')}>
-            <Glass style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name="plus" size={24} strokeWidth={2.2} />
-            </Glass>
-          </Springy>
+          <TourTarget id="food.bell">
+            <ReminderBell kind="meals" />
+          </TourTarget>
+          <TourTarget id="food.add">
+            <Springy onPress={() => food.setLogOpen(true)} scaleTo={1.08} accessibilityLabel={t('Log food')}>
+              <Glass style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name="plus" size={24} strokeWidth={2.2} />
+              </Glass>
+            </Springy>
+          </TourTarget>
         </Row>
       }>
-      <DayNav />
+      <TourTarget id="food.days">
+        <DayNav />
+      </TourTarget>
       {food.loadError ? (
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <Icon name="warn" size={18} color={c.down} />
@@ -286,52 +294,54 @@ function FoodHome() {
         </Card>
       ) : null}
 
-      <Card>
-        <Row gap={14}>
-          <Ring value={food.eaten.k} max={goal + food.burned} size={118} stroke={12} color={left < 0 ? c.down : c.cobalt}>
-            <Text num size={26}>
-              {fmt(Math.abs(left))}
-            </Text>
-            <Text variant="xs" weight={700} color="sec">
-              {t(left < 0 ? 'over' : 'left')}
-            </Text>
-          </Ring>
-          <View style={{ flex: 1, gap: 4 }}>
-            {(
-              [
-                ['Eaten', food.eaten.k],
-                ['Goal', goal],
-                ['Burned', food.burned],
-              ] as const
-            ).map(([label, v]) => (
-              <Row key={label} style={{ justifyContent: 'space-between' }}>
-                <Text variant="small" weight={700} color="sec">
-                  {t(label)}
-                </Text>
-                <Text variant="small" num>{`${fmt(v)} ${t('kcal')}`}</Text>
-              </Row>
-            ))}
-            {over || underOk ? (
-              <Springy
-                onPress={() =>
-                  food.eaten.k === 0 && !over
-                    ? toast(t('Log some food first'), { icon: 'info' })
-                    : offBy === 0
-                      ? toast(t('You’re right on your goal.'), { icon: 'check' })
-                      : food.openBalance(over ? 'over' : 'under')
-                }
-                style={{ marginTop: 6 }}>
-                <Text variant="small" weight={700} color="link">
-                  {t('Over or under? Balance it')}
-                </Text>
-              </Springy>
-            ) : null}
+      <TourTarget id="food.summary">
+        <Card>
+          <Row gap={14}>
+            <Ring value={food.eaten.k} max={goal + food.burned} size={118} stroke={12} color={left < 0 ? c.down : c.cobalt}>
+              <Text num size={26}>
+                {fmt(Math.abs(left))}
+              </Text>
+              <Text variant="xs" weight={700} color="sec">
+                {t(left < 0 ? 'over' : 'left')}
+              </Text>
+            </Ring>
+            <View style={{ flex: 1, gap: 4 }}>
+              {(
+                [
+                  ['Eaten', food.eaten.k],
+                  ['Goal', goal],
+                  ['Burned', food.burned],
+                ] as const
+              ).map(([label, v]) => (
+                <Row key={label} style={{ justifyContent: 'space-between' }}>
+                  <Text variant="small" weight={700} color="sec">
+                    {t(label)}
+                  </Text>
+                  <Text variant="small" num>{`${fmt(v)} ${t('kcal')}`}</Text>
+                </Row>
+              ))}
+              {over || underOk ? (
+                <Springy
+                  onPress={() =>
+                    food.eaten.k === 0 && !over
+                      ? toast(t('Log some food first'), { icon: 'info' })
+                      : offBy === 0
+                        ? toast(t('You’re right on your goal.'), { icon: 'check' })
+                        : food.openBalance(over ? 'over' : 'under')
+                  }
+                  style={{ marginTop: 6 }}>
+                  <Text variant="small" weight={700} color="link">
+                    {t('Over or under? Balance it')}
+                  </Text>
+                </Springy>
+              ) : null}
+            </View>
+          </Row>
+          <View style={{ marginTop: 16 }}>
+            <MacroBars />
           </View>
-        </Row>
-        <View style={{ marginTop: 16 }}>
-          <MacroBars />
-        </View>
-      </Card>
+        </Card>
+      </TourTarget>
 
       <Button title={t('Log food')} icon="plus" onPress={() => food.setLogOpen(true)} />
 

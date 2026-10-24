@@ -12,6 +12,7 @@ import { List, ListRow } from '@/components/social/List';
 import { PartnerCycles } from '@/components/social/PartnerCycles';
 import { SocialInvites } from '@/components/social/SocialInvites';
 import { Text } from '@/components/Text';
+import { TourTarget, useTour } from '@/components/tour/Tour';
 import { GroupWorkoutsCard } from '@/components/train/GroupWorkoutsCard';
 import { useToast } from '@/components/Toast';
 import { Button, Card, NavButton, Row, Segmented, Springy } from '@/components/ui';
@@ -53,6 +54,7 @@ export default function Friends() {
   const { colors: c } = useSettings();
   const { session } = useAuth();
   const [tab, setTab] = useState<Tab>('friends');
+  useTour('friends');
   const [friends, setFriends] = useState<FriendRow[] | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
@@ -86,7 +88,11 @@ export default function Friends() {
   );
 
   return (
-    <Screen title={t('Gym Bros')} large tabs right={<NavButton icon="userplus" label={t('Add a friend')} onPress={() => setAdding(true)} />}>
+    <Screen title={t('Gym Bros')} large tabs right={
+        <TourTarget id="friends.add">
+          <NavButton icon="userplus" label={t('Add a friend')} onPress={() => setAdding(true)} />
+        </TourTarget>
+      }>
       {offline ? (
         <Card style={{ alignItems: 'center', paddingVertical: 20 }}>
           <Text center>{t('You’re offline. Check your connection and try again.')}</Text>
@@ -109,7 +115,8 @@ export default function Friends() {
       ))}
       <SocialInvites items={invites} onDone={load} />
       <GroupWorkoutsCard />
-      <Segmented<Tab>
+      <TourTarget id="friends.tabs">
+        <Segmented<Tab>
         value={tab}
         options={[
           { value: 'friends', label: t('Friends') },
@@ -117,7 +124,8 @@ export default function Friends() {
           { value: 'activity', label: t('Activity') },
         ]}
         onChange={setTab}
-      />
+        />
+      </TourTarget>
       <View style={{ height: 16 }} />
       {tab === 'friends' ? (
         <FriendsTab friends={friends} reload={load} onAdd={() => setAdding(true)} />

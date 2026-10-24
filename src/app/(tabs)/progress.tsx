@@ -10,6 +10,7 @@ import { SecHead } from '@/components/progress/bits';
 import { Streaks } from '@/components/progress/Streaks';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
+import { TourTarget, useTour } from '@/components/tour/Tour';
 import { Card, NavButton, Segmented } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useSettings } from '@/theme/settings';
@@ -31,6 +32,7 @@ export default function Progress() {
     if (TABS.includes(params.tab as PTab)) setTab(params.tab as PTab);
   }
 
+  useTour('progress');
   const go = (to: PTab, s?: number) => {
     setTab(to);
     if (s != null) setSub(s);
@@ -38,8 +40,13 @@ export default function Progress() {
   };
 
   return (
-    <Screen title={t('Progress')} large tabs scrollRef={scrollRef} right={<NavButton icon="share" label={t('Reports')} onPress={() => router.push('/report')} />}>
-      <Segmented<PTab>
+    <Screen title={t('Progress')} large tabs scrollRef={scrollRef} right={
+        <TourTarget id="progress.reports">
+          <NavButton icon="share" label={t('Reports')} onPress={() => router.push('/report')} />
+        </TourTarget>
+      }>
+      <TourTarget id="progress.tabs">
+        <Segmented<PTab>
         value={tab}
         options={[
           { value: 'overall', label: t('Overall') },
@@ -48,7 +55,8 @@ export default function Progress() {
           { value: 'streaks', label: t('Streaks') },
         ]}
         onChange={(v) => go(v)}
-      />
+        />
+      </TourTarget>
       <View style={{ height: 16 }} />
       {tab === 'overall' ? <Overall go={go} /> : tab === 'body' ? <Body /> : tab === 'recovery' ? <RecoveryTab /> : <Streaks sub={sub} setSub={setSub} />}
 

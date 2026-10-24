@@ -39,6 +39,7 @@ import { ReminderSync } from '@/components/ReminderSync';
 import { Suspended } from '@/components/Suspended';
 import { ToastProvider } from '@/components/Toast';
 import { AiConsentSheet } from '@/components/ai/AiConsentSheet';
+import { TourOverlay } from '@/components/tour/Tour';
 import { UpdateBanner } from '@/components/UpdateBanner';
 import { WorkoutLive } from '@/components/WorkoutLive';
 import { AuthProvider, useAuth } from '@/lib/auth';
@@ -189,6 +190,7 @@ function AppStack({ ready }: { ready: boolean }) {
       <OfflineBanner />
       <UpdateBanner />
       <NotifyBanner />
+      <TourOverlay />
     </>
   );
 }

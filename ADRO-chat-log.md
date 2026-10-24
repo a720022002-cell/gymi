@@ -283,6 +283,12 @@ Passwords and keys are left out on purpose.
 ### App Review account (24 Oct)
 - Created appreview@adroapp.com (username appreview, member, profile filled in, email confirmed); login tested. Password given to the owner in a file, not in the repo or chat. Do not delete it with test users.
 
+### App tour for new accounts (24 Oct)
+- Like the owner's sample video: the first time each tab opens, short cards point at the real buttons (dimmed screen, ring around the button, step dots "2/5", Next, Skip tutorial). Home starts with "Welcome to Adro" (Start, Skip, Don't show tutorials again).
+- Tours: Home (tabs, AI coach, today's card, days, You), Food (+, what's left, reminders, days), Train (week, today's workout, plan, reminder), Progress (four views, reports), Gym Bros (add friends, friends/groups/activity).
+- You → Replay app tour. Seen tours are kept on the phone. Arabic and English, checked with screenshots on the web build.
+- Waits for build 7 (the Live Activity fix changed native code, so no OTA to build 6).
+
 ---
 
 

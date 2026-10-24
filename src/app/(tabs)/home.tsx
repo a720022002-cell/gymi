@@ -16,6 +16,7 @@ import { MainCard } from '@/components/home/MainCard';
 import { Screen } from '@/components/Screen';
 import { Avatar } from '@/components/social/Avatar';
 import { Text } from '@/components/Text';
+import { TourTarget, useTour } from '@/components/tour/Tour';
 import { MissedCard, WorkoutCard } from '@/components/train/WorkoutCard';
 import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
@@ -73,6 +74,7 @@ export default function Home() {
     }, [uid]),
   );
 
+  useTour('home', !(coachMode && profile?.account_type === 'coach'));
   if (coachMode && profile?.account_type === 'coach' && profile.coach_status === 'approved') return <Redirect href="/cclients" />;
   const name = profile?.name || profile?.username || '';
   const date = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date(`${food.day}T12:00:00`));
@@ -96,7 +98,9 @@ export default function Home() {
   const visible = cards.filter((k) => !folded.includes(k));
   const card = (k: HomeCard) =>
     k === 'calories' ? (
-      <MainCard key={k} />
+      <TourTarget key={k} id="home.main">
+        <MainCard />
+      </TourTarget>
     ) : k === 'water' ? (
       <WaterCard key={k} />
     ) : k === 'workout' ? (
@@ -135,6 +139,7 @@ export default function Home() {
         </Row>
       }
       right={
+        <TourTarget id="home.you">
         <Springy onPress={() => router.push('/you')} scaleTo={1.08} accessibilityLabel={t('Profile and settings')}>
           {profile?.avatar_url ? (
             <Avatar id={uid ?? ''} name={name} size={44} url={profile.avatar_url} />
@@ -146,8 +151,11 @@ export default function Home() {
             </Glass>
           )}
         </Springy>
+        </TourTarget>
       }>
-      <DayNav />
+      <TourTarget id="home.days">
+        <DayNav />
+      </TourTarget>
       {past ? null : (
         <>
           {/* Until today's check-in is done (only a sleep logged from the chat has no score yet). */}
