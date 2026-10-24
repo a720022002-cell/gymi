@@ -280,6 +280,9 @@ Passwords and keys are left out on purpose.
 - Likely real cause: iOS runs a LiveActivityIntent in the app only when the app target declares it; expo-widgets declares it only in its library, so taps ran in the widget's process and never reached the app.
 - Fix: plugins/withLiveActivityIntent.js adds the same intent (LiveActivityUserInteraction) to the app target; it hands the tap to the app through ExpoWidgetsLiveTaps (patch). Checked with a prebuild that the file is in the Adro target. Needs a new build (7); not tested on an iPhone yet.
 
+### App Review account (24 Oct)
+- Created appreview@adroapp.com (username appreview, member, profile filled in, email confirmed); login tested. Password given to the owner in a file, not in the repo or chat. Do not delete it with test users.
+
 ---
 
 
