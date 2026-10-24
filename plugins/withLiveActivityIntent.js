@@ -1,14 +1,15 @@
 // Declares the Live Activity button intent in the app itself. iOS runs a LiveActivityIntent in the app's process
 // only when the app declares it; the copy inside expo-widgets alone ran in the widget's process, so taps never
 // reached the app. Same name and parameters as expo-widgets' LiveActivityUserInteraction (see
-// patches/expo-widgets+57.0.27.patch), and it hands the tap over through ExpoWidgetsLiveTaps.
+// patches/expo-widgets+57.0.27.patch), and it hands the tap over through ExpoWidgetsLiveTaps. ExpoWidgets is imported
+// "internal" like everywhere else in the app target (Xcode refuses mixed import levels).
 const { IOSConfig, withDangerousMod, withXcodeProject } = require('expo/config-plugins');
 const fs = require('fs');
 const path = require('path');
 
 const FILE = 'LiveActivityUserInteraction.swift';
 const SOURCE = `import AppIntents
-import ExpoWidgets
+internal import ExpoWidgets
 
 @available(iOS 17.0, *)
 struct LiveActivityUserInteraction: LiveActivityIntent {
