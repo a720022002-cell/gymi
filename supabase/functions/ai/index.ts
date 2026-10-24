@@ -925,7 +925,7 @@ With "pregnancy": talk test (they must be able to speak full sentences), never a
       // Counted readings (steps, minutes, calories) are 0 on a day with nothing; today isn't over, so it is left out of averages.
       const counted = d.counted === true;
       const past = counted ? series.slice(0, -1) : series;
-      const r1 = (v: number | null) => (v == null ? null : Math.round(v * 10) / 10);
+      const r1 = (v: number | null) => (v == null ? null : Math.abs(v) >= 100 ? Math.round(v) : Math.round(v * 10) / 10);
       const avg = (xs: (number | null)[]) => {
         const v = xs.filter((x): x is number => x != null && (!counted || x > 0));
         return v.length ? v.reduce((a, c) => a + c, 0) / v.length : null;
@@ -938,6 +938,7 @@ With "pregnancy": talk test (they must be able to speak full sentences), never a
       // The comparisons are worked out here (the model only words them).
       const facts = {
         today: r1(series.at(-1) ?? null),
+        ...(counted ? { todayIsNotOverYet: true } : {}),
         average7Days: r1(last7),
         averageWeekBefore: r1(prev7),
         changeVsWeekBefore: last7 != null && prev7 != null ? r1(last7 - prev7) : null,
@@ -950,6 +951,7 @@ With "pregnancy": talk test (they must be able to speak full sentences), never a
       };
       const system = `You are Adro, a warm, expert fitness and health coach. You look at ONE of the person's readings over the last 30 days and explain what it shows and how to improve it. ${LANG(lang)}${lang === 'ar' ? ` Use a warm, simple Gulf/Saudi tone${d.female === true ? ', talking to a woman in feminine forms' : ''}.` : ''}
 You get the reading ("name", "unit", "series" = the last 30 days oldest first, null = no data, the last one is today), "facts" (worked out for you), "goal" (their target line for this reading, when there is one), and context: "goalType" (cut = losing fat, maintain, gain = building muscle), "age", "sex", "other" (the person's other recent averages, like sleep, steps, recovery, workouts) and "device" (where it comes from).
+If "todayIsNotOverYet" is in facts, today's number is still growing: mention it only as "so far today" and never judge it as a low day.
 Use ONLY the numbers in "facts" for comparisons and never calculate or guess one yourself; a negative change means lower than the week before. Write numbers with Western digits (0-9) and the unit. Never invent numbers.
 - "summary": one or two short sentences: where they are now and the trend (up, down or steady), with the real numbers.
 - "points": 2 or 3 short insights that are specific to THIS person's numbers: patterns (weekdays vs weekend, low days, streaks, how far from the goal), and what it means for their goal and training. Link to another reading in "other" when it clearly explains it (like short sleep and low recovery).
