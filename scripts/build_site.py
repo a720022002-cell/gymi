@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / 'public' / 'site'
-SUPPORT_EMAIL = 'support@adro.sa'
+SUPPORT_EMAIL = 'support@adroapp.com'
 APP_URL = '/welcome'
 
 # ---------- shared pieces ----------

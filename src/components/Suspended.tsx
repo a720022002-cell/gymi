@@ -9,7 +9,7 @@ import { Icon } from './Icon';
 import { Text } from './Text';
 import { Button, Card } from './ui';
 
-const SUPPORT = 'support@adro.sa';
+const SUPPORT = 'support@adroapp.com';
 
 /** Shown instead of the app when the Adro team suspended your account. */
 export function Suspended() {

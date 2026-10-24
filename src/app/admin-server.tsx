@@ -11,7 +11,7 @@ import { serverStats, type ServerStats, useIsAdmin } from '@/lib/admin';
 import { fmt } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
 
-const SITE = 'https://gymi-inky.vercel.app';
+const SITE = 'https://adroapp.com';
 const REPO = 'a720022002-cell/gymi';
 const FUNCTIONS = `${process.env.EXPO_PUBLIC_SUPABASE_URL ?? ''}/functions/v1/ai`;
 /** Supabase free plan limits, to compare against. */

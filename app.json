@@ -13,7 +13,8 @@
       "supportsTablet": false,
       "associatedDomains": [
         "applinks:gymi-inky.vercel.app",
-        "applinks:adro.sa"
+        "applinks:adroapp.com",
+        "applinks:www.adroapp.com"
       ],
       "config": {
         "usesNonExemptEncryption": false
@@ -39,7 +40,7 @@
             },
             {
               "scheme": "https",
-              "host": "adro.sa",
+              "host": "adroapp.com",
               "pathPrefix": "/i/"
             }
           ],

@@ -8,4 +8,4 @@
 export const EMAIL_CODES = false;
 
 /** Where email links send people back to (this website). */
-export const siteUrl = () => (typeof window !== 'undefined' && window.location ? window.location.origin : 'https://gymi-inky.vercel.app');
+export const siteUrl = () => (typeof window !== 'undefined' && window.location ? window.location.origin : 'https://adroapp.com');

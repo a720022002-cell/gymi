@@ -5,19 +5,132 @@
   "buildCommand": "npx expo export -p web --clear",
   "outputDirectory": "dist",
   "cleanUrls": true,
-  "rewrites": [{ "source": "/((?!\\.well-known/).*)", "destination": "/" }],
+  "rewrites": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "adroapp.com"
+        }
+      ],
+      "destination": "/site/index.html"
+    },
+    {
+      "source": "/privacy",
+      "has": [
+        {
+          "type": "host",
+          "value": "adroapp.com"
+        }
+      ],
+      "destination": "/site/privacy.html"
+    },
+    {
+      "source": "/terms",
+      "has": [
+        {
+          "type": "host",
+          "value": "adroapp.com"
+        }
+      ],
+      "destination": "/site/terms.html"
+    },
+    {
+      "source": "/support",
+      "has": [
+        {
+          "type": "host",
+          "value": "adroapp.com"
+        }
+      ],
+      "destination": "/site/support.html"
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.adroapp.com"
+        }
+      ],
+      "destination": "/site/index.html"
+    },
+    {
+      "source": "/privacy",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.adroapp.com"
+        }
+      ],
+      "destination": "/site/privacy.html"
+    },
+    {
+      "source": "/terms",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.adroapp.com"
+        }
+      ],
+      "destination": "/site/terms.html"
+    },
+    {
+      "source": "/support",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.adroapp.com"
+        }
+      ],
+      "destination": "/site/support.html"
+    },
+    {
+      "source": "/((?!\\.well-known/).*)",
+      "destination": "/"
+    }
+  ],
   "headers": [
     {
       "source": "/manifest.json",
-      "headers": [{ "key": "Content-Type", "value": "application/manifest+json" }]
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/manifest+json"
+        }
+      ]
     },
     {
       "source": "/.well-known/apple-app-site-association",
-      "headers": [{ "key": "Content-Type", "value": "application/json" }]
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/json"
+        }
+      ]
     },
     {
       "source": "/.well-known/assetlinks.json",
-      "headers": [{ "key": "Content-Type", "value": "application/json" }]
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/json"
+        }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.adroapp.com"
+        }
+      ],
+      "destination": "https://adroapp.com/:path*",
+      "permanent": true
     }
   ]
 }

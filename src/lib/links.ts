@@ -1,8 +1,8 @@
 /**
- * Where shared links point (invite codes, coach codes). One place to change when adro.sa goes live; the app
- * already opens links on both hosts (app.json associatedDomains / intentFilters, public/.well-known).
+ * Where shared links point (invite codes, coach codes): the company domain. The app opens links on it (and on the
+ * old vercel.app address) through app.json associatedDomains / intentFilters and public/.well-known.
  */
-export const LINK_BASE = 'https://gymi-inky.vercel.app';
+export const LINK_BASE = 'https://adroapp.com';
 
 /** The app's own scheme, for "Open in Adro" on the website. */
 export const APP_SCHEME = 'adro';
