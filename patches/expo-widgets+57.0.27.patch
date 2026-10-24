@@ -1,0 +1,72 @@
+diff --git a/node_modules/expo-widgets/ios/Widgets/AppIntent.swift b/node_modules/expo-widgets/ios/Widgets/AppIntent.swift
+index 972fa4f..1f95f9b 100644
+--- a/node_modules/expo-widgets/ios/Widgets/AppIntent.swift
++++ b/node_modules/expo-widgets/ios/Widgets/AppIntent.swift
+@@ -119,12 +119,48 @@ struct LiveActivityUserInteraction: LiveActivityIntent {
+   }
+ 
+   func perform() async throws -> some IntentResult {
+-    WidgetsEvents.shared.sendNotification(type: .userEvent, data: [
++    let event: [String: Any] = [
+       "source": source as Any,
+       "target": target as Any,
+       "timestamp": Int(Date().timeIntervalSince1970 * 1000)
+-    ])
+-
++    ]
++    // The app may be asleep: keep the tap until the app's JavaScript takes it (takePendingInteractions), and stay
++    // awake until then, plus a moment for it to update the Live Activity. Without this the tap was often lost.
++    WidgetsPendingInteractions.add(event)
++    WidgetsEvents.shared.sendNotification(type: .userEvent, data: event)
++    for _ in 0..<50 {
++      if WidgetsPendingInteractions.isEmpty { break }
++      try? await Task.sleep(nanoseconds: 100_000_000)
++    }
++    try? await Task.sleep(nanoseconds: 800_000_000)
+     return .result()
+   }
+ }
++
++/** Live Activity taps waiting for the app's JavaScript (kept for a minute at most). */
++enum WidgetsPendingInteractions {
++  private static let lock = NSLock()
++  private static var items: [[String: Any]] = []
++
++  static func add(_ event: [String: Any]) {
++    lock.lock()
++    defer { lock.unlock() }
++    let now = Int(Date().timeIntervalSince1970 * 1000)
++    items = items.filter { now - (($0["timestamp"] as? Int) ?? 0) < 60_000 }
++    items.append(event)
++  }
++
++  static var isEmpty: Bool {
++    lock.lock()
++    defer { lock.unlock() }
++    return items.isEmpty
++  }
++
++  static func take() -> [[String: Any]] {
++    lock.lock()
++    defer { lock.unlock() }
++    let out = items
++    items = []
++    return out
++  }
++}
+diff --git a/node_modules/expo-widgets/ios/WidgetsModule.swift b/node_modules/expo-widgets/ios/WidgetsModule.swift
+index b1b4295..407c97b 100644
+--- a/node_modules/expo-widgets/ios/WidgetsModule.swift
++++ b/node_modules/expo-widgets/ios/WidgetsModule.swift
+@@ -59,6 +59,11 @@ public final class WidgetsModule: Module {
+       }
+     }
+ 
++    // Live Activity taps the app hasn't handled yet (see LiveActivityUserInteraction).
++    Function("takePendingInteractions") { () -> [[String: Any]] in
++      WidgetsPendingInteractions.take()
++    }
++
+     Function("reloadAllWidgets") {
+       WidgetCenter.shared.reloadAllTimelines()
+     }

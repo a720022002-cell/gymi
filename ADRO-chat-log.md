@@ -261,6 +261,11 @@ Passwords and keys are left out on purpose.
 - Build 5 still showed "Type what you ate" behind the keyboard: the sheet's position sat on the same view as its native-driver slide animation, so the keyboard move was likely ignored.
 - Sheet: position and size on a plain outer view, the slide on an inner one. Keyboard height now from the keyboard's top edge, with will/did/change-frame events. Not tested on an iPhone yet; waits for the next update.
 
+### Live Activity buttons did nothing (24 Oct)
+- Cause (most likely): a tap wakes the app in the background, the tap's signal was sent and iOS put the app back to sleep before its JavaScript read it.
+- Fix: expo-widgets patched (patches/expo-widgets+57.0.27.patch, applied by postinstall): a tap waits in a native list and the app stays awake until it is taken (up to 5 s) plus a moment to update the Live Activity. The app takes waiting taps on the event, when it opens, and when the workout or cardio screen starts listening.
+- Native change: needs a new build (build 6); an OTA can't carry it. Not tested on an iPhone yet.
+
 ---
 
 

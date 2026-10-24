@@ -1,6 +1,8 @@
 // Sends the app's numbers to the home screen widgets and keeps the workout Live Activity (Lock Screen and Dynamic
 // Island) up to date. Widgets are only reloaded when what they show changes, so iOS doesn't run out of updates.
+import { requireOptionalNativeModule } from 'expo';
 import { addUserInteractionListener, type LiveActivity } from 'expo-widgets';
+import { AppState } from 'react-native';
 
 import CardioActivity, { type CardioAction, type CardioActivityProps } from '@/widgets/CardioActivity';
 import TodayWidget, { type TodayProps } from '@/widgets/TodayWidget';
@@ -50,16 +52,40 @@ export function syncWorkoutActivity(p: WorkoutActivityProps | null) {
 
 const ACTIONS: string[] = ['w-', 'w+', 'r-', 'r+', 'done', 'skip', 'water'];
 
+// Live Activity taps reach the app as an event, and (from build 6) also wait in a native list until the app takes
+// them, so a tap made while the app was asleep isn't lost. One listener takes them all and hands each to the
+// workout or the cardio session.
+const handlers = new Set<(target: string) => void>();
+const native = requireOptionalNativeModule<{ takePendingInteractions?: () => { target?: string }[] }>('ExpoWidgets');
+const canTake = typeof native?.takePendingInteractions === 'function';
+const deliver = (target: string) => handlers.forEach((h) => h(target));
+const drain = () => {
+  // Nothing listening yet (the workout screen is still loading): leave them for when it is.
+  if (!handlers.size) return;
+  try {
+    for (const e of native?.takePendingInteractions?.() ?? []) if (e.target) deliver(e.target);
+  } catch {}
+};
+let started = false;
+function listen(fn: (target: string) => void) {
+  handlers.add(fn);
+  if (!started) {
+    started = true;
+    try {
+      addUserInteractionListener((e) => (canTake ? drain() : deliver(e.target)));
+      AppState.addEventListener('change', (st) => st === 'active' && drain());
+    } catch {}
+  }
+  // Taps made before this was listening (the app was woken up by one).
+  drain();
+  return () => {
+    handlers.delete(fn);
+  };
+}
+
 /** A button on the workout Live Activity was tapped (iOS 17 and later). Returns a function that stops listening. */
 export function onWorkoutAction(fn: (a: WorkoutAction) => void) {
-  try {
-    const sub = addUserInteractionListener((e) => {
-      if (ACTIONS.includes(e.target)) fn(e.target as WorkoutAction);
-    });
-    return () => sub.remove();
-  } catch {
-    return () => {};
-  }
+  return listen((t) => ACTIONS.includes(t) && fn(t as WorkoutAction));
 }
 
 let cardio: LiveActivity<CardioActivityProps> | null = null;
@@ -86,12 +112,5 @@ const CARDIO_ACTIONS: string[] = ['c-pause', 'c-resume', 'c-finish'];
 
 /** A button on the cardio Live Activity was tapped (iOS 17 and later). Returns a function that stops listening. */
 export function onCardioAction(fn: (a: CardioAction) => void) {
-  try {
-    const sub = addUserInteractionListener((e) => {
-      if (CARDIO_ACTIONS.includes(e.target)) fn(e.target as CardioAction);
-    });
-    return () => sub.remove();
-  } catch {
-    return () => {};
-  }
+  return listen((t) => CARDIO_ACTIONS.includes(t) && fn(t as CardioAction));
 }
