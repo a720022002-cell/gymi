@@ -103,7 +103,7 @@ export default function Connections() {
     } else if (r === 'cancelled') toast(t('{n} isn’t connected yet. Tap it again and finish signing in on the {n} page.', { n }), { icon: 'warn' });
     else if (r === 'denied') toast(t('{n} wasn’t connected: access was not allowed.', { n }), { icon: 'warn' });
     else if (r === 'expired') toast(t('That took too long. Tap {n} to try again.', { n }), { icon: 'warn' });
-    else if (r === 'not_set_up') toast(t('{n} is almost ready. It opens as soon as Adro’s {n} account is approved.', { n }), { icon: 'watch' });
+    else if (r === 'not_set_up') toast(t('{n} is almost ready. It opens as soon as Adro’s {n} account is approved.', { n }), { icon: 'watch', action: { label: t('Got it'), fn: () => {} } });
     else if (r === 'offline') toast(t('You’re offline. Check your connection and try again.'), { icon: 'warn' });
     else if (r === 'failed' || r === 'error') toast(t('Couldn’t connect {n}. Please try again.', { n }), { icon: 'warn' });
     loadWs();
@@ -113,14 +113,17 @@ export default function Connections() {
     const l = linkOf(p);
     return l ? (l.status === 'ok' ? 'Connected' : 'Sign in again') : ws?.configured[p] ? 'Connect' : 'Coming soon';
   };
-  const soon = (n: string) => toast(t('{n} is coming soon. Until then, it reaches Adro through {h}.', { n, h: hub }), { icon: 'watch' });
+  // Fitbit has no direct link: the Google Health app shares it with the phone's health app, which Adro reads.
+  const viaHub = Platform.OS === 'android' ? 'Through Health Connect' : 'Through Apple Health';
+  const fitbitHow = () =>
+    toast(Platform.OS === 'android' ? t('In the Google Health app, turn on sharing with Health Connect. Your Fitbit then reaches Adro on its own.') : t('In the Google Health app: Profile, Settings, Partner apps, Apple Health. Turn on sharing, and your Fitbit reaches Adro on its own.'), { icon: 'watch', action: { label: t('Got it'), fn: () => {} } });
   const direct: { id: string; name: string; art: ArtKind; state: string; on?: boolean; go: () => void }[] = [
     { id: 'phone', name: native ?? 'Apple Health', art: phoneSource === 'health_connect' ? 'health_connect' : 'health', state: phoneSource ? (phoneLinked ? 'Connected' : 'Connect') : 'Phone app', on: phoneLinked, go: tapPhone },
     { id: 'whoop', name: 'WHOOP', art: 'whoop', state: wearState('whoop'), on: linkOf('whoop')?.status === 'ok', go: () => tapWearable('whoop') },
     { id: 'oura', name: 'Oura Ring', art: 'oura', state: wearState('oura'), on: linkOf('oura')?.status === 'ok', go: () => tapWearable('oura') },
-    { id: 'fitbitair', name: 'Google Fitbit Air', art: 'fitbitair', state: 'Coming soon', go: () => soon('Google Fitbit Air') },
+    { id: 'fitbitair', name: 'Google Fitbit Air', art: 'fitbitair', state: viaHub, go: fitbitHow },
     { id: 'polar', name: 'Polar', art: 'polar', state: wearState('polar'), on: linkOf('polar')?.status === 'ok', go: () => tapWearable('polar') },
-    { id: 'fitbit', name: 'Fitbit', art: 'fitbit', state: 'Coming soon', go: () => soon('Fitbit') },
+    { id: 'fitbit', name: 'Fitbit', art: 'fitbit', state: viaHub, go: fitbitHow },
   ];
 
   const section = (title: string, color: string, sub?: string) => (

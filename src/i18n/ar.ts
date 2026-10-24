@@ -4949,4 +4949,8 @@ export const AR: Record<string, string> = {
   "Open sleep": "افتح النوم",
   "Reading your numbers…": "يقرأ أرقامك…",
   "Getting your numbers…": "يجمع أرقامك…",
+  "Through Apple Health": "عن طريق Apple Health",
+  "Through Health Connect": "عن طريق Health Connect",
+  "In the Google Health app, turn on sharing with Health Connect. Your Fitbit then reaches Adro on its own.": "في تطبيق Google Health فعّل المشاركة مع Health Connect، وبعدها بيانات Fitbit توصل Adro لحالها.",
+  "In the Google Health app: Profile, Settings, Partner apps, Apple Health. Turn on sharing, and your Fitbit reaches Adro on its own.": "في تطبيق Google Health: الملف الشخصي، الإعدادات، Partner apps، Apple Health. فعّل المشاركة، وبيانات Fitbit توصل Adro لحالها.",
 };

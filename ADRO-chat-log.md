@@ -253,6 +253,10 @@ Passwords and keys are left out on purpose.
 - The Polar Client ID was saved with a space or line break; the wearables function now trims every provider key (deployed, v18).
 - Fitbit Air: no direct link; it reaches Adro through Google Health → Apple Health.
 
+### Fitbit stays on Apple Health (24 Oct)
+- Owner decision: no direct Fitbit link for now (Google Health API needs Google verification and a yearly security check).
+- Connections: Fitbit and Fitbit Air now say "Through Apple Health" (Health Connect on Android) instead of "Coming soon"; tapping shows how to turn on sharing in the Google Health app. Waits for the next app update.
+
 ---
 
 
