@@ -19,6 +19,8 @@ const env = (k: string, d = '') => Deno.env.get(k) ?? d;
 /** The OpenRouter key; also accepted under the name "OpenRouter". */
 /** The model Adro uses: Claude Haiku (reads photos and PDFs, good Arabic, follows the JSON shape). */
 const HAIKU = 'anthropic/claude-haiku-5.5';
+/** Models an admin may ask for instead, only to measure them against Haiku on the same photos. */
+const BENCH_MODELS = ['anthropic/claude-sonnet-5.5', 'anthropic/claude-opus-5.5'];
 /** Settings and results of one request. Each request has its own, so requests running at the same time never mix
  * (model, temperature, cost). */
 type Ctx = {
@@ -34,6 +36,8 @@ type Ctx = {
   deadline: number;
   /** Longest answer allowed for this task (tokens): a runaway answer can't cost more than the task needs. */
   maxTokens: number;
+  /** Admin-only model for comparing models on the same task (the app never sends one): see BENCH_MODELS. */
+  model?: string;
   /** The database as the signed-in person (reads the foods table for meal photos). */
   db?: ReturnType<typeof createClient>;
   /** The model's route turned down a fixed answer shape: the rest of this request asks in words only. */
@@ -76,13 +80,13 @@ type Msg = { role: 'user' | 'ai'; parts: Part[] };
 
 async function openrouter(system: string, msgs: Msg[], schema?: object): Promise<string> {
   try {
-    return await openrouterCall(HAIKU, system, msgs, schema);
+    return await openrouterCall(cx().model ?? HAIKU, system, msgs, schema);
   } catch (e) {
     // Only a busy model, a timeout, an empty answer or a server error is tried once more (Haiku again, never another
     // model), and only with time left. A bad key or a bad request won't work on a second try.
     if (!retryable(e) || timeLeft() < 15_000) throw e;
     await new Promise((r) => setTimeout(r, 1500));
-    return openrouterCall(HAIKU, system, msgs, schema);
+    return openrouterCall(cx().model ?? HAIKU, system, msgs, schema);
   }
 }
 const retryable = (e: unknown) => (e as Error).message === 'busy' || /^openrouter 5\d\d/.test((e as Error).message);
@@ -279,8 +283,8 @@ Work in this order and write it in "seen" (one or two short sentences, English i
 0. If a kitchen scale display or a weight printed on the package is readable, use that number as the total weight and split it between the parts. Say so.
 1. Name the dish exactly. Gulf, Arab, Indian and fast food are common in Saudi Arabia. Food held in a hand, on a table or in a box is real food: never call it fake, plastic or decorative. Whole fruit look-alikes, check the shape and the stem end before you decide: yellow or golden apple (round, stem in a dimple on top, small dried flower at the bottom, often speckled skin) vs mango (oval or kidney shaped, smooth, no dimple, a small stem point at one end, about 12 cm long) vs pear (narrows to a neck at the stem) vs quince (lumpy, fuzzy) vs lemon (pointed ends, pitted peel) vs yellow plum (small, about 5 cm). Green apple vs guava vs lime; orange vs mandarin vs grapefruit; red apple vs pomegranate. Check look-alikes before you decide: kabsa vs mandi vs biryani vs machboos vs mathbi; shawarma wrap vs falafel wrap; shakshuka vs eggs in tomato; harees vs jareesh vs oats; saleeg vs rice pudding; mutabbaq vs pizza; luqaimat vs donut holes. Put the 2 next most likely dish names in "alternatives".
 2. Count what can be counted: chicken pieces, eggs, falafel, dates, bread, sambousek, nuggets. Say the counts.
-3. Size things against what is in the photo: a dinner plate is about 26 cm, a side plate 20 cm, a bowl about 350 ml, a frying pan 26 to 30 cm, a shared Saudi tray (sahan) 45 to 60 cm, a spoon 15 cm, a fork 19 cm, a phone 15 cm. An adult hand: palm about 8.5 cm wide, hand about 19 cm long from wrist to fingertip, a finger about 2 cm wide. Estimate how full the container is and how high the food is piled. For whole fruit or vegetables, estimate each one's length and width in cm.
-4. Weigh each part in grams from the size and count. For whole fruit and vegetables, count them and use a typical weight per piece, adjusted only a little for size (do not calculate from length and width): the short Middle Eastern cucumber common in Saudi Arabia (14 to 18 cm) is about 120 g, a long English cucumber 300 g; tomato 120 g; onion 150 g; apple 180 g; orange 150 g; banana 120 g peeled; potato 200 g; carrot 70 g. Do not underestimate cooked food: a full dinner plate of rice is 350 to 500 g cooked; one chicken leg quarter is about 250 g with bone (180 g edible); a whole half chicken is about 450 g; one large egg is 50 g; one falafel ball 17 to 20 g; one Arabic bread 60 to 80 g; one medium date 8 g. If the photo shows a shared tray, estimate the whole tray and say so in "note".
+3. Size things against what is in the photo: a dinner plate is about 26 cm, a side plate 20 cm, a bowl about 350 ml, a frying pan 26 to 30 cm, a shared Saudi tray (sahan) 45 to 60 cm, a spoon 15 cm, a fork 19 cm, a phone 15 cm. An adult hand: palm about 8.5 cm wide, hand about 19 cm long from wrist to fingertip, a finger about 2 cm wide. Measure, don't assume a full portion: estimate what share of the plate each food covers and how thick it is (a few pieces spread on a big plate are a small portion, often 50 to 150 g). Estimate how full the container is and how high the food is piled. For whole fruit or vegetables, estimate each one's length and width in cm.
+4. Weigh each part in grams from the size and count. For whole fruit and vegetables, count them and use a typical weight per piece, adjusted only a little for size (do not calculate from length and width): the short Middle Eastern cucumber common in Saudi Arabia (14 to 18 cm) is about 120 g, a long English cucumber 300 g; tomato 120 g; onion 150 g; apple 180 g; orange 150 g; banana 120 g peeled; potato 200 g; carrot 70 g. Reference weights: a dinner plate fully covered with rice 2 to 3 cm deep is 350 to 500 g cooked (a quarter of the plate is about 100 g); one chicken leg quarter is about 250 g with bone (180 g edible); a whole half chicken is about 450 g; one large egg is 50 g; one falafel ball 17 to 20 g; one Arabic bread 60 to 80 g; one medium date 8 g. If the photo shows a shared tray, estimate the whole tray and say so in "note".
 5. Count calories for each part as cooked and served, including the oil or ghee it is cooked in (rice in kabsa or mandi is about 170 to 190 kcal per 100 g; fried foods soak up oil). The calories must match the macros: about 4 kcal per g of protein and of carbs, 9 per g of fat.
 6. For each item give "lookup": the food's plain English name as a nutrition table lists it, without the count or the amount (like "Apple", "Mango", "White rice, cooked", "Chicken breast, grilled", "Egg, boiled", "Arabic bread (pita)", "Chicken kabsa", "French fries"). Name the food as it is in the photo (cooked or raw, fried or grilled).
 ${PORTIONS}
@@ -1107,6 +1111,12 @@ async function handle(req: Request) {
     cx().lastModel = '';
     cx().lastDetail = '';
     cx().db = userClient;
+    cx().model = undefined;
+    if (typeof body.model === 'string' && BENCH_MODELS.includes(body.model)) {
+      const { data: isAdmin } = await admin.from('admins').select('user_id').eq('user_id', u.user.id).maybeSingle();
+      if (!isAdmin) return json({ error: 'auth' }, 403);
+      cx().model = body.model;
+    }
     cx().maxTokens = TASK_TOKENS[task] ?? MAX_TOKENS;
     cx().temperature = ['meal_photo', 'food_text', 'label_photo', 'blood', 'machine', 'plan', 'plan_review', 'recipe'].includes(task) ? 0 : undefined;
     cx().lastUsage = { prompt: 0, completion: 0, cost: 0 };
