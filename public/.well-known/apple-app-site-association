@@ -2,11 +2,11 @@
   "applinks": {
     "details": [
       {
-        "appIDs": ["TEAMID.com.adro.app"],
+        "appIDs": ["7BS2Z3743C.com.adro.app"],
         "components": [
           {
             "/": "/i/*",
-            "comment": "Invite links (friend and coach codes) open Adro. Replace TEAMID with the Apple Developer Team ID."
+            "comment": "Invite links (friend and coach codes) open Adro."
           }
         ]
       }

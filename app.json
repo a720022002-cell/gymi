@@ -18,7 +18,8 @@
       ],
       "config": {
         "usesNonExemptEncryption": false
-      }
+      },
+      "appleTeamId": "7BS2Z3743C"
     },
     "android": {
       "package": "com.adro.app",
