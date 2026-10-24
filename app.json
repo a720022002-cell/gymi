@@ -216,7 +216,8 @@
           "isAndroidForegroundServiceEnabled": true
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "./plugins/withWidgetIntents"
     ],
     "experiments": {
       "typedRoutes": true,
