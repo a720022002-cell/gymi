@@ -16,14 +16,15 @@ type Insight = { summary: string; points: string[]; tip: string };
  * The coach's analysis of one reading over its last 30 days. Asked once and kept until the numbers change
  * (counted readings like steps only when a past day changes, so walking today doesn't ask again).
  */
-export function ReadingInsight({ id, day, data, ready }: { id: string; day: string; data: Record<string, unknown> & { series: (number | null)[]; counted?: boolean }; ready: boolean }) {
+export function ReadingInsight({ id, day, data, ready }: { id: string; day: string; data: Record<string, unknown> & { series: (number | null)[]; counted?: boolean; liveToday?: boolean }; ready: boolean }) {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
   const [v, setV] = useState<Insight | null>(null);
   const [err, setErr] = useState<AiError | null>(null);
   const [busy, setBusy] = useState(false);
   const key = `ai-reading:${id}:${lang}`;
-  const sig = `${day}|${JSON.stringify(data.counted ? data.series.slice(0, -1) : data.series)}`;
+  // Today's number left out when it moves all day (counted readings, the live recovery score): asked again tomorrow.
+  const sig = `${day}|${JSON.stringify(data.counted || data.liveToday ? data.series.slice(0, -1) : data.series)}`;
 
   const ask = async (alive: () => boolean) => {
     setBusy(true);

@@ -5,6 +5,7 @@ import { View } from 'react-native';
 import { BarChart, LineChart } from '@/components/Charts';
 import { Stepper } from '@/components/food/Stepper';
 import { IllnessCard } from '@/components/health/IllnessCard';
+import { ScoreParts } from '@/components/health/ScoreParts';
 import { Icon, type IconName, Mark } from '@/components/Icon';
 import { Bar, Ring } from '@/components/Ring';
 import { Screen } from '@/components/Screen';
@@ -145,29 +146,7 @@ export default function RecoveryScreen() {
       </Card>
 
       {head(t('What’s in your score'))}
-      <Card>
-        {r.parts.map((p) => (
-          <View key={p.key} style={{ marginTop: 8 }}>
-            <Row style={{ justifyContent: 'space-between' }}>
-              <Row gap={8}>
-                <Icon name={p.icon as IconName} size={16} color={c.cobalt} />
-                <Text variant="small" weight={700}>
-                  {t(p.key)}
-                </Text>
-              </Row>
-              <Text variant="small" weight={700} num>
-                {p.value}
-              </Text>
-            </Row>
-            <View style={{ marginTop: 4 }}>
-              <Bar value={p.value} max={100} color={p.value >= 75 ? c.up : p.value >= 50 ? c.cobalt : c.down} />
-            </View>
-            <Text variant="xs" color="sec" style={{ marginTop: 4 }}>
-              {p.sub ? t(p.sub.t, p.sub as unknown as Record<string, string | number>) : t('Answer the questions above')}
-            </Text>
-          </View>
-        ))}
-      </Card>
+      <ScoreParts parts={r.parts} />
 
       {head(t('Muscles ready to train'))}
       <Card>
