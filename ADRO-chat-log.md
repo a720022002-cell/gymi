@@ -248,6 +248,11 @@ Passwords and keys are left out on purpose.
 - Every reading page (steps, calories burned, weight, sleep, recovery, workouts, heart rate, resting HR, HRV, sleep efficiency, time in bed, VO2 max) shows "Adro's analysis": a summary, 2–3 insights and one tip, from the last 30 days. Comparisons are worked out on the server; the answer is kept until the numbers change.
 - New AI task `reading_insight` (needs the ai function deployed). App part waits for the next update.
 
+### Oura and Polar keys live (24 Oct)
+- Oura and Polar secrets added by the owner; both start their sign-in page with no error (WHOOP too).
+- The Polar Client ID was saved with a space or line break; the wearables function now trims every provider key (deployed, v18).
+- Fitbit Air: no direct link; it reaches Adro through Google Health → Apple Health.
+
 ---
 
 
