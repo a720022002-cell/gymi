@@ -7,7 +7,8 @@
 // Redirect URL to register with each wearable: https://<project>.supabase.co/functions/v1/wearables
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
-const env = (k: string) => Deno.env.get(k) ?? '';
+// Trimmed: a key pasted with a space or line break around it would be turned down by the provider.
+const env = (k: string) => (Deno.env.get(k) ?? '').trim();
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
