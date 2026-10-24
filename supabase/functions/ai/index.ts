@@ -64,7 +64,7 @@ const TASK_TOKENS: Record<string, number> = {
   plan: 16000,
   recipes: 12000,
   cardio_tip: 500,
-  reading_insight: 1200,
+  reading_insight: 2500,
 };
 const timedOut = (e: unknown) => (e as Error)?.name === 'TimeoutError' || (e as Error)?.name === 'AbortError';
 const openrouterKey = () => env('OPENROUTER_API_KEY') || env('OpenRouter') || env('OPENROUTER');
