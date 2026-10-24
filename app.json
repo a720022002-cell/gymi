@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#FFFFFF",
     "ios": {
-      "bundleIdentifier": "com.adro.app",
+      "bundleIdentifier": "com.adroapp.app",
       "supportsTablet": false,
       "associatedDomains": [
         "applinks:gymi-inky.vercel.app",
@@ -22,7 +22,7 @@
       "appleTeamId": "7BS2Z3743C"
     },
     "android": {
-      "package": "com.adro.app",
+      "package": "com.adroapp.app",
       "adaptiveIcon": {
         "backgroundColor": "#3355FF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

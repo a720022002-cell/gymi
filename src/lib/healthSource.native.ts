@@ -57,7 +57,7 @@ const hkSelf = () => {
   try {
     return HK.currentAppSource().bundleIdentifier;
   } catch {
-    return Constants.expoConfig?.ios?.bundleIdentifier ?? 'com.adro.app';
+    return Constants.expoConfig?.ios?.bundleIdentifier ?? 'com.adroapp.app';
   }
 };
 const notMine = (self: string) => (s: { sourceRevision?: { source?: { bundleIdentifier?: string } } }) => s.sourceRevision?.source?.bundleIdentifier !== self;
@@ -204,7 +204,7 @@ const HC_TYPES = [
 const HC_WRITE = ['ExerciseSession', 'ActiveCaloriesBurned', 'Nutrition', 'Hydration', 'Weight'] as const;
 const HC_WORKOUT: Record<number, string> = { 56: 'Run', 79: 'Walk', 8: 'Bike', 74: 'Swim', 73: 'Swim', 70: 'Strength', 81: 'Strength', 36: 'HIIT', 83: 'Yoga' };
 const HC_KIND: Record<string, number> = { Strength: 70, Run: 56, Walk: 79, Bike: 8, Swim: 74, Other: 0 };
-const HC_SELF = Constants.expoConfig?.android?.package ?? 'com.adro.app';
+const HC_SELF = Constants.expoConfig?.android?.package ?? 'com.adroapp.app';
 
 async function hcReady() {
   const status = await HC.getSdkStatus();

@@ -240,7 +240,7 @@ Passwords and keys are left out on purpose.
   - `EXPO_ASC_API_KEY_P8_BASE64` = the .p8 file in base64 (on a Mac: `base64 -i ~/Downloads/AuthKey_XXXX.p8 | pbcopy`)
   - `EXPO_ASC_KEY_ID` = Key ID, `EXPO_ASC_ISSUER_ID` = Issuer ID (App Store Connect → Users and Access → Integrations)
   - `EXPO_APPLE_TEAM_ID` = 7BS2Z3743C, `EXPO_APPLE_TEAM_TYPE` = INDIVIDUAL (or COMPANY_OR_ORGANIZATION if enrolled as a company)
-  - For the next session: write the base64 to a 600-mode file in the scratchpad, set `EXPO_ASC_API_KEY_PATH` to it, then run `eas credentials -p ios` (production, set up all) through a pty, then `eas build -p ios --profile production --non-interactive` and `eas submit -p ios`. Two targets need profiles: com.adro.app and com.adro.app.ExpoWidgetsTarget. Delete the key file afterwards.
+  - For the next session: write the base64 to a 600-mode file in the scratchpad, set `EXPO_ASC_API_KEY_PATH` to it, then run `eas credentials -p ios` (production, set up all) through a pty, then `eas build -p ios --profile production --non-interactive` and `eas submit -p ios`. Two targets need profiles: com.adroapp.app and com.adroapp.app.ExpoWidgetsTarget (com.adro.app was taken at Apple). Delete the key file afterwards.
 - **Push notifications and invite links on phones:** run EAS init (needs `EXPO_TOKEN`) and set up Apple/Google push keys in EAS; put your Apple Team ID in `public/.well-known/apple-app-site-association` and the Android SHA256 in `public/.well-known/assetlinks.json`; then a new build.
 
 - **Login and email-change codes:** built, but off until you add SMTP in Supabase under **Authentication → Emails → SMTP settings**.
