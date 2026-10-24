@@ -56,9 +56,17 @@ const ACTIONS: string[] = ['w-', 'w+', 'r-', 'r+', 'done', 'skip', 'water'];
 // them, so a tap made while the app was asleep isn't lost. One listener takes them all and hands each to the
 // workout or the cardio session.
 const handlers = new Set<(target: string) => void>();
-const native = requireOptionalNativeModule<{ takePendingInteractions?: () => { target?: string }[] }>('ExpoWidgets');
+const native = requireOptionalNativeModule<{
+  takePendingInteractions?: () => { target?: string }[];
+  lastLiveTap?: () => { at?: number; target?: string; process?: string; listening?: boolean } | null;
+}>('ExpoWidgets');
+// When the app's JavaScript last got a tap, for the button check (Widgets page, admins).
+let lastReceived: { at: number; target: string } | null = null;
 const canTake = typeof native?.takePendingInteractions === 'function';
-const deliver = (target: string) => handlers.forEach((h) => h(target));
+const deliver = (target: string) => {
+  lastReceived = { at: Date.now(), target };
+  handlers.forEach((h) => h(target));
+};
 const drain = () => {
   // Nothing listening yet (the workout screen is still loading): leave them for when it is.
   if (!handlers.size) return;
@@ -113,4 +121,13 @@ const CARDIO_ACTIONS: string[] = ['c-pause', 'c-resume', 'c-finish'];
 /** A button on the cardio Live Activity was tapped (iOS 17 and later). Returns a function that stops listening. */
 export function onCardioAction(fn: (a: CardioAction) => void) {
   return listen((t) => CARDIO_ACTIONS.includes(t) && fn(t as CardioAction));
+}
+
+/** The last Live Activity tap as iOS ran it (time, button, which process, app listening) and as the app got it. */
+export function liveTapCheck() {
+  let ran: ReturnType<NonNullable<NonNullable<typeof native>['lastLiveTap']>> = null;
+  try {
+    ran = native?.lastLiveTap?.() ?? null;
+  } catch {}
+  return { ran, received: lastReceived, supported: typeof native?.lastLiveTap === 'function' };
 }

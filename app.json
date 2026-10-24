@@ -216,8 +216,7 @@
           "isAndroidForegroundServiceEnabled": true
         }
       ],
-      "expo-web-browser",
-      "./plugins/withLiveActivityIntent"
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

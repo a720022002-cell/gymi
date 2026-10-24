@@ -1,8 +1,8 @@
 diff --git a/node_modules/expo-widgets/ios/Widgets/AppIntent.swift b/node_modules/expo-widgets/ios/Widgets/AppIntent.swift
-index 972fa4f..e71a042 100644
+index 972fa4f..f8d329f 100644
 --- a/node_modules/expo-widgets/ios/Widgets/AppIntent.swift
 +++ b/node_modules/expo-widgets/ios/Widgets/AppIntent.swift
-@@ -119,12 +119,58 @@ struct LiveActivityUserInteraction: LiveActivityIntent {
+@@ -119,12 +119,65 @@ struct LiveActivityUserInteraction: LiveActivityIntent {
    }
  
    func perform() async throws -> some IntentResult {
@@ -12,12 +12,12 @@ index 972fa4f..e71a042 100644
 +  }
 +}
 +
-+/**
-+ * Hands a Live Activity tap to the app's JavaScript. Public so the app can declare the same intent in its own target:
-+ * iOS runs a LiveActivityIntent in the app's process only when the app itself declares it.
-+ */
-+public enum ExpoWidgetsLiveTaps {
-+  public static func receive(source: String?, target: String?) async {
++/** Hands a Live Activity tap to the app's JavaScript. */
++enum ExpoWidgetsLiveTaps {
++  /** The app's JavaScript is listening for taps (set by WidgetsModule). */
++  static var listening = false
++
++  static func receive(source: String?, target: String?) async {
 +    let event: [String: Any] = [
        "source": source as Any,
        "target": target as Any,
@@ -26,6 +26,13 @@ index 972fa4f..e71a042 100644
 +    ]
 +    // The app may be asleep: keep the tap until the app's JavaScript takes it (takePendingInteractions), and stay
 +    // awake until then, plus a moment for it to update the Live Activity.
++    // A check the app shows (Widgets page, admins): did the tap run, in which process, and was the app listening.
++    WidgetsStorage.set([
++      "at": event["timestamp"] as Any,
++      "target": target ?? "",
++      "process": Bundle.main.bundleIdentifier ?? "",
++      "listening": listening
++    ], forKey: "__adro_last_live_tap")
 +    WidgetsPendingInteractions.add(event)
 +    WidgetsEvents.shared.sendNotification(type: .userEvent, data: event)
 +    for _ in 0..<50 {
@@ -65,16 +72,37 @@ index 972fa4f..e71a042 100644
    }
  }
 diff --git a/node_modules/expo-widgets/ios/WidgetsModule.swift b/node_modules/expo-widgets/ios/WidgetsModule.swift
-index b1b4295..407c97b 100644
+index b1b4295..5df638e 100644
 --- a/node_modules/expo-widgets/ios/WidgetsModule.swift
 +++ b/node_modules/expo-widgets/ios/WidgetsModule.swift
-@@ -59,6 +59,11 @@ public final class WidgetsModule: Module {
+@@ -18,6 +18,7 @@ public final class WidgetsModule: Module {
+     Events(onPushToStartTokenReceived, onTokenReceived, onUserInteraction)
+ 
+     OnStartObserving(onUserInteraction) {
++      ExpoWidgetsLiveTaps.listening = true
+       NotificationCenter.default.addObserver(
+         self,
+         selector: #selector(handleUserInteractionNotification),
+@@ -27,6 +28,7 @@ public final class WidgetsModule: Module {
+     }
+ 
+     OnStopObserving(onUserInteraction) {
++      ExpoWidgetsLiveTaps.listening = false
+       NotificationCenter.default.removeObserver(
+         self,
+         name: onUserInteractionNotification,
+@@ -59,6 +61,16 @@ public final class WidgetsModule: Module {
        }
      }
  
 +    // Live Activity taps the app hasn't handled yet (see LiveActivityUserInteraction).
 +    Function("takePendingInteractions") { () -> [[String: Any]] in
 +      WidgetsPendingInteractions.take()
++    }
++
++    // The last Live Activity tap, wherever it ran (see ExpoWidgetsLiveTaps).
++    Function("lastLiveTap") { () -> [String: Any]? in
++      WidgetsStorage.getDictionary(forKey: "__adro_last_live_tap")
 +    }
 +
      Function("reloadAllWidgets") {

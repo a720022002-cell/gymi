@@ -4986,4 +4986,7 @@ export const AR: Record<string, string> = {
   "A report for a week, a month or any dates you pick, to keep or share with your coach or doctor.": "تقرير لأسبوع أو شهر أو أي تواريخ تختارها، تحتفظ فيه أو ترسله لمدربك أو دكتورك.",
   "Add friends by username or send them your invite link.": "أضف أصدقاءك باسم المستخدم أو أرسل لهم رابط الدعوة حقك.",
   "Your friends, groups and challenges, and what everyone did. Start a group workout or a challenge from here.": "أصدقاؤك ومجموعاتك وتحدياتك، ووش سوى كل واحد. ابدأ تمرين جماعي أو تحدي من هنا.",
+  "Button check (admins)": "فحص الأزرار (للأدمن)",
+  "Needs a newer app build.": "يحتاج نسخة أحدث من التطبيق.",
+  "Refresh": "تحديث",
 };

@@ -302,6 +302,10 @@ Passwords and keys are left out on purpose.
 - Cost per photo: Haiku $0.0009, Flash-Lite $0.0017, Flash $0.0059, Argon $0.0099, Sonnet $0.012, Opus $0.022.
 - Gemini models no longer lean to overestimating (about half over, half under). Waiting for the owner's choice.
 
+### Builds 7 and 8 failed; Lock Screen buttons, next step (24 Oct)
+- Build 7: Xcode refused a plain "import ExpoWidgets" next to "internal import" elsewhere. Build 8: "a static dependency conflicts with LiveActivityUserInteraction", which shows the app already had the intent through expo-widgets: the "app doesn't declare it" theory was wrong. The app-target copy (plugin) is removed.
+- Added a check instead of guessing again: every Lock Screen tap records when it ran, the button, the process (app or widget) and whether the app was listening; the app records when it got it. Shown on You → Widgets for admins ("Button check").
+
 ---
 
 

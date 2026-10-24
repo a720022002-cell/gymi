@@ -14,3 +14,10 @@ export function syncCardioActivity(_p: CardioActivityProps | null) {}
 export function onCardioAction(_fn: (a: CardioAction) => void) {
   return () => {};
 }
+export function liveTapCheck(): {
+  ran: { at?: number; target?: string; process?: string; listening?: boolean } | null;
+  received: { at: number; target: string } | null;
+  supported: boolean;
+} {
+  return { ran: null, received: null, supported: false };
+}

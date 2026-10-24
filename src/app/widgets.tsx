@@ -1,14 +1,17 @@
+import { useState } from 'react';
 import { Platform, View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { Text } from '@/components/Text';
-import { Card, Label, Toggle } from '@/components/ui';
+import { Button, Card, Label, Toggle } from '@/components/ui';
 import { LockScreen, MEDIUM, TodayMedium, TodaySmall, TrainMedium, TrainSmall, WorkoutCard } from '@/components/widgets/WidgetPreviews';
 import { useT } from '@/i18n';
+import { useIsAdmin } from '@/lib/admin';
 import { useTrain } from '@/lib/train';
 import { useWeight } from '@/lib/units';
 import { useWidgetData } from '@/lib/widgetData';
+import { liveTapCheck } from '@/lib/widgetSync';
 import { useSettings } from '@/theme/settings';
 import type { TodayProps } from '@/widgets/TodayWidget';
 import type { TrainProps } from '@/widgets/TrainWidget';
@@ -21,6 +24,7 @@ export default function Widgets() {
   const data = useWidgetData();
   const { todayName } = useTrain();
   const ios = Platform.OS === 'ios';
+  const admin = useIsAdmin();
 
   // Your numbers when they're loaded, an example otherwise.
   const L = { left: t('kcal left'), over: t('kcal over'), eaten: t('Eaten'), protein: t('Protein'), steps: t('Steps'), today: t('Today') };
@@ -153,6 +157,7 @@ export default function Widgets() {
           <Toggle value={liveActivity} onChange={setLiveActivity} label={t('Show my workout on the Lock Screen')} />
         </View>
       </Card>
+      {ios && admin ? <TapCheck /> : null}
       {ios ? (
         <Text variant="xs" color="sec" style={{ marginTop: 8, marginHorizontal: 4, marginBottom: 24 }}>
           {t('Not showing? Check Settings → Adro → Live Activities on your iPhone.')}
@@ -161,5 +166,30 @@ export default function Widgets() {
         <View style={{ height: 24 }} />
       )}
     </Screen>
+  );
+}
+
+/**
+ * For admins: did the last Lock Screen button tap run, in which process (the app or the widget), was the app
+ * listening, and did the app get it. Tap a button on the Live Activity, then come back here.
+ */
+function TapCheck() {
+  const { t } = useT();
+  const [x, setX] = useState(liveTapCheck);
+  const time = (ms?: number) => (ms ? new Date(ms).toLocaleTimeString() : '–');
+  return (
+    <Card style={{ marginTop: 12 }}>
+      <Text weight={700}>{t('Button check (admins)')}</Text>
+      {!x.supported ? (
+        <Text variant="small" color="sec">
+          {t('Needs a newer app build.')}
+        </Text>
+      ) : (
+        <Text variant="small" color="sec" style={{ marginTop: 4 }}>
+          {`Ran: ${time(x.ran?.at)} · ${x.ran?.target ?? '–'} · ${x.ran?.process ?? '–'} · listening ${x.ran?.listening == null ? '–' : x.ran.listening ? 'yes' : 'no'}\nApp got: ${time(x.received?.at)} · ${x.received?.target ?? '–'}`}
+        </Text>
+      )}
+      <Button small kind="soft" title={t('Refresh')} style={{ marginTop: 8, alignSelf: 'flex-start' }} onPress={() => setX(liveTapCheck())} />
+    </Card>
   );
 }
