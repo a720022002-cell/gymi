@@ -20,7 +20,7 @@ const env = (k: string, d = '') => Deno.env.get(k) ?? d;
 /** The model Adro uses: Claude Haiku (reads photos and PDFs, good Arabic, follows the JSON shape). */
 const HAIKU = 'anthropic/claude-haiku-5.5';
 /** Models an admin may ask for instead, only to measure them against Haiku on the same photos. */
-const BENCH_MODELS = ['anthropic/claude-sonnet-5.5', 'anthropic/claude-opus-5.5'];
+const BENCH_MODELS = ['anthropic/claude-sonnet-5.5', 'anthropic/claude-opus-5.5', 'google/gemini-4-argon', 'google/gemini-3.8-flash', 'google/gemini-3.5-flash-lite'];
 /** Settings and results of one request. Each request has its own, so requests running at the same time never mix
  * (model, temperature, cost). */
 type Ctx = {

@@ -295,6 +295,13 @@ Passwords and keys are left out on purpose.
 - Real cost per photo: Haiku $0.0009, Sonnet $0.012, Opus $0.022.
 - OpenRouter balance: $5 total, $3.47 used (~$1.5 left). Needs a top-up.
 
+### Meal photos: Gemini vs Claude (24 Oct)
+- Same 40 lab-weighed Nutrition5k dishes. Median calorie error / weight error / protein error / within 20%:
+  Haiku before 75% / 58% / 15 g / 8; Haiku after 62% / 45% / 11 g / 6; Gemini 3.5 Flash-Lite 32% / 16% / 5.5 g / 11; Gemini 3.8 Flash 31% / 17% / 3.1 g / 13; Gemini 4 Argon 31% / 21% / 3.4 g / 14.
+  On the 23 dishes all answered: Sonnet 5.5 39%, Opus 5.5 53%.
+- Cost per photo: Haiku $0.0009, Flash-Lite $0.0017, Flash $0.0059, Argon $0.0099, Sonnet $0.012, Opus $0.022.
+- Gemini models no longer lean to overestimating (about half over, half under). Waiting for the owner's choice.
+
 ---
 
 
