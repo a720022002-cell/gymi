@@ -257,6 +257,10 @@ Passwords and keys are left out on purpose.
 - Owner decision: no direct Fitbit link for now (Google Health API needs Google verification and a yearly security check).
 - Connections: Fitbit and Fitbit Air now say "Through Apple Health" (Health Connect on Android) instead of "Coming soon"; tapping shows how to turn on sharing in the Google Health app. Waits for the next app update.
 
+### Keyboard over sheets, second try (24 Oct)
+- Build 5 still showed "Type what you ate" behind the keyboard: the sheet's position sat on the same view as its native-driver slide animation, so the keyboard move was likely ignored.
+- Sheet: position and size on a plain outer view, the slide on an inner one. Keyboard height now from the keyboard's top edge, with will/did/change-frame events. Not tested on an iPhone yet; waits for the next update.
+
 ---
 
 
