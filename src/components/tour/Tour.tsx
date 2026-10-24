@@ -191,20 +191,26 @@ export function TourOverlay() {
             backgroundColor: c.card,
             borderRadius: 28,
             padding: 22,
-            alignItems: 'center',
           }}>
-          <Mark size={46} color={c.cobalt} stroke={7} />
+          <View style={{ alignItems: 'center' }}>
+            <Mark size={46} color={c.cobalt} stroke={7} />
+          </View>
           <Text variant="h2" center style={{ marginTop: 12 }}>
             {t('Welcome to Adro')}
           </Text>
           <Text color="sec" center style={{ marginTop: 6 }}>
             {t('A quick tour of the app, about a minute. Each tab shows its own short tour the first time you open it. Replay it any time from You.')}
           </Text>
-          <Row gap={10} style={{ marginTop: 18, alignSelf: 'stretch' }}>
-            <Button kind="soft" title={t('Skip')} style={{ flex: 1 }} onPress={() => end()} />
-            <Button title={t('Start')} style={{ flex: 1 }} onPress={() => set({ ...s, intro: false })} />
+          {/* Each button in its own half (Button doesn't take flex itself), so the row has its full height. */}
+          <Row gap={10} style={{ marginTop: 18 }}>
+            <View style={{ flex: 1 }}>
+              <Button kind="soft" title={t('Skip')} style={{ alignSelf: 'stretch' }} onPress={() => end()} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button title={t('Start')} style={{ alignSelf: 'stretch' }} onPress={() => set({ ...s, intro: false })} />
+            </View>
           </Row>
-          <Springy onPress={() => end(true)} style={{ marginTop: 14, padding: 4 }}>
+          <Springy onPress={() => end(true)} style={{ marginTop: 14, padding: 4, alignSelf: 'center' }}>
             <Text variant="small" color="sec">
               {t('Don’t show tutorials again')}
             </Text>
