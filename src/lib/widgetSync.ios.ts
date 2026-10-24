@@ -58,7 +58,9 @@ const ACTIONS: string[] = ['w-', 'w+', 'r-', 'r+', 'done', 'skip', 'water'];
 const handlers = new Set<(target: string) => void>();
 const native = requireOptionalNativeModule<{ takePendingInteractions?: () => { target?: string }[] }>('ExpoWidgets');
 const canTake = typeof native?.takePendingInteractions === 'function';
-const deliver = (target: string) => handlers.forEach((h) => h(target));
+// Taps that came before anything was listening (the app was opened by one), handed over when something listens.
+const early: string[] = [];
+const deliver = (target: string) => (handlers.size ? handlers.forEach((h) => h(target)) : early.push(target));
 const drain = () => {
   // Nothing listening yet (the workout screen is still loading): leave them for when it is.
   if (!handlers.size) return;
@@ -77,10 +79,16 @@ function listen(fn: (target: string) => void) {
     } catch {}
   }
   // Taps made before this was listening (the app was woken up by one).
+  early.splice(0).forEach(fn);
   drain();
   return () => {
     handlers.delete(fn);
   };
+}
+
+/** A Live Activity button opened the app with this action (adro://la?a=…, see app/la.tsx). */
+export function deliverLiveAction(action: string) {
+  deliver(action);
 }
 
 /** A button on the workout Live Activity was tapped (iOS 17 and later). Returns a function that stops listening. */

@@ -1,5 +1,5 @@
-import { Button, HStack, Image, Spacer, Text, VStack } from '@expo/ui/swift-ui';
-import { activityBackgroundTint, buttonBorderShape, buttonStyle, controlSize, font, foregroundStyle, frame, labelStyle, lineLimit, minimumScaleFactor, monospacedDigit, padding, tint } from '@expo/ui/swift-ui/modifiers';
+import { HStack, Image, Link, Spacer, Text, VStack } from '@expo/ui/swift-ui';
+import { activityBackgroundTint, backgroundOverlay, clipShape, font, foregroundStyle, frame, lineLimit, minimumScaleFactor, monospacedDigit, padding } from '@expo/ui/swift-ui/modifiers';
 import { createLiveActivity, type LiveActivityEnvironment } from 'expo-widgets';
 import type { ComponentProps } from 'react';
 
@@ -61,16 +61,18 @@ const CardioActivity = (p: CardioActivityProps, env: LiveActivityEnvironment) =>
       <Spacer />
     </HStack>
   );
+  // A round button that opens the app with the action (adro://la?a=…, app/la.tsx).
+  const round = (action: string, symbol: ComponentProps<typeof Image>['systemName'], fg: string, bg: string) => (
+    <Link destination={`adro://la?a=${encodeURIComponent(action)}`}>
+      <Image systemName={symbol} color={fg} size={14} modifiers={[frame({ width: 32, height: 32 }), backgroundOverlay({ color: bg }), clipShape('circle')]} />
+    </Link>
+  );
   const controls = (
     <HStack spacing={8}>
       <Text modifiers={[font({ size: 12, weight: 'medium' }), foregroundStyle(tipColor), lineLimit(2), minimumScaleFactor(0.8)]}>{p.paused ? p.L.paused : p.tip}</Text>
       <Spacer />
-      {p.paused ? (
-        <Button target="c-resume" label={p.L.resume} systemImage="play.fill" modifiers={[labelStyle('iconOnly'), buttonStyle('bordered'), buttonBorderShape('circle'), controlSize('small'), tint('#FFFFFF')]} />
-      ) : (
-        <Button target="c-pause" label={p.L.pause} systemImage="pause.fill" modifiers={[labelStyle('iconOnly'), buttonStyle('bordered'), buttonBorderShape('circle'), controlSize('small'), tint('#FFFFFF')]} />
-      )}
-      <Button target="c-finish" label={p.L.finish} systemImage="stop.fill" modifiers={[labelStyle('iconOnly'), buttonStyle('borderedProminent'), buttonBorderShape('circle'), controlSize('small'), tint('#EF4444')]} />
+      {p.paused ? round('c-resume', 'play.fill', '#FFFFFF', '#3F3F46') : round('c-pause', 'pause.fill', '#FFFFFF', '#3F3F46')}
+      {round('c-finish', 'stop.fill', '#FFFFFF', '#EF4444')}
     </HStack>
   );
   return {

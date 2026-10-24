@@ -266,6 +266,12 @@ Passwords and keys are left out on purpose.
 - Fix: expo-widgets patched (patches/expo-widgets+57.0.27.patch, applied by postinstall): a tap waits in a native list and the app stays awake until it is taken (up to 5 s) plus a moment to update the Live Activity. The app takes waiting taps on the event, when it opens, and when the workout or cardio screen starts listening.
 - Native change: needs a new build (build 6); an OTA can't carry it. Not tested on an iPhone yet.
 
+### Live Activity buttons, second try (24 Oct)
+- Build 6 test by the owner: taps never reach the app at all (even with the app open), so the in-place buttons' intent never runs.
+- Now every button is a link (adro://la?a=done …) that opens Adro, which does the action (app/la.tsx) and shows the workout or cardio screen. Works for sure, but opens the app instead of changing the number on the Lock Screen.
+- Pure JavaScript change (the layout is sent at runtime), so an OTA update can carry it to build 6.
+- Recovery tab: "What's in your score" and Adro's analysis. Reading analysis answer limit 2500 tokens, above/below the goal decided on the server (ai v95, tested 5/5).
+
 ---
 
 
