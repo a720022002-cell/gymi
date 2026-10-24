@@ -2,6 +2,7 @@
 // (functions/wearables) keeps the keys and pulls one summary per day into "wearable_days"; the app only asks it
 // to start a sign-in, sync, or disconnect, and reads the days.
 import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 
 import { supabase } from './supabase';
@@ -52,14 +53,39 @@ export async function wearableStatus(): Promise<WearableStatus | null> {
 /** Where the wearable's sign-in sends you back: Connections, on the web or in the phone app. */
 const returnTo = (path: string) => (Platform.OS === 'web' && typeof window !== 'undefined' ? `${window.location.origin}${path}` : Linking.createURL(path));
 
-/** Open the wearable's own sign-in. Coming back to `path` (Connections) with ?wearable=…&status=finish&state=… is
- * confirmed with finishWearable. */
-export async function linkWearable(p: WearableProvider, path = '/connections'): Promise<'opened' | 'not_set_up' | 'offline' | 'failed'> {
-  const { data, code } = await call<{ url: string }>({ action: 'start', provider: p, return_to: returnTo(path) });
+/** One query value from a URL (adro:///… links included). */
+const param = (url: string, key: string) => {
+  const m = new RegExp(`[?&]${key}=([^&#]*)`).exec(url);
+  return m ? decodeURIComponent(m[1].replace(/\+/g, ' ')) : null;
+};
+
+/** How a sign-in ended: "opened" (web: the page left for the maker's sign-in), or, on the phone, the result. */
+export type LinkResult = 'opened' | 'linked' | 'denied' | 'expired' | 'error' | 'cancelled' | 'not_set_up' | 'offline' | 'failed';
+
+/**
+ * Open the wearable's own sign-in. On the web the page goes there and comes back to `path` (Connections) with
+ * ?wearable=…&status=finish&state=…, confirmed with finishWearable. On the phone it opens in a sign-in window inside
+ * the app that closes by itself when the maker sends you back, and the link is confirmed right away. Closed before
+ * the end: checked once more (the maker may have finished anyway), else "cancelled".
+ */
+export async function linkWearable(p: WearableProvider, path = '/connections'): Promise<LinkResult> {
+  const back = returnTo(path);
+  const { data, code } = await call<{ url: string }>({ action: 'start', provider: p, return_to: back });
   if (!data?.url) return code === 'not_set_up' || code === 'offline' ? code : 'failed';
-  if (Platform.OS === 'web' && typeof window !== 'undefined') window.location.assign(data.url);
-  else await Linking.openURL(data.url);
-  return 'opened';
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    window.location.assign(data.url);
+    return 'opened';
+  }
+  const state = param(data.url, 'state') ?? '';
+  const r = await WebBrowser.openAuthSessionAsync(data.url, back);
+  if (r.type === 'success') {
+    const status = param(r.url, 'status');
+    if (status === 'finish') return finishWearable(param(r.url, 'state') ?? state);
+    return status === 'denied' || status === 'expired' ? status : 'error';
+  }
+  // Closed early: if the maker had already sent the keys, it still links.
+  const how = state ? await finishWearable(state) : 'expired';
+  return how === 'linked' ? 'linked' : 'cancelled';
 }
 
 /** Back from the wearable's sign-in with ?status=finish&state=…: the server links it only if you're the one who

@@ -4940,4 +4940,5 @@ export const AR: Record<string, string> = {
   "Live heart rate, zones and coach tips as you move.": "نبض مباشر وزونات ونصايح الكوتش وأنت تتحرك.",
   "Running now": "شغال الحين",
   "Start a session": "ابدأ جلسة",
+  "{n} isn’t connected yet. Tap it again and finish signing in on the {n} page.": "{n} ما انربط للحين. اضغط عليه مرة ثانية وكمّل تسجيل الدخول في صفحة {n}.",
 };

@@ -119,9 +119,17 @@ export function DeviceStep({ onDone }: { onDone: () => void }) {
     setBusy(p);
     const r = await linkWearable(p, '/signup?step=devices');
     setBusy(null);
-    if (r === 'not_set_up') toast(t('{n} is almost ready. It opens as soon as Adro’s {n} account is approved.', { n: wearableName(p) }), { icon: 'watch' });
+    const n = wearableName(p);
+    if (r === 'linked') {
+      toast(t('{n} connected. Your last month is in.', { n }), { icon: 'check' });
+      reloadDeviceDays();
+    } else if (r === 'cancelled') toast(t('{n} isn’t connected yet. Tap it again and finish signing in on the {n} page.', { n }), { icon: 'warn' });
+    else if (r === 'denied') toast(t('{n} wasn’t connected: access was not allowed.', { n }), { icon: 'warn' });
+    else if (r === 'expired') toast(t('That took too long. Tap {n} to try again.', { n }), { icon: 'warn' });
+    else if (r === 'not_set_up') toast(t('{n} is almost ready. It opens as soon as Adro’s {n} account is approved.', { n }), { icon: 'watch' });
     else if (r === 'offline') toast(t('You’re offline. Check your connection and try again.'), { icon: 'warn' });
-    else if (r === 'failed') toast(t('Couldn’t connect {n}. Please try again.', { n: wearableName(p) }), { icon: 'warn' });
+    else if (r === 'failed' || r === 'error') toast(t('Couldn’t connect {n}. Please try again.', { n }), { icon: 'warn' });
+    load();
   };
 
   const cards: [WearableProvider, ArtKind, string][] = [

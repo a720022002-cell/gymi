@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import { Platform, View } from 'react-native';
 
@@ -28,9 +28,8 @@ export default function Connections() {
   const loadWs = useCallback(() => {
     wearableStatus().then(setWs);
   }, []);
-  useEffect(() => {
-    loadWs();
-  }, [loadWs]);
+  // Every time the screen shows (also after coming back from a maker's page), what's linked now.
+  useFocusEffect(loadWs);
 
   // Back from a wearable's sign-in: say how it went once, then clear the link.
   // A sign-in that worked comes back as "finish": the server links it only for you (the one who started it).
@@ -97,9 +96,17 @@ export default function Connections() {
     }
     const r = await linkWearable(p);
     setBusy(null);
-    if (r === 'not_set_up') toast(t('{n} is almost ready. It opens as soon as Adro’s {n} account is approved.', { n: wearableName(p) }), { icon: 'watch' });
+    const n = wearableName(p);
+    if (r === 'linked') {
+      toast(t('{n} connected. Your last month is in.', { n }), { icon: 'check' });
+      reloadDeviceDays();
+    } else if (r === 'cancelled') toast(t('{n} isn’t connected yet. Tap it again and finish signing in on the {n} page.', { n }), { icon: 'warn' });
+    else if (r === 'denied') toast(t('{n} wasn’t connected: access was not allowed.', { n }), { icon: 'warn' });
+    else if (r === 'expired') toast(t('That took too long. Tap {n} to try again.', { n }), { icon: 'warn' });
+    else if (r === 'not_set_up') toast(t('{n} is almost ready. It opens as soon as Adro’s {n} account is approved.', { n }), { icon: 'watch' });
     else if (r === 'offline') toast(t('You’re offline. Check your connection and try again.'), { icon: 'warn' });
-    else if (r === 'failed') toast(t('Couldn’t connect {n}. Please try again.', { n: wearableName(p) }), { icon: 'warn' });
+    else if (r === 'failed' || r === 'error') toast(t('Couldn’t connect {n}. Please try again.', { n }), { icon: 'warn' });
+    loadWs();
   };
 
   const wearState = (p: WearableProvider) => {
