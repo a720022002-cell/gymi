@@ -34,6 +34,8 @@ type Ctx = {
   deadline: number;
   /** Longest answer allowed for this task (tokens): a runaway answer can't cost more than the task needs. */
   maxTokens: number;
+  /** The database as the signed-in person (reads the foods table for meal photos). */
+  db?: ReturnType<typeof createClient>;
   /** The model's route turned down a fixed answer shape: the rest of this request asks in words only. */
   noFormat?: boolean;
 };
@@ -275,13 +277,15 @@ const FLAGS = '"sugar_high" is true only for ADDED or free sugar of about 10 g o
 const MEAL_PHOTO = (lang: string) => `You are a careful dietitian estimating a meal from one photo for a calorie tracker. ${LANG(lang)} Names short.${lang === 'ar' ? ' Write "title", every item "name", "alternatives" and "note" in Arabic (Saudi dish names like كبسة دجاج، مندي، فلافل).' : ''} If the person tells you what the dish is, use that name but still weigh the portions from the photo.
 Work in this order and write it in "seen" (one or two short sentences, English is fine):
 0. If a kitchen scale display or a weight printed on the package is readable, use that number as the total weight and split it between the parts. Say so.
-1. Name the dish exactly. Gulf, Arab, Indian and fast food are common in Saudi Arabia. Check look-alikes before you decide: kabsa vs mandi vs biryani vs machboos vs mathbi; shawarma wrap vs falafel wrap; shakshuka vs eggs in tomato; harees vs jareesh vs oats; saleeg vs rice pudding; mutabbaq vs pizza; luqaimat vs donut holes. Put the 2 next most likely dish names in "alternatives".
+1. Name the dish exactly. Gulf, Arab, Indian and fast food are common in Saudi Arabia. Food held in a hand, on a table or in a box is real food: never call it fake, plastic or decorative. Whole fruit look-alikes, check the shape and the stem end before you decide: yellow or golden apple (round, stem in a dimple on top, small dried flower at the bottom, often speckled skin) vs mango (oval or kidney shaped, smooth, no dimple, a small stem point at one end, about 12 cm long) vs pear (narrows to a neck at the stem) vs quince (lumpy, fuzzy) vs lemon (pointed ends, pitted peel) vs yellow plum (small, about 5 cm). Green apple vs guava vs lime; orange vs mandarin vs grapefruit; red apple vs pomegranate. Check look-alikes before you decide: kabsa vs mandi vs biryani vs machboos vs mathbi; shawarma wrap vs falafel wrap; shakshuka vs eggs in tomato; harees vs jareesh vs oats; saleeg vs rice pudding; mutabbaq vs pizza; luqaimat vs donut holes. Put the 2 next most likely dish names in "alternatives".
 2. Count what can be counted: chicken pieces, eggs, falafel, dates, bread, sambousek, nuggets. Say the counts.
 3. Size things against what is in the photo: a dinner plate is about 26 cm, a side plate 20 cm, a bowl about 350 ml, a frying pan 26 to 30 cm, a shared Saudi tray (sahan) 45 to 60 cm, a spoon 15 cm, a fork 19 cm, a phone 15 cm. An adult hand: palm about 8.5 cm wide, hand about 19 cm long from wrist to fingertip, a finger about 2 cm wide. Estimate how full the container is and how high the food is piled. For whole fruit or vegetables, estimate each one's length and width in cm.
 4. Weigh each part in grams from the size and count. For whole fruit and vegetables, count them and use a typical weight per piece, adjusted only a little for size (do not calculate from length and width): the short Middle Eastern cucumber common in Saudi Arabia (14 to 18 cm) is about 120 g, a long English cucumber 300 g; tomato 120 g; onion 150 g; apple 180 g; orange 150 g; banana 120 g peeled; potato 200 g; carrot 70 g. Do not underestimate cooked food: a full dinner plate of rice is 350 to 500 g cooked; one chicken leg quarter is about 250 g with bone (180 g edible); a whole half chicken is about 450 g; one large egg is 50 g; one falafel ball 17 to 20 g; one Arabic bread 60 to 80 g; one medium date 8 g. If the photo shows a shared tray, estimate the whole tray and say so in "note".
-5. Count calories for each part as cooked and served, including the oil or ghee it is cooked in (rice in kabsa or mandi is about 170 to 190 kcal per 100 g; fried foods soak up oil).
+5. Count calories for each part as cooked and served, including the oil or ghee it is cooked in (rice in kabsa or mandi is about 170 to 190 kcal per 100 g; fried foods soak up oil). The calories must match the macros: about 4 kcal per g of protein and of carbs, 9 per g of fat.
+6. For each item give "lookup": the food's plain English name as a nutrition table lists it, without the count or the amount (like "Apple", "Mango", "White rice, cooked", "Chicken breast, grilled", "Egg, boiled", "Arabic bread (pita)", "Chicken kabsa", "French fries"). Name the food as it is in the photo (cooked or raw, fried or grilled).
 ${PORTIONS}
-"title" is the dish name. Several of the same thing are ONE item with the count in its name (like "Cucumber ×2"), never "left" and "right". Each item is one part of the meal with its grams and the calories and macros for those grams. "confidence" is high, medium or low. ${FLAGS} If it is not food, return items: [] and a note.`;
+"title" is the dish name. Several of the same thing are ONE item with the count in its name (like "Cucumber ×2"), never "left" and "right". Each item is one part of the meal with its grams and the calories and macros for those grams. "confidence" is high, medium or low. ${FLAGS} Only when there is clearly no food or drink in the photo at all, return items: [] and a note.`;
+const MEAL_ITEM = { ...FOOD_ITEM, properties: { ...FOOD_ITEM.properties, lookup: { type: 'string' } }, required: [...FOOD_ITEM.required, 'lookup'] };
 const MEAL_SCHEMA = {
   type: 'object',
   properties: {
@@ -289,7 +293,7 @@ const MEAL_SCHEMA = {
     title: { type: 'string' },
     alternatives: { type: 'array', items: { type: 'string' } },
     confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
-    items: { type: 'array', items: FOOD_ITEM },
+    items: { type: 'array', items: MEAL_ITEM },
     sugar_high: { type: 'boolean' },
     fat_high: { type: 'boolean' },
     note: { type: 'string' },
@@ -515,6 +519,43 @@ const BODY_RULES = `Pregnancy ("pregnancy" in the data, with "stage" pregnant or
 - For pain, bleeding, dizziness, or before starting or changing exercise, tell them to see their doctor. Never diagnose.
 Cycle phase "Luteal": hunger rises by 100 to 200 kcal and water weight of 0.5 to 2 kg is normal. Never call a weight stall in this phase a plateau and never suggest fewer calories because of it; suggest more protein instead.`;
 
+type MealItem = { name: string; lookup?: string; grams: number; kcal: number; protein: number; carbs: number; fat: number; source?: 'table' | 'ai' };
+type TableFood = { category: string; name_en: string; unit: string; kcal_100: number; protein_100: number; carbs_100: number; fat_100: number };
+const words = (x: string) => x.toLowerCase().replace(/\(.*?\)/g, ' ').split(/[^a-z]+/).filter((w) => w.length > 2).map((w) => w.replace(/(es|s)$/, ''));
+const r1 = (v: number) => Math.round(v * 10) / 10;
+
+/**
+ * One food from a meal photo: the model sees and weighs it; the calories and macros come from the foods table
+ * (USDA and Adro's Gulf dishes) when the table has that food and its numbers are close to the model's own (so a wrong
+ * match can't change a meal much). Otherwise the model's numbers stay, with the calories made to fit the macros.
+ */
+async function fromTable(it: MealItem): Promise<MealItem> {
+  const g = Number(it.grams) || 0;
+  const own = { ...it, kcal: Math.round(Number(it.kcal) || 0), protein: r1(Number(it.protein) || 0), carbs: r1(Number(it.carbs) || 0), fat: r1(Number(it.fat) || 0), source: 'ai' as const };
+  const atwater = 4 * own.protein + 4 * own.carbs + 9 * own.fat;
+  if (atwater > 20 && Math.abs(own.kcal - atwater) / atwater > 0.2) own.kcal = Math.round(atwater);
+  const q = String(it.lookup ?? '').trim().slice(0, 80);
+  const db = cx().db;
+  if (!q || g <= 0 || !db) return own;
+  try {
+    const { data } = await db.rpc('search_foods', { p_query: q, p_category: null, p_limit: 8 });
+    const want = words(q);
+    const hit = ((data as TableFood[] | null) ?? [])
+      .filter((f) => ['basic', 'gulf', 'usda'].includes(f.category) && f.unit !== 'ml')
+      .slice(0, 5)
+      .find((f) => f.name_en.toLowerCase() === q.toLowerCase() || (want.length > 0 && want.every((w) => words(f.name_en).includes(w))));
+    if (!hit) return own;
+    const per100 = Number(hit.kcal_100);
+    const mine = (own.kcal / g) * 100;
+    // The model counted nothing (it doubted the food) or is within reach of the table: trust the table.
+    if (mine > 0 && (per100 / mine < 0.55 || per100 / mine > 1.8)) return own;
+    const f = g / 100;
+    return { ...it, grams: Math.round(g), kcal: Math.round(per100 * f), protein: r1(Number(hit.protein_100) * f), carbs: r1(Number(hit.carbs_100) * f), fat: r1(Number(hit.fat_100) * f), source: 'table' };
+  } catch {
+    return own;
+  }
+}
+
 async function run(task: string, b: Record<string, unknown>) {
   const lang = String(b.lang ?? 'en');
   const img = (k = 'image'): Part => ({ image: String(b[k]), mime: String(b.mime ?? 'image/jpeg') });
@@ -568,10 +609,13 @@ Return JSON: {"reply":"...","actions":[...],"suggest":[...],"card":{...},"memory
       if (!msgs.length) throw new Error('empty_chat');
       return ask(task, system, msgs);
     }
-    case 'meal_photo':
-      return ask(task, MEAL_PHOTO(lang), [
+    case 'meal_photo': {
+      const out = (await ask(task, MEAL_PHOTO(lang), [
         { role: 'user', parts: [img(), { text: `What is on this plate? Estimate each part.${b.note ? ` The person says: ${String(b.note).slice(0, 300)}. Trust this over what you see.` : ''}` }] },
-      ], MEAL_SCHEMA);
+      ], MEAL_SCHEMA)) as { items?: MealItem[] } | null;
+      if (out && Array.isArray(out.items)) out.items = await Promise.all(out.items.map(fromTable));
+      return out;
+    }
     case 'food_text':
       return ask(task, `You turn a description of food into calories for a tracker. ${LANG(lang)} Names short. Estimate normal portions when no amount is given. ${PORTIONS} ${FLAGS}`, [
         { role: 'user', parts: [{ text: String(b.text ?? '').slice(0, 500) }] },
@@ -1062,6 +1106,7 @@ async function handle(req: Request) {
 
     cx().lastModel = '';
     cx().lastDetail = '';
+    cx().db = userClient;
     cx().maxTokens = TASK_TOKENS[task] ?? MAX_TOKENS;
     cx().temperature = ['meal_photo', 'food_text', 'label_photo', 'blood', 'machine', 'plan', 'plan_review', 'recipe'].includes(task) ? 0 : undefined;
     cx().lastUsage = { prompt: 0, completion: 0, cost: 0 };
