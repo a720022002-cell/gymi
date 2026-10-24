@@ -97,7 +97,9 @@ export default function RecipeImport() {
     if (!x.found || !x.ingredients?.length) {
       return setErr(
         x.note === 'no_content'
-          ? t('Couldn’t open that link. It may be private, or Instagram hid it. Upload the video instead.')
+          ? /instagram/i.test(url)
+            ? t('Couldn’t open that link. It may be private, or Instagram hid it. Upload the video instead.')
+            : t('Couldn’t open that link. It may be private or removed. Upload the video instead.')
           : t('The recipe isn’t written in this post. Upload the video so the AI can read what’s shown in it.'),
       );
     }

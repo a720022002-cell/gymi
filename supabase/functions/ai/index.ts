@@ -353,11 +353,21 @@ async function linkInfo(raw: string): Promise<{ site: string; text: string; imag
   if (host.endsWith('tiktok.com')) {
     // Short share links (vm.tiktok.com, tiktok.com/t/…) redirect to the video; find its number.
     let id = url.pathname.match(/\/(?:video|photo|v)\/(\d{8,})/)?.[1];
-    if (!id) {
-      const r = await getUrl(url.toString(), { headers: { 'User-Agent': MOBILE_UA } }).catch(() => null);
-      id = r?.finalUrl.match(/\/(?:video|photo|v)\/(\d{8,})/)?.[1];
+    // Read the number from the redirect itself: TikTok often refuses to show the video page to a server.
+    for (let hop = 0, u = url.toString(); !id && hop < 5; hop++) {
+      const r = await fetch(u, { headers: { 'User-Agent': MOBILE_UA }, redirect: 'manual', signal: AbortSignal.timeout(8000) }).catch(() => null);
+      const next = r && r.status >= 300 && r.status < 400 ? r.headers.get('location') : null;
+      if (!next) break;
+      const n = new URL(next, u);
+      if (n.protocol !== 'https:' || !LINK_HOSTS.test(n.hostname)) break;
+      u = n.toString();
+      id = n.pathname.match(/\/(?:video|photo|v)\/(\d{8,})/)?.[1];
     }
-    if (!id) return { site: 'tiktok', text: '', image: null };
+    if (!id) {
+      // Last try: TikTok's own preview of the link as given.
+      const o = await getUrl(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url.toString())}`).then((r) => r?.json()).catch(() => null);
+      return { site: 'tiktok', text: [o?.title, o?.author_name ? `by ${o.author_name}` : ''].filter(Boolean).join('\n'), image: await picture(o?.thumbnail_url) };
+    }
     const page = `https://www.tiktok.com/@_/video/${id}`;
     const [o, h] = await Promise.all([
       getUrl(`https://www.tiktok.com/oembed?url=${encodeURIComponent(page)}`).then((r) => r?.json()).catch(() => null),
@@ -378,11 +388,22 @@ async function linkInfo(raw: string): Promise<{ site: string; text: string; imag
     const j = r ? await r.json().catch(() => null) : null;
     return { site: 'youtube', text: j?.title ?? '', image: await picture(j?.thumbnail_url) };
   }
-  // Instagram shows the caption to link previews when the post is public.
+  // Instagram shows the caption to link previews when the post is public. Two ways in: the preview a link card gets,
+  // then the post's public embed (which still shows the caption when the preview is hidden).
+  const code = url.pathname.match(/\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]{5,})/)?.[1];
   const r = await getUrl(url.toString(), { headers: { 'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)' } }).catch(() => null);
   const html = r ? (await r.text()).slice(0, 400_000) : '';
   const meta = (k: string) => unHtml(html.match(new RegExp(`<meta[^>]+(?:property|name)="${k}"[^>]+content="([^"]*)"`, 'i'))?.[1] ?? '');
-  return { site: 'instagram', text: [meta('og:title'), meta('og:description')].filter(Boolean).join('\n'), image: await picture(meta('og:image') || undefined) };
+  let text = [meta('og:title'), meta('og:description')].filter(Boolean).join('\n');
+  let image = meta('og:image') || undefined;
+  if (code && text.length < 40) {
+    const e = await getUrl(`https://www.instagram.com/p/${code}/embed/captioned/`, { headers: { 'User-Agent': MOBILE_UA } }).then((x) => x?.text()).catch(() => '');
+    const cap = (e ?? '').match(/<div class="Caption">([\s\S]*?)<div class="CaptionComments"/)?.[1] ?? (e ?? '').match(/<div class="Caption">([\s\S]*?)<\/div>/)?.[1] ?? '';
+    const capText = unHtml(cap.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ' ')).replace(/[ \t]+/g, ' ').trim();
+    if (capText.length > text.length) text = capText;
+    image = image || unHtml((e ?? '').match(/class="EmbeddedMediaImage"[^>]*src="([^"]+)"/)?.[1] ?? '') || undefined;
+  }
+  return { site: 'instagram', text, image: await picture(image) };
 }
 
 const RECIPE = (lang: string) => `You turn a short cooking video (TikTok, Instagram Reels, YouTube Shorts or a clip) into a recipe for a calorie tracker. You get the caption and frames from the video in order; read any text written on screen. ${LANG(lang)}${lang === 'ar' ? ' Write "title", ingredient names and steps in Arabic.' : ''}

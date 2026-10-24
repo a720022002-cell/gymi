@@ -30,6 +30,7 @@ import { fx, goalsFor, weekAvg } from '@/lib/progress';
 import { supabase } from '@/lib/supabase';
 import { useTrain } from '@/lib/train';
 import { useCardioWeek } from '@/lib/useCardioWeek';
+import { useKeyboardHeight } from '@/lib/useKeyboard';
 import { sessionLine } from '@/lib/cardioPlan';
 import { useWeight } from '@/lib/units';
 import { useStreaks } from '@/lib/useProgress';
@@ -54,6 +55,7 @@ export default function Coach() {
   const W = useWeight();
   const { colors: c } = useSettings();
   const insets = useSafeAreaInsets();
+  const kb = useKeyboardHeight();
   const toast = useToast();
   const { profile, session } = useAuth();
   const food = useFood();
@@ -79,6 +81,10 @@ export default function Coach() {
   const [thinking, setThinking] = useState(false);
   const [prefs, setPrefs] = useState<Prefs | null>(null);
   const scroll = useRef<ScrollView>(null);
+  // The newest message stays in view when the keyboard opens.
+  useEffect(() => {
+    if (kb) setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 50);
+  }, [kb]);
 
   useEffect(() => {
     let live = true;
@@ -541,7 +547,7 @@ export default function Coach() {
         </View>
         {!msgs.length && all ? (
           <View style={{ alignSelf: 'flex-start', maxWidth: '86%', backgroundColor: c.card, borderRadius: 22, borderBottomStartRadius: 8, paddingVertical: 11, paddingHorizontal: 15, marginBottom: 8 }}>
-            <Text>{t('Hi {name}. Tell me what you ate, how you trained, or ask me anything.', { name: profile?.name || '' })}</Text>
+            <Text>{profile?.name ? t('Hi {name}. Tell me what you ate, how you trained, or ask me anything.', { name: profile.name }) : t('Hi. Tell me what you ate, how you trained, or ask me anything.')}</Text>
           </View>
         ) : null}
         {earlier > 0 ? (
@@ -627,7 +633,8 @@ export default function Coach() {
         ) : null}
       </Sheet>
 
-      <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, bottom: 16 + insets.bottom, gap: 8 }}>
+      {/* Above the keyboard while it's open (iOS), else above the home bar. */}
+      <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, bottom: kb ? kb + 8 : 16 + insets.bottom, gap: 8 }}>
         {!msgs.length ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
             {PROMPTS.map((p) => (
