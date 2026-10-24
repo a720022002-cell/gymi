@@ -272,6 +272,9 @@ Passwords and keys are left out on purpose.
 - Pure JavaScript change (the layout is sent at runtime), so an OTA update can carry it to build 6.
 - Recovery tab: "What's in your score" and Adro's analysis. Reading analysis answer limit 2500 tokens, above/below the goal decided on the server (ai v95, tested 5/5).
 
+### OTA update sent to build 6 (24 Oct)
+- Update group 037852fd (runtime d81e38a…, same as build 6): Lock Screen buttons as links, recovery details and analysis.
+
 ---
 
 
