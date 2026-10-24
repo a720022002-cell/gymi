@@ -227,6 +227,11 @@ Passwords and keys are left out on purpose.
 ### Home: "Start cardio" card (23 Oct 2026)
 - New Home card, on by default and in Edit home (move it or turn it off): today's planned cardio or sport with Start, otherwise "Start a session" plus quick picks (your plan's sports first, then Run, Walk, Bike, Padel). While a session runs it shows the sport and time with Open. It never folds under "More".
 
+### Company domain adroapp.com live (24 Oct 2026)
+- adroapp.com is on Vercel with HTTPS; www redirects to it. adroapp.com opens the company site; /privacy, /terms and /support go to the site pages (the URLs for Apple); the web app is at adroapp.com/home.
+- Invite links are now adroapp.com/i/CODE; support email support@adroapp.com in the app, site and store notes; Supabase login emails link to adroapp.com.
+- Zoho mail: MX records added and mail now arrives. SPF needs fixing (written without spaces) and DKIM is still to add.
+
 ---
 
 ## Still waiting on you
