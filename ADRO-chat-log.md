@@ -310,6 +310,9 @@ Passwords and keys are left out on purpose.
 - Build 9 on TestFlight. Owner's Button check after tapping +: all dashes, so iOS never runs the button's intent at all (not in the app, not in the widget). Next: the iPhone's Console log to see why.
 - OTA b8f86285 to build 9: the tour welcome card's Skip/Start no longer sit under the "Don't show tutorials again" link.
 
+### VoiceOver: not now (25 Oct)
+- Checked: 179 spoken labels; about 140 of 223 tappable elements have none; rings and charts on about 29 screens aren't spoken. Plan offered (stage 1 main screens, stage 2 the rest + large text). Owner: not now.
+
 ---
 
 
