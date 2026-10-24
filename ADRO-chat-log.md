@@ -232,15 +232,15 @@ Passwords and keys are left out on purpose.
 - Invite links are now adroapp.com/i/CODE; support email support@adroapp.com in the app, site and store notes; Supabase login emails link to adroapp.com.
 - Zoho mail: MX records added and mail now arrives. SPF needs fixing (written without spaces) and DKIM is still to add.
 
+### First iPhone build on TestFlight (24 Oct 2026)
+- Bundle ID changed to com.adroapp.app (com.adro.app was taken at Apple); widget target com.adroapp.app.ExpoWidgetsTarget.
+- Signing certificates and provisioning profiles created (you, on your Mac, once). Team ID 7BS2Z3743C; App Store Connect app ID 6826500429 (in eas.json).
+- Build 1 (version 1.0.0) built on EAS and uploaded to App Store Connect / TestFlight. The App Store Connect API key on Expo is now linked to the project, so later builds and uploads run from here without your Mac.
+
 ---
 
 ## Still waiting on you
 
-- **iPhone build (signing certificates):** add these as environment variables in the Claude Code environment settings (never in chat), then start a new session and say "build the iPhone app":
-  - `EXPO_ASC_API_KEY_P8_BASE64` = the .p8 file in base64 (on a Mac: `base64 -i ~/Downloads/AuthKey_XXXX.p8 | pbcopy`)
-  - `EXPO_ASC_KEY_ID` = Key ID, `EXPO_ASC_ISSUER_ID` = Issuer ID (App Store Connect → Users and Access → Integrations)
-  - `EXPO_APPLE_TEAM_ID` = 7BS2Z3743C, `EXPO_APPLE_TEAM_TYPE` = INDIVIDUAL (or COMPANY_OR_ORGANIZATION if enrolled as a company)
-  - For the next session: write the base64 to a 600-mode file in the scratchpad, set `EXPO_ASC_API_KEY_PATH` to it, then run `eas credentials -p ios` (production, set up all) through a pty, then `eas build -p ios --profile production --non-interactive` and `eas submit -p ios`. Two targets need profiles: com.adroapp.app and com.adroapp.app.ExpoWidgetsTarget (com.adro.app was taken at Apple). Delete the key file afterwards.
 - **Push notifications and invite links on phones:** run EAS init (needs `EXPO_TOKEN`) and set up Apple/Google push keys in EAS; put your Apple Team ID in `public/.well-known/apple-app-site-association` and the Android SHA256 in `public/.well-known/assetlinks.json`; then a new build.
 
 - **Login and email-change codes:** built, but off until you add SMTP in Supabase under **Authentication → Emails → SMTP settings**.
