@@ -244,6 +244,9 @@ Passwords and keys are left out on purpose.
 
 ---
 
+
+> **Rule (24 Oct 2026):** don't ship a new TestFlight build after every fix. Collect fixes together while the owner reports issues, then make one build when the owner says so. Server fixes (AI, database, functions) can still go live right away.
+
 ## Still waiting on you
 
 - **Push notifications and invite links on phones:** run EAS init (needs `EXPO_TOKEN`) and set up Apple/Google push keys in EAS; put your Apple Team ID in `public/.well-known/apple-app-site-association` and the Android SHA256 in `public/.well-known/assetlinks.json`; then a new build.
