@@ -237,6 +237,11 @@ Passwords and keys are left out on purpose.
 - Signing certificates and provisioning profiles created (you, on your Mac, once). Team ID 7BS2Z3743C; App Store Connect app ID 6826500429 (in eas.json).
 - Build 1 (version 1.0.0) built on EAS and uploaded to App Store Connect / TestFlight. The App Store Connect API key on Expo is now linked to the project, so later builds and uploads run from here without your Mac.
 
+### Build 2 on TestFlight + company site only (24 Oct 2026)
+- Build 1 was refused by Apple (missing microphone purpose string: three plugins removed it). Fixed; build 2 (1.0.0) built and uploaded to TestFlight.
+- adroapp.com shows the company site at /, /privacy, /terms and /support (edge middleware, no redirect). "Start free", "Open Adro" and "Web app" links removed.
+- The web app is no longer public: on adroapp.com and gymi-inky.vercel.app every app page shows the company site, except invite links (/i/…), the sign-up email page (/signup) and password reset (/reset-password), which the phone app needs. Vercel preview deployments keep the full web app for testing.
+
 ---
 
 ## Still waiting on you
