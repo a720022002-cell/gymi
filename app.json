@@ -102,7 +102,7 @@
         "expo-camera",
         {
           "cameraPermission": "Adro uses the camera to scan food barcodes and take photos of meals, labels and gym machines.",
-          "microphonePermission": false,
+          "microphonePermission": "Adro uses the microphone so you can log food, sets and questions by voice.",
           "recordAudioAndroid": false
         }
       ],
@@ -111,7 +111,7 @@
         {
           "photosPermission": "Adro lets you pick a photo of a meal, a label, a lab report or your progress.",
           "cameraPermission": "Adro uses the camera to take photos of meals, labels and gym machines.",
-          "microphonePermission": false
+          "microphonePermission": "Adro uses the microphone so you can log food, sets and questions by voice."
         }
       ],
       [
@@ -130,7 +130,7 @@
       [
         "expo-audio",
         {
-          "microphonePermission": false
+          "microphonePermission": "Adro uses the microphone so you can log food, sets and questions by voice."
         }
       ],
       [
