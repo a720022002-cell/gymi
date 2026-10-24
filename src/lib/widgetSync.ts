@@ -10,7 +10,6 @@ export function syncWorkoutActivity(_p: WorkoutActivityProps | null) {}
 export function onWorkoutAction(_fn: (a: WorkoutAction) => void) {
   return () => {};
 }
-export function deliverLiveAction(_action: string) {}
 export function syncCardioActivity(_p: CardioActivityProps | null) {}
 export function onCardioAction(_fn: (a: CardioAction) => void) {
   return () => {};

@@ -1,21 +1,31 @@
 diff --git a/node_modules/expo-widgets/ios/Widgets/AppIntent.swift b/node_modules/expo-widgets/ios/Widgets/AppIntent.swift
-index 972fa4f..1f95f9b 100644
+index 972fa4f..e71a042 100644
 --- a/node_modules/expo-widgets/ios/Widgets/AppIntent.swift
 +++ b/node_modules/expo-widgets/ios/Widgets/AppIntent.swift
-@@ -119,12 +119,48 @@ struct LiveActivityUserInteraction: LiveActivityIntent {
+@@ -119,12 +119,58 @@ struct LiveActivityUserInteraction: LiveActivityIntent {
    }
  
    func perform() async throws -> some IntentResult {
 -    WidgetsEvents.shared.sendNotification(type: .userEvent, data: [
++    await ExpoWidgetsLiveTaps.receive(source: source, target: target)
++    return .result()
++  }
++}
++
++/**
++ * Hands a Live Activity tap to the app's JavaScript. Public so the app can declare the same intent in its own target:
++ * iOS runs a LiveActivityIntent in the app's process only when the app itself declares it.
++ */
++public enum ExpoWidgetsLiveTaps {
++  public static func receive(source: String?, target: String?) async {
 +    let event: [String: Any] = [
        "source": source as Any,
        "target": target as Any,
        "timestamp": Int(Date().timeIntervalSince1970 * 1000)
 -    ])
--
 +    ]
 +    // The app may be asleep: keep the tap until the app's JavaScript takes it (takePendingInteractions), and stay
-+    // awake until then, plus a moment for it to update the Live Activity. Without this the tap was often lost.
++    // awake until then, plus a moment for it to update the Live Activity.
 +    WidgetsPendingInteractions.add(event)
 +    WidgetsEvents.shared.sendNotification(type: .userEvent, data: event)
 +    for _ in 0..<50 {
@@ -23,10 +33,10 @@ index 972fa4f..1f95f9b 100644
 +      try? await Task.sleep(nanoseconds: 100_000_000)
 +    }
 +    try? await Task.sleep(nanoseconds: 800_000_000)
-     return .result()
-   }
- }
-+
++  }
++}
+ 
+-    return .result()
 +/** Live Activity taps waiting for the app's JavaScript (kept for a minute at most). */
 +enum WidgetsPendingInteractions {
 +  private static let lock = NSLock()
@@ -52,8 +62,8 @@ index 972fa4f..1f95f9b 100644
 +    let out = items
 +    items = []
 +    return out
-+  }
-+}
+   }
+ }
 diff --git a/node_modules/expo-widgets/ios/WidgetsModule.swift b/node_modules/expo-widgets/ios/WidgetsModule.swift
 index b1b4295..407c97b 100644
 --- a/node_modules/expo-widgets/ios/WidgetsModule.swift

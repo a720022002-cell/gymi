@@ -1,11 +1,13 @@
-import { HStack, Image, Link, ProgressView, Spacer, Text, VStack } from '@expo/ui/swift-ui';
+import { Button, HStack, Image, ProgressView, Spacer, Text, VStack } from '@expo/ui/swift-ui';
 import {
   activityBackgroundTint,
-  backgroundOverlay,
-  clipShape,
+  buttonBorderShape,
+  buttonStyle,
+  controlSize,
   font,
   foregroundStyle,
   frame,
+  labelStyle,
   lineLimit,
   minimumScaleFactor,
   monospacedDigit,
@@ -13,7 +15,6 @@ import {
   tint,
 } from '@expo/ui/swift-ui/modifiers';
 import { createLiveActivity, type LiveActivityEnvironment } from 'expo-widgets';
-import type { ComponentProps } from 'react';
 
 /** What the app sends while you train, already in your language. Times are milliseconds since 1970. */
 export type WorkoutActivityProps = {
@@ -41,10 +42,7 @@ export type WorkoutActivityProps = {
   L: { rest: string; next: string; sets: string; done: string; skip: string };
 };
 
-/**
- * The buttons open the app with one of these (adro://la?a=…, app/la.tsx), which changes the set and updates this.
- * They are links, not in-place buttons: taps on in-place buttons never reached the app (build 6).
- */
+/** The buttons send these to the app (lib/widgetSync onWorkoutAction), which changes the set and updates this. */
 export type WorkoutAction = 'w-' | 'w+' | 'r-' | 'r+' | 'done' | 'skip' | 'water';
 
 /**
@@ -71,13 +69,9 @@ const WorkoutActivity = (p: WorkoutActivityProps, env: LiveActivityEnvironment) 
   const icon = resting ? 'timer' : 'dumbbell.fill';
   const accent = env.isLuminanceReduced ? '#FFFFFF' : LIGHT;
   const line = p.target ? `${p.set} · ${p.target}` : p.set;
-  // A round button that opens the app with the action.
-  const round = (action: string, symbol: ComponentProps<typeof Image>['systemName'], fg: string, bg: string) => (
-    <Link destination={`adro://la?a=${encodeURIComponent(action)}`}>
-      <Image systemName={symbol} color={fg} size={14} modifiers={[frame({ width: 32, height: 32 }), backgroundOverlay({ color: bg }), clipShape('circle')]} />
-    </Link>
+  const step = (target: string, sign: 'minus' | 'plus') => (
+    <Button target={target} label={sign === 'minus' ? '−' : '+'} systemImage={sign} modifiers={[labelStyle('iconOnly'), buttonStyle('bordered'), buttonBorderShape('circle'), controlSize('small'), tint('#FFFFFF')]} />
   );
-  const step = (target: string, sign: 'minus' | 'plus') => round(target, sign, '#FFFFFF', '#3F3F46');
   const value = (text: string) => <Text modifiers={[font({ size: 15, weight: 'bold', design: 'rounded' }), monospacedDigit(), foregroundStyle('#FFFFFF'), lineLimit(1), minimumScaleFactor(0.7)]}>{text}</Text>;
   // − 80 kg +   − × 10 +   water   (⏭ while resting)   ✓. Done is always there: a locked phone may still show a rest
   // that already ended. Round buttons only (closer together while resting), so it fits the narrowest iPhone.
@@ -91,9 +85,9 @@ const WorkoutActivity = (p: WorkoutActivityProps, env: LiveActivityEnvironment) 
       {value(p.rText)}
       {step('r+', 'plus')}
       <Spacer />
-      {round('water', 'drop.fill', '#38BDF8', '#0C4A6E')}
-      {resting ? round('skip', 'forward.fill', LIGHT, '#27304D') : null}
-      {round('done', 'checkmark', '#FFFFFF', BLUE)}
+      <Button target="water" label="+250" systemImage="drop.fill" modifiers={[labelStyle('iconOnly'), buttonStyle('bordered'), buttonBorderShape('circle'), controlSize('small'), tint('#38BDF8')]} />
+      {resting ? <Button target="skip" label={p.L.skip} systemImage="forward.fill" modifiers={[labelStyle('iconOnly'), buttonStyle('bordered'), buttonBorderShape('circle'), controlSize('small'), tint(LIGHT)]} /> : null}
+      <Button target="done" label={p.L.done} systemImage="checkmark" modifiers={[labelStyle('iconOnly'), buttonStyle('borderedProminent'), buttonBorderShape('circle'), controlSize('small'), tint(BLUE)]} />
     </HStack>
   );
   // Under the bar: the coach's tip (green: go heavier, amber: rest or hold back), or the set when there's no tip.

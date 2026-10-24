@@ -275,6 +275,11 @@ Passwords and keys are left out on purpose.
 ### OTA update sent to build 6 (24 Oct)
 - Update group 037852fd (runtime d81e38a…, same as build 6): Lock Screen buttons as links, recovery details and analysis.
 
+### Live Activity buttons, third try (24 Oct)
+- Owner doesn't want buttons that open the app: the link version is undone, in-place buttons are back.
+- Likely real cause: iOS runs a LiveActivityIntent in the app only when the app target declares it; expo-widgets declares it only in its library, so taps ran in the widget's process and never reached the app.
+- Fix: plugins/withLiveActivityIntent.js adds the same intent (LiveActivityUserInteraction) to the app target; it hands the tap to the app through ExpoWidgetsLiveTaps (patch). Checked with a prebuild that the file is in the Adro target. Needs a new build (7); not tested on an iPhone yet.
+
 ---
 
 
