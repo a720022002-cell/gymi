@@ -42,50 +42,6 @@
   ],
   "redirects": [
     {
-      "source": "/",
-      "has": [
-        {
-          "type": "host",
-          "value": "adroapp.com"
-        }
-      ],
-      "destination": "/site",
-      "permanent": false
-    },
-    {
-      "source": "/privacy",
-      "has": [
-        {
-          "type": "host",
-          "value": "adroapp.com"
-        }
-      ],
-      "destination": "/site/privacy",
-      "permanent": false
-    },
-    {
-      "source": "/terms",
-      "has": [
-        {
-          "type": "host",
-          "value": "adroapp.com"
-        }
-      ],
-      "destination": "/site/terms",
-      "permanent": false
-    },
-    {
-      "source": "/support",
-      "has": [
-        {
-          "type": "host",
-          "value": "adroapp.com"
-        }
-      ],
-      "destination": "/site/support",
-      "permanent": false
-    },
-    {
       "source": "/:path*",
       "has": [
         {
