@@ -332,6 +332,13 @@ Passwords and keys are left out on purpose.
 - All earlier options kept. Ships in build 14 with the Lock Screen button fix (widget module named "Adro").
 - Build 13 failed: two targets made the same Adro.swiftmodule. Fixed by turning off SWIFT_INSTALL_MODULE on the widget target. Build 14 built and was sent to TestFlight.
 
+### Start cardio fixes after build 14 (25 Oct 2026)
+- Sport list now sits right under the filters (the filter row was stretching down the page).
+- Bluetooth "Find" works: the sensor search opens inside the same sheet (iOS shows only one sheet at a time). This also fixes the screen freezing after "No sensor".
+- New: today's session from your cardio plan shows at the top of the picker, one tap to set it up.
+- "Cardio and sports" (plan editor) now uses the same look: sport tiles with group colors, pill buttons for sessions, days and minutes, sport badges in the week.
+- Not sent yet (JS only, can go as an update).
+
 ---
 
 

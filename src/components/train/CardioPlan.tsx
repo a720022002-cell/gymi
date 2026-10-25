@@ -17,7 +17,8 @@ import { Icon, type IconName } from '../Icon';
 import { Sheet } from '../Sheet';
 import { Text } from '../Text';
 import { useToast } from '../Toast';
-import { Button, Card, Chip, Row } from '../ui';
+import { Pills, SecLabel, SportBadge, SportTiles } from '../cardio/SportTiles';
+import { Button, Card, Row } from '../ui';
 import { goalWord } from './PlanReviewCard';
 import { useRecovery } from './RecoveryCard';
 
@@ -71,59 +72,54 @@ export function CardioEditor({ input, value, onChange, today, inCard }: { input:
         </Row>
       ))}
 
-      <Text variant="small" weight={700} color="sec" style={{ marginTop: 14, marginBottom: 8 }}>
-        {t('Cardio to add')}
-      </Text>
-      <Row gap={8} style={{ flexWrap: 'wrap' }}>
-        {ok.map((s) => (
-          <Chip key={s} title={t(SPORT_LABEL[s])} on={plan.sport === s} offColor={off} onPress={() => onChange({ ...value, sport: s })} />
-        ))}
-      </Row>
+      <View style={{ marginTop: 20, marginBottom: 12 }}>
+        <SecLabel>{t('Cardio to add')}</SecLabel>
+      </View>
+      <SportTiles ids={ok} picked={(s) => plan.sport === s} onPick={(s) => onChange({ ...value, sport: s })} />
 
-      <Text variant="small" weight={700} color="sec" style={{ marginTop: 14, marginBottom: 8 }}>
-        {t('Sessions a week (your sports count)')}
-      </Text>
-      <Row gap={8} style={{ flexWrap: 'wrap' }}>
-        {[1, 2, 3, 4, 5, 6].filter((n) => n >= Math.min(6, playCount(plan.play).n)).map((n) => (
-          <Chip key={n} title={n === defaultPer(input) ? t('{n} (best)', { n }) : String(n)} on={plan.per === n} offColor={off} onPress={() => onChange({ ...value, per: n, days: undefined })} />
-        ))}
-      </Row>
+      <View style={{ marginTop: 20, marginBottom: 10 }}>
+        <SecLabel>{t('Sessions a week (your sports count)')}</SecLabel>
+      </View>
+      <Pills
+        options={[1, 2, 3, 4, 5, 6].filter((n) => n >= Math.min(6, playCount(plan.play).n)).map((n) => ({ v: n, label: n === defaultPer(input) ? t('{n} (best)', { n }) : String(n) }))}
+        value={plan.per}
+        onPick={(n) => onChange({ ...value, per: n, days: undefined })}
+      />
 
-      <Text variant="small" weight={700} color="sec" style={{ marginTop: 14, marginBottom: 8 }}>
-        {t('Cardio days')}
-      </Text>
-      <Row gap={6} style={{ flexWrap: 'wrap' }}>
-        <Chip title={t('Auto')} on={auto} offColor={off} onPress={() => onChange({ ...value, days: undefined })} />
-        {DAYS.map((d, i) => {
-          const on = auto ? week.some((s) => s.day === i && !s.fixed) : !!value.days?.includes(i);
-          return (
-            <Chip
-              key={d}
-              title={t(d)}
-              on={!auto && on}
-              offColor={auto && on ? c.gAi : off}
-              onPress={() => {
-                // Your own days: the number of days you pick is the number of sessions.
-                const cur = auto ? week.filter((s) => !s.fixed).map((s) => s.day) : (value.days ?? []);
-                const next = cur.includes(i) ? cur.filter((x) => x !== i) : [...cur, i].sort((a, b) => a - b);
-                if (!next.length || next.length > 6) return;
-                onChange({ ...value, days: next, per: undefined });
-              }}
-            />
-          );
-        })}
-      </Row>
-      <Text variant="xs" color="sec" style={{ marginTop: 6 }}>
+      <View style={{ marginTop: 20, marginBottom: 10 }}>
+        <SecLabel>{t('Cardio days')}</SecLabel>
+      </View>
+      <Pills<number>
+        options={[
+          { v: -1, label: t('Auto'), on: auto },
+          ...DAYS.map((d, i) => {
+            const on = auto ? week.some((s) => s.day === i && !s.fixed) : !!value.days?.includes(i);
+            return { v: i, label: t(d), on: !auto && on, soft: auto && on };
+          }),
+        ]}
+        onPick={(i) => {
+          if (i < 0) return onChange({ ...value, days: undefined });
+          // Your own days: the number of days you pick is the number of sessions.
+          const cur = auto ? week.filter((s) => !s.fixed).map((s) => s.day) : (value.days ?? []);
+          const next = cur.includes(i) ? cur.filter((x) => x !== i) : [...cur, i].sort((a, b) => a - b);
+          if (!next.length || next.length > 6) return;
+          onChange({ ...value, days: next, per: undefined });
+        }}
+      />
+      <Text variant="xs" color="sec" style={{ marginTop: 8 }}>
         {t(auto ? 'Auto: on rest days first, never hard cardio before leg day.' : 'Your days. Hard cardio never goes on a leg day or the day before.')}
       </Text>
 
-      <View style={{ marginTop: 14, borderRadius: 18, backgroundColor: inCard ? c.inset : c.card, overflow: 'hidden' }}>
+      <View style={{ marginTop: 20, marginBottom: 10 }}>
+        <SecLabel>{t('Your week')}</SecLabel>
+      </View>
+      <View style={{ borderRadius: 18, backgroundColor: inCard ? c.inset : c.card, overflow: 'hidden' }}>
         {week.map((s, i) => (
           <Row key={s.id} gap={10} style={{ paddingHorizontal: 14, paddingVertical: 10, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
             <Text weight={700} style={{ width: 44 }}>
               {t(DAYS[s.day])}
             </Text>
-            <Icon name={sportIcon(s.sport)} size={18} color={s.kind === 'intervals' ? c.down : c.cobalt} />
+            <SportBadge id={s.sport} size={32} />
             <View style={{ flex: 1 }}>
               <Text weight={600} numberOfLines={1}>
                 {sessionText(s, t)}
@@ -343,32 +339,24 @@ function PlayPicker({ input, value, onChange, off }: { input: CardioInput; value
   const setMin = (sport: CardioSport, min: number) => set(play.map((p) => (p.sport === sport ? { ...p, min } : p)));
   return (
     <View>
-      <Text variant="small" weight={700} color="sec" style={{ marginTop: 12, marginBottom: 8 }}>
-        {t('Sports you play')}
-      </Text>
-      <Row gap={8} style={{ flexWrap: 'wrap' }}>
-        {[...new Set([...ok, ...play.map((p) => p.sport)])].map((s) => (
-          <Chip key={s} title={t(SPORT_LABEL[s])} on={play.some((p) => p.sport === s)} offColor={off} onPress={() => toggle(s)} />
-        ))}
-      </Row>
+      <View style={{ marginTop: 14, marginBottom: 12 }}>
+        <SecLabel>{t('Sports you play')}</SecLabel>
+      </View>
+      <SportTiles ids={[...new Set([...ok, ...play.map((p) => p.sport)])]} picked={(s) => play.some((p) => p.sport === s)} onPick={toggle} />
       {play.map((p) => (
-        <View key={p.sport} style={{ marginTop: 10, padding: 12, borderRadius: 16, backgroundColor: off ?? c.card }}>
-          <Row gap={8}>
-            <Icon name={sportIcon(p.sport)} size={18} color={c.cobalt} />
+        <View key={p.sport} style={{ marginTop: 12, padding: 14, borderRadius: 18, backgroundColor: off ?? c.card }}>
+          <Row gap={10}>
+            <SportBadge id={p.sport} size={34} />
             <Text weight={700} style={{ flex: 1 }} numberOfLines={1}>
               {`${t(SPORT_LABEL[p.sport])} ×${p.days.length}`}
             </Text>
-            {[...new Set([p.min, 45, 60, 90])].sort((a, b) => a - b).map((m) => (
-              <Text key={m} variant="xs" weight={700} color={p.min === m ? 'cobalt' : 'sec'} onPress={() => setMin(p.sport, m)} accessibilityRole="button" style={{ paddingHorizontal: 4, paddingVertical: 6 }}>
-                {t('{n} min', { n: m })}
-              </Text>
-            ))}
           </Row>
-          <Row gap={4} style={{ marginTop: 8, flexWrap: 'wrap' }}>
-            {DAYS.map((d, i) => (
-              <Chip key={d} title={t(d)} on={p.days.includes(i)} offColor={off ? c.card : c.inset} onPress={() => setDays(p.sport, i)} />
-            ))}
-          </Row>
+          <View style={{ marginTop: 12 }}>
+            <Pills options={[...new Set([p.min, 45, 60, 90])].sort((a, b) => a - b).map((m) => ({ v: m, label: t('{n} min', { n: m }) }))} value={p.min} onPick={(m) => setMin(p.sport, m)} off={off ? c.card : undefined} />
+          </View>
+          <View style={{ marginTop: 8 }}>
+            <Pills options={DAYS.map((d, i) => ({ v: i, label: t(d), on: p.days.includes(i) }))} onPick={(i) => setDays(p.sport, i)} off={off ? c.card : undefined} />
+          </View>
         </View>
       ))}
     </View>

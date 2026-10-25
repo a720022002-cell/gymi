@@ -4996,4 +4996,5 @@ export const AR: Record<string, string> = {
   "Set below. Change anything you like.": "مضبوط تحت. غيّر اللي تبي.",
   "Back to the recommendation": "ارجع للتوصية",
   "Updates every few seconds": "يتحدث كل كم ثانية",
+  "From your plan today": "من خطتك اليوم",
 };

@@ -4,12 +4,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { Platform, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { GROUP_COLORS, GROUP_SHORT, Pills, SecLabel, SportBadge, SportTiles } from '@/components/cardio/SportTiles';
 import { sessionGuide } from '@/components/CardioLive';
 import { Icon, type IconName } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
+import { sessionText } from '@/components/train/CardioPlan';
 import { useRecovery } from '@/components/train/RecoveryCard';
 import { Button, Card, Option, Row, Segmented, Springy, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
@@ -43,14 +45,13 @@ import {
 import { hush } from '@/lib/cardioVoice';
 import { useFood } from '@/lib/food';
 import { appleWatchSupported, bleSupported, type HrSource, type SavedSensor, savedSensor, saveSensor, scanSensors } from '@/lib/liveHr';
+import { forReadiness } from '@/lib/cardioPlan';
 import { useTrain } from '@/lib/train';
+import { useCardioWeek } from '@/lib/useCardioWeek';
 import { SPORT_GROUPS, type SportGroup, SPORTS, type SportId, sportFrom, sportInfo } from '@/lib/sports';
 import { useSettings } from '@/theme/settings';
 
 const icon = (s: SportId): IconName => sportInfo(s).icon ?? 'flame';
-/** Each group's color on the sport picker, and its short name on the filter chips. */
-const GROUP_COLORS: Record<SportGroup, string> = { Cardio: '#3355FF', 'Racket sports': '#F59E0B', 'Team sports': '#22C55E', Combat: '#EF4444', 'Mind and body': '#A855F7', Other: '#94A3B8' };
-const GROUP_SHORT: Record<SportGroup, string> = { Cardio: 'Cardio', 'Racket sports': 'Racket', 'Team sports': 'Team', Combat: 'Combat', 'Mind and body': 'Mind & body', Other: 'Other' };
 /** Numbers inside a sentence stay left to right in Arabic. */
 const ltr = (s: string | number) => `⁦${s}⁩`;
 const clampZone = (z: number) => Math.max(1, Math.min(5, Math.round(z)));
@@ -127,8 +128,7 @@ function PreStart() {
   const gps = outdoor && (gpsSel ?? true);
   const [speakSel, setSpeakSel] = useState<boolean | null>(null);
   const speak = speakSel ?? (!!sport && (sportInfo(sport).gps || sportInfo(sport).group === 'Combat'));
-  const [scan, setScan] = useState(false);
-  const insets = useSafeAreaInsets();
+    const insets = useSafeAreaInsets();
 
   const [lo, hi] = zoneBpm(zone, age);
   const [rlo, rhi] = zoneRpe(zone);
@@ -149,7 +149,7 @@ function PreStart() {
       planMin: minutes,
       target: zone,
       cap,
-      planId: p.planId ? String(p.planId).slice(0, 80) : null,
+      planId: planRef ?? (p.planId ? String(p.planId).slice(0, 80) : null),
       source: source === 'ble' && !sensor ? 'none' : source,
       sensor: source === 'ble' ? sensor : null,
       gps: useGps,
@@ -165,7 +165,8 @@ function PreStart() {
     });
   };
 
-  const [hrOpen, setHrOpen] = useState(false);
+  // The heart rate sheet: pick a source, or look for a Bluetooth sensor (in the same sheet: iOS shows one at a time).
+  const [hrOpen, setHrOpen] = useState<'pick' | 'scan' | null>(null);
   const [filter, setFilter] = useState<SportGroup | null>(null);
   const pickSport = (id: SportId) => {
     setSport(id);
@@ -173,17 +174,26 @@ function PreStart() {
     setKind(null);
     setZone(null);
     setMin(undefined);
+    setPlanRef(null);
+  };
+  // Today's session from your cardio plan, one tap away on the picker (eased when recovery is low).
+  const cw = useCardioWeek();
+  const [planRef, setPlanRef] = useState<string | null>(null);
+  const planned = cw.today && !cw.todayDone ? forReadiness(cw.today, r.score) : null;
+  const pickPlanned = () => {
+    if (!planned || !cw.today) return;
+    pickSport(planned.sport);
+    setZone(planned.zone);
+    setMin(planned.min);
+    setKind(planned.kind);
+    setPlanRef(cw.today.id);
   };
   const timeOptions = [...new Set([15, 30, 45, 60, 90, ...(paramMin ? [paramMin] : []), rec.minutes])].sort((a, b) => a - b);
   const onRec = zone === Math.min(cap, rec.zone) && minutes === rec.minutes && (!canIntervals || kind === rec.kind);
   const hrName = source === 'ble' && sensor ? sensor.name : source === 'apple' ? t('Apple Watch') : t('No sensor');
   const hrSub = source === 'ble' && sensor ? t('Bluetooth sensor · live every second') : source === 'apple' ? t('Updates every few seconds') : t('Coaching by time and how hard it feels');
   const zoneText = source === 'none' ? t('{name}: feels {a} to {b} out of 10', { name: t(ZONE_NAMES[zone - 1]), a: ltr(rlo), b: ltr(rhi) }) : t('{name}: {a}–{b} bpm', { name: t(ZONE_NAMES[zone - 1]), a: ltr(lo), b: ltr(hi) });
-  const label = (x: string) => (
-    <Text variant="xs" weight={700} color="sec" style={{ letterSpacing: 0.6, textTransform: 'uppercase' }}>
-      {x}
-    </Text>
-  );
+  const label = (x: string) => <SecLabel>{x}</SecLabel>;
   const line = <View style={{ height: 1, backgroundColor: c.inset, marginVertical: 16, marginHorizontal: -16 }} />;
 
   // Step 1: pick a sport (a grid of icons, colored by group). Step 2: set it up, with Start always at the bottom.
@@ -193,7 +203,26 @@ function PreStart() {
         <Text variant="small" color="sec" style={{ marginHorizontal: 4, marginBottom: 12 }}>
           {t('What are you doing today?')}
         </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 14 }}>
+        {planned ? (
+          <Card onPress={pickPlanned} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <SportBadge id={planned.sport} size={44} />
+            <View style={{ flex: 1 }}>
+              <Text variant="xs" weight={700} color="link">
+                {t(cw.today?.fixed ? 'Sport today' : 'From your plan today')}
+              </Text>
+              <Text weight={700} numberOfLines={1}>
+                {sessionText(planned, t)}
+              </Text>
+            </View>
+            <Icon name="chev" size={16} color={c.sec} />
+          </Card>
+        ) : null}
+        {/* Fixed height: a horizontal list would otherwise stretch down the page. */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ flexGrow: 0, flexShrink: 0, marginHorizontal: -20 }}
+          contentContainerStyle={{ gap: 8, paddingHorizontal: 20, paddingBottom: 16 }}>
           {[null, ...SPORT_GROUPS].map((g) => (
             <Springy
               key={g ?? 'all'}
@@ -208,23 +237,11 @@ function PreStart() {
           ))}
         </ScrollView>
         {SPORT_GROUPS.filter((g) => !filter || filter === g).map((grp) => (
-          <View key={grp} style={{ marginBottom: 8 }}>
-            <Row gap={8} style={{ marginHorizontal: 4, marginBottom: 10 }}>
-              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: GROUP_COLORS[grp] }} />
-              {label(t(grp))}
-            </Row>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 12 }}>
-              {SPORTS.filter((x) => x.group === grp).map(({ id, name }) => (
-                <Springy key={id} onPress={() => pickSport(id)} scaleTo={0.94} accessibilityLabel={t(name)} style={{ width: '25%', alignItems: 'center', gap: 7 }}>
-                  <View style={{ width: 58, height: 58, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: `${GROUP_COLORS[grp]}22` }}>
-                    <Icon name={icon(id)} size={24} color={GROUP_COLORS[grp]} />
-                  </View>
-                  <Text weight={700} size={12} center numberOfLines={1} style={{ maxWidth: '96%' }}>
-                    {t(name)}
-                  </Text>
-                </Springy>
-              ))}
+          <View key={grp} style={{ marginBottom: 18 }}>
+            <View style={{ marginHorizontal: 4, marginBottom: 12 }}>
+              <SecLabel dot={GROUP_COLORS[grp]}>{t(grp)}</SecLabel>
             </View>
+            <SportTiles ids={SPORTS.filter((x) => x.group === grp).map((x) => x.id)} onPick={pickSport} />
           </View>
         ))}
       </Screen>
@@ -234,17 +251,20 @@ function PreStart() {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <Screen title={t('Start cardio')} back onBack={paramSport ? undefined : () => setSport(null)}>
-        <Row gap={14} style={{ marginHorizontal: 4, marginBottom: 16 }}>
-          <View style={{ width: 56, height: 56, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: `${GROUP_COLORS[g]}26` }}>
-            <Icon name={icon(sport)} size={28} color={GROUP_COLORS[g]} />
-          </View>
+        <Row gap={14} style={{ marginHorizontal: 4, marginTop: 8, marginBottom: 16 }}>
+          <SportBadge id={sport} size={56} />
           <View style={{ flex: 1 }}>
             <Text variant="h2">{t(sportInfo(sport).name)}</Text>
             <Text variant="small" color="sec">
               {t(g)}
             </Text>
           </View>
-          <Springy onPress={() => setSport(null)} style={{ padding: 6 }}>
+          <Springy
+            onPress={() => {
+              setSport(null);
+              setPlanRef(null);
+            }}
+            style={{ padding: 6 }}>
             <Text weight={700} color="link">
               {t('Change')}
             </Text>
@@ -340,40 +360,20 @@ function PreStart() {
               {minutes == null ? t('No limit') : t('{n} min', { n: minutes })}
             </Text>
           </Row>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-            {[...timeOptions, null].map((m) => {
-              const on = minutes === m;
-              return (
-                <Springy
-                  key={m ?? 'none'}
-                  onPress={() => setMin(m)}
-                  accessibilityState={{ selected: on }}
-                  accessibilityLabel={m == null ? t('No limit') : t('{n} min', { n: m })}
-                  style={{ minWidth: 56, height: 40, paddingHorizontal: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: on ? c.text : c.inset }}>
-                  <Text num weight={700} size={14} color={on ? c.bg : c.text}>
-                    {m == null ? t('No limit') : t('{n} min', { n: m })}
-                  </Text>
-                  {m === rec.minutes && !on ? <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: c.link }} /> : null}
-                </Springy>
-              );
-            })}
-          </ScrollView>
+          <Pills<number | null> options={[...timeOptions, null].map((m) => ({ v: m, label: m == null ? t('No limit') : t('{n} min', { n: m }) }))} value={minutes} onPick={setMin} mark={rec.minutes} />
         </Card>
 
         <Card>
-          <Springy onPress={() => setHrOpen(true)} accessibilityLabel={t('Live heart rate from')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Springy onPress={() => setHrOpen('pick')} accessibilityLabel={t('Live heart rate from')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <View style={{ width: 36, height: 36, borderRadius: 11, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
               <Icon name="heart" size={18} color={c.down} />
             </View>
             <View style={{ flex: 1 }}>
               <Text weight={700}>{t('Heart rate')}</Text>
-              <Text variant="xs" color="sec" numberOfLines={1}>
-                {hrSub}
+              <Text variant="xs" color="sec" numberOfLines={2}>
+                {`${hrName} · ${hrSub}`}
               </Text>
             </View>
-            <Text variant="small" color="sec" numberOfLines={1} style={{ maxWidth: 130 }}>
-              {hrName}
-            </Text>
             <Icon name="chev" size={16} color={c.sec} />
           </Springy>
           {outdoor ? (
@@ -417,81 +417,81 @@ function PreStart() {
         </Text>
       </View>
 
-      <Sheet open={hrOpen} onClose={() => setHrOpen(false)}>
-        <Text variant="h2">{t('Live heart rate from')}</Text>
-        <View style={{ height: 12 }} />
-        {bleSupported ? (
-          <Option
-            icon="heart"
-            title={sensor ? sensor.name : t('Bluetooth heart rate sensor')}
-            subtitle={sensor ? t('Bluetooth sensor · live every second') : t('Chest strap, or a watch that broadcasts heart rate')}
-            selected={source === 'ble' && !!sensor}
-            onPress={() => {
-              if (!sensor) return setScan(true);
-              setSource('ble');
-              setHrOpen(false);
-            }}
-            right={
-              <Springy onPress={() => setScan(true)} accessibilityLabel={t('Find a sensor')} style={{ paddingHorizontal: 8, height: 36, justifyContent: 'center' }}>
-                <Text variant="small" weight={700} color="link">
-                  {sensor ? t('Change') : t('Find')}
-                </Text>
+      <Sheet open={!!hrOpen} onClose={() => setHrOpen(null)}>
+        {hrOpen === 'scan' ? (
+          <>
+            <Row gap={8}>
+              <Springy onPress={() => setHrOpen('pick')} accessibilityLabel={t('Back')} style={{ padding: 4 }}>
+                <Icon name="back" size={20} />
               </Springy>
-            }
-          />
-        ) : null}
-        {appleWatchSupported ? (
-          <Option
-            icon="watch"
-            title={t('Apple Watch')}
-            subtitle={t('Updates every few seconds. Start a workout on your watch too.')}
-            selected={source === 'apple'}
-            onPress={() => {
-              setSource('apple');
-              setHrOpen(false);
-            }}
-          />
-        ) : null}
-        <Option
-          icon="pulse"
-          title={t('No sensor')}
-          subtitle={t('Coaching by time and how hard it feels')}
-          selected={source === 'none'}
-          onPress={() => {
-            setSource('none');
-            setHrOpen(false);
-          }}
-        />
+              <Text variant="h3" style={{ flex: 1 }}>
+                {t('Find a heart rate sensor')}
+              </Text>
+            </Row>
+            <ScanList
+              onPick={(x) => {
+                setSensor(x);
+                saveSensor(x);
+                setSource('ble');
+                setHrOpen(null);
+              }}
+            />
+          </>
+        ) : (
+          <>
+            <Text variant="h2">{t('Live heart rate from')}</Text>
+            <View style={{ height: 12 }} />
+            {bleSupported ? (
+              <Option
+                icon="heart"
+                title={sensor ? sensor.name : t('Bluetooth heart rate sensor')}
+                subtitle={sensor ? t('Bluetooth sensor · live every second') : t('Chest strap, or a watch that broadcasts heart rate')}
+                selected={source === 'ble' && !!sensor}
+                onPress={() => {
+                  if (!sensor) return setHrOpen('scan');
+                  setSource('ble');
+                  setHrOpen(null);
+                }}
+                right={
+                  <Springy onPress={() => setHrOpen('scan')} accessibilityLabel={t('Find a sensor')} style={{ paddingHorizontal: 8, height: 36, justifyContent: 'center' }}>
+                    <Text variant="small" weight={700} color="link">
+                      {sensor ? t('Change') : t('Find')}
+                    </Text>
+                  </Springy>
+                }
+              />
+            ) : null}
+            {appleWatchSupported ? (
+              <Option
+                icon="watch"
+                title={t('Apple Watch')}
+                subtitle={t('Updates every few seconds. Start a workout on your watch too.')}
+                selected={source === 'apple'}
+                onPress={() => {
+                  setSource('apple');
+                  setHrOpen(null);
+                }}
+              />
+            ) : null}
+            <Option
+              icon="pulse"
+              title={t('No sensor')}
+              subtitle={t('Coaching by time and how hard it feels')}
+              selected={source === 'none'}
+              onPress={() => {
+                setSource('none');
+                setHrOpen(null);
+              }}
+            />
+          </>
+        )}
       </Sheet>
-
-      <ScanSheet
-        open={scan}
-        onClose={() => setScan(false)}
-        onPick={(x) => {
-          setSensor(x);
-          saveSensor(x);
-          setSource('ble');
-          setScan(false);
-          setHrOpen(false);
-        }}
-      />
     </View>
   );
 }
 
-/** Find a Bluetooth heart rate sensor nearby; the one you pick is remembered and reconnects by itself next time. */
-function ScanSheet({ open, onClose, onPick }: { open: boolean; onClose: () => void; onPick: (s: SavedSensor) => void }) {
-  const { t } = useT();
-  return (
-    <Sheet open={open} onClose={onClose}>
-      <Text variant="h3">{t('Find a heart rate sensor')}</Text>
-      {/* Mounted only while open, so every opening scans afresh. */}
-      {open ? <ScanList onPick={onPick} /> : null}
-      <Button title={t('Close')} kind="soft" onPress={onClose} style={{ marginTop: 8 }} />
-    </Sheet>
-  );
-}
-
+/** Find a Bluetooth heart rate sensor nearby; the one you pick is remembered and reconnects by itself next time. Scans
+ * afresh each time it's shown. */
 function ScanList({ onPick }: { onPick: (s: SavedSensor) => void }) {
   const { t } = useT();
   const { colors: c } = useSettings();
