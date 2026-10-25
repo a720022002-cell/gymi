@@ -417,6 +417,11 @@ Passwords and keys are left out on purpose.
 - Email change: Supabase sends a code to both the new and the current email (secure email change). The app now asks for the new email's code, then the current one's; the change happens when both are in.
 - Sent as an OTA update to build 15 (group 483e6015).
 
+### Logo in the emails (25 Oct 2026)
+- The code emails and the welcome email show the Adro app icon (https://adroapp.com/icons/icon-192.png) above "Adro". Preview checked.
+- The round picture next to the sender in the inbox (the "H") is chosen by the mail app: Gmail and Apple Mail show a brand logo only with BIMI and a paid logo certificate (VMC/CMC). Not done.
+- Waiting for the OK to apply (templates + welcome deploy).
+
 ---
 
 

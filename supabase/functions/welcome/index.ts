@@ -63,7 +63,7 @@ function html(lang: 'ar' | 'en', w: Who) {
   return `<!doctype html>
 <html lang="${lang}" dir="${rtl ? 'rtl' : 'ltr'}"><body style="margin:0;padding:0;background:#F4F5F7">
 <div style="max-width:520px;margin:0 auto;padding:28px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Tahoma,Arial,sans-serif;color:#0A0A0B">
-  <div style="text-align:center;font-size:26px;font-weight:800;color:#3355FF;letter-spacing:-0.5px;margin-bottom:16px">Adro</div>
+  <div style="text-align:center;margin-bottom:16px"><img src="https://adroapp.com/icons/icon-192.png" width="56" height="56" alt="Adro" style="display:inline-block;border:0;border-radius:14px" /><div style="font-size:20px;font-weight:800;color:#3355FF;letter-spacing:-0.5px;margin-top:6px">Adro</div></div>
   <div style="background:#FFFFFF;border-radius:24px;padding:26px 24px" dir="${rtl ? 'rtl' : 'ltr'}">
     <h2 style="margin:0 0 8px;font-size:22px;text-align:${al}">${esc(T.hi(w.name))}</h2>
     <p style="margin:0;font-size:15px;line-height:${lh};color:#3F3F46;text-align:${al}">${esc(T.intro)}</p>
