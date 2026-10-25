@@ -5019,4 +5019,6 @@ export const AR: Record<string, string> = {
   "Now the code for your current email": "الحين رمز إيميلك الحالي",
   "To keep your account safe, both emails confirm the change.": "عشان نحمي حسابك، الإيميلين لازم يأكدون التغيير.",
   "Your current email gets a code too. You’ll enter it next.": "إيميلك الحالي بعد يوصله رمز، تكتبه بعد هذا.",
+  "Open the scanner": "افتح الماسح",
+  "Point at the barcode, near or far. Pinch to zoom if it’s small.": "وجّه الكاميرا على الباركود، من قريب أو بعيد. قرّب بإصبعين إذا كان صغير.",
 };
