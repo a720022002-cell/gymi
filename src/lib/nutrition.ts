@@ -91,6 +91,8 @@ export type FoodPlan = {
   allergyNote?: string;
   /** Recipes the AI wrote for you (mixed into the meal plan, so it isn't the same as everyone else's). */
   aiRecipes?: AiRecipes;
+  /** The weight you're aiming for (kg), set with a cut or bulk goal. */
+  targetWeight?: number | null;
 };
 
 /** A recipe in the plan. gen = made by the AI from the ingredients you have. */
@@ -161,6 +163,24 @@ export function flooredRate(f: BodyFacts & Pick<FoodPlan, 'goal'>, p: Person, kc
   const tdee = maintenance(f, p);
   if (tdee + Math.max(GOAL_ADJ[f.goal], -0.25 * tdee) >= kcalFloor(f.weight, p, f.bf)) return null;
   return Math.min(0, Math.round(((kcal - tdee) * 7) / 7700 / 0.05) * 0.05);
+}
+
+/** Is the target weight on the goal's side: lower for a cut, higher for a bulk? */
+export const targetFits = (goal: number, weight: number, target?: number | null) => target != null && target > 0 && (goal >= 3 ? target < weight : goal <= 1 ? target > weight : false);
+
+/** A first target for the goal: about 8% lower for a cut, 5% higher for a bulk (to the half kilo). None to maintain. */
+export const defaultTarget = (goal: number, weight: number) => (goal === 2 ? null : Math.round(weight * (goal >= 3 ? 0.92 : 1.05) * 2) / 2);
+
+/** The lowest target we offer for a cut: a healthy weight for your height (BMI 18.5), and never more than 40% off. */
+export const lowestTarget = (weight: number, p: Person) => Math.ceil(Math.max(p.height > 0 ? 18.5 * (p.height / 100) ** 2 : 0, weight * 0.6) * 2) / 2;
+
+/** About how many weeks to the target weight at these calories; null without a target, to maintain, or when the calories don't move that way. */
+export function weeksToTarget(f: BodyFacts & Pick<FoodPlan, 'goal' | 'targetWeight'>, p: Person, kcal = suggestKcal(f, p)) {
+  if (!targetFits(f.goal, f.weight, f.targetWeight) || isMinor(p)) return null;
+  const perWeek = ((kcal - maintenance(f, p)) * 7) / 7700;
+  const left = (f.targetWeight as number) - f.weight;
+  if (!perWeek || Math.sign(perWeek) !== Math.sign(left)) return null;
+  return Math.max(1, Math.ceil(left / perWeek));
 }
 
 // Earlier formulas (by weight only, Mifflin-St Jeor), to tell untouched plans from ones changed by hand.

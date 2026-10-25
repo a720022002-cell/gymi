@@ -6,7 +6,7 @@ import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { useFood } from '@/lib/food';
 import { MEAS, MEAS_INFO, type MeasKind, useHealth } from '@/lib/health';
-import { addDays } from '@/lib/nutrition';
+import { addDays, targetFits } from '@/lib/nutrition';
 import { takePhoto } from '@/lib/photo';
 import { fx, shortDate, weekAvg } from '@/lib/progress';
 import { useWeight } from '@/lib/units';
@@ -62,6 +62,8 @@ function Weight() {
   const a = weekAvg(health.weights, food.today);
   const b = weekAvg(health.weights, addDays(food.today, -7));
   const goal = food.plan.goal;
+  // Your target weight from the calorie plan (a cut or bulk): a dashed line on the chart.
+  const target = targetFits(goal, food.plan.weight, food.plan.targetWeight) ? (food.plan.targetWeight as number) : null;
   const [v, setV] = useState(0);
   const openSheet = () => {
     setV(cur?.value ?? Number(profile?.weight_kg ?? 75));
@@ -115,7 +117,12 @@ function Weight() {
             </Row>
             {w.length > 1 ? (
               <View style={{ marginTop: 16 }}>
-                <LineChart values={w.map((x) => W.num(x.value))} labels={labels} />
+                <LineChart values={w.map((x) => W.num(x.value))} labels={labels} goal={target != null ? W.num(target) : undefined} />
+                {target != null ? (
+                  <Text variant="xs" color="sec" center style={{ marginTop: 4 }}>
+                    {t('Dashed line: your target, {w}', { w: W.text(target) })}
+                  </Text>
+                ) : null}
                 <Row gap={6} style={{ marginTop: 8, justifyContent: 'center' }}>
                   <Text variant="xs" weight={700} color="link">
                     {t('Tap to see every weigh-in and fix one')}

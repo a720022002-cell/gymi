@@ -5007,4 +5007,13 @@ export const AR: Record<string, string> = {
   "{n} saved. It connects by itself when you start cardio.": "انحفظ {n}. يتصل لحاله لما تبدأ الكارديو.",
   "Saved. Connects when you start cardio.": "محفوظ. يتصل لما تبدأ الكارديو.",
   "Heart rate, live every second": "النبض مباشر كل ثانية",
+  "About {n} weeks at this pace, around {date}.": "تقريباً {n} أسبوع بهالوتيرة، حوالي {date}.",
+  "Dashed line: your target, {w}": "الخط المتقطع: وزنك المستهدف، {w}",
+  "Target weight": "الوزن المستهدف",
+  "Target {w}: about {n} weeks, around {date}": "الهدف {w}: تقريباً {n} أسبوع، حوالي {date}",
+  "Target {w}: these calories don’t move you toward it": "الهدف {w}: هالسعرات ما توصلك له",
+  "That’s the lowest healthy weight for your height.": "هذا أقل وزن صحي لطولك.",
+  "The number under each body is its body fat percentage. Pick the closest one; it only needs to be roughly right.": "الرقم تحت كل جسم هو نسبة الدهون فيه. اختر الأقرب لك، ما يحتاج يكون دقيق.",
+  "Your calories can’t go low enough to reach it by eating alone. Moving more helps.": "سعراتك ما تقدر تنزل كفاية عشان توصله بالأكل بس. الحركة الزيادة تساعد.",
+  "body fat": "دهون",
 };

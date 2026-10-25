@@ -4,7 +4,7 @@ import { TextInput, View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
-import { ACTIVITY, bodyFatList, calcPlan, flooredRate, type FoodPlan, GOAL_DESC, GOAL_ORDER, GOALS, isMinor } from '@/lib/nutrition';
+import { ACTIVITY, addDays, bodyFatList, calcPlan, defaultTarget, flooredRate, type FoodPlan, GOAL_DESC, GOAL_ORDER, GOALS, isMinor, lowestTarget, targetFits, weeksToTarget } from '@/lib/nutrition';
 import { useWeight } from '@/lib/units';
 import { cleanNumber } from '@/lib/validation';
 import { useSettings } from '@/theme/settings';
@@ -24,7 +24,7 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** First time in Food: weight and activity, goal, body fat, work day, allergies, notes. */
 export function SetupWizard({ inTab }: { inTab?: boolean }) {
-  const { t } = useT();
+  const { t, lang } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
   const food = useFood();
@@ -62,6 +62,19 @@ export function SetupWizard({ inTab }: { inTab?: boolean }) {
     set({ weight: Math.round(wu.toKg(v) * 10) / 10 });
     setWText(String(v));
   };
+
+  // The weight you're aiming for (a cut or bulk): half a kilo (or a pound) a tap, on the goal's side of your weight,
+  // and never under a healthy weight for your height.
+  const target = targetFits(f.goal, f.weight, f.targetWeight) ? (f.targetWeight as number) : defaultTarget(f.goal, f.weight);
+  const tMin = f.goal >= 3 ? lowestTarget(f.weight, food.person) : f.weight + 0.5;
+  const tMax = f.goal >= 3 ? f.weight - 0.5 : Math.round(f.weight * 1.5);
+  const stepTarget = (d: number) => {
+    if (target == null) return;
+    const v = Math.round(Math.min(tMax, Math.max(tMin, wu.toKg(wu.num(target) + d))) * 10) / 10;
+    set({ targetWeight: v });
+  };
+  const weeks = target != null ? weeksToTarget({ ...f, targetWeight: target }, food.person) : null;
+  const byDate = weeks ? new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { month: 'long', year: 'numeric' }).format(new Date(`${addDays(food.today, weeks * 7)}T12:00:00`)) : '';
 
   const title = t(inTab ? 'Set up your calories' : 'Calorie setup');
   const back = step > 0 ? () => setStep(step - 1) : inTab ? undefined : () => router.back();
@@ -154,11 +167,48 @@ export function SetupWizard({ inTab }: { inTab?: boolean }) {
                 subtitle={rate != null ? (rate < 0 ? t('About −{x} kg a week for you (your calorie floor)', { x: Math.abs(rate).toFixed(2) }) : t('Close to maintenance for you (your calorie floor)')) : t(GOAL_DESC[i])}
                 selected={(minor ? 2 : f.goal) === i}
                 disabled={minor && i !== 2}
-                onPress={() => set({ goal: minor ? 2 : i })}
+                onPress={() => {
+                  const g = minor ? 2 : i;
+                  // A target on the other side of your weight (you switched from a cut to a bulk) starts over.
+                  set({ goal: g, targetWeight: targetFits(g, f.weight, f.targetWeight) ? f.targetWeight : defaultTarget(g, f.weight) });
+                }}
               />
             );
           })}
-          <Button title={t('Next')} style={{ marginTop: 24 }} onPress={next} />
+          {!minor && target != null ? (
+            <Card style={{ marginTop: 8 }}>
+              <Text variant="small" weight={700} color="sec">
+                {t('Target weight')}
+              </Text>
+              <View style={{ marginTop: 8 }}>
+                <Stepper onMinus={() => stepTarget(wu.unit === 'lb' ? -1 : -0.5)} onPlus={() => stepTarget(wu.unit === 'lb' ? 1 : 0.5)} minusDisabled={target <= tMin} labels={[t('Decrease'), t('Increase')]}>
+                  <Text num size={36} style={{ letterSpacing: -1.2, lineHeight: 42 }}>
+                    {wu.show(target)}
+                    <Text num size={16} weight={500} color="sec">{` ${wu.label}`}</Text>
+                  </Text>
+                </Stepper>
+              </View>
+              <Text variant="small" color="sec" center style={{ marginTop: 8 }}>
+                {weeks
+                  ? t('About {n} weeks at this pace, around {date}.', { n: weeks, date: byDate })
+                  : t('Your calories can’t go low enough to reach it by eating alone. Moving more helps.')}
+              </Text>
+              {f.goal >= 3 && target <= tMin ? (
+                <Text variant="xs" color="sec" center style={{ marginTop: 4 }}>
+                  {t('That’s the lowest healthy weight for your height.')}
+                </Text>
+              ) : null}
+            </Card>
+          ) : null}
+          <Button
+            title={t('Next')}
+            style={{ marginTop: 24 }}
+            onPress={() => {
+              // The target shown is the one saved (also when you didn't change it).
+              if (!minor && target != null && f.targetWeight !== target) set({ targetWeight: target });
+              next();
+            }}
+          />
         </View>
       ) : null}
 
@@ -168,7 +218,7 @@ export function SetupWizard({ inTab }: { inTab?: boolean }) {
             {t('Which body looks closest to yours?')}
           </Text>
           <Text color="sec" style={{ marginTop: 4, marginBottom: 16 }}>
-            {t('Pick the closest one. It only needs to be roughly right.')}
+            {t('The number under each body is its body fat percentage. Pick the closest one; it only needs to be roughly right.')}
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
             {bodyFatList(food.person.gender).map((b, i) => {
@@ -183,6 +233,9 @@ export function SetupWizard({ inTab }: { inTab?: boolean }) {
                   style={{ width: '31%', flexGrow: 1, alignItems: 'center', backgroundColor: c.card, borderRadius: 22, padding: 6, paddingBottom: 10, borderWidth: 2, borderColor: on ? c.cobalt : 'transparent' }}>
                   <BodyFigure bf={b} female={food.person.gender === 'female'} selected={on} />
                   <Text num color={on ? c.cobalt : c.text} style={{ marginTop: 6 }}>{`${b}%`}</Text>
+                  <Text variant="xs" weight={600} color={on ? c.cobalt : 'sec'}>
+                    {t('body fat')}
+                  </Text>
                 </Springy>
               );
             })}

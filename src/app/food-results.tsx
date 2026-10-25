@@ -15,16 +15,18 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Row, Segmented, Springy, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
-import { flooredRate, type FoodPlan, fmt, fmtTime, GOALS, isMinor, kcalFloor, nextMealId, proteinKg, RAMADAN_SWITCH, suggestWater, targets, withMealIds, withPregnancy } from '@/lib/nutrition';
+import { addDays, flooredRate, type FoodPlan, fmt, fmtTime, GOALS, isMinor, targetFits, weeksToTarget, kcalFloor, nextMealId, proteinKg, RAMADAN_SWITCH, suggestWater, targets, withMealIds, withPregnancy } from '@/lib/nutrition';
 import { CITIES, DEFAULT_CITY, fastTimes } from '@/lib/prayer';
 import { fx } from '@/lib/progress';
 import { useSettings } from '@/theme/settings';
 import { goBack } from '@/lib/nav';
+import { useWeight } from '@/lib/units';
 
 const inRange = (v: number) => v >= 1.6 - 1e-9 && v <= 2.2 + 1e-9;
 
 export default function FoodResults() {
-  const { t } = useT();
+  const { t, lang } = useT();
+  const wu = useWeight();
   const { colors: c } = useSettings();
   const toast = useToast();
   const food = useFood();
@@ -42,6 +44,10 @@ export default function FoodResults() {
   const rate = f.carbG == null ? flooredRate(f, food.person, tg.k) : null;
   const low = tg.k < floor;
   const minor = isMinor(food.person);
+  // Your target weight, and about when you'd reach it at these calories.
+  const target = !minor && targetFits(f.goal, f.weight, f.targetWeight) ? (f.targetWeight as number) : null;
+  const weeks = target != null ? weeksToTarget(f, food.person, tg.k) : null;
+  const byDate = weeks ? new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { month: 'long', year: 'numeric' }).format(new Date(`${addDays(food.today, weeks * 7)}T12:00:00`)) : '';
   // Pregnancy mode: what Food will use each day (no deficit, plus the trimester's extra).
   const pregK = food.preg ? targets(withPregnancy(f, food.person, food.pregKcal)).k : null;
 
@@ -115,6 +121,13 @@ export default function FoodResults() {
                 goal: t(GOALS[minor ? 2 : f.goal]).toLowerCase(),
               })}
             </Text>
+            {target != null ? (
+              <Text variant="small" weight={700} center style={{ marginTop: 4 }}>
+                {weeks
+                  ? t('Target {w}: about {n} weeks, around {date}', { w: wu.text(target), n: weeks, date: byDate })
+                  : t('Target {w}: these calories don’t move you toward it', { w: wu.text(target) })}
+              </Text>
+            ) : null}
             {rate != null ? (
               <Text variant="small" color="sec" center style={{ marginTop: 4 }}>
                 {rate < 0

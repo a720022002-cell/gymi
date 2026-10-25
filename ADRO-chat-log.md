@@ -387,6 +387,13 @@ Passwords and keys are left out on purpose.
 - Fix: Sheet.tsx afterSheet() waits for a sheet to finish closing. Used before going to another screen from DaySheet (4 places), MealMenu and IngredientsSheet, and before Edit workout opens the list by itself. Each tap on "Add an exercise" (or swap) opens a fresh list, so a list that couldn't show opens on the next tap.
 - Sent as an OTA update to build 15 (group 320ed501).
 
+### Calorie setup: target weight, and body fat labels (25 Oct 2026)
+- Goal step: with a cut or bulk, a "Target weight" card (half a kilo a tap; starts about 8% lower for a cut, 5% higher for a bulk; a cut never goes under a healthy weight for your height, BMI 18.5). Shows about how many weeks at these calories and the month you'd get there. Saved in the plan (targetWeight); switching between cut and bulk starts the target over.
+- Your plan screen: "Target 78 kg: about 22 weeks, around March 2027". Progress → Weight chart: a dashed line at the target.
+- Body shape step: the text says the number under each body is its body fat percentage, and each one says "body fat" under the %.
+- Checked on the web build in Arabic and English, no errors. Test users deleted.
+- Not sent yet (JS only, can go as an update).
+
 ---
 
 
