@@ -437,7 +437,7 @@ Passwords and keys are left out on purpose.
 - Ask: up close the camera is blurry, so you had to scan from far away; if it didn't catch it, you had to type the code.
 - Cause: our camera view uses only the main lens, which can't focus closer than about 15–20 cm.
 - Done: on iPhone the barcode screen now opens Apple's own scanner (VisionKit, the one Live Text uses, already inside expo-camera). It switches to the macro lens up close, has pinch-to-zoom and guidance, and highlights the code. Swipe it down: the screen shows "Open the scanner" and "Enter the code by hand". Phones that can't run it keep the old camera view.
-- File: src/app/barcode.tsx (+2 Arabic strings). JS only, same native fingerprint as build 15. Not sent yet.
+- File: src/app/barcode.tsx (+2 Arabic strings). JS only, same native fingerprint as build 15. Sent as OTA 6579871b.
 
 ---
 
