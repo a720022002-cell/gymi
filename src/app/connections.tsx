@@ -3,14 +3,17 @@ import { Fragment, useCallback, useEffect, useState } from 'react';
 import { Platform, View } from 'react-native';
 
 import { type ArtKind, DeviceArt } from '@/components/DeviceArt';
+import { ScanList } from '@/components/hr/ScanList';
 import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
+import { Sheet } from '@/components/Sheet';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Row, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { connectDevice, type DevicePrimary, disconnectDevice, phoneSource, reloadDeviceDays, setPrimaryDevice, setWriteBack, sourceName, syncDevice, useDevices } from '@/lib/devices';
+import { bleSupported, type SavedSensor, savedSensor, saveSensor } from '@/lib/liveHr';
 import { finishWearable, linkWearable, syncWearables, unlinkWearable, wearableName, type WearableProvider, wearableStatus, type WearableStatus } from '@/lib/wearables';
 import { useWatchPrefs } from '@/lib/watchPrefs';
 import { useSettings } from '@/theme/settings';
@@ -51,6 +54,19 @@ export default function Connections() {
     // Only when coming back from a sign-in.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [back.wearable, back.status]);
+
+  // A Bluetooth heart rate sensor (chest strap, or a watch that broadcasts heart rate): the same one live cardio uses.
+  const [sensor, setSensor] = useState<SavedSensor | null>(null);
+  const [bleOpen, setBleOpen] = useState<'info' | 'scan' | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      savedSensor().then(setSensor);
+    }, []),
+  );
+  const tapBle = () => {
+    if (!bleSupported) return toast(t('Bluetooth sensors connect in the phone app.'), { icon: 'heart' });
+    setBleOpen(sensor ? 'info' : 'scan');
+  };
 
   const hub = Platform.OS === 'android' ? 'Health Connect' : 'Apple Health';
   // The four steps need about 325 points at 11 pt text; narrower cards get slightly smaller text.
@@ -123,7 +139,7 @@ export default function Connections() {
     { id: 'oura', name: 'Oura Ring', art: 'oura', state: wearState('oura'), on: linkOf('oura')?.status === 'ok', go: () => tapWearable('oura') },
     { id: 'fitbitair', name: 'Google Fitbit Air', art: 'fitbitair', state: viaHub, go: fitbitHow },
     { id: 'polar', name: 'Polar', art: 'polar', state: wearState('polar'), on: linkOf('polar')?.status === 'ok', go: () => tapWearable('polar') },
-    { id: 'fitbit', name: 'Fitbit', art: 'fitbit', state: viaHub, go: fitbitHow },
+    { id: 'ble', name: sensor ? sensor.name : t('Bluetooth sensor'), art: 'ble', state: sensor ? 'Saved. Connects when you start cardio.' : 'Heart rate, live every second', on: false, go: tapBle },
   ];
 
   const section = (title: string, color: string, sub?: string) => (
@@ -211,6 +227,50 @@ export default function Connections() {
       <Text variant="xs" color="sec" style={{ marginTop: 8, marginHorizontal: 4 }}>
         {t('More direct connections are coming soon.')}
       </Text>
+
+      <Sheet open={!!bleOpen} onClose={() => setBleOpen(null)}>
+        {bleOpen === 'scan' ? (
+          <>
+            <Text variant="h3">{t('Find a heart rate sensor')}</Text>
+            <ScanList
+              onPick={(x) => {
+                setSensor(x);
+                saveSensor(x);
+                setBleOpen(null);
+                toast(t('{n} saved. It connects by itself when you start cardio.', { n: x.name }), { icon: 'check' });
+              }}
+            />
+          </>
+        ) : sensor ? (
+          <>
+            <Text variant="h2">{sensor.name}</Text>
+            <Text color="sec" style={{ marginTop: 6 }}>
+              {t('Your heart rate, live every second, during cardio. Wear it (wet the pads on a strap), start cardio, and it connects by itself.')}
+            </Text>
+            <Button
+              title={t('Start cardio')}
+              icon="play"
+              style={{ marginTop: 16 }}
+              onPress={() => {
+                setBleOpen(null);
+                router.push('/cardio-live');
+              }}
+            />
+            <Button kind="soft" title={t('Use another sensor')} style={{ marginTop: 8 }} onPress={() => setBleOpen('scan')} />
+            <Button
+              kind="ghost"
+              title={t('Forget this sensor')}
+              style={{ marginTop: 4 }}
+              onPress={() => {
+                saveSensor(null);
+                setSensor(null);
+                setBleOpen(null);
+                toast(t('Sensor removed.'), { icon: 'info' });
+              }}
+            />
+          </>
+        ) : null}
+      </Sheet>
 
       {anyLinked ? (
         <>

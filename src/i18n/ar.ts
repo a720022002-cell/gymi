@@ -4998,4 +4998,13 @@ export const AR: Record<string, string> = {
   "Updates every few seconds": "يتحدث كل كم ثانية",
   "From your plan today": "من خطتك اليوم",
   "Set the weight with + first": "حدد الوزن بزر + أول",
+  "Bluetooth sensor": "حساس بلوتوث",
+  "Bluetooth sensors connect in the phone app.": "حساسات البلوتوث تتصل من تطبيق الجوال.",
+  "Forget this sensor": "انسَ هذا الحساس",
+  "Sensor removed.": "انشال الحساس.",
+  "Use another sensor": "استخدم حساس ثاني",
+  "Your heart rate, live every second, during cardio. Wear it (wet the pads on a strap), start cardio, and it connects by itself.": "نبضك مباشر كل ثانية وقت الكارديو. البسه (بلّل حساسات الحزام)، وابدأ الكارديو، ويتصل لحاله.",
+  "{n} saved. It connects by itself when you start cardio.": "انحفظ {n}. يتصل لحاله لما تبدأ الكارديو.",
+  "Saved. Connects when you start cardio.": "محفوظ. يتصل لما تبدأ الكارديو.",
+  "Heart rate, live every second": "النبض مباشر كل ثانية",
 };

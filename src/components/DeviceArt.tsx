@@ -5,11 +5,11 @@ import { useSettings } from '@/theme/settings';
 
 import { Icon } from './Icon';
 
-export type ArtKind = 'health' | 'health_connect' | 'whoop' | 'oura' | 'fitbitair' | 'polar' | 'fitbit';
+export type ArtKind = 'health' | 'health_connect' | 'whoop' | 'oura' | 'fitbitair' | 'polar' | 'fitbit' | 'ble';
 
 // The makers' own pictures: Apple's official Apple Health icon (Apple Design Resources), the WHOOP icon from its
 // developer kit, and product photos from each company's site.
-const ART: Record<Exclude<ArtKind, 'health_connect'>, number> = {
+const ART: Record<Exclude<ArtKind, 'health_connect' | 'ble'>, number> = {
   health: require('../../assets/devices/health.png'),
   whoop: require('../../assets/devices/whoop.png'),
   oura: require('../../assets/devices/oura.png'),
@@ -18,14 +18,15 @@ const ART: Record<Exclude<ArtKind, 'health_connect'>, number> = {
   fitbit: require('../../assets/devices/fitbit.png'),
 };
 
-/** The device's picture for the Connections cards. Health Connect (Android) keeps Adro's heart icon. */
+/** The device's picture for the Connections cards. Health Connect (Android) keeps Adro's heart icon; a Bluetooth
+ * sensor gets the Bluetooth mark. */
 export function DeviceArt({ kind, size = 64 }: { kind: ArtKind; size?: number }) {
   const { colors: c } = useSettings();
-  if (kind === 'health_connect')
+  if (kind === 'health_connect' || kind === 'ble')
     return (
       <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-        <View style={{ width: size * 0.8, height: size * 0.8, borderRadius: size * 0.22, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name="heart" size={size * 0.4} color={c.cobalt} />
+        <View style={{ width: size * 0.8, height: size * 0.8, borderRadius: size * 0.22, backgroundColor: kind === 'ble' ? '#0A84FF' : c.inset, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name={kind === 'ble' ? 'bluetooth' : 'heart'} size={size * 0.4} color={kind === 'ble' ? '#FFFFFF' : c.cobalt} strokeWidth={kind === 'ble' ? 2.2 : undefined} />
         </View>
       </View>
     );

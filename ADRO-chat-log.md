@@ -362,6 +362,13 @@ Passwords and keys are left out on purpose.
   - Checked and fine: icons that point (back, chevrons) are mirrored; charts are drawn the same in both languages; text set to the end of a row (counters, number columns) moves to the left in Arabic as it should; the protein slider and the plan's drag and drop follow your finger; no missing Arabic text.
 - Sent as an OTA update to build 15 (group a812286f).
 
+### Connections: Bluetooth sensor instead of Fitbit (25 Oct 2026)
+- The Fitbit card is replaced by "Bluetooth sensor" (blue Bluetooth icon): the same heart rate sensor live cardio uses (chest straps, watches that broadcast heart rate).
+- Tap: finds sensors nearby and saves the one you pick (it connects by itself when you start cardio). Once saved, the card shows its name; tap for Start cardio, Use another sensor, or Forget this sensor.
+- The sensor search is one shared component now (components/hr/ScanList), used by Connections and Start cardio.
+- Checked on the web build in Arabic and English, no errors. Google Fitbit Air stays (through Apple Health).
+- Not sent yet (JS only, can go as an update).
+
 ---
 
 
