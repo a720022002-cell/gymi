@@ -10,6 +10,7 @@ import { cancelAllReminders } from './reminders';
 import { unregisterPush } from './push';
 import { EMAIL_CODES, siteUrl } from './config';
 import { friendlyAuthError, supabase, supabaseConfigured } from './supabase';
+import { useSettings } from '@/theme/settings';
 
 /** Your profile, kept on this phone for when there's no connection. */
 const PROFILE_KEY = (uid: string) => `adro.profile.v1.${uid}`;
@@ -186,6 +187,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
       sub.subscription.unsubscribe();
     };
   }, [loadProfile]);
+
+  // Sign-in emails (codes, password reset) are written in the account's language: keep it the app's language.
+  const { lang } = useSettings();
+  const metaLang = session?.user.user_metadata?.language;
+  useEffect(() => {
+    if (!session || metaLang === lang) return;
+    supabase.auth.updateUser({ data: { language: lang } }).catch(() => {});
+  }, [session, metaLang, lang]);
 
   const value = useMemo<Auth>(
     () => ({

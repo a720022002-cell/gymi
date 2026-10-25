@@ -401,6 +401,11 @@ Passwords and keys are left out on purpose.
 - Owner set up Resend: domain adroapp.com on GoDaddy DNS (DKIM TXT resend._domainkey, CNAME rsend, CNAME send; Zoho mail records untouched), Supabase custom SMTP smtp.resend.com:465 as Adro <hello@adroapp.com>, email rate limit 50 an hour, RESEND_API_KEY in function secrets. Checked all of it from here.
 - Templates applied (all five with the code). Test: a sign-up to the owner's Gmail (plus address) was sent through Resend; the test account was deleted right after.
 
+### Sign-in emails in one language (25 Oct 2026)
+- Owner: one language per email, not both. Each template (and subject) now picks Arabic or English from the account's language (user_metadata.language, set at sign-up); the app keeps it in step with the app's language (auth.tsx). Applied to Supabase.
+- Test: one Arabic and one English sign-up sent to the owner's Gmail (plus addresses); test accounts deleted right after.
+- The app part (keeping the language in step) is not sent yet (JS only, can go as an update).
+
 ---
 
 
