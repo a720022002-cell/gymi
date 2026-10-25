@@ -385,7 +385,7 @@ Passwords and keys are left out on purpose.
 ### "Add an exercise" did nothing for one user (akeel) (25 Oct 2026)
 - Likely cause: from a day's sheet, "Add an exercise" goes to Edit workout and opens the exercise list right away, while the day's sheet is still closing. The iPhone shows one sheet at a time, so the list never appeared; the screen then thought it was open, and tapping "Add an exercise" changed nothing. Timing differs by phone (the owner's was fast enough).
 - Fix: Sheet.tsx afterSheet() waits for a sheet to finish closing. Used before going to another screen from DaySheet (4 places), MealMenu and IngredientsSheet, and before Edit workout opens the list by itself. Each tap on "Add an exercise" (or swap) opens a fresh list, so a list that couldn't show opens on the next tap.
-- Not sent yet (JS only, can go as an update).
+- Sent as an OTA update to build 15 (group 320ed501).
 
 ---
 
