@@ -398,6 +398,8 @@ Passwords and keys are left out on purpose.
 - Today's Supabase emails send a link only (confirm, sign-in, reset), though the app takes the 6-digit code.
 - Made branded Arabic + English templates with the code large and clear and the link as a backup, the code also in the subject: sign-up, sign-in, password reset, email change, re-verification (supabase/auth-emails/).
 - Supabase refused the change: "Email template modification is not available for free tier projects using the default email provider." Nothing changed. They go live as soon as Resend is set up as the custom SMTP (old settings saved first).
+- Owner set up Resend: domain adroapp.com on GoDaddy DNS (DKIM TXT resend._domainkey, CNAME rsend, CNAME send; Zoho mail records untouched), Supabase custom SMTP smtp.resend.com:465 as Adro <hello@adroapp.com>, email rate limit 50 an hour, RESEND_API_KEY in function secrets. Checked all of it from here.
+- Templates applied (all five with the code). Test: a sign-up to the owner's Gmail (plus address) was sent through Resend; the test account was deleted right after.
 
 ---
 
