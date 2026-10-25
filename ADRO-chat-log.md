@@ -380,7 +380,7 @@ Passwords and keys are left out on purpose.
 
 ### Recipe: frying oil counts only what the food absorbs (25 Oct 2026)
 - The test recipe counted all 100 g of frying oil (884 kcal). Now: about 12 g oil per 100 g of battered/breaded/floured food and 6 g per 100 g of plain food, named "oil absorbed in frying"; oil that stays in the dish (sauté, sauce, dressing) counts in full.
-- Waiting for the OK to deploy the ai function.
+- Deployed (ai v99). Same link again: "oil absorbed in frying" 65 g, 575 kcal (was 100 g, 884 kcal). Test user deleted.
 
 ---
 
