@@ -420,7 +420,7 @@ Passwords and keys are left out on purpose.
 ### Logo in the emails (25 Oct 2026)
 - The code emails and the welcome email show the Adro app icon (https://adroapp.com/icons/icon-192.png) above "Adro". Preview checked.
 - The round picture next to the sender in the inbox (the "H") is chosen by the mail app: Gmail and Apple Mail show a brand logo only with BIMI and a paid logo certificate (VMC/CMC). Not done.
-- Waiting for the OK to apply (templates + welcome deploy).
+- Applied: templates updated, welcome function v2. Test sign-up (Arabic) to the owner's Gmail: code email and welcome email sent; test account deleted.
 
 ---
 
