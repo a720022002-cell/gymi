@@ -1,7 +1,8 @@
 import { useKeepAwake } from 'expo-keep-awake';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Platform, View } from 'react-native';
+import { Platform, ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { sessionGuide } from '@/components/CardioLive';
 import { Icon, type IconName } from '@/components/Icon';
@@ -10,7 +11,7 @@ import { Sheet } from '@/components/Sheet';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { useRecovery } from '@/components/train/RecoveryCard';
-import { Button, Card, Chip, Option, Row, Segmented, Springy, Toggle } from '@/components/ui';
+import { Button, Card, Option, Row, Segmented, Springy, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { type CardioKind, goalOf, maxZone, recommend, ZONE_COLORS, ZONE_NAMES, zoneBpm, zoneRpe } from '@/lib/cardioCoach';
@@ -43,10 +44,13 @@ import { hush } from '@/lib/cardioVoice';
 import { useFood } from '@/lib/food';
 import { appleWatchSupported, bleSupported, type HrSource, type SavedSensor, savedSensor, saveSensor, scanSensors } from '@/lib/liveHr';
 import { useTrain } from '@/lib/train';
-import { SPORT_GROUPS, SPORTS, type SportId, sportFrom, sportInfo } from '@/lib/sports';
+import { SPORT_GROUPS, type SportGroup, SPORTS, type SportId, sportFrom, sportInfo } from '@/lib/sports';
 import { useSettings } from '@/theme/settings';
 
 const icon = (s: SportId): IconName => sportInfo(s).icon ?? 'flame';
+/** Each group's color on the sport picker, and its short name on the filter chips. */
+const GROUP_COLORS: Record<SportGroup, string> = { Cardio: '#3355FF', 'Racket sports': '#F59E0B', 'Team sports': '#22C55E', Combat: '#EF4444', 'Mind and body': '#A855F7', Other: '#94A3B8' };
+const GROUP_SHORT: Record<SportGroup, string> = { Cardio: 'Cardio', 'Racket sports': 'Racket', 'Team sports': 'Team', Combat: 'Combat', 'Mind and body': 'Mind & body', Other: 'Other' };
 /** Numbers inside a sentence stay left to right in Arabic. */
 const ltr = (s: string | number) => `⁦${s}⁩`;
 const clampZone = (z: number) => Math.max(1, Math.min(5, Math.round(z)));
@@ -124,6 +128,7 @@ function PreStart() {
   const [speakSel, setSpeakSel] = useState<boolean | null>(null);
   const speak = speakSel ?? (!!sport && (sportInfo(sport).gps || sportInfo(sport).group === 'Combat'));
   const [scan, setScan] = useState(false);
+  const insets = useSafeAreaInsets();
 
   const [lo, hi] = zoneBpm(zone, age);
   const [rlo, rhi] = zoneRpe(zone);
@@ -160,157 +165,304 @@ function PreStart() {
     });
   };
 
+  const [hrOpen, setHrOpen] = useState(false);
+  const [filter, setFilter] = useState<SportGroup | null>(null);
+  const pickSport = (id: SportId) => {
+    setSport(id);
+    setSpeakSel(null);
+    setKind(null);
+    setZone(null);
+    setMin(undefined);
+  };
+  const timeOptions = [...new Set([15, 30, 45, 60, 90, ...(paramMin ? [paramMin] : []), rec.minutes])].sort((a, b) => a - b);
+  const onRec = zone === Math.min(cap, rec.zone) && minutes === rec.minutes && (!canIntervals || kind === rec.kind);
+  const hrName = source === 'ble' && sensor ? sensor.name : source === 'apple' ? t('Apple Watch') : t('No sensor');
+  const hrSub = source === 'ble' && sensor ? t('Bluetooth sensor · live every second') : source === 'apple' ? t('Updates every few seconds') : t('Coaching by time and how hard it feels');
+  const zoneText = source === 'none' ? t('{name}: feels {a} to {b} out of 10', { name: t(ZONE_NAMES[zone - 1]), a: ltr(rlo), b: ltr(rhi) }) : t('{name}: {a}–{b} bpm', { name: t(ZONE_NAMES[zone - 1]), a: ltr(lo), b: ltr(hi) });
+  const label = (x: string) => (
+    <Text variant="xs" weight={700} color="sec" style={{ letterSpacing: 0.6, textTransform: 'uppercase' }}>
+      {x}
+    </Text>
+  );
+  const line = <View style={{ height: 1, backgroundColor: c.inset, marginVertical: 16, marginHorizontal: -16 }} />;
+
+  // Step 1: pick a sport (a grid of icons, colored by group). Step 2: set it up, with Start always at the bottom.
+  if (!sport)
+    return (
+      <Screen title={t('Start cardio')} back>
+        <Text variant="small" color="sec" style={{ marginHorizontal: 4, marginBottom: 12 }}>
+          {t('What are you doing today?')}
+        </Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 14 }}>
+          {[null, ...SPORT_GROUPS].map((g) => (
+            <Springy
+              key={g ?? 'all'}
+              onPress={() => setFilter(g)}
+              accessibilityState={{ selected: filter === g }}
+              style={{ height: 36, paddingHorizontal: 14, borderRadius: 18, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: filter === g ? c.text : c.card }}>
+              {g ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: GROUP_COLORS[g] }} /> : null}
+              <Text weight={700} size={13} color={filter === g ? c.bg : c.text}>
+                {t(g ? GROUP_SHORT[g] : 'All')}
+              </Text>
+            </Springy>
+          ))}
+        </ScrollView>
+        {SPORT_GROUPS.filter((g) => !filter || filter === g).map((grp) => (
+          <View key={grp} style={{ marginBottom: 8 }}>
+            <Row gap={8} style={{ marginHorizontal: 4, marginBottom: 10 }}>
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: GROUP_COLORS[grp] }} />
+              {label(t(grp))}
+            </Row>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 12 }}>
+              {SPORTS.filter((x) => x.group === grp).map(({ id, name }) => (
+                <Springy key={id} onPress={() => pickSport(id)} scaleTo={0.94} accessibilityLabel={t(name)} style={{ width: '25%', alignItems: 'center', gap: 7 }}>
+                  <View style={{ width: 58, height: 58, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: `${GROUP_COLORS[grp]}22` }}>
+                    <Icon name={icon(id)} size={24} color={GROUP_COLORS[grp]} />
+                  </View>
+                  <Text weight={700} size={12} center numberOfLines={1} style={{ maxWidth: '96%' }}>
+                    {t(name)}
+                  </Text>
+                </Springy>
+              ))}
+            </View>
+          </View>
+        ))}
+      </Screen>
+    );
+
+  const g = sportInfo(sport).group;
   return (
-    <Screen title={t('Start cardio')} back>
-      {SPORT_GROUPS.map((grp) => (
-        <View key={grp} style={{ marginBottom: 12 }}>
-          <Text variant="small" weight={700} color="sec" style={{ marginBottom: 8, marginHorizontal: 4 }}>
-            {t(grp)}
+    <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <Screen title={t('Start cardio')} back onBack={paramSport ? undefined : () => setSport(null)}>
+        <Row gap={14} style={{ marginHorizontal: 4, marginBottom: 16 }}>
+          <View style={{ width: 56, height: 56, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: `${GROUP_COLORS[g]}26` }}>
+            <Icon name={icon(sport)} size={28} color={GROUP_COLORS[g]} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text variant="h2">{t(sportInfo(sport).name)}</Text>
+            <Text variant="small" color="sec">
+              {t(g)}
+            </Text>
+          </View>
+          <Springy onPress={() => setSport(null)} style={{ padding: 6 }}>
+            <Text weight={700} color="link">
+              {t('Change')}
+            </Text>
+          </Springy>
+        </Row>
+
+        <Card style={{ backgroundColor: c.gAi, borderWidth: 1, borderColor: c.gAiBorder }}>
+          <Row gap={8}>
+            <Icon name="sparkle" size={18} color={c.cobalt} />
+            <Text variant="small" weight={700} color="link">
+              {t('Your coach recommends')}
+            </Text>
+          </Row>
+          <Text variant="h3" style={{ marginTop: 8 }}>
+            {t('Zone {z} · {n} min · {k}', { z: rec.zone, n: rec.minutes, k: t(rec.kind === 'intervals' ? 'Intervals' : 'Steady') })}
           </Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {SPORTS.filter((x) => x.group === grp).map(({ id, name }) => (
+          <Text variant="small" color="sec" style={{ marginTop: 6 }}>
+            {t(rec.why.key, rec.why.vars)}
+          </Text>
+          {rec.extra ? (
+            <Text variant="small" color="sec" style={{ marginTop: 6 }}>
+              {t(rec.extra.key, rec.extra.vars)}
+            </Text>
+          ) : null}
+          {onRec ? (
+            <Row gap={6} style={{ marginTop: 12 }}>
+              <Icon name="check" size={16} color={c.up} />
+              <Text variant="small" weight={700} color="up">
+                {t('Set below. Change anything you like.')}
+              </Text>
+            </Row>
+          ) : (
+            <Springy
+              onPress={() => {
+                setZone(null);
+                setMin(undefined);
+                setKind(null);
+              }}
+              style={{ marginTop: 12, alignSelf: 'flex-start' }}>
+              <Text variant="small" weight={700} color="link">
+                {t('Back to the recommendation')}
+              </Text>
+            </Springy>
+          )}
+        </Card>
+
+        <Card>
+          <Row style={{ justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+            {label(t('Target zone'))}
+            <Text variant="small" weight={700} style={{ color: ZONE_COLORS[zone - 1], flexShrink: 1 }} numberOfLines={1}>
+              {zoneText}
+            </Text>
+          </Row>
+          <Row gap={6}>
+            {[1, 2, 3, 4, 5].map((z) => (
               <Springy
-                key={id}
-                onPress={() => {
-                  setSport(id);
-                  setSpeakSel(null);
-                  setKind(null);
-                }}
-                scaleTo={0.97}
-                accessibilityState={{ selected: sport === id }}
-                style={{ width: '31%', flexGrow: 1, height: 52, borderRadius: 16, paddingHorizontal: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: sport === id ? c.text : c.card }}>
-                <Icon name={icon(id)} size={18} color={sport === id ? c.bg : c.text} />
-                <Text weight={700} size={14} color={sport === id ? c.bg : c.text} numberOfLines={1} style={{ flexShrink: 1 }}>
-                  {t(name)}
+                key={z}
+                disabled={z > cap}
+                onPress={() => setZone(z)}
+                accessibilityLabel={t('Zone {z}', { z })}
+                accessibilityState={{ selected: zone === z, disabled: z > cap }}
+                style={{ flex: 1, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: zone === z ? ZONE_COLORS[z - 1] : c.inset, opacity: z > cap ? 0.35 : 1 }}>
+                <Text num weight={700} color={zone === z ? '#FFFFFF' : c.text}>
+                  {z}
                 </Text>
+                {zone !== z && z <= cap ? <View style={{ position: 'absolute', bottom: 5, width: 16, height: 3, borderRadius: 2, backgroundColor: ZONE_COLORS[z - 1] }} /> : null}
               </Springy>
             ))}
-          </View>
-        </View>
-      ))}
-
-      {sport ? (
-        <>
-          <Card>
-            <Row gap={8}>
-              <Icon name="sparkle" size={18} color={c.cobalt} />
-              <Text weight={700}>{t('Your coach recommends')}</Text>
-            </Row>
-            <Text variant="h3" style={{ marginTop: 8 }}>
-              {t('Zone {z} · {n} min · {k}', { z: rec.zone, n: rec.minutes, k: t(rec.kind === 'intervals' ? 'Intervals' : 'Steady') })}
+          </Row>
+          {cap < 5 ? (
+            <Text variant="xs" color="sec" style={{ marginTop: 8 }}>
+              {t('Zones above {z} are off for today.', { z: cap })}
             </Text>
-            <Text variant="small" color="sec" style={{ marginTop: 6 }}>
-              {t(rec.why.key, rec.why.vars)}
+          ) : null}
+          {canIntervals ? (
+            <>
+              {line}
+              <View style={{ marginBottom: 10 }}>{label(t('Type'))}</View>
+              <Segmented
+                value={kind}
+                options={[
+                  { value: 'steady', label: t('Steady') },
+                  { value: 'intervals', label: t('Intervals') },
+                ]}
+                onChange={(v) => setKind(v as CardioKind)}
+              />
+            </>
+          ) : null}
+          {line}
+          <Row style={{ justifyContent: 'space-between', marginBottom: 10 }}>
+            {label(t('Planned time'))}
+            <Text variant="small" weight={700}>
+              {minutes == null ? t('No limit') : t('{n} min', { n: minutes })}
             </Text>
-            {rec.extra ? (
-              <Text variant="small" color="sec" style={{ marginTop: 6 }}>
-                {t(rec.extra.key, rec.extra.vars)}
-              </Text>
-            ) : null}
-          </Card>
-
-          <Card>
-            <Text variant="small" weight={700} color="sec">
-              {t('Target zone')}
-            </Text>
-            <Row gap={6} style={{ marginTop: 10 }}>
-              {[1, 2, 3, 4, 5].map((z) => (
+          </Row>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            {[...timeOptions, null].map((m) => {
+              const on = minutes === m;
+              return (
                 <Springy
-                  key={z}
-                  disabled={z > cap}
-                  onPress={() => setZone(z)}
-                  accessibilityLabel={t('Zone {z}', { z })}
-                  accessibilityState={{ selected: zone === z }}
-                  style={{ flex: 1, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: zone === z ? ZONE_COLORS[z - 1] : c.inset }}>
-                  <Text num weight={700} color={zone === z ? '#FFFFFF' : c.text}>
-                    {z}
+                  key={m ?? 'none'}
+                  onPress={() => setMin(m)}
+                  accessibilityState={{ selected: on }}
+                  accessibilityLabel={m == null ? t('No limit') : t('{n} min', { n: m })}
+                  style={{ minWidth: 56, height: 40, paddingHorizontal: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: on ? c.text : c.inset }}>
+                  <Text num weight={700} size={14} color={on ? c.bg : c.text}>
+                    {m == null ? t('No limit') : t('{n} min', { n: m })}
                   </Text>
+                  {m === rec.minutes && !on ? <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: c.link }} /> : null}
                 </Springy>
-              ))}
-            </Row>
-            <Text variant="small" color="sec" style={{ marginTop: 8 }}>
-              {source === 'none' ? t('{name}: feels {a} to {b} out of 10', { name: t(ZONE_NAMES[zone - 1]), a: ltr(rlo), b: ltr(rhi) }) : t('{name}: {a}–{b} bpm', { name: t(ZONE_NAMES[zone - 1]), a: ltr(lo), b: ltr(hi) })}
-            </Text>
-            {cap < 5 ? (
-              <Text variant="xs" color="sec" style={{ marginTop: 4 }}>
-                {t('Zones above {z} are off for today.', { z: cap })}
-              </Text>
-            ) : null}
-            {!canIntervals ? null : (
-              <View style={{ marginTop: 12 }}>
-                <Segmented
-                  value={kind}
-                  options={[
-                    { value: 'steady', label: t('Steady') },
-                    { value: 'intervals', label: t('Intervals') },
-                  ]}
-                  onChange={(v) => setKind(v as CardioKind)}
-                />
-              </View>
-            )}
-          </Card>
+              );
+            })}
+          </ScrollView>
+        </Card>
 
-          <Card>
-            <Text variant="small" weight={700} color="sec">
-              {t('Planned time')}
-            </Text>
-            <Row gap={8} style={{ marginTop: 10, flexWrap: 'wrap' }}>
-              {[...new Set([15, 30, 45, 60, 90, ...(paramMin ? [paramMin] : []), rec.minutes])].sort((a, b) => a - b).map((m) => (
-                <Chip key={m} title={t('{n} min', { n: m })} on={minutes === m} onPress={() => setMin(m)} />
-              ))}
-              <Chip title={t('No limit')} on={minutes == null} onPress={() => setMin(null)} />
-            </Row>
-          </Card>
-
-          <Text variant="small" weight={700} color="sec" style={{ marginTop: 4, marginBottom: 8, marginHorizontal: 4 }}>
-            {t('Live heart rate from')}
-          </Text>
-          {bleSupported ? (
-            <Option
-              icon="heart"
-              title={sensor ? sensor.name : t('Bluetooth heart rate sensor')}
-              subtitle={sensor ? t('Bluetooth sensor · live every second') : t('Chest strap, or a watch that broadcasts heart rate')}
-              selected={source === 'ble' && !!sensor}
-              onPress={() => (sensor ? setSource('ble') : setScan(true))}
-              right={
-                <Springy onPress={() => setScan(true)} accessibilityLabel={t('Find a sensor')} style={{ paddingHorizontal: 8, height: 36, justifyContent: 'center' }}>
-                  <Text variant="small" weight={700} color="link">
-                    {sensor ? t('Change') : t('Find')}
-                  </Text>
-                </Springy>
-              }
-            />
-          ) : null}
-          {appleWatchSupported ? (
-            <Option icon="watch" title={t('Apple Watch')} subtitle={t('Updates every few seconds. Start a workout on your watch too.')} selected={source === 'apple'} onPress={() => setSource('apple')} />
-          ) : null}
-          <Option icon="pulse" title={t('No sensor')} subtitle={t('Coaching by time and how hard it feels')} selected={source === 'none'} onPress={() => setSource('none')} />
-
-          <Card style={{ marginTop: 4 }}>
-            {outdoor ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                <Text style={{ flex: 1 }}>{t('Track distance and pace with GPS')}</Text>
-                <Toggle value={gps} onChange={setGps} label={t('Track distance and pace with GPS')} />
-              </View>
-            ) : null}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <Text style={{ flex: 1 }}>{t('Speak tips')}</Text>
-              <Toggle value={speak} onChange={setSpeakSel} label={t('Speak tips')} />
+        <Card>
+          <Springy onPress={() => setHrOpen(true)} accessibilityLabel={t('Live heart rate from')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={{ width: 36, height: 36, borderRadius: 11, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="heart" size={18} color={c.down} />
             </View>
-          </Card>
-
-          <Button title={t('Start {x}', { x: t(sportInfo(sport).name) })} icon="play" onPress={start} style={{ marginTop: 8 }} />
-          {Platform.OS === 'web' ? (
-            <Text variant="xs" color="sec" center style={{ marginTop: 10 }}>
-              {t('Live heart rate and GPS work in the phone app.')}
+            <View style={{ flex: 1 }}>
+              <Text weight={700}>{t('Heart rate')}</Text>
+              <Text variant="xs" color="sec" numberOfLines={1}>
+                {hrSub}
+              </Text>
+            </View>
+            <Text variant="small" color="sec" numberOfLines={1} style={{ maxWidth: 130 }}>
+              {hrName}
             </Text>
+            <Icon name="chev" size={16} color={c.sec} />
+          </Springy>
+          {outdoor ? (
+            <>
+              {line}
+              <Row gap={12}>
+                <View style={{ width: 36, height: 36, borderRadius: 11, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name="globe" size={18} color={c.link} />
+                </View>
+                <Text weight={700} style={{ flex: 1 }}>
+                  {t('Track distance and pace with GPS')}
+                </Text>
+                <Toggle value={gps} onChange={setGps} label={t('Track distance and pace with GPS')} />
+              </Row>
+            </>
           ) : null}
-        </>
-      ) : (
-        <Text variant="small" color="sec" style={{ marginHorizontal: 4 }}>
-          {t('Pick a sport to see what your coach recommends.')}
+          {line}
+          <Row gap={12}>
+            <View style={{ width: 36, height: 36, borderRadius: 11, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="mic" size={18} color={c.up} />
+            </View>
+            <Text weight={700} style={{ flex: 1 }}>
+              {t('Speak tips')}
+            </Text>
+            <Toggle value={speak} onChange={setSpeakSel} label={t('Speak tips')} />
+          </Row>
+        </Card>
+        {Platform.OS === 'web' ? (
+          <Text variant="xs" color="sec" center style={{ marginTop: 4 }}>
+            {t('Live heart rate and GPS work in the phone app.')}
+          </Text>
+        ) : null}
+        <View style={{ height: 110 }} />
+      </Screen>
+
+      {/* Start, always in reach, with what you picked. */}
+      <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 + insets.bottom, backgroundColor: c.bg }}>
+        <Button title={t('Start {x}', { x: t(sportInfo(sport).name) })} icon="play" onPress={start} />
+        <Text variant="xs" color="sec" center style={{ marginTop: 6 }} numberOfLines={1}>
+          {`${t('Zone {z}', { z: zone })} · ${minutes == null ? t('No limit') : t('{n} min', { n: minutes })} · ${hrName}`}
         </Text>
-      )}
+      </View>
+
+      <Sheet open={hrOpen} onClose={() => setHrOpen(false)}>
+        <Text variant="h2">{t('Live heart rate from')}</Text>
+        <View style={{ height: 12 }} />
+        {bleSupported ? (
+          <Option
+            icon="heart"
+            title={sensor ? sensor.name : t('Bluetooth heart rate sensor')}
+            subtitle={sensor ? t('Bluetooth sensor · live every second') : t('Chest strap, or a watch that broadcasts heart rate')}
+            selected={source === 'ble' && !!sensor}
+            onPress={() => {
+              if (!sensor) return setScan(true);
+              setSource('ble');
+              setHrOpen(false);
+            }}
+            right={
+              <Springy onPress={() => setScan(true)} accessibilityLabel={t('Find a sensor')} style={{ paddingHorizontal: 8, height: 36, justifyContent: 'center' }}>
+                <Text variant="small" weight={700} color="link">
+                  {sensor ? t('Change') : t('Find')}
+                </Text>
+              </Springy>
+            }
+          />
+        ) : null}
+        {appleWatchSupported ? (
+          <Option
+            icon="watch"
+            title={t('Apple Watch')}
+            subtitle={t('Updates every few seconds. Start a workout on your watch too.')}
+            selected={source === 'apple'}
+            onPress={() => {
+              setSource('apple');
+              setHrOpen(false);
+            }}
+          />
+        ) : null}
+        <Option
+          icon="pulse"
+          title={t('No sensor')}
+          subtitle={t('Coaching by time and how hard it feels')}
+          selected={source === 'none'}
+          onPress={() => {
+            setSource('none');
+            setHrOpen(false);
+          }}
+        />
+      </Sheet>
 
       <ScanSheet
         open={scan}
@@ -320,9 +472,10 @@ function PreStart() {
           saveSensor(x);
           setSource('ble');
           setScan(false);
+          setHrOpen(false);
         }}
       />
-    </Screen>
+    </View>
   );
 }
 

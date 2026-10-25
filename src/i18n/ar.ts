@@ -4989,4 +4989,11 @@ export const AR: Record<string, string> = {
   "Button check (admins)": "فحص الأزرار (للأدمن)",
   "Needs a newer app build.": "يحتاج نسخة أحدث من التطبيق.",
   "Refresh": "تحديث",
+  "What are you doing today?": "وش بتسوي اليوم؟",
+  "Racket": "المضرب",
+  "Team": "جماعية",
+  "Mind & body": "العقل والجسم",
+  "Set below. Change anything you like.": "مضبوط تحت. غيّر اللي تبي.",
+  "Back to the recommendation": "ارجع للتوصية",
+  "Updates every few seconds": "يتحدث كل كم ثانية",
 };

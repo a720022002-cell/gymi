@@ -326,6 +326,11 @@ Passwords and keys are left out on purpose.
 - Console: the button now sends AdroLiveTap, but as ExpoWidgetsTarget.AdroLiveTap (mangled 17ExpoWidgetsTarget11AdroLiveTapV); the app registers Adro.AdroLiveTap, so iOS still says "There is no metadata for AdroLiveTap in com.adroapp.app". iOS matches the full type name.
 - Fix: the widget extension's Swift module is named Adro (PRODUCT_MODULE_NAME, set where expo-widgets creates the target), so the type is Adro.AdroLiveTap in both. Checked with a trial prebuild. Needs build 13.
 
+### Start cardio redesign (25 Oct 2026)
+- Step 1: pick a sport from an icon grid, colored by group, with filter chips.
+- Step 2: the setup. Coach recommendation card, one card for zone, steady/intervals and time, a list for heart rate source, GPS and spoken tips. Start stays at the bottom with a summary line.
+- All earlier options kept. Ships in build 13 with the Lock Screen button fix (widget module named "Adro").
+
 ---
 
 
