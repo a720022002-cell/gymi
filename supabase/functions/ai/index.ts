@@ -378,19 +378,26 @@ async function linkInfo(raw: string): Promise<{ site: string; text: string; imag
       return { site: 'tiktok', text: [o?.title, o?.author_name ? `by ${o.author_name}` : ''].filter(Boolean).join('\n'), image: await picture(o?.thumbnail_url) };
     }
     const page = `https://www.tiktok.com/@_/video/${id}`;
-    const [o, h] = await Promise.all([
+    // TikTok's preview (oEmbed) no longer gives the caption or the cover, so they're also read from the video page and
+    // from its embed page (which a server can still see when the video page is refused). The longest caption wins.
+    const [o, h, e] = await Promise.all([
       getUrl(`https://www.tiktok.com/oembed?url=${encodeURIComponent(page)}`).then((r) => r?.json()).catch(() => null),
-      // The video page has the whole caption, which can be longer than the preview's.
       getUrl(page, { headers: { 'User-Agent': MOBILE_UA } }).then((r) => r?.text()).catch(() => ''),
+      getUrl(`https://www.tiktok.com/embed/v2/${id}`, { headers: { 'User-Agent': MOBILE_UA } }).then((r) => r?.text()).catch(() => ''),
     ]);
-    let desc = '';
-    try {
-      const m = (h ?? '').match(/"desc":"((?:[^"\\]|\\.)*)"/);
-      desc = m ? JSON.parse(`"${m[1]}"`) : '';
-    } catch {}
-    const title = o?.title ?? '';
-    const text = desc.length > title.length ? desc : title;
-    return { site: 'tiktok', text: [text, o?.author_name ? `by ${o.author_name}` : ''].filter(Boolean).join('\n'), image: await picture(o?.thumbnail_url) };
+    const str = (html: string | null | undefined, re: RegExp) => {
+      try {
+        const m = (html ?? '').match(re);
+        return m ? (JSON.parse(`"${m[1]}"`) as string) : '';
+      } catch {
+        return '';
+      }
+    };
+    const caps = [o?.title ?? '', str(h, /"desc":"((?:[^"\\]|\\.)*)"/), str(e, /"text":"((?:[^"\\]|\\.)*)"/)];
+    const text = caps.reduce((a, x) => (x.length > a.length ? x : a), '');
+    const author = o?.author_name || str(h, /"uniqueId":"((?:[^"\\]|\\.)*)"/) || str(e, /"uniqueId":"((?:[^"\\]|\\.)*)"/);
+    const cover = o?.thumbnail_url || str(h, /"originCover":"((?:[^"\\]|\\.)*)"/) || str(h, /"cover":"((?:[^"\\]|\\.)*)"/) || str(e, /"covers":\["((?:[^"\\]|\\.)*)"/);
+    return { site: 'tiktok', text: [text, author ? `by ${author}` : ''].filter(Boolean).join('\n'), image: await picture(cover || undefined) };
   }
   if (host.endsWith('youtube.com') || host.endsWith('youtu.be')) {
     const r = await getUrl(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(url.toString())}`).catch(() => null);

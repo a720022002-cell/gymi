@@ -370,6 +370,11 @@ Passwords and keys are left out on purpose.
 - Sent as an OTA update to build 15 (group 93410333).
 - Then: the "Your device > Its own app > Apple Health > Adro" chevrons pointed the wrong way in Arabic (the back icon, which Arabic already mirrors, was mirrored again). Now the plain chevron, mirrored once. Not sent yet.
 
+### Recipe from a TikTok link failed (25 Oct 2026)
+- "Couldn't open that link" for https://vt.tiktok.com/ZSgQVMv3T/. The link redirects fine to the video, but TikTok's preview (oEmbed) no longer gives the caption, author or cover picture, so the AI had nothing to read.
+- Fix (ai function): the caption, author and cover are also read from the video page and from its embed page (the longest caption wins). Tested with that link: caption "honey garlic chicken…", by ifoodwithu, and the cover picture.
+- Waiting for the OK to deploy the ai function.
+
 ---
 
 
