@@ -255,7 +255,8 @@ function EmailSheet({ onClose }: { onClose: () => void }) {
   const toast = useToast();
   const { session, refreshProfile } = useAuth();
   const cur = session?.user.email ?? '';
-  const [step, setStep] = useState<'enter' | 'code'>('enter');
+  // Both emails get a code (a stolen phone can't move the account to another email): the new one first, then the current one.
+  const [step, setStep] = useState<'enter' | 'code' | 'current'>('enter');
   const [v, setV] = useState('');
   const [code, setCode] = useState('');
   const [err, setErr] = useState<string | null>(null);
@@ -275,24 +276,36 @@ function EmailSheet({ onClose }: { onClose: () => void }) {
     toast(t('Check both inboxes to confirm the new email.'), { icon: 'mail' });
   };
   const verify = async (token: string) => {
+    const next = v.trim().toLowerCase();
     setBusy(true);
-    const { error } = await supabase.auth.verifyOtp({ email: v.trim().toLowerCase(), token, type: 'email_change' });
-    setBusy(false);
+    const { error } = await supabase.auth.verifyOtp({ email: step === 'current' ? cur : next, token, type: 'email_change' });
     if (error) {
+      setBusy(false);
       setCode('');
       return setErr(t('That code is wrong or expired. Try again or resend it.'));
+    }
+    // One code in: the change happens once the other email's code is in too.
+    const { data } = await supabase.auth.getUser();
+    setBusy(false);
+    if (data.user?.email !== next) {
+      setCode('');
+      setErr(null);
+      return setStep(step === 'current' ? 'code' : 'current');
     }
     await refreshProfile();
     onClose();
     toast(t('Email updated and verified'), { icon: 'check' });
   };
 
-  if (step === 'code')
+  if (step === 'code' || step === 'current')
     return (
       <View>
-        <Text variant="h2">{t('Enter the code')}</Text>
+        <Text variant="h2">{t(step === 'current' ? 'Now the code for your current email' : 'Enter the code')}</Text>
         <Text variant="small" color="sec" style={{ marginTop: 4 }}>
-          {t('We sent a 6-digit code to')} <Text weight={700}>{v}</Text>
+          {t('We sent a 6-digit code to')} <Text weight={700}>{step === 'current' ? cur : v}</Text>
+        </Text>
+        <Text variant="xs" color="sec" style={{ marginTop: 4 }}>
+          {t(step === 'current' ? 'To keep your account safe, both emails confirm the change.' : 'Your current email gets a code too. You’ll enter it next.')}
         </Text>
         <OtpInput value={code} onChange={(x) => { setCode(x); setErr(null); }} onComplete={verify} error={!!err} />
         <ErrorText>{busy ? t('Checking…') : err}</ErrorText>

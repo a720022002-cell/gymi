@@ -5016,4 +5016,7 @@ export const AR: Record<string, string> = {
   "The number under each body is its body fat percentage. Pick the closest one; it only needs to be roughly right.": "الرقم تحت كل جسم هو نسبة الدهون فيه. اختر الأقرب لك، ما يحتاج يكون دقيق.",
   "Your calories can’t go low enough to reach it by eating alone. Moving more helps.": "سعراتك ما تقدر تنزل كفاية عشان توصله بالأكل بس. الحركة الزيادة تساعد.",
   "body fat": "دهون",
+  "Now the code for your current email": "الحين رمز إيميلك الحالي",
+  "To keep your account safe, both emails confirm the change.": "عشان نحمي حسابك، الإيميلين لازم يأكدون التغيير.",
+  "Your current email gets a code too. You’ll enter it next.": "إيميلك الحالي بعد يوصله رمز، تكتبه بعد هذا.",
 };

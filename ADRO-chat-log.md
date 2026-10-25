@@ -412,6 +412,11 @@ Passwords and keys are left out on purpose.
 - Files: supabase/functions/welcome, supabase/migrations/20261128000000_welcome_email.sql. Preview checked in Arabic and English.
 - Applied: migration, vault secret welcome_hook + function secret WELCOME_HOOK_SECRET (random, never shown), welcome function deployed (v1, no JWT check). Test: an Arabic sign-up to the owner's Gmail (plus address), confirmed from the database: the trigger called the function, it answered {sent: true, lang: ar}. Test account deleted right after.
 
+### Codes in the app (25 Oct 2026)
+- Owner got the "Confirm your new email" code but the app had nowhere to type it: the app still waited for links (config EMAIL_CODES = false, made for before Resend). Now EMAIL_CODES = true: sign-up, sign-in, password reset and email change all ask for the 6-digit code.
+- Email change: Supabase sends a code to both the new and the current email (secure email change). The app now asks for the new email's code, then the current one's; the change happens when both are in.
+- Not sent yet (JS only, can go as an update).
+
 ---
 
 
