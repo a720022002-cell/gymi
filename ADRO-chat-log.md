@@ -329,7 +329,8 @@ Passwords and keys are left out on purpose.
 ### Start cardio redesign (25 Oct 2026)
 - Step 1: pick a sport from an icon grid, colored by group, with filter chips.
 - Step 2: the setup. Coach recommendation card, one card for zone, steady/intervals and time, a list for heart rate source, GPS and spoken tips. Start stays at the bottom with a summary line.
-- All earlier options kept. Ships in build 13 with the Lock Screen button fix (widget module named "Adro").
+- All earlier options kept. Ships in build 14 with the Lock Screen button fix (widget module named "Adro").
+- Build 13 failed: two targets made the same Adro.swiftmodule. Fixed by turning off SWIFT_INSTALL_MODULE on the widget target. Build 14 built and was sent to TestFlight.
 
 ---
 
