@@ -376,7 +376,7 @@ Passwords and keys are left out on purpose.
 - Then (owner): read what's written on the video too, without uploading it. The server now downloads the TikTok video itself (the embed page links it, from TikTok's own servers only, up to 20 MB; about 6 MB for this one) and a model that watches video (Gemini 3.5 Flash-Lite, Haiku reads pictures only) reads the amounts on screen and what goes in. If that fails, the caption and cover give the recipe as before.
 - Tested here: caption, cover and the 6 MB video all come through for that link. The AI step itself can only be tested after deploying (the AI key lives on the server).
 - Then (owner): after the recipe is read from the video, it's checked against the caption ingredient by ingredient; where they differ, the caption wins, and ingredients only the caption lists are added. The note says where they disagreed. (For uploaded videos too.)
-- Waiting for the OK to deploy the ai function.
+- Deployed (ai v98). Tested with the owner's link (Arabic): 7.4 s, Gemini 3.5 Flash-Lite watched the video and gave honey garlic chicken with 10 ingredients and the real steps (marinate 15 minutes, cornstarch, fry, sauce), 3 servings. Cost $0.0031. Test user deleted.
 
 ---
 
