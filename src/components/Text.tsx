@@ -1,7 +1,7 @@
 import { Text as RNText, type TextProps, type TextStyle } from 'react-native';
 
 import { useSettings } from '@/theme/settings';
-import { side } from '@/lib/rtl';
+import { keepSigns, side } from '@/lib/rtl';
 import { type ColorTokens, fonts, type Weight, type as typeScale } from '@/theme/tokens';
 
 type Variant = keyof typeof typeScale;
@@ -56,5 +56,11 @@ export function Text({
   // Arabic letters are taller; give them a bit more line height.
   if (isRTL && !num && s.lineHeight) s.lineHeight = Math.round((s.fontSize ?? 15) * 1.6);
 
-  return <RNText style={[s, style]} {...rest} />;
+  // A plain text in Arabic keeps "+0.2" and "+966" whole (otherwise they show as "0.2+" and "966+").
+  const children = isRTL && typeof rest.children === 'string' ? keepSigns(rest.children) : rest.children;
+  return (
+    <RNText style={[s, style]} {...rest}>
+      {children}
+    </RNText>
+  );
 }

@@ -54,6 +54,8 @@ type Settings = {
 const KEY = 'adro.settings.v1';
 /** The screen to reopen after a language restart (read once by the root layout). */
 export const RESUME_KEY = 'adro.resume.v1';
+/** The layout direction the app last restarted for (see the direction effect below). */
+const DIR_KEY = 'adro.dir.v1';
 const DEFAULTS: Stored = { theme: 'system', lang: null, reduce: false, unit: 'kg', reduceReset: true };
 
 const Ctx = createContext<Settings | null>(null);
@@ -127,12 +129,21 @@ export function SettingsProvider({ children }: PropsWithChildren) {
       if (typeof document === 'undefined') return;
       document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
       document.documentElement.lang = lang;
-    } else if (I18nManager.isRTL !== isRTL) {
-      // Phone apps flip direction on the next start (choosing a language in the app restarts it right away).
+    } else if (ready && I18nManager.isRTL !== isRTL) {
+      // Phone apps flip direction on the next start (choosing a language in the app restarts it right away). The first
+      // time the app opens in Arabic (from the phone's language) it restarts once now, so the welcome screens aren't
+      // half mirrored; only once per direction, so it can never keep restarting.
       I18nManager.allowRTL(isRTL);
       I18nManager.forceRTL(isRTL);
+      const want = isRTL ? 'rtl' : 'ltr';
+      AsyncStorage.getItem(DIR_KEY)
+        .then((tried) => {
+          if (tried === want) return;
+          return AsyncStorage.setItem(DIR_KEY, want).then(() => reloadAppAsync('Layout direction'));
+        })
+        .catch(() => {});
     }
-  }, [isRTL, lang]);
+  }, [isRTL, lang, ready]);
 
   // Keep the browser chrome (status bar area) matching the theme.
   useEffect(() => {

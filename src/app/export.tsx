@@ -15,6 +15,7 @@ import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { addDays, fmt } from '@/lib/nutrition';
 import { fx, shortDate } from '@/lib/progress';
+import { keepSigns } from '@/lib/rtl';
 import { exInfo } from '@/lib/training';
 import { escHtml, pdfIsPrint, pdfPage, type ReportStats, sharePdf, useReportData, useReportStats } from '@/lib/report';
 import { useWeight } from '@/lib/units';
@@ -41,17 +42,19 @@ export default function ExportScreen() {
   const label = `${shortDate(a, lang)} – ${shortDate(b, lang)}, ${b.slice(0, 4)}`;
   const name = profile?.name || profile?.username || '';
 
+  // Before → after, pointing the way the text reads.
+  const arrow = lang === 'ar' ? '←' : '→';
   const rows = (x: ReportStats) => {
     const out: [string, string][] = [];
-    if (inc.weight && x.weight) out.push([t('Weight'), `${W.show(x.weight.first)} → ${W.text(x.weight.last)} (${x.weight.change > 0 ? '+' : ''}${W.show(x.weight.change)})`]);
-    if (inc.weight && x.waistChange != null) out.push([t('Waist change'), `${x.waistChange > 0 ? '+' : ''}${fx(x.waistChange)} cm`]);
+    if (inc.weight && x.weight) out.push([t('Weight'), keepSigns(`${W.show(x.weight.first)} ${arrow} ${W.text(x.weight.last)} (${x.weight.change > 0 ? '+' : ''}${W.show(x.weight.change)})`)]);
+    if (inc.weight && x.waistChange != null) out.push([t('Waist change'), keepSigns(`${x.waistChange > 0 ? '+' : ''}${fx(x.waistChange)} ${t('cm')}`)]);
     if (inc.food) {
       if (x.caloriesAvg != null) out.push([t('Average calories'), `${t('{n} kcal', { n: fmt(x.caloriesAvg) })}${x.calorieGoal ? ` (${t('goal')} ${fmt(x.calorieGoal)})` : ''}`]);
       if (x.proteinDays[1]) out.push([t('Protein goal met'), `${Math.round((x.proteinDays[0] / x.proteinDays[1]) * 100)}%`]);
     }
     if (inc.train) {
       out.push([t('Workouts'), x.workouts.planned ? t('{a} of {b}', { a: x.workouts.asPlanned, b: x.workouts.planned }) : String(x.workouts.done)]);
-      x.liftUps.forEach((l) => out.push([exInfo({ id: l.id, n: l.name }, lang).name, `${W.show(l.from)} → ${W.show(l.to)} ${W.label}`]));
+      x.liftUps.forEach((l) => out.push([exInfo({ id: l.id, n: l.name }, lang).name, `${W.show(l.from)} ${arrow} ${W.show(l.to)} ${W.label}`]));
     }
     if (inc.sleep && x.sleepAvg != null) out.push([t('Average sleep'), `${fx(x.sleepAvg)} ${t('h')}`]);
     if (inc.health) {

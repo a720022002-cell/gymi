@@ -355,6 +355,11 @@ Passwords and keys are left out on purpose.
 - In Arabic the phone app runs right to left, and React Native swaps left and right in styles and text alignment by itself. The app picked "right" for Arabic itself (made on the web, which doesn't swap), so on the phone it landed on the left: Arabic text aligned left, the tab bar's highlight on Gym Bros while on Home, the tour ring on Gym Bros instead of the coach button, toggles and the protein slider mirrored.
 - Fix: lib/rtl.ts side() gives the style key for a side of the screen (swapped on the phone in Arabic only). Used in Text, Field, PhoneField, Toggle, TabBar, ProteinSlider and the tour ring.
 - Weekly recap: the weight arrow points left in Arabic (63.9 ← 64.1), and +/− numbers stay whole ("+0.2", not "0.2+").
+- Full Arabic check after that:
+  - Every plain text in Arabic keeps signed numbers whole (lib/rtl.ts keepSigns in Text): "+0.2 kg", "+966" in the phone field, "(−1.5)".
+  - Report PDF: arrow by language, "cm" translated, signs kept.
+  - First open in Arabic (from the phone's language): the app restarts once so the welcome screens aren't half mirrored (once per direction, never loops).
+  - Checked and fine: icons that point (back, chevrons) are mirrored; charts are drawn the same in both languages; text set to the end of a row (counters, number columns) moves to the left in Arabic as it should; the protein slider and the plan's drag and drop follow your finger; no missing Arabic text.
 - Not sent yet (JS only, can go as an update).
 
 ---
