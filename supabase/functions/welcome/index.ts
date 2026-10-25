@@ -106,7 +106,8 @@ Deno.serve(async (req) => {
 
   const { data: p } = await admin.from('profiles').select('name, username, phone, account_type, language, created_at').eq('id', id).maybeSingle();
   const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
-  const lang: 'ar' | 'en' = (p?.language ?? meta.language) === 'ar' ? 'ar' : 'en';
+  // The language the app keeps on the account (user_metadata, kept in step with the app), else the profile's.
+  const lang: 'ar' | 'en' = (meta.language ?? p?.language) === 'ar' ? 'ar' : 'en';
   const who: Who = {
     name: String(p?.name || meta.name || p?.username || '').slice(0, 60) || (lang === 'ar' ? 'صديقنا' : 'there'),
     username: String(p?.username ?? meta.username ?? ''),

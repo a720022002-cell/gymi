@@ -422,6 +422,10 @@ Passwords and keys are left out on purpose.
 - The round picture next to the sender in the inbox (the "H") is chosen by the mail app: Gmail and Apple Mail show a brand logo only with BIMI and a paid logo certificate (VMC/CMC). Not done.
 - Applied: templates updated, welcome function v2. Test sign-up (Arabic) to the owner's Gmail: code email and welcome email sent; test account deleted.
 
+### Welcome email to existing users (25 Oct 2026)
+- Owner asked to send the welcome to everyone. Sent to the 4 real addresses (3 Gmail, 1 Hotmail), all in English (their accounts' language). Skipped: 4 old @gymi.app accounts (that domain has no mail server, the emails would bounce and hurt sending) and the App Review account. welcome_emails marks them, so none gets it twice.
+- Small fix (not deployed yet): the welcome email takes the language the app keeps on the account (user_metadata) before the profile's.
+
 ---
 
 
