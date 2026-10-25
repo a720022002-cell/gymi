@@ -368,7 +368,7 @@ Passwords and keys are left out on purpose.
 - The sensor search is one shared component now (components/hr/ScanList), used by Connections and Start cardio.
 - Checked on the web build in Arabic and English, no errors. Google Fitbit Air stays (through Apple Health).
 - Sent as an OTA update to build 15 (group 93410333).
-- Then: the "Your device > Its own app > Apple Health > Adro" chevrons pointed the wrong way in Arabic (the back icon, which Arabic already mirrors, was mirrored again). Now the plain chevron, mirrored once. Not sent yet.
+- Then: the "Your device > Its own app > Apple Health > Adro" chevrons pointed the wrong way in Arabic (the back icon, which Arabic already mirrors, was mirrored again). Now the plain chevron, mirrored once. Sent as an OTA update to build 15 (group 6b8edd9d).
 
 ### Recipe from a TikTok link failed (25 Oct 2026)
 - "Couldn't open that link" for https://vt.tiktok.com/ZSgQVMv3T/. The link redirects fine to the video, but TikTok's preview (oEmbed) no longer gives the caption, author or cover picture, so the AI had nothing to read.
