@@ -313,6 +313,11 @@ Passwords and keys are left out on purpose.
 ### VoiceOver: not now (25 Oct)
 - Checked: 179 spoken labels; about 140 of 223 tappable elements have none; rings and charts on about 29 screens aren't spoken. Plan offered (stage 1 main screens, stage 2 the rest + large text). Owner: not now.
 
+### Lock Screen buttons, after build 10 (25 Oct)
+- Build 10's IPA: the app's Metadata.appintents lists LiveActivityUserInteraction (build 9 already did) and includes ExpoWidgets' package, yet iOS still says "There is no metadata for LiveActivityUserInteraction in com.adroapp.app". Apple forum (thread 780568): iOS only finds intents declared in the target's own code, not in a library.
+- Fix: native/apple/AdroLiveTap.swift (LiveActivityIntent) is compiled into the app (plugins/withWidgetIntents.js) and into the widget extension (expo-widgets plugin patch); the extension's entry point makes the Live Activity buttons use it (ExpoWidgetsLiveButton.makeIntent). It hands the tap to the app's JavaScript through the same notification and a shared queue. Checked with a trial prebuild: the file is in both targets. Needs build 11.
+- Note: .gitignore ignores every folder named "ios", so native Swift files live in native/apple.
+
 ---
 
 

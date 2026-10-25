@@ -1,7 +1,8 @@
-// Lists expo-widgets' App Intents in the app's own metadata. iOS runs a Live Activity button's intent
-// (LiveActivityUserInteraction) in the app, and refused every tap with "There is no metadata for
-// LiveActivityUserInteraction in com.adroapp.app": an intent from a static library only counts when the app includes
-// its AppIntentsPackage (ExpoWidgetsIntents, added by patches/expo-widgets+57.0.27.patch). ExpoWidgets is imported
+// The Live Activity button intent in the app's own code. iOS runs a Live Activity button's intent in the app and only
+// finds intents declared in the app's own code: expo-widgets' intent (in a library) was refused with "There is no
+// metadata for LiveActivityUserInteraction in com.adroapp.app", even when listed through its AppIntentsPackage. So
+// native/apple/*.swift (AdroLiveTap) is compiled into the app here, and into the widget extension by
+// patches/expo-widgets+57.0.27.patch. AdroIntents still includes expo-widgets' own intents. ExpoWidgets is imported
 // "internal" like everywhere else in the app target (Xcode refuses mixed import levels).
 const { IOSConfig, withDangerousMod, withXcodeProject } = require('expo/config-plugins');
 const fs = require('fs');
@@ -17,18 +18,25 @@ struct AdroIntents: AppIntentsPackage {
 }
 `;
 
+const nativeFiles = (root) => {
+  const dir = path.join(root, 'native', 'apple');
+  return fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith('.swift')) : [];
+};
+
 module.exports = (config) => {
   config = withDangerousMod(config, [
     'ios',
     (c) => {
-      fs.writeFileSync(path.join(c.modRequest.platformProjectRoot, c.modRequest.projectName, FILE), SOURCE);
+      const appDir = path.join(c.modRequest.platformProjectRoot, c.modRequest.projectName);
+      fs.writeFileSync(path.join(appDir, FILE), SOURCE);
+      for (const f of nativeFiles(c.modRequest.projectRoot)) fs.copyFileSync(path.join(c.modRequest.projectRoot, 'native', 'apple', f), path.join(appDir, f));
       return c;
     },
   ]);
   return withXcodeProject(config, (c) => {
     const name = c.modRequest.projectName;
-    if (!c.modResults.hasFile(`${name}/${FILE}`)) {
-      IOSConfig.XcodeUtils.addBuildSourceFileToGroup({ filepath: `${name}/${FILE}`, groupName: name, project: c.modResults });
+    for (const f of [FILE, ...nativeFiles(c.modRequest.projectRoot)]) {
+      if (!c.modResults.hasFile(`${name}/${f}`)) IOSConfig.XcodeUtils.addBuildSourceFileToGroup({ filepath: `${name}/${f}`, groupName: name, project: c.modResults });
     }
     return c;
   });

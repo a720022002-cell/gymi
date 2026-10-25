@@ -79,8 +79,78 @@ index 972fa4f..a83a9fb 100644
 +    return out
    }
  }
+diff --git a/node_modules/expo-widgets/ios/Widgets/Buttons.swift b/node_modules/expo-widgets/ios/Widgets/Buttons.swift
+index 55fb9b3..ed94818 100644
+--- a/node_modules/expo-widgets/ios/Widgets/Buttons.swift
++++ b/node_modules/expo-widgets/ios/Widgets/Buttons.swift
+@@ -36,27 +36,51 @@ struct WidgetButtonView: ExpoSwiftUI.View {
+   }
+ }
+ 
++/**
++ * The intent a Live Activity button runs, made by the widget extension (Adro sets this in the extension's entry point).
++ * iOS only finds an intent's metadata in the target's own code, so an intent declared in this library was refused
++ * ("There is no metadata for LiveActivityUserInteraction"); the extension and the app each declare their own.
++ */
++public enum ExpoWidgetsLiveButton {
++  public static var makeIntent: ((String?, String?) -> Any)?
++}
++
++@available(iOS 17.0, *)
++private func liveActivityButton<I: AppIntent>(_ intent: I, role: ButtonRole?, label: AnyView) -> AnyView {
++  AnyView(SwiftUI.Button(role: role, intent: intent) { label })
++}
++
+ @available(iOS 17.0, *)
+ struct LiveActivityButtonView: ExpoSwiftUI.View {
+   @ObservedObject var props: ButtonProps
+ 
++  @ViewBuilder
+   var body: some View {
+-    SwiftUI.Button(
+-      role: props.role?.toNativeRole(),
+-      intent: LiveActivityUserInteraction(
+-        source: props.source,
+-        target: props.target
+-      )
+-    ) {
+-      if let label = props.label {
+-        if let systemImage = props.systemImage {
+-          Label(title: { Text(label) }, icon: { Image(systemName: systemImage) })
+-        } else {
+-          Text(label)
+-        }
++    if let intent = ExpoWidgetsLiveButton.makeIntent?(props.source, props.target) as? any AppIntent {
++      liveActivityButton(intent, role: props.role?.toNativeRole(), label: AnyView(content))
++    } else {
++      SwiftUI.Button(
++        role: props.role?.toNativeRole(),
++        intent: LiveActivityUserInteraction(
++          source: props.source,
++          target: props.target
++        )
++      ) {
++        content
++      }
++    }
++  }
++
++  @ViewBuilder
++  private var content: some View {
++    if let label = props.label {
++      if let systemImage = props.systemImage {
++        Label(title: { Text(label) }, icon: { Image(systemName: systemImage) })
+       } else {
+-        Children()
++        Text(label)
+       }
++    } else {
++      Children()
+     }
+   }
+ }
 diff --git a/node_modules/expo-widgets/ios/WidgetsModule.swift b/node_modules/expo-widgets/ios/WidgetsModule.swift
-index b1b4295..5df638e 100644
+index b1b4295..82ce0d0 100644
 --- a/node_modules/expo-widgets/ios/WidgetsModule.swift
 +++ b/node_modules/expo-widgets/ios/WidgetsModule.swift
 @@ -18,6 +18,7 @@ public final class WidgetsModule: Module {
@@ -99,20 +169,63 @@ index b1b4295..5df638e 100644
        NotificationCenter.default.removeObserver(
          self,
          name: onUserInteractionNotification,
-@@ -59,6 +61,16 @@ public final class WidgetsModule: Module {
+@@ -59,6 +61,21 @@ public final class WidgetsModule: Module {
        }
      }
  
 +    // Live Activity taps the app hasn't handled yet (see LiveActivityUserInteraction).
 +    Function("takePendingInteractions") { () -> [[String: Any]] in
-+      WidgetsPendingInteractions.take()
++      // Taps from the library's own intent (kept in memory) and from the app's own intent (kept in the app group).
++      let shared = WidgetsStorage.getArray(forKey: "__adro_pending_live_taps") as? [[String: Any]] ?? []
++      if !shared.isEmpty { WidgetsStorage.set([[String: Any]](), forKey: "__adro_pending_live_taps") }
++      return WidgetsPendingInteractions.take() + shared
 +    }
 +
 +    // The last Live Activity tap, wherever it ran (see ExpoWidgetsLiveTaps).
 +    Function("lastLiveTap") { () -> [String: Any]? in
-+      WidgetsStorage.getDictionary(forKey: "__adro_last_live_tap")
++      guard var tap = WidgetsStorage.getDictionary(forKey: "__adro_last_live_tap") else { return nil }
++      tap["listening"] = ExpoWidgetsLiveTaps.listening
++      return tap
 +    }
 +
      Function("reloadAllWidgets") {
        WidgetCenter.shared.reloadAllTimelines()
      }
+diff --git a/node_modules/expo-widgets/plugin/build/ios/withWidgetSourceFiles.js b/node_modules/expo-widgets/plugin/build/ios/withWidgetSourceFiles.js
+index d1b5da9..dedde20 100644
+--- a/node_modules/expo-widgets/plugin/build/ios/withWidgetSourceFiles.js
++++ b/node_modules/expo-widgets/plugin/build/ios/withWidgetSourceFiles.js
+@@ -102,7 +102,16 @@ const withWidgetSourceFiles = (config, { widgets, targetName, onFilesGenerated,
+             const infoPlistPath = createInfoPlist(groupIdentifier, targetDirectory, config.ios?.version ?? config.version ?? '1.0', config.ios?.buildNumber ?? '1', existingInfoPlist);
+             const indexSwiftPath = createIndexSwift(widgets, targetDirectory);
+             const widgetSwiftPaths = widgets.map((widget) => createWidgetSwift(widget, targetDirectory));
+-            onFilesGenerated([entitlementsPath, infoPlistPath, indexSwiftPath, ...widgetSwiftPaths]);
++            // Adro: Swift files the app's own extension code needs (native/apple), like its Live Activity button intent.
++            const nativeDir = path.join(config.modRequest.projectRoot, 'native', 'apple');
++            const extraSwiftPaths = fs.existsSync(nativeDir)
++                ? fs.readdirSync(nativeDir).filter((f) => f.endsWith('.swift')).map((f) => {
++                    const to = path.join(targetDirectory, f);
++                    fs.copyFileSync(path.join(nativeDir, f), to);
++                    return to;
++                })
++                : [];
++            onFilesGenerated([entitlementsPath, infoPlistPath, indexSwiftPath, ...widgetSwiftPaths, ...extraSwiftPaths]);
+             return config;
+         },
+     ]);
+@@ -152,7 +161,14 @@ const createInfoPlist = (groupIdentifier, targetPath, marketingVersion, bundleVe
+ };
+ const addIndexSwiftChunk = (widgets, index, isLastChunk) => `
+ ${index === 0 ? '@main' : ''}
+-struct ExportWidgets${index}: WidgetBundle {
++struct ExportWidgets${index}: WidgetBundle {${index === 0 ? `
++  // Adro: Live Activity buttons run the extension's own intent (native/apple/AdroLiveTap.swift).
++  init() {
++    if #available(iOS 17.0, *) {
++      ExpoWidgetsLiveButton.makeIntent = { source, target in AdroLiveTap(source: source, target: target) }
++    }
++  }
++` : ''}
+   var body: some Widget {
+     ${widgets
+     .map((widget) => {
