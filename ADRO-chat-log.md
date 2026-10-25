@@ -439,6 +439,12 @@ Passwords and keys are left out on purpose.
 - Done: on iPhone the barcode screen now opens Apple's own scanner (VisionKit, the one Live Text uses, already inside expo-camera). It switches to the macro lens up close, has pinch-to-zoom and guidance, and highlights the code. Swipe it down: the screen shows "Open the scanner" and "Enter the code by hand". Phones that can't run it keep the old camera view.
 - File: src/app/barcode.tsx (+2 Arabic strings). JS only, same native fingerprint as build 15. Sent as OTA 6579871b.
 
+## Create a meal: one "Add an ingredient" button (25 Oct 2026)
+
+- Ask: keep only "Add an ingredient" and have it open the same look as Log food, so the screens match.
+- Done: the "Scan a barcode" button is gone. "Add an ingredient" opens a new sheet built like Log food: search, Meal photo (AI lists the ingredients and adds them all), Scan barcode, Label photo (adds the product per 100 g, one serving), Saved meals (adds another saved meal's ingredients), Choose from photos, and Type what you ate (AI). Everything is added to the meal, not logged. Grams can be changed in the list as before.
+- Files: src/components/food/AddIngredientSheet.tsx (new), src/app/saved-meals.tsx, +1 Arabic string. Checked on web: sheet, saved meals, search. JS only. Not sent yet.
+
 ---
 
 

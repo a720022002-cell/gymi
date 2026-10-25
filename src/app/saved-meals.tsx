@@ -13,6 +13,7 @@ import { useT } from '@/i18n';
 import { type SavedMeal, useFood, useLogFood } from '@/lib/food';
 import { AllergyWarn, useAllergyCheck } from '@/components/food/AllergyWarn';
 import { WarnChip } from '@/components/food/Chips';
+import { AddIngredientSheet } from '@/components/food/AddIngredientSheet';
 import { PickFood, per100 } from '@/components/food/PickFood';
 import { useScanProduct } from '@/components/food/useScanProduct';
 import { foodName } from '@/lib/foodsDb';
@@ -325,6 +326,8 @@ function CreateMeal({ onDone, edit }: { onDone: () => void; edit?: SavedMeal }) 
   const [name, setName] = useState(edit?.name ?? '');
   const [items, setItems] = useState<Ing[]>(() => (edit ? toIngs(edit) : []));
   const [picking, setPicking] = useState(false);
+  // "Add an ingredient": the same ways as Log food; search opens the food picker.
+  const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   // How to make it, one step per box (optional). Up to 30 steps.
   const [steps, setSteps] = useState<string[]>(() => (edit?.steps?.length ? edit.steps : []));
@@ -410,14 +413,7 @@ function CreateMeal({ onDone, edit }: { onDone: () => void; edit?: SavedMeal }) 
           ))}
         </View>
       ) : null}
-      <Row gap={8} style={{ marginTop: 10 }}>
-        <View style={{ flex: 1 }}>
-          <Button small kind="soft" icon="plus" title={t('Add an ingredient')} style={{ alignSelf: 'stretch' }} onPress={() => setPicking(true)} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Button small kind="soft" icon="barcode" title={t('Scan a barcode')} loading={scanning} style={{ alignSelf: 'stretch' }} onPress={scan} />
-        </View>
-      </Row>
+      <Button small kind="soft" icon="plus" title={t('Add an ingredient')} loading={scanning} style={{ marginTop: 10, alignSelf: 'stretch' }} onPress={() => setAdding(true)} />
       {edit?.servings && edit.servings > 1 ? (
         <Text variant="xs" color="sec" style={{ marginTop: 8, marginHorizontal: 4 }}>
           {t('These amounts are for one serving.')}
@@ -479,6 +475,15 @@ function CreateMeal({ onDone, edit }: { onDone: () => void; edit?: SavedMeal }) 
       </Card>
       <Button title={t(edit ? 'Save changes' : 'Save meal')} disabled={!ok} loading={saving} style={{ marginTop: 8 }} onPress={save} />
 
+      <AddIngredientSheet
+        open={adding}
+        onClose={() => setAdding(false)}
+        onSearch={() => setPicking(true)}
+        onScan={scan}
+        onAdd={(fs) => setItems((xs) => [...xs, ...fs.map((f) => ({ n: f.n, g: Math.round(f.g), k: 0, p: 0, c: 0, f: 0, per: f.per }))])}
+        saved={food.saved.filter((m) => m.id !== edit?.id)}
+        onSaved={(m) => setItems((xs) => [...xs, ...toIngs(m)])}
+      />
       <PickFood
         open={picking}
         onClose={() => setPicking(false)}
