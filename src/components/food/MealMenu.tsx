@@ -8,7 +8,7 @@ import { changeMeal, fmt, type PlannedMeal, ramadanOn, withMealIds } from '@/lib
 import { useSettings } from '@/theme/settings';
 
 import { Icon, type IconName } from '../Icon';
-import { Sheet } from '../Sheet';
+import { afterSheet, Sheet } from '../Sheet';
 import { Text } from '../Text';
 import { useToast } from '../Toast';
 import { Button, Springy } from '../ui';
@@ -45,7 +45,7 @@ export function MealMenu({ meal, logged, onClose }: { meal: PlannedMeal | null; 
       'View recipe',
       () => {
         onClose();
-        router.push({ pathname: '/recipe', params: { key: meal.key, day: food.day } });
+        afterSheet(() => router.push({ pathname: '/recipe', params: { key: meal.key, day: food.day } }));
       },
     ],
     ['swap', 'Change meal', swap],

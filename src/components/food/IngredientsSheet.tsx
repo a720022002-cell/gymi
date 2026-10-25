@@ -9,7 +9,7 @@ import { useFood } from '@/lib/food';
 import { type CustomRecipe, dayKey, type PlannedMeal } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
 
-import { Sheet } from '../Sheet';
+import { afterSheet, Sheet } from '../Sheet';
 import { fontFor, Text } from '../Text';
 import { useToast } from '../Toast';
 import { Button, Chip, Row } from '../ui';
@@ -123,7 +123,7 @@ export function IngredientsSheet({ meal, onClose }: { meal: PlannedMeal | null; 
     setBusy(false);
     setText('');
     onClose();
-    router.push({ pathname: '/recipe', params: { key: meal.key, day: food.day } });
+    afterSheet(() => router.push({ pathname: '/recipe', params: { key: meal.key, day: food.day } }));
     toast(t('Recipe ready. Same calories as your plan.'), { ai: true, undo: () => food.updatePlan({ custom: before }) });
   };
 

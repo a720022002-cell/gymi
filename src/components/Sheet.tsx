@@ -8,6 +8,13 @@ import { useKeyboardHeight } from '@/lib/useKeyboard';
 
 import { Glass } from './Glass';
 
+/**
+ * Runs `fn` once a sheet has finished closing. Go to another screen (or open another sheet) through this: the iPhone
+ * shows one sheet at a time, and one opened while the last is still closing never appears (an exercise list that
+ * wouldn't open).
+ */
+export const afterSheet = (fn: () => void) => setTimeout(fn, 320);
+
 /** Glass bottom sheet that springs up (design: .sheet). Tap outside to close. */
 export function Sheet({ open, onClose, children }: PropsWithChildren<{ open: boolean; onClose: () => void }>) {
   const { colors: c } = useSettings();

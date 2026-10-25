@@ -8,7 +8,7 @@ import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
 import { Icon } from '../Icon';
-import { Sheet } from '../Sheet';
+import { afterSheet, Sheet } from '../Sheet';
 import { Text } from '../Text';
 import { useToast } from '../Toast';
 import { Button, Chip, Row } from '../ui';
@@ -40,7 +40,7 @@ export function DaySheet({ d, onClose }: { d: number | null; onClose: () => void
       train.updatePlan({ workouts: { ...p.workouts, [n]: { ex: [], focus: '', min: 0 } } });
       setDay(n);
       onClose();
-      router.push({ pathname: '/day-edit', params: { d: String(d) } });
+      afterSheet(() => router.push({ pathname: '/day-edit', params: { d: String(d) } }));
     };
     return (
       <Sheet open onClose={onClose}>
@@ -137,7 +137,7 @@ export function DaySheet({ d, onClose }: { d: number | null; onClose: () => void
             title={t('Edit')}
             onPress={() => {
               onClose();
-              router.push({ pathname: '/day-edit', params: { d: String(d), w } });
+              afterSheet(() => router.push({ pathname: '/day-edit', params: { d: String(d), w } }));
             }}
           />
         )}
@@ -190,7 +190,7 @@ export function DaySheet({ d, onClose }: { d: number | null; onClose: () => void
               style={{ marginTop: 12 }}
               onPress={() => {
                 onClose();
-                router.push({ pathname: '/day-edit', params: { d: String(d), w, add: '1' } });
+                afterSheet(() => router.push({ pathname: '/day-edit', params: { d: String(d), w, add: '1' } }));
               }}
             />
           ) : null}
@@ -207,7 +207,7 @@ export function DaySheet({ d, onClose }: { d: number | null; onClose: () => void
               style={{ alignSelf: 'stretch' }}
               onPress={() => {
                 onClose();
-                router.push({ pathname: '/workout', params: { w } });
+                afterSheet(() => router.push({ pathname: '/workout', params: { w } }));
               }}
             />
           </View>

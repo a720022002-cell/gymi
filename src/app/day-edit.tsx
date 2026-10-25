@@ -1,9 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { TextInput, View } from 'react-native';
 
 import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
+import { afterSheet } from '@/components/Sheet';
 import { fontFor, Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { ExercisePicker } from '@/components/train/ExercisePicker';
@@ -28,7 +29,19 @@ export default function DayEdit() {
   // A workout by name (plans in order have no fixed day), or the one on day d.
   const w = wParam && p?.workouts[wParam] ? wParam : (train.week[d]?.w ?? null);
   const [name, setName] = useState(w ?? '');
-  const [pick, setPick] = useState<number | null>(add ? -1 : null); // -1 = add, i = replace
+  const [pick, setPick] = useState<number | null>(null); // -1 = add, i = replace
+  // Each tap opens a fresh list: if one couldn't show (the iPhone was still closing another sheet), tapping again works.
+  const [pickKey, setPickKey] = useState(0);
+  const openPick = (i: number) => {
+    setPickKey((k) => k + 1);
+    setPick(i);
+  };
+  // Came from "Add an exercise" on the day: open the list once the day's sheet has closed.
+  useEffect(() => {
+    if (!add) return;
+    const timer = afterSheet(() => openPick(-1));
+    return () => clearTimeout(timer);
+  }, [add]);
   if (!p || !w || train.coach)
     return (
       <Screen title={t('Edit workout')} back>
@@ -116,7 +129,7 @@ export default function DayEdit() {
                       {i + 1}
                     </Text>
                   </View>
-                  <Springy onPress={() => setPick(i)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                  <Springy onPress={() => openPick(i)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 0 }}>
                     <Text weight={700} numberOfLines={1} style={{ flexShrink: 1 }}>
                       {info.name}
                     </Text>
@@ -175,7 +188,7 @@ export default function DayEdit() {
           </Card>
         )}
       </View>
-      <Button small kind="soft" icon="plus" title={t('Add an exercise')} style={{ alignSelf: 'stretch' }} onPress={() => setPick(-1)} />
+      <Button small kind="soft" icon="plus" title={t('Add an exercise')} style={{ alignSelf: 'stretch' }} onPress={() => openPick(-1)} />
       <Button
         title={t('Done')}
         style={{ marginTop: 12 }}
@@ -186,6 +199,7 @@ export default function DayEdit() {
       />
 
       <ExercisePicker
+        key={pickKey}
         open={pick !== null}
         replacing={pick !== null && pick >= 0}
         like={pick !== null && pick >= 0 && W.ex[pick] ? (({ name, muscle }) => ({ id: W.ex[pick].id, name, muscle }))(exInfo(W.ex[pick], lang)) : null}

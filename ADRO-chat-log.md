@@ -382,6 +382,11 @@ Passwords and keys are left out on purpose.
 - The test recipe counted all 100 g of frying oil (884 kcal). Now: about 12 g oil per 100 g of battered/breaded/floured food and 6 g per 100 g of plain food, named "oil absorbed in frying"; oil that stays in the dish (sauté, sauce, dressing) counts in full.
 - Deployed (ai v99). Same link again: "oil absorbed in frying" 65 g, 575 kcal (was 100 g, 884 kcal). Test user deleted.
 
+### "Add an exercise" did nothing for one user (akeel) (25 Oct 2026)
+- Likely cause: from a day's sheet, "Add an exercise" goes to Edit workout and opens the exercise list right away, while the day's sheet is still closing. The iPhone shows one sheet at a time, so the list never appeared; the screen then thought it was open, and tapping "Add an exercise" changed nothing. Timing differs by phone (the owner's was fast enough).
+- Fix: Sheet.tsx afterSheet() waits for a sheet to finish closing. Used before going to another screen from DaySheet (4 places), MealMenu and IngredientsSheet, and before Edit workout opens the list by itself. Each tap on "Add an exercise" (or swap) opens a fresh list, so a list that couldn't show opens on the next tap.
+- Not sent yet (JS only, can go as an update).
+
 ---
 
 
