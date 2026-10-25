@@ -410,7 +410,7 @@ Passwords and keys are left out on purpose.
 - Sent once, right after someone confirms their email, in the account's language: a welcome, the account's details (name, username, email, phone if given, account type, date joined; never the password), the first three steps, an Open Adro button, and "reply for help". From Adro <hello@adroapp.com> through Resend.
 - How: a trigger on auth.users (email confirmed) calls the new welcome function with a shared secret (vault "welcome_hook" = function secret WELCOME_HOOK_SECRET); welcome_emails keeps it to once per account (server only). Test addresses (.invalid) are skipped. A failed send can be tried again; it never blocks confirming.
 - Files: supabase/functions/welcome, supabase/migrations/20261128000000_welcome_email.sql. Preview checked in Arabic and English.
-- Waiting for the OK to apply (migration, secret, deploy).
+- Applied: migration, vault secret welcome_hook + function secret WELCOME_HOOK_SECRET (random, never shown), welcome function deployed (v1, no JWT check). Test: an Arabic sign-up to the owner's Gmail (plus address), confirmed from the database: the trigger called the function, it answered {sent: true, lang: ar}. Test account deleted right after.
 
 ---
 
