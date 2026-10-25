@@ -426,6 +426,12 @@ Passwords and keys are left out on purpose.
 - Owner asked to send the welcome to everyone. Sent to the 4 real addresses (3 Gmail, 1 Hotmail), all in English (their accounts' language). Skipped: 4 old @gymi.app accounts (that domain has no mail server, the emails would bounce and hurt sending) and the App Review account. welcome_emails marks them, so none gets it twice.
 - Small fix (not deployed yet): the welcome email takes the language the app keeps on the account (user_metadata) before the profile's.
 
+## Meal edit: change the amount (25 Oct 2026)
+
+- Ask: on a logged food (e.g. 11 g ketchup), Edit had no way to change how many grams.
+- Done: when we know the food's numbers per 100 (food list or scanned product), Edit shows an **Amount** field. Typing grams recalculates calories, protein, carbs and fat, and the "…, 11 g" at the end of the name follows. The ½ / 1.5× / 2× chips also scale the amount.
+- File: src/app/logged.tsx. Not sent yet (waits for "أرسل التحديث").
+
 ---
 
 

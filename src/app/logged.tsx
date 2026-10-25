@@ -29,7 +29,7 @@ export default function LoggedScreen() {
   const log = food.logs.find((l) => l.id === id);
   const [dbFood, setDbFood] = useState<{ id: string; f: DbFood | null } | null>(null);
   // Editing the name and numbers (strings while you type).
-  const [edit, setEdit] = useState<{ name: string; k: string; p: string; c: string; f: string } | null>(null);
+  const [edit, setEdit] = useState<{ name: string; g: string; k: string; p: string; c: string; f: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const logAgain = useLogAgain();
 
@@ -79,6 +79,10 @@ export default function LoggedScreen() {
       {g ? t('For the {n} {u} you logged', { n: g, u: t(unit) }) : t('Per 100 {u}', { u: t(unit) })}
     </Text>
   );
+  // Per 100 g/ml, when we know the food: then you can change the amount and the numbers follow.
+  const per = f ? factsOf(f, mine) : barcode && off && off.code === barcode && off.f.kcal ? withMine(off.f, mine) : null;
+  const perUnit: 'g' | 'ml' = f ? f.unit : 'g';
+  const g0 = per ? loggedG(per.kcal) : null;
   const num = (v: string) => +v.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[,٫]/g, '.') || 0;
   const numField = (k: 'k' | 'p' | 'c' | 'f', label: string, unit: string) =>
     edit ? (
@@ -87,7 +91,20 @@ export default function LoggedScreen() {
       </View>
     ) : null;
   const r1 = (n: number) => String(Math.round(n * 10) / 10);
-  const scale = (m: number) => edit && setEdit({ ...edit, k: String(Math.round(num(edit.k) * m)), p: r1(num(edit.p) * m), c: r1(num(edit.c) * m), f: r1(num(edit.f) * m) });
+  // The name ends with the amount when it was logged by weight ("…, 11 g"); keep it in step.
+  const renamed = (name: string, from: number, to: number) => {
+    const m = name.match(/^(.*), ([\d.,٠-٩]+) (\S+)$/);
+    return m && num(m[2]) === from && to > 0 ? `${m[1]}, ${Math.round(to)} ${m[3]}` : name;
+  };
+  const setGrams = (v: string) => {
+    if (!edit) return;
+    const g = v.replace(/[^\d.,٠-٩٫]/g, '').slice(0, 6);
+    const n = num(g);
+    if (!per || !(n > 0)) return setEdit({ ...edit, g });
+    const m = n / 100;
+    setEdit({ ...edit, g, name: renamed(edit.name, num(edit.g), n), k: String(Math.round((per.kcal ?? 0) * m)), p: r1((per.protein ?? 0) * m), c: r1((per.carbs ?? 0) * m), f: r1((per.fat ?? 0) * m) });
+  };
+  const scale = (m: number) => edit && setEdit({ ...edit, ...(num(edit.g) > 0 ? { g: String(Math.round(num(edit.g) * m)), name: renamed(edit.name, num(edit.g), num(edit.g) * m) } : null), k: String(Math.round(num(edit.k) * m)), p: r1(num(edit.p) * m), c: r1(num(edit.c) * m), f: r1(num(edit.f) * m) });
   const save = async () => {
     if (!edit) return;
     setSaving(true);
@@ -149,6 +166,7 @@ export default function LoggedScreen() {
       {edit ? (
         <View style={{ marginTop: 4 }}>
           <Field label={t('Name')} value={edit.name} onChangeText={(v) => setEdit({ ...edit, name: v })} maxLength={200} />
+          {per ? <Field label={t('Amount')} value={edit.g} onChangeText={setGrams} inputMode="decimal" keyboardType="decimal-pad" ltr unit={t(perUnit)} /> : null}
           <Row gap={10}>
             {numField('k', t('Calories'), t('kcal'))}
             {numField('p', t('Protein'), t('g'))}
@@ -178,7 +196,7 @@ export default function LoggedScreen() {
             title={t('Edit')}
             color={c.text}
             style={{ flex: 1 }}
-            onPress={() => setEdit({ name: log.name, k: String(Math.round(+log.kcal)), p: String(+log.protein), c: String(+log.carbs), f: String(+log.fat) })}
+            onPress={() => setEdit({ name: log.name, g: g0 ? String(g0) : '', k: String(Math.round(+log.kcal)), p: String(+log.protein), c: String(+log.carbs), f: String(+log.fat) })}
           />
           {/* The same amount again, today, to the same meal. */}
           <Button kind="soft" icon="plus" title={t(log.day === food.today ? 'Log again' : 'Log again today')} color={c.text} style={{ flex: 1 }} onPress={() => logAgain(log, { on: food.today, meal: curMeal })} />
