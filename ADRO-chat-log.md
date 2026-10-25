@@ -378,6 +378,10 @@ Passwords and keys are left out on purpose.
 - Then (owner): after the recipe is read from the video, it's checked against the caption ingredient by ingredient; where they differ, the caption wins, and ingredients only the caption lists are added. The note says where they disagreed. (For uploaded videos too.)
 - Deployed (ai v98). Tested with the owner's link (Arabic): 7.4 s, Gemini 3.5 Flash-Lite watched the video and gave honey garlic chicken with 10 ingredients and the real steps (marinate 15 minutes, cornstarch, fry, sauce), 3 servings. Cost $0.0031. Test user deleted.
 
+### Recipe: frying oil counts only what the food absorbs (25 Oct 2026)
+- The test recipe counted all 100 g of frying oil (884 kcal). Now: about 12 g oil per 100 g of battered/breaded/floured food and 6 g per 100 g of plain food, named "oil absorbed in frying"; oil that stays in the dish (sauté, sauce, dressing) counts in full.
+- Waiting for the OK to deploy the ai function.
+
 ---
 
 
