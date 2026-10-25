@@ -344,6 +344,7 @@ Passwords and keys are left out on purpose.
 - The build 14 IPA has AdroLiveTap in the app's Metadata.appintents, but extract.packagedata also includes expo-widgets' package (ExpoWidgetsIntents, added in build 10). expo-widgets is a static library with no framework in the app, so iOS can't find that package and drops the app's whole metadata (same as Apple bug FB13281659).
 - Another app's Live Activity buttons work on iOS 27.0.1 with the intent in both targets and no package, so the module name wasn't the cause.
 - Fix (build 15): removed the AppIntentsPackage (plugin and patch), made AdroLiveTap public. Module name "Adro" kept (it builds).
+- Build 15 built and was sent to TestFlight. Its IPA: no extract.packagedata any more; AdroLiveTap in the app's actions (mangledTypeNameV2 4Adro0A7LiveTapV, the old mangledTypeName field still empty).
 
 ---
 
