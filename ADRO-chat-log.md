@@ -360,7 +360,7 @@ Passwords and keys are left out on purpose.
   - Report PDF: arrow by language, "cm" translated, signs kept.
   - First open in Arabic (from the phone's language): the app restarts once so the welcome screens aren't half mirrored (once per direction, never loops).
   - Checked and fine: icons that point (back, chevrons) are mirrored; charts are drawn the same in both languages; text set to the end of a row (counters, number columns) moves to the left in Arabic as it should; the protein slider and the plan's drag and drop follow your finger; no missing Arabic text.
-- Not sent yet (JS only, can go as an update).
+- Sent as an OTA update to build 15 (group a812286f).
 
 ---
 
