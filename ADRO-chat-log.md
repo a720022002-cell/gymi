@@ -394,6 +394,11 @@ Passwords and keys are left out on purpose.
 - Checked on the web build in Arabic and English, no errors. Test users deleted.
 - Not sent yet (JS only, can go as an update).
 
+### Sign-in emails with the code (25 Oct 2026)
+- Today's Supabase emails send a link only (confirm, sign-in, reset), though the app takes the 6-digit code.
+- Made branded Arabic + English templates with the code large and clear and the link as a backup, the code also in the subject: sign-up, sign-in, password reset, email change, re-verification (supabase/auth-emails/).
+- Supabase refused the change: "Email template modification is not available for free tier projects using the default email provider." Nothing changed. They go live as soon as Resend is set up as the custom SMTP (old settings saved first).
+
 ---
 
 
