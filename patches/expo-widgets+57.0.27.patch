@@ -236,14 +236,14 @@ index d1b5da9..dedde20 100644
      ${widgets
      .map((widget) => {
 diff --git a/node_modules/expo-widgets/plugin/build/ios/xcode/addXCConfigurationList.js b/node_modules/expo-widgets/plugin/build/ios/xcode/addXCConfigurationList.js
-index abe17af..2fc1fda 100644
+index abe17af..6be37a3 100644
 --- a/node_modules/expo-widgets/plugin/build/ios/xcode/addXCConfigurationList.js
 +++ b/node_modules/expo-widgets/plugin/build/ios/xcode/addXCConfigurationList.js
 @@ -19,6 +19,7 @@ function addXCConfigurationList(xcodeProject, props) {
          CODE_SIGN_ENTITLEMENTS: `"${props.targetName}/${props.targetName}.entitlements"`,
          APPLICATION_EXTENSION_API_ONLY: '"YES"',
          ...(props.appleTeamId ? { DEVELOPMENT_TEAM: props.appleTeamId } : {}),
-+        ...(props.moduleName ? { PRODUCT_MODULE_NAME: `"${props.moduleName}"` } : {}),
++        ...(props.moduleName ? { PRODUCT_MODULE_NAME: `"${props.moduleName}"`, SWIFT_INSTALL_MODULE: "NO", SWIFT_INSTALL_OBJC_HEADER: "NO" } : {}),
      };
      const existingConfigurationListUuid = xcodeProject.pbxTargetByName(props.targetName)?.buildConfigurationList;
      if (existingConfigurationListUuid) {
