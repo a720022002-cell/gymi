@@ -430,7 +430,7 @@ Passwords and keys are left out on purpose.
 
 - Ask: on a logged food (e.g. 11 g ketchup), Edit had no way to change how many grams.
 - Done: when we know the food's numbers per 100 (food list or scanned product), Edit shows an **Amount** field. Typing grams recalculates calories, protein, carbs and fat, and the "…, 11 g" at the end of the name follows. The ½ / 1.5× / 2× chips also scale the amount.
-- File: src/app/logged.tsx. Not sent yet (waits for "أرسل التحديث").
+- File: src/app/logged.tsx. Sent as OTA 98e4803d (build 15 runtime).
 
 ---
 
