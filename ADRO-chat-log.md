@@ -349,7 +349,7 @@ Passwords and keys are left out on purpose.
 ### Lock Screen buttons work + weight on every weighted set (25 Oct 2026)
 - Buttons work after deleting the app and installing build 15 fresh (iOS kept the old intent metadata on update).
 - Live Activity: a weighted exercise always shows its weight ("– kg" when none yet). The first + starts from a usual weight (bar 20 kg, dumbbell 7.5, machine/cable 15), then ±2.5. Until a weight is set, the tip says "Set the weight with + first" (Done doesn't log 0 kg).
-- Not sent yet (JS only, can go as an update).
+- Sent as an OTA update to build 15 (group 109cefc0).
 
 ---
 
