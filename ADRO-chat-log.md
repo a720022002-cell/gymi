@@ -375,6 +375,7 @@ Passwords and keys are left out on purpose.
 - Fix (ai function): the caption, author and cover are also read from the video page and from its embed page (the longest caption wins). Tested with that link: caption "honey garlic chicken…", by ifoodwithu, and the cover picture.
 - Then (owner): read what's written on the video too, without uploading it. The server now downloads the TikTok video itself (the embed page links it, from TikTok's own servers only, up to 20 MB; about 6 MB for this one) and a model that watches video (Gemini 3.5 Flash-Lite, Haiku reads pictures only) reads the amounts on screen and what goes in. If that fails, the caption and cover give the recipe as before.
 - Tested here: caption, cover and the 6 MB video all come through for that link. The AI step itself can only be tested after deploying (the AI key lives on the server).
+- Then (owner): after the recipe is read from the video, it's checked against the caption ingredient by ingredient; where they differ, the caption wins, and ingredients only the caption lists are added. The note says where they disagreed. (For uploaded videos too.)
 - Waiting for the OK to deploy the ai function.
 
 ---
