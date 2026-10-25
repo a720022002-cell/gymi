@@ -109,6 +109,8 @@ function LiveActivity() {
     const r = st ? +(st.r || st.lr) || 0 : 0;
     const xi = x ? exInfo(x, lang) : null;
     const timed = xi?.timed ?? false;
+    // A weighted exercise always shows its weight, "– kg" until you set one (Done doesn't log a set without it).
+    const weighted = !!xi && !timed && xi.type !== 'Bodyweight';
     // The coach's tip under the exercise, the same one the workout screen shows.
     const adv = x && xi ? setAdvice(x, timed, xi.type === 'Bodyweight', histFor(train.logs, train.plan, x.id), t, W) : null;
     syncWorkoutActivity({
@@ -117,11 +119,11 @@ function LiveActivity() {
       // Working sets only: warm-ups have their own label and don't count.
       set: x && st && cur ? (st.warm ? t('Warm-up') : t('Set {a} of {b}', { a: x.sets.slice(0, cur.si + 1).filter((y) => !y.warm).length, b: x.sets.filter((y) => !y.warm).length })) : t('Tap Finish to save'),
       target: st && r ? (w > 0 ? `${W.show(w)} ${W.label} × ${r}` : `× ${r}`) : '',
-      wText: st && w > 0 ? `${W.show(w)} ${W.label}` : '',
+      wText: st && w > 0 ? `${W.show(w)} ${W.label}` : st && weighted ? `– ${W.label}` : '',
       rText: timed ? `${r} ${t('s')}` : `× ${r}`,
       canLog: !!st,
-      tip: ltrNums(adv?.text ?? ''),
-      tipTone: adv?.tone ?? 'ok',
+      tip: st && weighted && !(w > 0) ? t('Set the weight with + first') : ltrNums(adv?.text ?? ''),
+      tipTone: st && weighted && !(w > 0) ? 'down' : (adv?.tone ?? 'ok'),
       water: food.day === food.today ? `${Math.round(food.water / 50) / 20} ${t('L')}` : '',
       startedAt: s.start,
       restEnd: rest?.end ?? null,
@@ -168,8 +170,14 @@ function LiveActivity() {
         let k: 'w' | 'r';
         let v: string;
         if (a === 'w-' || a === 'w+') {
-          // One plate jump in your unit (2.5 kg or 5 lb), kept in kg.
-          const shown = W.num(+(st.w || st.lw) || 0) + (a === 'w+' ? 1 : -1) * (W.unit === 'lb' ? 5 : 2.5);
+          // One plate jump in your unit (2.5 kg or 5 lb), kept in kg. With no weight yet, + starts from a usual first
+          // weight (the empty bar for a barbell) instead of 2.5 kg, so it takes a few taps, not twenty.
+          const cur0 = +(st.w || st.lw) || 0;
+          const lb = W.unit === 'lb';
+          const type = exInfo(x, lang).type;
+          const first = type === 'Barbell' ? (lb ? 45 : 20) : type === 'Dumbbell' ? (lb ? 15 : 7.5) : type === 'Machine' || type === 'Cable' ? (lb ? 30 : 15) : lb ? 5 : 2.5;
+          const shown = cur0 > 0 ? W.num(cur0) + (a === 'w+' ? 1 : -1) * (lb ? 5 : 2.5) : a === 'w+' ? first : 0;
+          if (!(shown > 0) && !(cur0 > 0)) return;
           k = 'w';
           v = String(W.toKg(Math.max(0, shown)));
         } else {

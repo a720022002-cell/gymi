@@ -4997,4 +4997,5 @@ export const AR: Record<string, string> = {
   "Back to the recommendation": "ارجع للتوصية",
   "Updates every few seconds": "يتحدث كل كم ثانية",
   "From your plan today": "من خطتك اليوم",
+  "Set the weight with + first": "حدد الوزن بزر + أول",
 };
