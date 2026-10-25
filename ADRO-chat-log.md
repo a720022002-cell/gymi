@@ -318,6 +318,10 @@ Passwords and keys are left out on purpose.
 - Fix: native/apple/AdroLiveTap.swift (LiveActivityIntent) is compiled into the app (plugins/withWidgetIntents.js) and into the widget extension (expo-widgets plugin patch); the extension's entry point makes the Live Activity buttons use it (ExpoWidgetsLiveButton.makeIntent). It hands the tap to the app's JavaScript through the same notification and a shared queue. Checked with a trial prebuild: the file is in both targets. Needs build 11.
 - Note: .gitignore ignores every folder named "ios", so native Swift files live in native/apple.
 
+### Build 12 on TestFlight (25 Oct)
+- Build 11 didn't compile (missing import AppIntents, ButtonRole ambiguous); fixed. Build 12 built and was submitted.
+- IPA check: AdroLiveTap is declared in the app's own code (Adro.AdroLiveTap) and in the widget's (ExpoWidgetsTarget.AdroLiveTap). Waiting for the owner's test on the Lock Screen.
+
 ---
 
 
