@@ -20,7 +20,7 @@ import { useSettings } from '@/theme/settings';
 
 /** Connections: link, sync or disconnect what talks straight to Adro, and what comes in through the phone's health app. */
 export default function Connections() {
-  const { t, lang } = useT();
+  const { t } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
   const { session } = useAuth();
@@ -341,7 +341,7 @@ export default function Connections() {
                   {s}
                 </Text>
               </View>
-              {i < a.length - 1 ? <Icon name={lang === 'ar' ? 'back' : 'chev'} size={9} color={c.sec} /> : null}
+              {i < a.length - 1 ? <Icon name="chev" size={9} color={c.sec} /> : null}
             </Fragment>
           ))}
         </View>

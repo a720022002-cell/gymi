@@ -367,7 +367,8 @@ Passwords and keys are left out on purpose.
 - Tap: finds sensors nearby and saves the one you pick (it connects by itself when you start cardio). Once saved, the card shows its name; tap for Start cardio, Use another sensor, or Forget this sensor.
 - The sensor search is one shared component now (components/hr/ScanList), used by Connections and Start cardio.
 - Checked on the web build in Arabic and English, no errors. Google Fitbit Air stays (through Apple Health).
-- Not sent yet (JS only, can go as an update).
+- Sent as an OTA update to build 15 (group 93410333).
+- Then: the "Your device > Its own app > Apple Health > Adro" chevrons pointed the wrong way in Arabic (the back icon, which Arabic already mirrors, was mirrored again). Now the plain chevron, mirrored once. Not sent yet.
 
 ---
 
