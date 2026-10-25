@@ -415,7 +415,7 @@ Passwords and keys are left out on purpose.
 ### Codes in the app (25 Oct 2026)
 - Owner got the "Confirm your new email" code but the app had nowhere to type it: the app still waited for links (config EMAIL_CODES = false, made for before Resend). Now EMAIL_CODES = true: sign-up, sign-in, password reset and email change all ask for the 6-digit code.
 - Email change: Supabase sends a code to both the new and the current email (secure email change). The app now asks for the new email's code, then the current one's; the change happens when both are in.
-- Not sent yet (JS only, can go as an update).
+- Sent as an OTA update to build 15 (group 483e6015).
 
 ---
 
