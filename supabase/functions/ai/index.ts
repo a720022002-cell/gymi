@@ -19,6 +19,8 @@ const env = (k: string, d = '') => Deno.env.get(k) ?? d;
 /** The OpenRouter key; also accepted under the name "OpenRouter". */
 /** The model Adro uses: Claude Haiku (reads photos and PDFs, good Arabic, follows the JSON shape). */
 const HAIKU = 'anthropic/claude-haiku-5.5';
+/** Watches a whole video (Haiku reads pictures only): a recipe from a TikTok link is read from the video itself. */
+const VIDEO_MODEL = 'google/gemini-3.5-flash-lite';
 /** Models an admin may ask for instead, only to measure them against Haiku on the same photos. */
 const BENCH_MODELS = ['anthropic/claude-sonnet-5.5', 'anthropic/claude-opus-5.5', 'google/gemini-4-argon', 'google/gemini-3.8-flash', 'google/gemini-3.5-flash-lite'];
 /** Settings and results of one request. Each request has its own, so requests running at the same time never mix
@@ -75,7 +77,7 @@ const TASK_TOKENS: Record<string, number> = {
 const timedOut = (e: unknown) => (e as Error)?.name === 'TimeoutError' || (e as Error)?.name === 'AbortError';
 const openrouterKey = () => env('OPENROUTER_API_KEY') || env('OpenRouter') || env('OPENROUTER');
 
-type Part = { text: string } | { image: string; mime: string } | { file: string; mime: string; name: string };
+type Part = { text: string } | { image: string; mime: string } | { file: string; mime: string; name: string } | { video: string; mime: string };
 type Msg = { role: 'user' | 'ai'; parts: Part[] };
 
 async function openrouter(system: string, msgs: Msg[], schema?: object): Promise<string> {
@@ -133,7 +135,9 @@ async function openrouterCall(model: string, system: string, msgs: Msg[], schema
               ? { type: 'text', text: p.text }
               : 'file' in p
                 ? { type: 'file', file: { filename: p.name, file_data: `data:${p.mime};base64,${p.file}` } }
-                : { type: 'image_url', image_url: { url: `data:${p.mime};base64,${p.image}` } },
+                : 'video' in p
+                  ? { type: 'video_url', video_url: { url: `data:${p.mime};base64,${p.video}` } }
+                  : { type: 'image_url', image_url: { url: `data:${p.mime};base64,${p.image}` } },
           ),
         ],
       })),
@@ -333,7 +337,7 @@ async function getUrl(u: string, init?: RequestInit, hosts: RegExp = LINK_HOSTS)
       return null;
     }
     if (parsed.protocol !== 'https:' || !hosts.test(parsed.hostname)) return null;
-    const r = await fetch(parsed, { ...init, signal: AbortSignal.timeout(8000), redirect: 'manual' });
+    const r = await fetch(parsed, { ...init, signal: init?.signal ?? AbortSignal.timeout(8000), redirect: 'manual' });
     const next = r.status >= 300 && r.status < 400 ? r.headers.get('location') : null;
     if (!next) return r.ok ? Object.assign(r, { finalUrl: parsed.toString() }) : null;
     url = new URL(next, parsed).toString();
@@ -348,7 +352,16 @@ async function picture(u?: string) {
   const buf = r ? await r.arrayBuffer() : null;
   return buf && buf.byteLength < 3_000_000 ? toB64(buf) : null;
 }
-async function linkInfo(raw: string): Promise<{ site: string; text: string; image: string | null } | null> {
+/** The video file itself, from TikTok's own servers only, up to 20 MB. */
+const VIDEO_HOSTS = /(^|\.)(tiktokcdn\.com|tiktokcdn-us\.com|tiktokcdn-eu\.com|tiktok\.com)$/i;
+async function videoFile(u?: string) {
+  if (!u) return null;
+  const r = await getUrl(u, { headers: { 'User-Agent': MOBILE_UA, Referer: 'https://www.tiktok.com/' }, signal: AbortSignal.timeout(25_000) }, VIDEO_HOSTS).catch(() => null);
+  if (!r || Number(r.headers.get('content-length') ?? 0) > 20_000_000) return null;
+  const buf = await r.arrayBuffer().catch(() => null);
+  return buf && buf.byteLength > 10_000 && buf.byteLength <= 20_000_000 ? toB64(buf) : null;
+}
+async function linkInfo(raw: string): Promise<{ site: string; text: string; image: string | null; video?: string | null } | null> {
   // Links shared from the apps often come with words around them ("Check out this video! https://vm.tiktok.com/…").
   const found = raw.match(/https?:\/\/[^\s"'<>]+/i)?.[0] ?? raw.trim();
   let url: URL;
@@ -397,7 +410,10 @@ async function linkInfo(raw: string): Promise<{ site: string; text: string; imag
     const text = caps.reduce((a, x) => (x.length > a.length ? x : a), '');
     const author = o?.author_name || str(h, /"uniqueId":"((?:[^"\\]|\\.)*)"/) || str(e, /"uniqueId":"((?:[^"\\]|\\.)*)"/);
     const cover = o?.thumbnail_url || str(h, /"originCover":"((?:[^"\\]|\\.)*)"/) || str(h, /"cover":"((?:[^"\\]|\\.)*)"/) || str(e, /"covers":\["((?:[^"\\]|\\.)*)"/);
-    return { site: 'tiktok', text: [text, author ? `by ${author}` : ''].filter(Boolean).join('\n'), image: await picture(cover || undefined) };
+    // The video itself, so the AI can read what's written on screen and watch what goes in (the embed page links it).
+    const src = unHtml((e ?? '').match(/<video[^>]+src="([^"]+)"/)?.[1] ?? '') || str(h, /"playAddr":"((?:[^"\\]|\\.)*)"/);
+    const [image, video] = await Promise.all([picture(cover || undefined), videoFile(src || undefined)]);
+    return { site: 'tiktok', text: [text, author ? `by ${author}` : ''].filter(Boolean).join('\n'), image, video };
   }
   if (host.endsWith('youtube.com') || host.endsWith('youtu.be')) {
     const r = await getUrl(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(url.toString())}`).catch(() => null);
@@ -635,12 +651,29 @@ Return JSON: {"reply":"...","actions":[...],"suggest":[...],"card":{...},"memory
       const parts: Part[] = [];
       let caption = String(b.caption ?? '').slice(0, 3000);
       let site = '';
+      let video: string | null = null;
       if (b.url) {
         const info = await linkInfo(String(b.url)).catch(() => null);
         if (info) {
           site = info.site;
           caption = [info.text, caption].filter(Boolean).join('\n').slice(0, 4000);
           if (info.image) parts.push({ image: info.image, mime: 'image/jpeg' });
+          video = info.video ?? null;
+        }
+      }
+      // With the video itself: a model that watches it reads the amounts written on screen and sees what goes in.
+      // If that doesn't work, the caption and cover picture below still give a recipe.
+      if (video && !cx().model) {
+        const prev = cx().model;
+        cx().model = VIDEO_MODEL;
+        try {
+          const out = (await ask(task, RECIPE(lang), [{ role: 'user', parts: [{ video, mime: 'video/mp4' }, { text: `Caption or description of the video:\n${caption || '(none)'}\nThe video is attached: read every amount and ingredient written on screen, and watch what goes in.` }] }], RECIPE_SCHEMA)) as Record<string, unknown>;
+          return { ...out, site };
+        } catch (e) {
+          console.warn('recipe video', (e as Error).message, cx().lastDetail);
+        } finally {
+          cx().model = prev;
+          cx().noFormat = false;
         }
       }
       for (const f of ((Array.isArray(b.frames) ? b.frames : []) as string[]).slice(0, 8)) parts.push({ image: String(f), mime: 'image/jpeg' });
