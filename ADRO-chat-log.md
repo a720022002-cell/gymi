@@ -392,7 +392,7 @@ Passwords and keys are left out on purpose.
 - Your plan screen: "Target 78 kg: about 22 weeks, around March 2027". Progress → Weight chart: a dashed line at the target.
 - Body shape step: the text says the number under each body is its body fat percentage, and each one says "body fat" under the %.
 - Checked on the web build in Arabic and English, no errors. Test users deleted.
-- Not sent yet (JS only, can go as an update).
+- Sent as an OTA update to build 15 (group 29915c1d).
 
 ### Sign-in emails with the code (25 Oct 2026)
 - Today's Supabase emails send a link only (confirm, sign-in, reset), though the app takes the 6-digit code.
@@ -404,7 +404,7 @@ Passwords and keys are left out on purpose.
 ### Sign-in emails in one language (25 Oct 2026)
 - Owner: one language per email, not both. Each template (and subject) now picks Arabic or English from the account's language (user_metadata.language, set at sign-up); the app keeps it in step with the app's language (auth.tsx). Applied to Supabase.
 - Test: one Arabic and one English sign-up sent to the owner's Gmail (plus addresses); test accounts deleted right after.
-- The app part (keeping the language in step) is not sent yet (JS only, can go as an update).
+- Sent as an OTA update to build 15 (group 29915c1d).
 
 ### Welcome email (25 Oct 2026)
 - Sent once, right after someone confirms their email, in the account's language: a welcome, the account's details (name, username, email, phone if given, account type, date joined; never the password), the first three steps, an Open Adro button, and "reply for help". From Adro <hello@adroapp.com> through Resend.
