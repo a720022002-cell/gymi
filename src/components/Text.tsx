@@ -1,6 +1,7 @@
 import { Text as RNText, type TextProps, type TextStyle } from 'react-native';
 
 import { useSettings } from '@/theme/settings';
+import { side } from '@/lib/rtl';
 import { type ColorTokens, fonts, type Weight, type as typeScale } from '@/theme/tokens';
 
 type Variant = keyof typeof typeScale;
@@ -49,7 +50,7 @@ export function Text({
     ...(isRTL && !num ? { letterSpacing: 0 } : null),
     ...(num ? { fontVariant: ['tabular-nums'] } : null),
     // Align by the app language, not by the text's own script (browsers guess per line).
-    textAlign: center ? 'center' : isRTL ? 'right' : 'left',
+    textAlign: center ? 'center' : side(isRTL ? 'right' : 'left'),
     ...(size ? { fontSize: size, lineHeight: Math.round(size * (heading || num ? 1.15 : 1.45)) } : null),
   };
   // Arabic letters are taller; give them a bit more line height.

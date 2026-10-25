@@ -351,6 +351,12 @@ Passwords and keys are left out on purpose.
 - Live Activity: a weighted exercise always shows its weight ("– kg" when none yet). The first + starts from a usual weight (bar 20 kg, dumbbell 7.5, machine/cable 15), then ±2.5. Until a weight is set, the tip says "Set the weight with + first" (Done doesn't log 0 kg).
 - Sent as an OTA update to build 15 (group 109cefc0).
 
+### Arabic layout on the phone (25 Oct 2026)
+- In Arabic the phone app runs right to left, and React Native swaps left and right in styles and text alignment by itself. The app picked "right" for Arabic itself (made on the web, which doesn't swap), so on the phone it landed on the left: Arabic text aligned left, the tab bar's highlight on Gym Bros while on Home, the tour ring on Gym Bros instead of the coach button, toggles and the protein slider mirrored.
+- Fix: lib/rtl.ts side() gives the style key for a side of the screen (swapped on the phone in Arabic only). Used in Text, Field, PhoneField, Toggle, TabBar, ProteinSlider and the tour ring.
+- Weekly recap: the weight arrow points left in Arabic (63.9 ← 64.1), and +/− numbers stay whole ("+0.2", not "0.2+").
+- Not sent yet (JS only, can go as an update).
+
 ---
 
 

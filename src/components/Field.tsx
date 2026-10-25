@@ -2,6 +2,7 @@ import { forwardRef, type ReactNode, useState } from 'react';
 import { Pressable, TextInput, type TextInputProps, View } from 'react-native';
 
 import { useT } from '@/i18n';
+import { side } from '@/lib/rtl';
 import { useSettings } from '@/theme/settings';
 import { radius, size } from '@/theme/tokens';
 
@@ -76,7 +77,7 @@ export const Field = forwardRef<TextInput, Props>(function Field(
               fontSize: 16,
               color: c.text,
               fontFamily: fontFor(isRTL && !ltr ? 'arabic' : 'manrope', 500),
-              textAlign: isRTL ? 'right' : 'left',
+              textAlign: side(isRTL ? 'right' : 'left'),
               writingDirection: ltr ? 'ltr' : undefined,
               outlineStyle: 'none',
             } as object,

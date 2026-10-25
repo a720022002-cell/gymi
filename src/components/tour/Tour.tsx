@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { useT } from '@/i18n';
+import { side } from '@/lib/rtl';
 import { useSettings } from '@/theme/settings';
 
 import { Mark } from '../Icon';
@@ -249,7 +250,8 @@ export function TourOverlay() {
           pointerEvents="none"
           style={{
             position: 'absolute',
-            left: box.x,
+            // Where it is on screen, whichever way the layout runs.
+            [side('left')]: box.x,
             top: box.y,
             width: box.w,
             height: box.h,

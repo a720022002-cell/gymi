@@ -3,6 +3,7 @@ import { Pressable, TextInput, View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { COUNTRIES } from '@/lib/countries';
+import { side } from '@/lib/rtl';
 import { country, formatLocalPhone, phoneDigits, phoneMessage } from '@/lib/validation';
 import { useSettings } from '@/theme/settings';
 import { radius } from '@/theme/tokens';
@@ -105,7 +106,7 @@ export function PhoneField({
               borderWidth: 1.5,
               borderColor: bad ? c.down : 'transparent',
               outlineStyle: 'none',
-              textAlign: isRTL ? 'right' : 'left',
+              textAlign: side(isRTL ? 'right' : 'left'),
             } as object}
           />
         </View>

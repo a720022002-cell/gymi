@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 
 import { useSettings } from '@/theme/settings';
+import { side } from '@/lib/rtl';
 import { radius, size } from '@/theme/tokens';
 
 import { Glass } from './Glass';
@@ -321,7 +322,7 @@ export function Toggle({ value, onChange, label }: { value: boolean; onChange: (
           style={{
             position: 'absolute',
             top: 2,
-            [isRTL ? 'right' : 'left']: 2,
+            [side(isRTL ? 'right' : 'left')]: 2,
             width: 27,
             height: 27,
             borderRadius: 14,

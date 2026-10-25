@@ -5,6 +5,7 @@ import { Animated, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useT } from '@/i18n';
+import { side } from '@/lib/rtl';
 import { useSettings } from '@/theme/settings';
 
 import { Glass } from './Glass';
@@ -68,7 +69,7 @@ export function TabBar({ state, navigation, mini, setMini }: BottomTabBarProps &
       pointerEvents="box-none"
       style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 120 + insets.bottom }}
       onLayout={(e) => setFull(e.nativeEvent.layout.width - 92)}>
-      <Animated.View style={{ position: 'absolute', [isRTL ? 'right' : 'left']: 12, bottom, width: barW, height: barH }}>
+      <Animated.View style={{ position: 'absolute', [side(isRTL ? 'right' : 'left')]: 12, bottom, width: barW, height: barH }}>
         <TourTarget id="tabs" style={{ flex: 1 }}>
           <Glass style={{ flex: 1, borderRadius: 32, overflow: 'hidden' }}>
           <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', padding: mini ? 0 : 4 }} onLayout={(e) => !mini && setRowW(e.nativeEvent.layout.width)}>
@@ -78,7 +79,7 @@ export function TabBar({ state, navigation, mini, setMini }: BottomTabBarProps &
                   position: 'absolute',
                   top: 4,
                   bottom: 4,
-                  [isRTL ? 'right' : 'left']: 4,
+                  [side(isRTL ? 'right' : 'left')]: 4,
                   width: tabW,
                   borderRadius: 28,
                   backgroundColor: c.pill,
@@ -122,7 +123,7 @@ export function TabBar({ state, navigation, mini, setMini }: BottomTabBarProps &
         </TourTarget>
       </Animated.View>
 
-      <Animated.View style={{ position: 'absolute', [isRTL ? 'left' : 'right']: 12, bottom: aiBottom, width: aiSize, height: aiSize }}>
+      <Animated.View style={{ position: 'absolute', [side(isRTL ? 'left' : 'right')]: 12, bottom: aiBottom, width: aiSize, height: aiSize }}>
         <TourTarget id="coach" style={{ flex: 1 }}>
           <Springy onPress={() => router.push('/coach')} scaleTo={1.08} accessibilityLabel={t('Open AI coach')} style={{ flex: 1 }}>
             <Glass ai style={{ flex: 1, borderRadius: 30, alignItems: 'center', justifyContent: 'center' }}>

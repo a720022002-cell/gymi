@@ -3,6 +3,7 @@ import { type GestureResponderEvent, View } from 'react-native';
 
 import { useSettings } from '@/theme/settings';
 import { useT } from '@/i18n';
+import { side } from '@/lib/rtl';
 
 import { Text } from '../Text';
 
@@ -22,7 +23,7 @@ export function ProteinSlider({ value, onChange }: { value: number; onChange: (v
     return Math.round(v * 10) / 10;
   };
   const move = (e: GestureResponderEvent) => onChange(from(e.nativeEvent.pageX - left.current));
-  const at = (v: number) => (isRTL ? { right: pos(v) } : { left: pos(v) });
+  const at = (v: number) => ({ [side(isRTL ? 'right' : 'left')]: pos(v) });
   return (
     <View style={{ marginTop: 14 }}>
       <View
@@ -45,14 +46,14 @@ export function ProteinSlider({ value, onChange }: { value: number; onChange: (v
         {w ? (
           <>
             <View style={{ position: 'absolute', top: 15, height: 14, borderRadius: 7, backgroundColor: 'rgba(34,197,94,0.28)', borderWidth: 1.5, borderColor: 'rgba(21,128,61,0.45)', width: pos(2.2) - pos(1.6), ...at(1.6) } as object} />
-            <View style={{ position: 'absolute', top: 8, width: 28, height: 28, borderRadius: 14, backgroundColor: '#FFFFFF', boxShadow: '0px 2px 8px rgba(0,0,0,0.25)', ...(isRTL ? { right: pos(value) - 14 } : { left: pos(value) - 14 }) } as object} />
+            <View style={{ position: 'absolute', top: 8, width: 28, height: 28, borderRadius: 14, backgroundColor: '#FFFFFF', boxShadow: '0px 2px 8px rgba(0,0,0,0.25)', [side(isRTL ? 'right' : 'left')]: pos(value) - 14 } as object} />
           </>
         ) : null}
       </View>
       {w ? (
         <View style={{ height: 18 }}>
           {[1.6, 2.2].map((t) => (
-            <Text key={t} variant="xs" weight={700} color="up" style={{ position: 'absolute', width: 30, textAlign: 'center', ...(isRTL ? { right: pos(t) - 15 } : { left: pos(t) - 15 }) } as object}>
+            <Text key={t} variant="xs" weight={700} color="up" style={{ position: 'absolute', width: 30, textAlign: 'center', [side(isRTL ? 'right' : 'left')]: pos(t) - 15 } as object}>
               {t.toFixed(1)}
             </Text>
           ))}

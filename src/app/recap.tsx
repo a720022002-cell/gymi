@@ -10,6 +10,7 @@ import { useToast } from '@/components/Toast';
 import { Button, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { weekdayLetter } from '@/lib/dates';
+import { ltrNums } from '@/lib/activeWorkout';
 import { useAuth } from '@/lib/auth';
 import { applyPlanChanges, applyTargets, applyUndo, changeLine, undoPatch } from '@/lib/coachPlan';
 import { useCycleCoach } from '@/lib/cyclePhase';
@@ -390,10 +391,10 @@ function RowKV({ k, v, tone, tag }: { k: string; v: string; tone?: 'up' | 'down'
           {k}
         </Text>
         <Text weight={700} color={K.text}>
-          {v}
+          {ltrNums(v)}
         </Text>
       </View>
-      {tone && tag ? <Pill tone={tone}>{tag}</Pill> : null}
+      {tone && tag ? <Pill tone={tone}>{ltrNums(tag)}</Pill> : null}
     </View>
   );
 }
@@ -547,7 +548,7 @@ function SlideBody(p: BodyProps) {
         <Eyebrow>{t('Body and sleep')}</Eyebrow>
         <H>{s.weight ? (s.weight.change === 0 ? t('Your weight held steady') : W.words(t(s.weight.change > 0 ? 'Up {n} kg this week' : 'Down {n} kg this week', { n: W.show(Math.abs(s.weight.change)) }))) : t('Your sleep this week')}</H>
         <Card>
-          {s.weight ? <RowKV k={t('Weight')} v={`${W.show(s.weight.first)} → ${W.show(s.weight.last)} ${W.label}`} tone={g ? (g.ok ? 'up' : 'down') : undefined} tag={g ? t(g.ok ? 'On plan' : 'Off plan') : undefined} /> : null}
+          {s.weight ? <RowKV k={t('Weight')} v={`${W.show(s.weight.first)} ${lang === 'ar' ? '←' : '→'} ${W.show(s.weight.last)} ${W.label}`} tone={g ? (g.ok ? 'up' : 'down') : undefined} tag={g ? t(g.ok ? 'On plan' : 'Off plan') : undefined} /> : null}
           {s.sleepAvg != null ? <RowKV k={t('Average sleep')} v={`${fx(s.sleepAvg)} ${t('h')}`} tone={s.sleepAvg >= 7 ? 'up' : s.sleepAvg >= 6 ? 'amber' : 'down'} tag={t(s.sleepAvg >= 7 ? 'Great' : s.sleepAvg >= 6 ? 'Fair' : 'Low')} /> : null}
           {s.waistChange != null ? <RowKV k={t('Waist')} v={`${s.waistChange > 0 ? '+' : ''}${fx(s.waistChange)} ${t('cm')}`} /> : null}
         </Card>
@@ -591,7 +592,7 @@ function SlideBody(p: BodyProps) {
 function Goals({ t, goals }: { t: T; goals: Goal[] }) {
   const W = useWeight();
   const label = { train: 'Workouts as planned', food: 'Calories on target', protein: 'Protein goal', water: 'Water goal', sleep: 'Sleep, 7 h or more', weight: 'Weight on plan' } as const;
-  const value = (g: Goal) => (g.key === 'weight' ? `${Number(g.done) > 0 ? '+' : ''}${W.show(Number(g.done))} ${W.label}` : g.key === 'sleep' ? `${g.done} ${t('h')}` : g.key === 'train' ? `${g.done}/${g.target}` : t('{a} of {b} days', { a: g.done, b: g.target }));
+  const value = (g: Goal) => (g.key === 'weight' ? ltrNums(`${Number(g.done) > 0 ? '+' : ''}${W.show(Number(g.done))} ${W.label}`) : g.key === 'sleep' ? `${g.done} ${t('h')}` : g.key === 'train' ? `${g.done}/${g.target}` : t('{a} of {b} days', { a: g.done, b: g.target }));
   if (!goals.length) return null;
   return (
     <Card>
