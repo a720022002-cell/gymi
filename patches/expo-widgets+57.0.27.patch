@@ -1,8 +1,8 @@
 diff --git a/node_modules/expo-widgets/ios/Widgets/AppIntent.swift b/node_modules/expo-widgets/ios/Widgets/AppIntent.swift
-index 972fa4f..a83a9fb 100644
+index 972fa4f..f8d329f 100644
 --- a/node_modules/expo-widgets/ios/Widgets/AppIntent.swift
 +++ b/node_modules/expo-widgets/ios/Widgets/AppIntent.swift
-@@ -119,12 +119,73 @@ struct LiveActivityUserInteraction: LiveActivityIntent {
+@@ -119,12 +119,65 @@ struct LiveActivityUserInteraction: LiveActivityIntent {
    }
  
    func perform() async throws -> some IntentResult {
@@ -11,14 +11,6 @@ index 972fa4f..a83a9fb 100644
 +    return .result()
 +  }
 +}
-+
-+/**
-+ * The intents of this library, as a package the app includes (AppIntentsPackage). Without it the app's App Intents
-+ * metadata has no LiveActivityUserInteraction, iOS refuses every Live Activity button tap ("There is no metadata for
-+ * LiveActivityUserInteraction in <app>"), and nothing runs. The app lists it in its own package (Adro's plugin).
-+ */
-+@available(iOS 17.0, *)
-+public struct ExpoWidgetsIntents: AppIntentsPackage {}
 +
 +/** Hands a Live Activity tap to the app's JavaScript. */
 +enum ExpoWidgetsLiveTaps {

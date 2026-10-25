@@ -4,27 +4,27 @@ import Foundation
 /**
  * A button on Adro's workout or cardio Live Activity. This file is compiled into the app and into the widget
  * extension themselves (plugins/withWidgetIntents.js, patches/expo-widgets): iOS only finds an intent's metadata in
- * the target's own code, so expo-widgets' intent, which lives in a library, was refused ("There is no metadata for
- * LiveActivityUserInteraction"). iOS runs it in the app, which hands the tap to the JavaScript like expo-widgets does.
+ * the target's own code (expo-widgets' intent lives in a static library, which iOS doesn't read). iOS runs it in the
+ * app, which hands the tap to the JavaScript like expo-widgets does.
  */
 @available(iOS 17.0, *)
-struct AdroLiveTap: LiveActivityIntent {
-  static var title: LocalizedStringResource = "Workout button"
-  static var isDiscoverable: Bool = false
+public struct AdroLiveTap: LiveActivityIntent {
+  public static var title: LocalizedStringResource = "Workout button"
+  public static var isDiscoverable: Bool = false
 
   @Parameter(title: "source")
-  var source: String?
+  public var source: String?
 
   @Parameter(title: "target")
-  var target: String?
+  public var target: String?
 
-  init() {}
-  init(source: String?, target: String?) {
+  public init() {}
+  public init(source: String?, target: String?) {
     self.source = source
     self.target = target
   }
 
-  func perform() async throws -> some IntentResult {
+  public func perform() async throws -> some IntentResult {
     let now = Int(Date().timeIntervalSince1970 * 1000)
     let event: [String: Any] = ["source": source ?? "", "target": target ?? "", "timestamp": now, "type": "ExpoWidgetsUserInteraction"]
     let group = Bundle.main.object(forInfoDictionaryKey: "ExpoWidgetsAppGroupIdentifier") as? String

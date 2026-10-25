@@ -339,6 +339,12 @@ Passwords and keys are left out on purpose.
 - "Cardio and sports" (plan editor) now uses the same look: sport tiles with group colors, pill buttons for sessions, days and minutes, sport badges in the week.
 - Sent as an OTA update to build 14 (group 661596a3).
 
+### Lock Screen buttons: the real cause (25 Oct 2026)
+- Build 14 log: the tap reaches iOS with the right type (4Adro0A7LiveTapV), but iOS says "There is no metadata for AdroLiveTap in com.adroapp.app". The perform() never ran (Button check: "Ran: –").
+- The build 14 IPA has AdroLiveTap in the app's Metadata.appintents, but extract.packagedata also includes expo-widgets' package (ExpoWidgetsIntents, added in build 10). expo-widgets is a static library with no framework in the app, so iOS can't find that package and drops the app's whole metadata (same as Apple bug FB13281659).
+- Another app's Live Activity buttons work on iOS 27.0.1 with the intent in both targets and no package, so the module name wasn't the cause.
+- Fix (build 15): removed the AppIntentsPackage (plugin and patch), made AdroLiveTap public. Module name "Adro" kept (it builds).
+
 ---
 
 
