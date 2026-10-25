@@ -2,7 +2,8 @@
 // finds intents declared in the app's own code: expo-widgets' intent (in a library) was refused with "There is no
 // metadata for LiveActivityUserInteraction in com.adroapp.app", even when listed through its AppIntentsPackage. So
 // native/apple/*.swift (AdroLiveTap) is compiled into the app here, and into the widget extension by
-// patches/expo-widgets+57.0.27.patch. AdroIntents still includes expo-widgets' own intents. ExpoWidgets is imported
+// patches/expo-widgets+57.0.27.patch, which also gives the extension's Swift module the app's name (Adro) so the type
+// is the same in both. AdroIntents still includes expo-widgets' own intents. ExpoWidgets is imported
 // "internal" like everywhere else in the app target (Xcode refuses mixed import levels).
 const { IOSConfig, withDangerousMod, withXcodeProject } = require('expo/config-plugins');
 const fs = require('fs');

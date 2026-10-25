@@ -322,6 +322,10 @@ Passwords and keys are left out on purpose.
 - Build 11 didn't compile (missing import AppIntents, ButtonRole ambiguous); fixed. Build 12 built and was submitted.
 - IPA check: AdroLiveTap is declared in the app's own code (Adro.AdroLiveTap) and in the widget's (ExpoWidgetsTarget.AdroLiveTap). Waiting for the owner's test on the Lock Screen.
 
+### Lock Screen buttons, after build 12 (25 Oct)
+- Console: the button now sends AdroLiveTap, but as ExpoWidgetsTarget.AdroLiveTap (mangled 17ExpoWidgetsTarget11AdroLiveTapV); the app registers Adro.AdroLiveTap, so iOS still says "There is no metadata for AdroLiveTap in com.adroapp.app". iOS matches the full type name.
+- Fix: the widget extension's Swift module is named Adro (PRODUCT_MODULE_NAME, set where expo-widgets creates the target), so the type is Adro.AdroLiveTap in both. Checked with a trial prebuild. Needs build 13.
+
 ---
 
 
