@@ -452,28 +452,28 @@ function Manual({ code, offline, init }: { code?: string; offline: boolean; init
             unit={u}
           />
         </View>
-        <View style={{ width: 120, justifyContent: 'flex-end' }}>
+        {/* g or ml, or counted in pieces (grams per piece below). */}
+        <View style={{ width: 168, justifyContent: 'flex-end' }}>
           <Segmented
-            value={unit}
+            value={pcsOn ? 'pcs' : unit}
             options={[
               { value: 'g', label: t('g') },
               { value: 'ml', label: t('ml') },
+              { value: 'pcs', label: t('pcs') },
             ]}
-            onChange={setUnit}
+            onChange={(x) => {
+              if (x === 'pcs') {
+                setPcsOn(true);
+                setUnit('g');
+                setUm('pcs');
+                return;
+              }
+              setUnit(x);
+              setPcsOn(false);
+              if (um === 'pcs') setUm('serving');
+            }}
           />
         </View>
-      </Row>
-      <Row style={{ justifyContent: 'flex-end', marginTop: 8 }}>
-        <Chip
-          title={t('pcs')}
-          on={pcsOn}
-          onPress={() => {
-            const on = !pcsOn;
-            setPcsOn(on);
-            if (!on && um === 'pcs') setUm('serving');
-            if (on) setUm('pcs');
-          }}
-        />
       </Row>
       {pcsOn ? (
         <View>

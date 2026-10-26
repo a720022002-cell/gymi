@@ -539,6 +539,11 @@ Passwords and keys are left out on purpose.
 - Done: at the bottom of today's Home (above Edit home), four cards with a soft coloured icon tile, a line and a link: Your blood tests (→ /blood), Connect your watch (→ /connections), Bring a friend (→ /invite), Get a coach (→ /findcoach). No shop (no selling). Arabic strings added.
 - File: src/components/home/DiscoverMore.tsx (new), src/app/(tabs)/home.tsx. JS only. Not sent yet.
 
+## Product form: g / ml / pcs in one switch (26 Oct 2026)
+
+- Ask: tidy the "pcs" button (it sat alone under g/ml).
+- Done: one three-way switch next to Serving size: g | ml | pcs. pcs = counted in pieces (grams per piece fields show below). File: src/app/product.tsx. JS only. Not sent yet.
+
 ---
 
 
