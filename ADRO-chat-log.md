@@ -544,6 +544,14 @@ Passwords and keys are left out on purpose.
 - Ask: tidy the "pcs" button (it sat alone under g/ml).
 - Done: one three-way switch next to Serving size: g | ml | pcs. pcs = counted in pieces (grams per piece fields show below). File: src/app/product.tsx. JS only. Not sent yet.
 
+## Cardio: sport pickers as a simple list (26 Oct 2026)
+
+- Ask: rearrange the two cardio screens like WHOOP's "Select activity" list, simple, in our identity.
+- Done: new SportList (replaces the grid of tiles): a search box, tabs (All, Cardio, Racket, Team, Combat, Mind & body, Other) with a cobalt underline, "Recent" (your last 3 sports, kept on the phone), then "All A–Z". Each row: the sport's coloured badge, name, and a chevron (or a check when picked). Short lists (8 or fewer) show just the rows.
+- Used in Start cardio (step 1) and the cardio plan (Cardio to add, Sports you play). The old SportTiles grid is removed.
+- Checked on web: Start cardio showed Recent (Padel, Run) and A–Z; the Racket tab showed 4 sports. Test user deleted (0 left).
+- Files: src/components/cardio/SportTiles.tsx (SportList), src/lib/recentSports.ts (new), src/app/cardio-live.tsx, src/components/train/CardioPlan.tsx, +4 Arabic strings. JS only. Not sent yet.
+
 ---
 
 

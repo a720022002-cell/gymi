@@ -1,10 +1,11 @@
 import { useKeepAwake } from 'expo-keep-awake';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Platform, ScrollView, View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { GROUP_COLORS, GROUP_SHORT, Pills, SecLabel, SportBadge, SportTiles } from '@/components/cardio/SportTiles';
+import { Pills, SecLabel, SportBadge, SportList } from '@/components/cardio/SportTiles';
+import { addRecentSport, recentSports } from '@/lib/recentSports';
 import { sessionGuide } from '@/components/CardioLive';
 import { ScanList } from '@/components/hr/ScanList';
 import { Icon, type IconName } from '@/components/Icon';
@@ -49,7 +50,7 @@ import { appleWatchSupported, bleSupported, type HrSource, type SavedSensor, sav
 import { forReadiness } from '@/lib/cardioPlan';
 import { useTrain } from '@/lib/train';
 import { useCardioWeek } from '@/lib/useCardioWeek';
-import { SPORT_GROUPS, type SportGroup, SPORTS, type SportId, sportFrom, sportInfo } from '@/lib/sports';
+import { SPORTS, type SportId, sportFrom, sportInfo } from '@/lib/sports';
 import { useSettings } from '@/theme/settings';
 
 const icon = (s: SportId): IconName => sportInfo(s).icon ?? 'flame';
@@ -168,8 +169,13 @@ function PreStart() {
 
   // The heart rate sheet: pick a source, or look for a Bluetooth sensor (in the same sheet: iOS shows one at a time).
   const [hrOpen, setHrOpen] = useState<'pick' | 'scan' | null>(null);
-  const [filter, setFilter] = useState<SportGroup | null>(null);
+  // Your last sports, on top of the list.
+  const [recent, setRecent] = useState<SportId[]>([]);
+  useEffect(() => {
+    recentSports().then(setRecent);
+  }, []);
   const pickSport = (id: SportId) => {
+    addRecentSport(id);
     setSport(id);
     setSpeakSel(null);
     setKind(null);
@@ -218,33 +224,7 @@ function PreStart() {
             <Icon name="chev" size={16} color={c.sec} />
           </Card>
         ) : null}
-        {/* Fixed height: a horizontal list would otherwise stretch down the page. */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ flexGrow: 0, flexShrink: 0, marginHorizontal: -20 }}
-          contentContainerStyle={{ gap: 8, paddingHorizontal: 20, paddingBottom: 16 }}>
-          {[null, ...SPORT_GROUPS].map((g) => (
-            <Springy
-              key={g ?? 'all'}
-              onPress={() => setFilter(g)}
-              accessibilityState={{ selected: filter === g }}
-              style={{ height: 36, paddingHorizontal: 14, borderRadius: 18, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: filter === g ? c.text : c.card }}>
-              {g ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: GROUP_COLORS[g] }} /> : null}
-              <Text weight={700} size={13} color={filter === g ? c.bg : c.text}>
-                {t(g ? GROUP_SHORT[g] : 'All')}
-              </Text>
-            </Springy>
-          ))}
-        </ScrollView>
-        {SPORT_GROUPS.filter((g) => !filter || filter === g).map((grp) => (
-          <View key={grp} style={{ marginBottom: 18 }}>
-            <View style={{ marginHorizontal: 4, marginBottom: 12 }}>
-              <SecLabel dot={GROUP_COLORS[grp]}>{t(grp)}</SecLabel>
-            </View>
-            <SportTiles ids={SPORTS.filter((x) => x.group === grp).map((x) => x.id)} onPick={pickSport} />
-          </View>
-        ))}
+        <SportList ids={SPORTS.map((x) => x.id)} onPick={pickSport} recent={recent} />
       </Screen>
     );
 

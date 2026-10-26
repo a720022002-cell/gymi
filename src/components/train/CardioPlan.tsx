@@ -17,7 +17,7 @@ import { Icon, type IconName } from '../Icon';
 import { Sheet } from '../Sheet';
 import { Text } from '../Text';
 import { useToast } from '../Toast';
-import { Pills, SecLabel, SportBadge, SportTiles } from '../cardio/SportTiles';
+import { Pills, SecLabel, SportBadge, SportList } from '../cardio/SportTiles';
 import { Button, Card, Row } from '../ui';
 import { goalWord } from './PlanReviewCard';
 import { useRecovery } from './RecoveryCard';
@@ -75,7 +75,7 @@ export function CardioEditor({ input, value, onChange, today, inCard }: { input:
       <View style={{ marginTop: 20, marginBottom: 12 }}>
         <SecLabel>{t('Cardio to add')}</SecLabel>
       </View>
-      <SportTiles ids={ok} picked={(s) => plan.sport === s} onPick={(s) => onChange({ ...value, sport: s })} />
+      <SportList ids={ok} picked={(s) => plan.sport === s} onPick={(s) => onChange({ ...value, sport: s })} />
 
       <View style={{ marginTop: 20, marginBottom: 10 }}>
         <SecLabel>{t('Sessions a week (your sports count)')}</SecLabel>
@@ -342,7 +342,7 @@ function PlayPicker({ input, value, onChange, off }: { input: CardioInput; value
       <View style={{ marginTop: 14, marginBottom: 12 }}>
         <SecLabel>{t('Sports you play')}</SecLabel>
       </View>
-      <SportTiles ids={[...new Set([...ok, ...play.map((p) => p.sport)])]} picked={(s) => play.some((p) => p.sport === s)} onPick={toggle} />
+      <SportList ids={[...new Set([...ok, ...play.map((p) => p.sport)])]} picked={(s) => play.some((p) => p.sport === s)} onPick={toggle} />
       {play.map((p) => (
         <View key={p.sport} style={{ marginTop: 12, padding: 14, borderRadius: 18, backgroundColor: off ?? c.card }}>
           <Row gap={10}>

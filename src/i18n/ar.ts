@@ -5095,4 +5095,8 @@ export const AR: Record<string, string> = {
   "Invite a friend": "ادعُ صديق",
   "Get a coach": "خذ مدرب",
   "A real coach who plans your training and food and chats with you.": "مدرب حقيقي يخطط تمرينك وأكلك ويتكلم معك.",
+  "Search sports": "ابحث عن رياضة",
+  "Results": "النتائج",
+  "All A–Z": "الكل من أ إلى ي",
+  "No sport matches “{q}”": "ما فيه رياضة باسم «{q}»",
 };
