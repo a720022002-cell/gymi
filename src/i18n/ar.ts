@@ -5023,4 +5023,10 @@ export const AR: Record<string, string> = {
   "Point at the barcode, near or far. Pinch to zoom if it’s small.": "وجّه الكاميرا على الباركود، من قريب أو بعيد. قرّب بإصبعين إذا كان صغير.",
   "I couldn’t work that out. Try again.": "ما قدرت أحسبها. جرّب مرة ثانية.",
   "commitment, last 7 days": "الالتزام، آخر 7 أيام",
+  "Pieces": "حبات",
+  "pcs": "حبة",
+  "{n} pcs": "{n} حبة",
+  "1 piece = {n} {u}": "الحبة = {n} {u}",
+  "Pieces in one serving": "كم حبة في الحصة",
+  "Add the serving size too, so we know how much one piece weighs. Example: 2 biscuits (30 g).": "اكتب حجم الحصة بعد، عشان نعرف وزن الحبة. مثال: حبتين بسكويت (30 جم).",
 };

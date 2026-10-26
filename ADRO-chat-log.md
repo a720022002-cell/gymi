@@ -460,6 +460,16 @@ Passwords and keys are left out on purpose.
 - Checked on web: Oct 25 showed Commitment 69% (last 7 days) and Recovery 60% (5 h sleep); today showed 77% and 93% (8 h sleep), and no popup. Test user deleted (0 left).
 - Files: src/components/train/RecoveryCard.tsx, src/components/home/metrics.ts, src/components/home/MainCard.tsx, src/components/food/RingClosed.tsx, +1 Arabic string. JS only. Not sent yet.
 
+## Barcode: count in pieces (26 Oct 2026)
+
+- Ask: for some products, log by pieces, matching the nutrition facts; and when adding a new product the first time, set it up in pieces.
+- Database (approved "طبق", applied): `foods.piece_g` (weight of one piece, g or ml; null = not counted in pieces). `save_user_product` and `fix_product` take an optional `p_piece_g`, so older app versions keep working. Migration 20261129000000_product_pieces.sql.
+- New product form: a "pcs" chip under g/ml. On, it asks "Pieces in one serving" (e.g. 2 biscuits in 30 g) and shows "1 piece = 15 g". The label numbers stay per 100, so pieces turn into grams with the same facts.
+- How much: a "Pieces" option (first, when the product has pieces) with a stepper; logged as "Name, 3 pcs".
+- Scanning it again: it starts on Pieces. Open Food Facts products get pieces too when their serving reads like "2 biscuits (25 g)".
+- Checked on web: saved piece_g 15, logged "Test dates, 3 pcs" 225 kcal (3 × 15 g at 500 kcal/100 g), and the rescan opened on Pieces. Test product and user deleted (0 left).
+- Files: src/app/product.tsx, src/lib/products.ts, src/lib/foodsDb.ts, +6 Arabic strings. JS only for the app. Not sent yet.
+
 ---
 
 

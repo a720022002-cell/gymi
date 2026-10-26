@@ -101,17 +101,20 @@ function Found({ x, code, onFix }: { x: Product; code: string; onFix: () => void
   const food = useFood();
   // Your allergies in this product: from its name, ingredient list and the label's allergen tags.
   const allergic = productAllergies({ name: `${x.name} ${shownName}`, ingredients: x.ingredients, tags: x.allergenTags }, food.plan.allergies, food.plan.allergyNote);
-  const [um, setUm] = useState<'serving' | 'g'>('serving');
+  // Counted in pieces (biscuits, dates…): start on pieces.
+  const [um, setUm] = useState<'serving' | 'g' | 'pcs'>(x.piece ? 'pcs' : 'serving');
   const [sv, setSv] = useState(1);
+  const [pc, setPc] = useState(1);
   const [g, setG] = useState(String(x.size));
-  const grams = um === 'serving' ? sv * x.size : +g || 0;
+  const grams = um === 'serving' ? sv * x.size : um === 'pcs' && x.piece ? pc * x.piece : +g || 0;
   const m = grams / 100;
   const sugar = x.sugar * m;
   const chips = [100, Math.round(x.size / 2), 250, x.size].filter((v, i, a) => v > 0 && a.indexOf(v) === i).sort((a, b) => a - b);
 
   const add = async () => {
     if (!(grams > 0)) return;
-    const name = um === 'serving' ? (sv === 1 ? shownName : `${shownName} ×${sv}`) : `${shownName}, ${Math.round(grams)} ${t(x.unit)}`;
+    const name =
+      um === 'serving' ? (sv === 1 ? shownName : `${shownName} ×${sv}`) : um === 'pcs' ? `${shownName}, ${t('{n} pcs', { n: pc })}` : `${shownName}, ${Math.round(grams)} ${t(x.unit)}`;
     // High sugar is judged on one serving (two of something aren't "high sugar" twice over); high fat per 100 g, or per
     // 100 ml for drinks (half the limit, as on UK front-of-pack labels).
     const row = await logFood({ name, kcal: x.k * m, protein: x.p * m, carbs: x.c * m, fat: x.f * m, sugar_high: addedSugarHigh(name, (x.sugar * (x.size || 100)) / 100), fat_high: x.f >= (x.unit === 'ml' ? 8.75 : 17.5), barcode: code, food_id: x.id ?? null }, toast, t);
@@ -189,12 +192,24 @@ function Found({ x, code, onFix }: { x: Product; code: string; onFix: () => void
         <Segmented
           value={um}
           options={[
+            ...(x.piece ? [{ value: 'pcs' as const, label: t('Pieces') }] : []),
             { value: 'serving', label: t('Servings') },
             { value: 'g', label: t(x.unit === 'ml' ? 'ml' : 'Grams') },
           ]}
           onChange={setUm}
         />
-        {um === 'serving' ? (
+        {um === 'pcs' && x.piece ? (
+          <Row style={{ justifyContent: 'space-between', marginTop: 12 }}>
+            <Text variant="small" color="sec">
+              {t('1 piece = {n} {u}', { n: x.piece, u: t(x.unit) })}
+            </Text>
+            <Stepper bg={c.inset} minusDisabled={pc <= 1} onMinus={() => setPc(Math.max(1, pc - 1))} onPlus={() => setPc(pc + 1)} labels={[t('Less'), t('More')]}>
+              <Text num style={{ width: 34, textAlign: 'center' }}>
+                {pc}
+              </Text>
+            </Stepper>
+          </Row>
+        ) : um === 'serving' ? (
           <Row style={{ justifyContent: 'space-between', marginTop: 12 }}>
             <Text variant="small" color="sec">
               {t('1 serving = {n} {u}', { n: x.size, u: t(x.unit) })}
@@ -260,8 +275,12 @@ function Manual({ code, offline, init }: { code?: string; offline: boolean; init
   const [moreOpen, setMoreOpen] = useState(() => !!init && EXTRA_KEYS.some((k) => init.facts[k] != null));
   const [unit, setUnit] = useState<'g' | 'ml'>(init?.unit ?? 'g');
   const [basis, setBasis] = useState<'serving' | '100'>(init ? '100' : 'serving');
-  const [um, setUm] = useState<'serving' | 'g'>('serving');
+  const [um, setUm] = useState<'serving' | 'g' | 'pcs'>(init?.piece ? 'pcs' : 'serving');
   const [sv, setSv] = useState(1);
+  // Counted in pieces: how many pieces one serving is ("2 biscuits (30 g)"), so a piece's weight is known.
+  const [pcsOn, setPcsOn] = useState(!!init?.piece);
+  const [perServing, setPerServing] = useState(() => (init?.piece ? String(Math.max(1, Math.round((init.size / init.piece) * 2) / 2)) : '1'));
+  const [pc, setPc] = useState(1);
   const [reading, setReading] = useState(false);
   const [busy, setBusy] = useState(false);
   const num = (s: string) => +s.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[,٫]/g, '.') || 0;
@@ -272,7 +291,9 @@ function Manual({ code, offline, init }: { code?: string; offline: boolean; init
   const to100 = basis === '100' ? 1 : size > 0 ? 100 / size : 0;
   const per = { k: num(v.k) * to100, p: num(v.p) * to100, c: num(v.c) * to100, f: num(v.f) * to100, sugar: num(v.sugar) * to100, fiber: num(v.fiber) * to100, sodium: num(v.sodium) * to100 };
   const canServing = size > 0;
-  const eaten = um === 'serving' && canServing ? sv * size : num(v.g);
+  const piece = pcsOn && canServing && num(perServing) > 0 ? Math.round((size / num(perServing)) * 10) / 10 : 0;
+  const mode = um === 'pcs' && !piece ? 'serving' : um;
+  const eaten = mode === 'pcs' ? pc * piece : mode === 'serving' && canServing ? sv * size : num(v.g);
   const m = eaten / 100;
   const ok = !!v.name.trim() && num(v.k) > 0 && to100 > 0 && eaten > 0;
   const u = t(unit);
@@ -306,8 +327,16 @@ function Manual({ code, offline, init }: { code?: string; offline: boolean; init
       p_kcal: per.k, p_protein: per.p, p_carbs: per.c, p_fat: per.f,
       p_sugar: v.sugar ? per.sugar : null, p_fiber: v.fiber ? per.fiber : null, p_sodium: v.sodium ? per.sodium : null,
       p_nutrients: extraFacts(Object.fromEntries(EXTRA_KEYS.filter((k) => extra[k]?.trim()).map((k) => [k, num(extra[k] as string) * to100])) as Facts),
+      p_piece_g: piece || null,
     });
-    const name = um === 'serving' && canServing ? (sv === 1 ? v.name.trim() : `${v.name.trim()} ×${sv}`) : `${v.name.trim()}, ${Math.round(eaten)} ${u}`;
+    const name =
+      mode === 'pcs'
+        ? `${v.name.trim()}, ${t('{n} pcs', { n: pc })}`
+        : mode === 'serving' && canServing
+          ? sv === 1
+            ? v.name.trim()
+            : `${v.name.trim()} ×${sv}`
+          : `${v.name.trim()}, ${Math.round(eaten)} ${u}`;
     const row = await logFood(
       { name, kcal: per.k * m, protein: per.p * m, carbs: per.c * m, fat: per.f * m, sugar_high: addedSugarHigh(name, (per.sugar * (size || 100)) / 100), fat_high: per.f >= (unit === 'ml' ? 8.75 : 17.5), barcode: code ?? null, food_id: (foodId as string) ?? null },
       toast,
@@ -379,6 +408,26 @@ function Manual({ code, offline, init }: { code?: string; offline: boolean; init
           />
         </View>
       </Row>
+      <Row style={{ justifyContent: 'flex-end', marginTop: 8 }}>
+        <Chip
+          title={t('pcs')}
+          on={pcsOn}
+          onPress={() => {
+            const on = !pcsOn;
+            setPcsOn(on);
+            if (!on && um === 'pcs') setUm('serving');
+            if (on) setUm('pcs');
+          }}
+        />
+      </Row>
+      {pcsOn ? (
+        <View>
+          <Field label={t('Pieces in one serving')} value={perServing} onChangeText={(s) => setPerServing(s.replace(/[^\d.,٠-٩٫]/g, '').slice(0, 4))} inputMode="decimal" keyboardType="decimal-pad" ltr unit={t('pcs')} />
+          <Text variant="xs" color="sec" style={{ marginTop: 6, marginHorizontal: 4 }}>
+            {canServing ? (piece ? t('1 piece = {n} {u}', { n: piece, u }) : '') : t('Add the serving size too, so we know how much one piece weighs. Example: 2 biscuits (30 g).')}
+          </Text>
+        </View>
+      ) : null}
       <Text variant="xs" color="sec" style={{ marginTop: 6, marginHorizontal: 4 }}>
         {basis === 'serving' ? t('Copy the numbers for one serving, exactly as printed.') : t('Copy the “per 100” column, exactly as printed.')}
       </Text>
@@ -431,14 +480,26 @@ function Manual({ code, offline, init }: { code?: string; offline: boolean; init
           {t('How much did you eat?')}
         </Text>
         <Segmented
-          value={canServing ? um : 'g'}
+          value={canServing ? mode : 'g'}
           options={[
+            ...(pcsOn ? [{ value: 'pcs' as const, label: t('Pieces') }] : []),
             { value: 'serving', label: t('Servings') },
             { value: 'g', label: t(unit === 'ml' ? 'ml' : 'Grams') },
           ]}
-          onChange={(x) => (x === 'serving' && !canServing ? toast(t('Add the serving size first.'), { icon: 'info' }) : setUm(x))}
+          onChange={(x) => ((x === 'serving' || x === 'pcs') && !canServing ? toast(t('Add the serving size first.'), { icon: 'info' }) : setUm(x))}
         />
-        {um === 'serving' && canServing ? (
+        {mode === 'pcs' && piece ? (
+          <Row style={{ justifyContent: 'space-between', marginTop: 12 }}>
+            <Text variant="small" color="sec">
+              {t('1 piece = {n} {u}', { n: piece, u })}
+            </Text>
+            <Stepper bg={c.inset} minusDisabled={pc <= 1} onMinus={() => setPc(Math.max(1, pc - 1))} onPlus={() => setPc(pc + 1)} labels={[t('Less'), t('More')]}>
+              <Text num style={{ width: 34, textAlign: 'center' }}>
+                {pc}
+              </Text>
+            </Stepper>
+          </Row>
+        ) : mode === 'serving' && canServing ? (
           <Row style={{ justifyContent: 'space-between', marginTop: 12 }}>
             <Text variant="small" color="sec">
               {t('1 serving = {n} {u}', { n: size, u })}

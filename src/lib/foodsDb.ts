@@ -29,6 +29,8 @@ export type DbFood = {
   sugar_high: boolean;
   fat_high: boolean;
   is_estimate: boolean;
+  /** Weight of one piece (g or ml) for a product counted in pieces; null otherwise. */
+  piece_g?: number | null;
 };
 
 export async function searchFoods(q: string, category: string | null, limit = 40): Promise<DbFood[]> {

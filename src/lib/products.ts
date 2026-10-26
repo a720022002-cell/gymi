@@ -23,7 +23,19 @@ export type Product = {
   /** The ingredient list and allergen tags from the label (Open Food Facts), for allergy warnings. */
   ingredients?: string;
   allergenTags?: string[];
+  /** Weight of one piece (g or ml) when it's counted in pieces (biscuits, dates…), so you can log "3 pieces". */
+  piece?: number;
 };
+
+/** Units that are amounts, not pieces ("30 g", "2 tbsp"): what's left ("2 biscuits", "3 حبات") counts pieces. */
+const NOT_PIECES = /^(g|gr|gram|grams|grammes?|kg|mg|ml|cl|dl|l|oz|fl|lb|tbsp|tsp|cups?|portion|serving|غ|غم|جم|جرام|غرام|مل|لتر|ملعقة|كوب)$/i;
+/** "2 biscuits (25 g)" with 25 g a serving: one piece is 12.5 g. Undefined when the serving isn't counted in pieces. */
+export function pieceFromServing(text: string, servingG: number): number | undefined {
+  const m = text.trim().match(/^(\d+(?:[.,]\d+)?)\s*([^\d\s(),.]+)/);
+  if (!m || !(servingG > 0) || NOT_PIECES.test(m[2])) return undefined;
+  const n = parseFloat(m[1].replace(',', '.'));
+  return n > 0 && n <= 50 ? Math.round((servingG / n) * 10) / 10 : undefined;
+}
 
 type Nutriments = Record<string, number | string | undefined>;
 
@@ -57,8 +69,9 @@ export async function lookupProduct(raw: string, lang: 'en' | 'ar'): Promise<Pro
       src: own.category === 'fix' ? 'fix' : own.source === 'user' ? 'user' : 'off',
       id: own.id,
       facts: factsOf(own),
+      piece: own.piece_g && +own.piece_g > 0 ? +own.piece_g : undefined,
     };
-  const fields = 'product_name,product_name_ar,product_name_en,brands,quantity,serving_quantity,nutriments,image_front_small_url,ingredients_text,ingredients_text_ar,ingredients_text_en,allergens_tags,traces_tags';
+  const fields = 'product_name,product_name_ar,product_name_en,brands,quantity,serving_quantity,serving_size,nutriments,image_front_small_url,ingredients_text,ingredients_text_ar,ingredients_text_en,allergens_tags,traces_tags';
   const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=${fields}`);
   if (!res.ok) return null;
   const j = await res.json();
@@ -73,12 +86,14 @@ export async function lookupProduct(raw: string, lang: 'en' | 'ar'): Promise<Pro
   let pack = m ? parseFloat(m[1].replace(',', '.')) * ({ ml: 1, cl: 10, l: 1000, kg: 1000, g: 1 } as Record<string, number>)[m[2]] : 0;
   if (!(pack > 0) || pack > 5000) pack = 0;
   const serving = +(x.serving_quantity ?? 0);
+  const size = Math.round(serving > 0 && serving < 2000 ? serving : pack || 100);
   return {
     name: String(name).trim(),
     brand: String(x.brands ?? '').split(',')[0].trim(),
     image: x.image_front_small_url ?? null,
     unit,
-    size: Math.round(serving > 0 && serving < 2000 ? serving : pack || 100),
+    size,
+    piece: serving > 0 ? pieceFromServing(String(x.serving_size ?? ''), serving) : undefined,
     k: kcal,
     p: +(n.proteins_100g ?? 0),
     c: +(n.carbohydrates_100g ?? 0),
