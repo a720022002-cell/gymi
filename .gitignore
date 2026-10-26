@@ -6,8 +6,8 @@ node_modules/
 dist/
 web-build/
 expo-env.d.ts
-ios/
-android/
+/ios/
+/android/
 
 # secrets: never commit these
 .env
