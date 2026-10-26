@@ -470,6 +470,14 @@ Passwords and keys are left out on purpose.
 - Checked on web: saved piece_g 15, logged "Test dates, 3 pcs" 225 kcal (3 × 15 g at 500 kcal/100 g), and the rescan opened on Pieces. Test product and user deleted (0 left).
 - Files: src/app/product.tsx, src/lib/products.ts, src/lib/foodsDb.ts, +6 Arabic strings. JS only for the app. Not sent yet.
 
+## Barcode: change what one piece weighs (26 Oct 2026)
+
+- Ask: let me set how many grams one piece is.
+- New product form: next to "Pieces in one serving" there's now "One piece weighs" (g/ml). Type either; the other follows from the serving size. With the label "per 100", the piece weight alone is enough.
+- Product screen: tap "1 piece = 15 g ✎" to change it, or "Count it in pieces" on a product without pieces. It's saved as your own copy of the product (like fixing its numbers), so your next scan uses it.
+- Checked on web: typed 12 g a piece (540 kcal/100 g) → 65 kcal a piece; changed it to 20 g on the product screen → saved, rescan showed 108 kcal a piece. Test product and user deleted (0 left).
+- File: src/app/product.tsx, +7 Arabic strings. JS only. Not sent yet.
+
 ---
 
 

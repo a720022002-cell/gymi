@@ -5029,4 +5029,11 @@ export const AR: Record<string, string> = {
   "1 piece = {n} {u}": "الحبة = {n} {u}",
   "Pieces in one serving": "كم حبة في الحصة",
   "Add the serving size too, so we know how much one piece weighs. Example: 2 biscuits (30 g).": "اكتب حجم الحصة بعد، عشان نعرف وزن الحبة. مثال: حبتين بسكويت (30 جم).",
+  "One piece weighs": "وزن الحبة",
+  "Type how much one piece weighs, or the serving size and how many pieces are in it. Example: 2 biscuits (30 g).": "اكتب وزن الحبة، أو حجم الحصة وكم حبة فيها. مثال: حبتين بسكويت (30 جم).",
+  "Add how much one piece weighs first.": "اكتب وزن الحبة أول.",
+  "Type how much one piece weighs.": "اكتب وزن الحبة.",
+  "Saved. 1 piece = {n} {u}": "انحفظ. الحبة = {n} {u}",
+  "Change what one piece weighs": "غيّر وزن الحبة",
+  "Count it in pieces": "احسبه بالحبة",
 };

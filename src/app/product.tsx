@@ -101,12 +101,33 @@ function Found({ x, code, onFix }: { x: Product; code: string; onFix: () => void
   const food = useFood();
   // Your allergies in this product: from its name, ingredient list and the label's allergen tags.
   const allergic = productAllergies({ name: `${x.name} ${shownName}`, ingredients: x.ingredients, tags: x.allergenTags }, food.plan.allergies, food.plan.allergyNote);
-  // Counted in pieces (biscuits, dates…): start on pieces.
+  // Counted in pieces (biscuits, dates…): start on pieces. You can change what one piece weighs (or add it).
+  const [piece, setPiece] = useState(x.piece ?? 0);
+  const [pieceEdit, setPieceEdit] = useState<string | null>(null);
+  const [pieceBusy, setPieceBusy] = useState(false);
   const [um, setUm] = useState<'serving' | 'g' | 'pcs'>(x.piece ? 'pcs' : 'serving');
   const [sv, setSv] = useState(1);
   const [pc, setPc] = useState(1);
   const [g, setG] = useState(String(x.size));
-  const grams = um === 'serving' ? sv * x.size : um === 'pcs' && x.piece ? pc * x.piece : +g || 0;
+  const grams = um === 'serving' ? sv * x.size : um === 'pcs' && piece ? pc * piece : +g || 0;
+  // Saved as your own copy of the product (like fixing its numbers), so the next scan uses your piece weight.
+  const savePiece = async () => {
+    const w = Math.round(+(pieceEdit ?? '').replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[,٫]/g, '.') * 10) / 10;
+    if (!(w > 0 && w <= 2000)) return toast(t('Type how much one piece weighs.'), { icon: 'info' });
+    setPieceBusy(true);
+    const { error } = await supabase.rpc('fix_product', {
+      p_barcode: code, p_name: x.name, p_brand: x.brand || null, p_unit: x.unit, p_serving: x.size || 100,
+      p_kcal: x.k, p_protein: x.p, p_carbs: x.c, p_fat: x.f,
+      p_sugar: x.facts.sugar ?? null, p_fiber: x.facts.fiber ?? null, p_sodium: x.facts.sodium ?? null,
+      p_nutrients: extraFacts(x.facts), p_piece_g: w,
+    });
+    setPieceBusy(false);
+    if (error) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
+    setPiece(w);
+    setPieceEdit(null);
+    setUm('pcs');
+    toast(t('Saved. 1 piece = {n} {u}', { n: w, u: t(x.unit) }), { icon: 'check' });
+  };
   const m = grams / 100;
   const sugar = x.sugar * m;
   const chips = [100, Math.round(x.size / 2), 250, x.size].filter((v, i, a) => v > 0 && a.indexOf(v) === i).sort((a, b) => a - b);
@@ -192,17 +213,28 @@ function Found({ x, code, onFix }: { x: Product; code: string; onFix: () => void
         <Segmented
           value={um}
           options={[
-            ...(x.piece ? [{ value: 'pcs' as const, label: t('Pieces') }] : []),
+            ...(piece ? [{ value: 'pcs' as const, label: t('Pieces') }] : []),
             { value: 'serving', label: t('Servings') },
             { value: 'g', label: t(x.unit === 'ml' ? 'ml' : 'Grams') },
           ]}
           onChange={setUm}
         />
-        {um === 'pcs' && x.piece ? (
+        {pieceEdit !== null ? (
+          <View style={{ marginTop: 4 }}>
+            <Field label={t('One piece weighs')} value={pieceEdit} onChangeText={(s) => setPieceEdit(s.replace(/[^\d.,٠-٩٫]/g, '').slice(0, 6))} inputMode="decimal" keyboardType="decimal-pad" ltr unit={t(x.unit)} autoFocus />
+            <Row gap={8} style={{ marginTop: 10 }}>
+              <Button small kind="glass" title={t('Cancel')} style={{ flex: 1 }} onPress={() => setPieceEdit(null)} />
+              <Button small title={t('Save')} loading={pieceBusy} style={{ flex: 1 }} onPress={savePiece} />
+            </Row>
+          </View>
+        ) : um === 'pcs' && piece ? (
           <Row style={{ justifyContent: 'space-between', marginTop: 12 }}>
-            <Text variant="small" color="sec">
-              {t('1 piece = {n} {u}', { n: x.piece, u: t(x.unit) })}
-            </Text>
+            <Springy onPress={() => setPieceEdit(String(piece))} accessibilityRole="button" accessibilityLabel={t('Change what one piece weighs')} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text variant="small" color="sec">
+                {t('1 piece = {n} {u}', { n: piece, u: t(x.unit) })}
+              </Text>
+              <Icon name="edit" size={14} color={c.link} />
+            </Springy>
             <Stepper bg={c.inset} minusDisabled={pc <= 1} onMinus={() => setPc(Math.max(1, pc - 1))} onPlus={() => setPc(pc + 1)} labels={[t('Less'), t('More')]}>
               <Text num style={{ width: 34, textAlign: 'center' }}>
                 {pc}
@@ -241,6 +273,9 @@ function Found({ x, code, onFix }: { x: Product; code: string; onFix: () => void
             </Row>
           </View>
         )}
+        {!piece && pieceEdit === null ? (
+          <Button small kind="ghost" icon="plus" title={t('Count it in pieces')} color={c.text} style={{ marginTop: 10, alignSelf: 'flex-start' }} onPress={() => setPieceEdit('')} />
+        ) : null}
       </Card>
       <Row gap={6} style={{ alignItems: 'flex-start', paddingHorizontal: 4 }}>
         <Icon name="info" size={16} color={c.sec} />
@@ -279,7 +314,10 @@ function Manual({ code, offline, init }: { code?: string; offline: boolean; init
   const [sv, setSv] = useState(1);
   // Counted in pieces: how many pieces one serving is ("2 biscuits (30 g)"), so a piece's weight is known.
   const [pcsOn, setPcsOn] = useState(!!init?.piece);
-  const [perServing, setPerServing] = useState(() => (init?.piece ? String(Math.max(1, Math.round((init.size / init.piece) * 2) / 2)) : '1'));
+  // Either how many pieces one serving is, or what one piece weighs: the one you typed last wins, the other follows.
+  const [perServing, setPerServing] = useState('1');
+  const [pieceW, setPieceW] = useState(() => (init?.piece ? String(init.piece) : ''));
+  const [pieceBy, setPieceBy] = useState<'count' | 'weight'>(init?.piece ? 'weight' : 'count');
   const [pc, setPc] = useState(1);
   const [reading, setReading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -291,8 +329,9 @@ function Manual({ code, offline, init }: { code?: string; offline: boolean; init
   const to100 = basis === '100' ? 1 : size > 0 ? 100 / size : 0;
   const per = { k: num(v.k) * to100, p: num(v.p) * to100, c: num(v.c) * to100, f: num(v.f) * to100, sugar: num(v.sugar) * to100, fiber: num(v.fiber) * to100, sodium: num(v.sodium) * to100 };
   const canServing = size > 0;
-  const piece = pcsOn && canServing && num(perServing) > 0 ? Math.round((size / num(perServing)) * 10) / 10 : 0;
-  const mode = um === 'pcs' && !piece ? 'serving' : um;
+  const r1p = (n: number) => Math.round(n * 10) / 10;
+  const piece = !pcsOn ? 0 : pieceBy === 'weight' ? r1p(num(pieceW)) : canServing && num(perServing) > 0 ? r1p(size / num(perServing)) : 0;
+  const mode = um === 'pcs' && !piece ? (canServing ? 'serving' : 'g') : um;
   const eaten = mode === 'pcs' ? pc * piece : mode === 'serving' && canServing ? sv * size : num(v.g);
   const m = eaten / 100;
   const ok = !!v.name.trim() && num(v.k) > 0 && to100 > 0 && eaten > 0;
@@ -422,10 +461,35 @@ function Manual({ code, offline, init }: { code?: string; offline: boolean; init
       </Row>
       {pcsOn ? (
         <View>
-          <Field label={t('Pieces in one serving')} value={perServing} onChangeText={(s) => setPerServing(s.replace(/[^\d.,٠-٩٫]/g, '').slice(0, 4))} inputMode="decimal" keyboardType="decimal-pad" ltr unit={t('pcs')} />
-          <Text variant="xs" color="sec" style={{ marginTop: 6, marginHorizontal: 4 }}>
-            {canServing ? (piece ? t('1 piece = {n} {u}', { n: piece, u }) : '') : t('Add the serving size too, so we know how much one piece weighs. Example: 2 biscuits (30 g).')}
-          </Text>
+          <Row gap={10}>
+            <View style={{ flex: 1 }}>
+              <Field
+                label={t('Pieces in one serving')}
+                value={pieceBy === 'count' ? perServing : canServing && piece ? String(r1p(size / piece)) : ''}
+                onChangeText={(s) => (setPieceBy('count'), setPerServing(s.replace(/[^\d.,٠-٩٫]/g, '').slice(0, 4)))}
+                inputMode="decimal"
+                keyboardType="decimal-pad"
+                ltr
+                unit={t('pcs')}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Field
+                label={t('One piece weighs')}
+                value={pieceBy === 'weight' ? pieceW : piece ? String(piece) : ''}
+                onChangeText={(s) => (setPieceBy('weight'), setPieceW(s.replace(/[^\d.,٠-٩٫]/g, '').slice(0, 6)))}
+                inputMode="decimal"
+                keyboardType="decimal-pad"
+                ltr
+                unit={u}
+              />
+            </View>
+          </Row>
+          {!piece ? (
+            <Text variant="xs" color="sec" style={{ marginTop: 6, marginHorizontal: 4 }}>
+              {t('Type how much one piece weighs, or the serving size and how many pieces are in it. Example: 2 biscuits (30 g).')}
+            </Text>
+          ) : null}
         </View>
       ) : null}
       <Text variant="xs" color="sec" style={{ marginTop: 6, marginHorizontal: 4 }}>
@@ -480,13 +544,19 @@ function Manual({ code, offline, init }: { code?: string; offline: boolean; init
           {t('How much did you eat?')}
         </Text>
         <Segmented
-          value={canServing ? mode : 'g'}
+          value={mode === 'serving' && !canServing ? 'g' : mode}
           options={[
             ...(pcsOn ? [{ value: 'pcs' as const, label: t('Pieces') }] : []),
             { value: 'serving', label: t('Servings') },
             { value: 'g', label: t(unit === 'ml' ? 'ml' : 'Grams') },
           ]}
-          onChange={(x) => ((x === 'serving' || x === 'pcs') && !canServing ? toast(t('Add the serving size first.'), { icon: 'info' }) : setUm(x))}
+          onChange={(x) =>
+            x === 'serving' && !canServing
+              ? toast(t('Add the serving size first.'), { icon: 'info' })
+              : x === 'pcs' && !piece
+                ? toast(t('Add how much one piece weighs first.'), { icon: 'info' })
+                : setUm(x)
+          }
         />
         {mode === 'pcs' && piece ? (
           <Row style={{ justifyContent: 'space-between', marginTop: 12 }}>
