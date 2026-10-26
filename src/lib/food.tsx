@@ -1,4 +1,5 @@
 import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
 
 import { caffeineCheck, caffeineOf, caffeineToday, setCaffeinePregnant, showCaffeineAlert } from './caffeine';
@@ -34,6 +35,9 @@ import {
 import { plannedOn, type TrainPlan } from './training';
 import { extraMoveKcal, pullHealth, pushHealth, useDevices, watchCardio } from './devices';
 import { supabase } from './supabase';
+
+/** The meal you last picked yourself and its day (see `chosen`). */
+const CHOSEN_KEY = 'adro.mealPick.v1';
 
 export type FoodLog = {
   id: string;
@@ -268,25 +272,39 @@ export function FoodProvider({ children }: PropsWithChildren) {
   const preg = female && !!cyc && cyc.uid === userId && cyc.mode === 'preg';
   const nursing = female && !!cyc && cyc.uid === userId && cyc.mode === 'post';
   const pregKcal = pregExtra(preg ? 'preg' : nursing ? 'post' : null, cyc?.pregWeek);
+  // The meal you last picked yourself, for that day: the next "Log food" starts on it (picked Lunch, it stays Lunch
+  // until you pick another). Kept on the phone so it survives closing the app.
+  const [chosen, setChosen] = useState<{ day: string; meal: string } | null>(null);
+  useEffect(() => {
+    AsyncStorage.getItem(CHOSEN_KEY)
+      .then((v) => v && setChosen(JSON.parse(v)))
+      .catch(() => {});
+  }, []);
   const setMealPick = useCallback(
     (meal: string | null) => {
       setPick({ day, meal });
       mealPickRef.current = meal;
+      if (meal) {
+        setChosen({ day, meal });
+        AsyncStorage.setItem(CHOSEN_KEY, JSON.stringify({ day, meal })).catch(() => {});
+      }
     },
     [day],
   );
   const setLogOpen = useCallback(
     (v: boolean) => {
-      // Opening "Log food" starts a new flow: today, the meal for the time of day; an earlier day, the first main
-      // meal with nothing logged yet (else a snack). You can pick another one in the sheet.
+      // Opening "Log food" starts a new flow on the meal you last picked for this day. Nothing picked yet: today, the
+      // meal for the time of day; an earlier day, the first main meal with nothing logged yet (else a snack).
       if (v) {
         const has = (m: string) => loadedDay === day && logs.some((l) => l.meal === m);
-        setMealPick(day < localDay() ? (['Breakfast', 'Lunch', 'Dinner'].find((m) => !has(m)) ?? 'Snack') : null);
+        const meal = chosen?.day === day ? chosen.meal : day < localDay() ? (['Breakfast', 'Lunch', 'Dinner'].find((m) => !has(m)) ?? 'Snack') : null;
+        setPick({ day, meal });
+        mealPickRef.current = meal;
       }
       setLogOpenState(v);
       if (!v) setTypeSeed(null);
     },
-    [day, logs, loadedDay, setMealPick],
+    [day, logs, loadedDay, chosen],
   );
   const openLog = useCallback(
     (meal?: string) => {

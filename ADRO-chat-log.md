@@ -445,6 +445,12 @@ Passwords and keys are left out on purpose.
 - Done: the "Scan a barcode" button is gone. "Add an ingredient" opens a new sheet built like Log food: search, Meal photo (AI lists the ingredients and adds them all), Scan barcode, Label photo (adds the product per 100 g, one serving), Saved meals (adds another saved meal's ingredients), Choose from photos, and Type what you ate (AI). Everything is added to the meal, not logged. Grams can be changed in the list as before.
 - Files: src/components/food/AddIngredientSheet.tsx (new), src/app/saved-meals.tsx, +1 Arabic string. Checked on web: sheet, saved meals, search. JS only. Not sent yet.
 
+## Log food: keep the meal you picked (26 Oct 2026)
+
+- Ask: pick Lunch on the first add, and the next adds stay Lunch; pick Dinner later, and it goes to Dinner.
+- Done: the meal you pick yourself (the chips in Log food or search, a meal card, or the meal on a result) is remembered for that day and kept on the phone, so it survives closing the app. Opening Log food again starts on it. A new day starts fresh: the meal for the time of day (today) or the first empty main meal (an earlier day).
+- File: src/lib/food.tsx. JS only. Not sent yet.
+
 ---
 
 
