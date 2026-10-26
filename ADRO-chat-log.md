@@ -556,7 +556,7 @@ Passwords and keys are left out on purpose.
 
 - First ask: fill the coach's suggested weight on the next set. Changed the same day: the user wants the last weight they typed instead (84 on set 1 → set 2 shows 84), on the screen and the widget.
 - Done: when a working set is logged (on the screen or from the Live Activity), its weight is filled in on the next working set, unless you already typed one there. Warm-up, timed and bodyweight sets are left alone. The coach's tip still shows as text. The Live Activity shows the current set's weight, so it shows 84 too.
-- Files: src/lib/activeWorkout.ts (logSet), src/app/active.tsx, src/components/WorkoutLive.tsx. JS only. Not sent yet.
+- Files: src/lib/activeWorkout.ts (logSet), src/app/active.tsx, src/components/WorkoutLive.tsx. JS only. Sent: OTA 70632b83 (26 Oct).
 
 ## Approved: exercise picker grid, Day streak on (26 Oct 2026)
 
@@ -576,7 +576,7 @@ Passwords and keys are left out on purpose.
 - Problem: on Ali's iPhone, Scan barcode turns on the flash and shows Apple's hints ("Slow down", "Find nearby barcodes"), but the camera picture stays black. Meal photo works on the same phone. Two other phones work fine.
 - Reading: Apple's scanner is running and getting frames; only its picture is black. It was started while the screen was still sliding in, which can leave the picture black on some phones.
 - Done: Apple's scanner now starts after the screen has opened (half a second). Under "Enter the code by hand" there's a small link, "Camera not showing? Use the other camera", that switches to our regular camera (the one Meal photo uses).
-- Files: src/app/barcode.tsx, src/i18n/ar.ts. JS only, works with build 17. Not sent yet.
+- Files: src/app/barcode.tsx, src/i18n/ar.ts. JS only, works with build 17. Sent: OTA 70632b83 (26 Oct).
 
 ---
 
