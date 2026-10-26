@@ -5100,4 +5100,5 @@ export const AR: Record<string, string> = {
   "All A–Z": "الكل من أ إلى ي",
   "No sport matches “{q}”": "ما فيه رياضة باسم «{q}»",
   "Next: {x}": "التالي: {x}",
+  "Camera not showing? Use the other camera": "الكاميرا ما تظهر؟ استخدم الكاميرا الثانية",
 };

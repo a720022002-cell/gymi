@@ -1,6 +1,6 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Linking, View } from 'react-native';
 
 import { ManualCode } from '@/components/food/ManualCode';
@@ -46,13 +46,21 @@ export default function Barcode() {
   // builds) that can't run it.
   const [apple, setApple] = useState(!!AppleScannerView);
   const Apple = apple ? AppleScannerView : null;
+  // It starts once the screen has finished sliding in: started mid-slide, some iPhones run it with a black picture.
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    const id = setTimeout(() => setSettled(true), 500);
+    return () => clearTimeout(id);
+  }, []);
 
   return (
     <Screen title={t('Scan barcode')} back>
       {perm?.granted ? (
         <View style={{ height: 380, borderRadius: 28, overflow: 'hidden', backgroundColor: '#000' }}>
           {Apple ? (
-            <Apple style={{ flex: 1 }} torch={torch} onCode={(e) => found(e.nativeEvent.data)} onUnavailable={() => setApple(false)} />
+            settled ? (
+              <Apple style={{ flex: 1 }} torch={torch} onCode={(e) => found(e.nativeEvent.data)} onUnavailable={() => setApple(false)} />
+            ) : null
           ) : (
             <CameraView style={{ flex: 1 }} facing="back" enableTorch={torch} barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e'] }} onBarcodeScanned={(r) => found(r.data)} />
           )}
@@ -88,6 +96,14 @@ export default function Barcode() {
         {t(Apple ? 'Point at the barcode, near or far. Pinch to zoom if it’s small.' : 'Point at the barcode on the package. It scans by itself.')}
       </Text>
       <Button kind="glass" title={t('Enter the code by hand')} style={{ marginTop: 12 }} onPress={() => setManual(true)} />
+      {Apple ? (
+        // If Apple's scanner shows a black picture on this phone: our own camera (the one Meal photo uses).
+        <Springy onPress={() => setApple(false)} style={{ marginTop: 14, alignSelf: 'center', padding: 6 }}>
+          <Text variant="small" color="sec">
+            {t('Camera not showing? Use the other camera')}
+          </Text>
+        </Springy>
+      ) : null}
       <ManualCode open={manual} onClose={() => setManual(false)} onCode={(code) => go(code)} />
     </Screen>
   );

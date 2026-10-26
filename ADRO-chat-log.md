@@ -571,6 +571,13 @@ Passwords and keys are left out on purpose.
 - Checked on web: 3 of 3 sets on Barbell row → page moved to Lat pulldown, first dot green. Test user deleted (0 left).
 - File: src/app/active.tsx (+1 Arabic string). JS only. Not sent yet.
 
+## Barcode: black camera on one iPhone (26 Oct 2026)
+
+- Problem: on Ali's iPhone, Scan barcode turns on the flash and shows Apple's hints ("Slow down", "Find nearby barcodes"), but the camera picture stays black. Meal photo works on the same phone. Two other phones work fine.
+- Reading: Apple's scanner is running and getting frames; only its picture is black. It was started while the screen was still sliding in, which can leave the picture black on some phones.
+- Done: Apple's scanner now starts after the screen has opened (half a second). Under "Enter the code by hand" there's a small link, "Camera not showing? Use the other camera", that switches to our regular camera (the one Meal photo uses).
+- Files: src/app/barcode.tsx, src/i18n/ar.ts. JS only, works with build 17. Not sent yet.
+
 ---
 
 
