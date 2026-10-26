@@ -10,11 +10,11 @@ import { Text } from '@/components/Text';
 import { Button, Card, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { goBack } from '@/lib/nav';
-import { setPendingIngredientPhoto, setPendingPhoto } from '@/lib/pending';
+import { setPendingCapture, setPendingPhoto } from '@/lib/pending';
 import { type Photo, photoFromUri, takePhoto } from '@/lib/photo';
 import { useSettings } from '@/theme/settings';
 
-/** Phone apps: our own camera for a meal photo (same look as the barcode screen). Then the AI reads it. */
+/** Phone apps: our own camera for a meal photo or a nutrition label (same look as the barcode screen). Then the AI reads it. */
 export default function MealCamera() {
   const { t } = useT();
   const { colors: c } = useSettings();
@@ -22,17 +22,20 @@ export default function MealCamera() {
   const [torch, setTorch] = useState(false);
   const [busy, setBusy] = useState(false);
   const cam = useRef<CameraView>(null);
-  // Opened from "Add an ingredient": hand the photo back to the meal you're making instead of logging it.
-  const { pick } = useLocalSearchParams<{ pick?: string }>();
+  // `pick`: opened by a screen that wants the photo back ("Add an ingredient", reading a label into a product form)
+  // instead of logging it.
+  const { pick, kind: kindParam } = useLocalSearchParams<{ pick?: string; kind?: string }>();
+  const kind = kindParam === 'label' ? 'label' : 'meal';
+  const label = kind === 'label';
   const done = (p: Photo | null) => {
     setBusy(false);
     if (!p) return;
     if (pick) {
-      setPendingIngredientPhoto(p);
+      setPendingCapture({ kind, photo: p });
       goBack();
     } else {
       setPendingPhoto(p);
-      router.replace('/meal-result');
+      router.replace(label ? '/label-result' : '/meal-result');
     }
   };
   const shoot = async () => {
@@ -47,7 +50,7 @@ export default function MealCamera() {
   };
 
   return (
-    <Screen title={t('Meal photo')} back>
+    <Screen title={t(label ? 'Label photo' : 'Meal photo')} back>
       {perm?.granted ? (
         <View style={{ height: 460, borderRadius: 28, overflow: 'hidden', backgroundColor: '#000' }}>
           <CameraView ref={cam} style={{ flex: 1 }} facing="back" mode="picture" enableTorch={torch} />
@@ -80,7 +83,7 @@ export default function MealCamera() {
         <Card style={{ alignItems: 'center', paddingVertical: 24 }}>
           <Icon name="camera" size={34} color={c.cobalt} />
           <Text variant="h3" center style={{ marginTop: 8 }}>
-            {t('Allow the camera to take meal photos')}
+            {t(label ? 'Allow the camera to photograph labels' : 'Allow the camera to take meal photos')}
           </Text>
           {/* Said no before and the phone won't ask again: the button opens the app's settings instead. */}
           <Button title={t(perm && !perm.canAskAgain ? 'Open Settings' : 'Allow camera')} style={{ marginTop: 12, alignSelf: 'stretch' }} onPress={() => (perm && !perm.canAskAgain ? Linking.openSettings().catch(() => {}) : ask())} />
@@ -92,7 +95,7 @@ export default function MealCamera() {
         </Card>
       )}
       <Text color="sec" center style={{ marginTop: 12 }}>
-        {t('Fit the whole plate in the frame, from a little above. The AI finds what’s on it.')}
+        {t(label ? 'Fit the nutrition facts table in the frame, flat and sharp. The AI reads the numbers.' : 'Fit the whole plate in the frame, from a little above. The AI finds what’s on it.')}
       </Text>
       <Button kind="glass" icon="image" title={t('Choose from photos')} disabled={busy} style={{ marginTop: 12 }} onPress={gallery} />
     </Screen>

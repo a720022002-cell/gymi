@@ -13,9 +13,9 @@ import { useT } from '@/i18n';
 import { type SavedMeal, useFood, useLogFood } from '@/lib/food';
 import { AllergyWarn, useAllergyCheck } from '@/components/food/AllergyWarn';
 import { WarnChip } from '@/components/food/Chips';
-import { AddIngredientSheet, mealPhotoIngredients } from '@/components/food/AddIngredientSheet';
+import { AddIngredientSheet, labelPhotoIngredient, mealPhotoIngredients } from '@/components/food/AddIngredientSheet';
 import { aiErrorText } from '@/lib/ai';
-import { takePendingIngredientPhoto } from '@/lib/pending';
+import { takePendingCapture } from '@/lib/pending';
 import { PickFood, per100 } from '@/components/food/PickFood';
 import { useScanProduct } from '@/components/food/useScanProduct';
 import { foodName } from '@/lib/foodsDb';
@@ -330,14 +330,14 @@ function CreateMeal({ onDone, edit }: { onDone: () => void; edit?: SavedMeal }) 
   const [picking, setPicking] = useState(false);
   // "Add an ingredient": the same ways as Log food; search opens the food picker.
   const [adding, setAdding] = useState(false);
-  // Back from our meal camera with a photo: the AI lists its foods and they're added to the meal.
+  // Back from our camera screen with a photo: the AI lists the meal's foods (or reads the label) and they're added.
   const [reading, setReading] = useState(false);
   useFocusEffect(
     useCallback(() => {
-      const p = takePendingIngredientPhoto();
-      if (!p) return;
+      const cap = takePendingCapture();
+      if (!cap) return;
       setReading(true);
-      mealPhotoIngredients(p, lang).then(({ items, error }) => {
+      (cap.kind === 'label' ? labelPhotoIngredient(cap.photo, lang, t('Label photo')) : mealPhotoIngredients(cap.photo, lang)).then(({ items, error }) => {
         setReading(false);
         if (error || !items.length) return toast(t(error ? aiErrorText(error) : 'I couldn’t work that out. Try again.'), { icon: 'warn' });
         setItems((xs) => [...xs, ...items.map((f) => ({ n: f.n, g: Math.round(f.g), k: 0, p: 0, c: 0, f: 0, per: f.per }))]);
@@ -497,7 +497,7 @@ function CreateMeal({ onDone, edit }: { onDone: () => void; edit?: SavedMeal }) 
         onClose={() => setAdding(false)}
         onSearch={() => setPicking(true)}
         onScan={scan}
-        onMealCamera={() => router.push({ pathname: '/meal-camera', params: { pick: '1' } })}
+        onCamera={(kind) => router.push({ pathname: '/meal-camera', params: { pick: '1', kind } })}
         onAdd={(fs) => setItems((xs) => [...xs, ...fs.map((f) => ({ n: f.n, g: Math.round(f.g), k: 0, p: 0, c: 0, f: 0, per: f.per }))])}
         saved={food.saved.filter((m) => m.id !== edit?.id)}
         onSaved={(m) => setItems((xs) => [...xs, ...toIngs(m)])}

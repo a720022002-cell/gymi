@@ -515,6 +515,14 @@ Passwords and keys are left out on purpose.
 - Build 17 (f5acf278) finished and was sent to App Store Connect (auto-submit). Runtime 6e1d9a57…, same as the local fingerprint, so OTAs from here reach build 17.
 - In it: Apple's scanner inside the barcode screen, Apple's document scanner for label photos, our own meal camera, and everything sent before.
 
+## Label photo on our camera screen; "Choose from photos" link removed (26 Oct 2026)
+
+- Ask: make Label photo like Meal photo (our camera screen, no document scanner), and remove the "Choose from photos" link since each camera screen has its own gallery button.
+- Done: the camera screen (/meal-camera) takes `kind` = meal or label: title, tip ("Fit the nutrition facts table in the frame…") and where it goes (/meal-result or /label-result). Used by Log food (both tiles), Add an ingredient (both; the result comes back to the meal), and "Read the label from a photo" in the product form (the numbers fill the form). One hand-back slot for all of them (setPendingCapture).
+- The "Choose from photos" link is gone from Log food and Add an ingredient (the web keeps "Take photo / Choose from photos" after a cancelled camera).
+- Apple's document scanner is no longer used; its package stays installed so build 17's fingerprint (6e1d9a57…) doesn't change and this goes as an OTA.
+- Files: src/app/meal-camera.tsx, src/lib/pending.ts, src/lib/photo(.native).ts, LogSheet, AddIngredientSheet, saved-meals.tsx, product.tsx, +2 Arabic strings. Not sent yet.
+
 ---
 
 

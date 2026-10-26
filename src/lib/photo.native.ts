@@ -1,6 +1,5 @@
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
-import { Platform } from 'react-native';
 
 export type Photo = { base64: string; mime: string; uri: string };
 
@@ -24,36 +23,4 @@ export async function photoFromUri(uri: string, width?: number, height?: number)
   const out = await img.saveAsync({ format: SaveFormat.JPEG, compress: 0.82, base64: true });
   if (!out.base64) return null;
   return { base64: out.base64, mime: 'image/jpeg', uri: out.uri };
-}
-
-type Scanner = { scanDocument: (o: { croppedImageQuality?: number; responseType?: 'imageFilePath' }) => Promise<{ status?: string; scannedImages?: string[] }> };
-/** Apple's document scanner (the one in Notes), when this build of the app has it; null otherwise. */
-function docScanner(): Scanner | null {
-  if (Platform.OS !== 'ios') return null;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return (require('react-native-document-scanner-plugin') as { default: Scanner }).default;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * A photo of a nutrition label. On iPhone, Apple's document scanner: it finds the label's edges, focuses up close and
- * straightens the picture, so the numbers come out sharp. `null` = cancelled. The gallery, and phones without the
- * scanner, use the normal camera.
- */
-export async function takeLabelPhoto(camera: boolean): Promise<Photo | null> {
-  const scan = camera ? docScanner() : null;
-  if (!scan) return takePhoto(camera);
-  const perm = await ImagePicker.requestCameraPermissionsAsync();
-  if (!perm.granted) return null;
-  try {
-    const r = await scan.scanDocument({ croppedImageQuality: 90, responseType: 'imageFilePath' });
-    const path = r.status === 'success' ? r.scannedImages?.[0] : undefined;
-    if (!path) return null;
-    return photoFromUri(path.startsWith('file://') ? path : `file://${path}`);
-  } catch {
-    return takePhoto(true);
-  }
 }

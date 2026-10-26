@@ -5038,4 +5038,6 @@ export const AR: Record<string, string> = {
   "Count it in pieces": "احسبه بالحبة",
   "Allow the camera to take meal photos": "اسمح للكاميرا عشان تصوّر وجباتك",
   "Fit the whole plate in the frame, from a little above. The AI finds what’s on it.": "خل الصحن كله داخل الإطار، وصوّر من فوق شوي. الذكاء الاصطناعي يعرف وش فيه.",
+  "Allow the camera to photograph labels": "اسمح للكاميرا عشان تصوّر الملصقات",
+  "Fit the nutrition facts table in the frame, flat and sharp. The AI reads the numbers.": "خل جدول القيم الغذائية داخل الإطار، مستقيم وواضح. الذكاء الاصطناعي يقرا الأرقام.",
 };

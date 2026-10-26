@@ -5,7 +5,7 @@ import { Platform, TextInput, View } from 'react-native';
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
 import { setPendingPhoto } from '@/lib/pending';
-import { takeLabelPhoto, takePhoto } from '@/lib/photo';
+import { takePhoto } from '@/lib/photo';
 import { canListen, listen } from '@/lib/speech';
 import { useSettings } from '@/theme/settings';
 
@@ -23,8 +23,8 @@ export function LogSheet() {
   const [typing, setTyping] = useState(false);
   const [text, setText] = useState('');
   const [listening, setListening] = useState(false);
-  /** Photo choice after the camera was closed, or when picking from the gallery. */
-  const [chooser, setChooser] = useState<'/meal-result' | '/label-result' | 'gallery' | null>(null);
+  /** Web: photo choice after the camera was closed. */
+  const [chooser, setChooser] = useState<'/meal-result' | '/label-result' | null>(null);
   // "Type it instead" from search opens straight into typing with the search words.
   const [seeded, setSeeded] = useState<string | null>(null);
   if (food.typeSeed !== null && food.typeSeed !== seeded) {
@@ -45,13 +45,13 @@ export function LogSheet() {
   };
   /** Open the camera now (it must start from the tap), then read the photo on the next screen. Cancel offers the gallery. */
   const photo = async (path: '/meal-result' | '/label-result', camera = true) => {
-    // Phone apps: a meal photo is taken on our own camera screen.
-    if (path === '/meal-result' && camera && Platform.OS !== 'web') {
+    // Phone apps: meal and label photos are taken on our own camera screen (it also picks from the gallery).
+    if (camera && Platform.OS !== 'web') {
       close();
-      setTimeout(() => router.push('/meal-camera'), 200);
+      afterSheet(() => router.push({ pathname: '/meal-camera', params: { kind: path === '/label-result' ? 'label' : 'meal' } }));
       return;
     }
-    const p = await (path === '/label-result' ? takeLabelPhoto : takePhoto)(camera);
+    const p = await takePhoto(camera);
     if (!p) {
       setChooser(path);
       return;
@@ -129,19 +129,12 @@ export function LogSheet() {
             <Springy onPress={() => setChooser(null)} accessibilityLabel={t('Back')} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
               <Icon name="back" size={20} />
             </Springy>
-            <Text variant="h2">{t(chooser === '/label-result' ? 'Label photo' : chooser === '/meal-result' ? 'Meal photo' : 'Choose from photos')}</Text>
+            <Text variant="h2">{t(chooser === '/label-result' ? 'Label photo' : 'Meal photo')}</Text>
           </Row>
-          {chooser === 'gallery' ? (
-            <View style={{ gap: 10, marginTop: 16 }}>
-              <Button kind="soft" icon="camera" title={t('A meal')} onPress={() => photo('/meal-result', false)} />
-              <Button kind="soft" icon="doc" title={t('A nutrition label')} onPress={() => photo('/label-result', false)} />
-            </View>
-          ) : (
-            <View style={{ gap: 10, marginTop: 16 }}>
-              <Button icon="camera" title={t('Take photo')} onPress={() => photo(chooser)} />
-              <Button kind="soft" icon="image" title={t('Choose from photos')} onPress={() => photo(chooser, false)} />
-            </View>
-          )}
+          <View style={{ gap: 10, marginTop: 16 }}>
+            <Button icon="camera" title={t('Take photo')} onPress={() => photo(chooser)} />
+            <Button kind="soft" icon="image" title={t('Choose from photos')} onPress={() => photo(chooser, false)} />
+          </View>
         </View>
       ) : (
         <View>
@@ -183,12 +176,6 @@ export function LogSheet() {
               </Text>
             </View>
             <Icon name="chev" size={16} color={c.sec} />
-          </Springy>
-          <Springy onPress={() => setChooser('gallery')} style={{ marginTop: 10, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, padding: 6 }}>
-            <Icon name="image" size={16} color={c.link} />
-            <Text variant="small" weight={700} color="link">
-              {t('Choose from photos')}
-            </Text>
           </Springy>
           <Springy onPress={() => setTyping(true)} scaleTo={0.985} style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, padding: 14, backgroundColor: 'rgba(127,127,135,0.1)' }}>
             <Icon name="edit" size={20} color={c.cobalt} />

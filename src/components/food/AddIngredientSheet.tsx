@@ -4,7 +4,7 @@ import { ActivityIndicator, Platform, ScrollView, TextInput, View } from 'react-
 import { useT } from '@/i18n';
 import { type AiError, aiErrorText, askAI } from '@/lib/ai';
 import type { SavedMeal } from '@/lib/food';
-import { type Photo, takeLabelPhoto, takePhoto } from '@/lib/photo';
+import { type Photo, takePhoto } from '@/lib/photo';
 import { canListen, listen } from '@/lib/speech';
 import { fmt } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
@@ -25,6 +25,14 @@ export async function mealPhotoIngredients(p: Photo, lang: 'en' | 'ar'): Promise
   return { items: toOwn(r.result.items ?? []) };
 }
 
+/** A nutrition label photo as one ingredient: one serving, numbers per 100 g (or the AI's error). */
+export async function labelPhotoIngredient(p: Photo, lang: 'en' | 'ar', fallbackName: string): Promise<{ items: OwnFood[]; error?: AiError }> {
+  const r = await askAI<Label>('label_photo', { lang, image: p.base64, mime: p.mime });
+  const x = r.result;
+  if (r.error || !x || !(+x.kcal_100 > 0)) return { items: [], error: r.error ?? 'failed' };
+  return { items: [{ n: (x.name || fallbackName).slice(0, 80), g: Math.round(x.serving && x.serving > 0 ? x.serving : 100), per: { k: +x.kcal_100, p: +x.protein_100 || 0, c: +x.carbs_100 || 0, f: +x.fat_100 || 0 } }] };
+}
+
 /** AI items (numbers for the amount eaten) as ingredients with numbers per 100 g. */
 const toOwn = (items: AiItem[]): OwnFood[] =>
   items
@@ -43,7 +51,7 @@ export function AddIngredientSheet({
   onClose,
   onSearch,
   onScan,
-  onMealCamera,
+  onCamera,
   onAdd,
   saved,
   onSaved,
@@ -52,15 +60,15 @@ export function AddIngredientSheet({
   onClose: () => void;
   onSearch: () => void;
   onScan: () => void;
-  /** Phone apps: open our own camera screen for a meal photo (its foods come back to the meal). */
-  onMealCamera?: () => void;
+  /** Phone apps: open our own camera screen for a meal or label photo (what it finds comes back to the meal). */
+  onCamera?: (kind: 'meal' | 'label') => void;
   onAdd: (fs: OwnFood[]) => void;
   saved: SavedMeal[];
   onSaved: (m: SavedMeal) => void;
 }) {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
-  const [mode, setMode] = useState<'menu' | 'type' | 'saved' | 'gallery' | 'meal' | 'label'>('menu');
+  const [mode, setMode] = useState<'menu' | 'type' | 'saved' | 'meal' | 'label'>('menu');
   const [text, setText] = useState('');
   const [listening, setListening] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -84,12 +92,12 @@ export function AddIngredientSheet({
   /** The camera must open from the tap. Cancelled: offer the camera or the gallery again. */
   const photo = async (kind: 'meal' | 'label', camera = true) => {
     setErr(null);
-    if (kind === 'meal' && camera && onMealCamera && Platform.OS !== 'web') {
+    if (camera && onCamera && Platform.OS !== 'web') {
       close();
-      setTimeout(onMealCamera, 320);
+      setTimeout(() => onCamera(kind), 320);
       return;
     }
-    const p = await (kind === 'label' ? takeLabelPhoto : takePhoto)(camera);
+    const p = await takePhoto(camera);
     if (!p) return setMode(kind);
     if (kind === 'meal') {
       setBusy('Looking at your meal');
@@ -99,11 +107,10 @@ export function AddIngredientSheet({
       add(r.items);
     } else {
       setBusy('Reading the label');
-      const r = await askAI<Label>('label_photo', { lang, image: p.base64, mime: p.mime });
+      const r = await labelPhotoIngredient(p, lang, t('Label photo'));
       setBusy(null);
-      const x = r.result;
-      if (r.error || !x || !(+x.kcal_100 > 0)) return fail(r.error), setMode('label');
-      add([{ n: (x.name || t('Label photo')).slice(0, 80), g: Math.round(x.serving && x.serving > 0 ? x.serving : 100), per: { k: +x.kcal_100, p: +x.protein_100 || 0, c: +x.carbs_100 || 0, f: +x.fat_100 || 0 } }]);
+      if (r.error) return fail(r.error), setMode('label');
+      add(r.items);
     }
   };
   const typed = async () => {
@@ -212,21 +219,14 @@ export function AddIngredientSheet({
             </Text>
           )}
         </View>
-      ) : mode === 'gallery' || mode === 'meal' || mode === 'label' ? (
+      ) : mode === 'meal' || mode === 'label' ? (
         <View>
-          {back(mode === 'label' ? 'Label photo' : mode === 'meal' ? 'Meal photo' : 'Choose from photos')}
+          {back(mode === 'label' ? 'Label photo' : 'Meal photo')}
           {error}
-          {mode === 'gallery' ? (
-            <View style={{ gap: 10, marginTop: 16 }}>
-              <Button kind="soft" icon="camera" title={t('A meal')} onPress={() => photo('meal', false)} />
-              <Button kind="soft" icon="doc" title={t('A nutrition label')} onPress={() => photo('label', false)} />
-            </View>
-          ) : (
-            <View style={{ gap: 10, marginTop: 16 }}>
-              <Button icon="camera" title={t('Take photo')} onPress={() => photo(mode)} />
-              <Button kind="soft" icon="image" title={t('Choose from photos')} onPress={() => photo(mode, false)} />
-            </View>
-          )}
+          <View style={{ gap: 10, marginTop: 16 }}>
+            <Button icon="camera" title={t('Take photo')} onPress={() => photo(mode)} />
+            <Button kind="soft" icon="image" title={t('Choose from photos')} onPress={() => photo(mode, false)} />
+          </View>
         </View>
       ) : (
         <View>
@@ -256,12 +256,6 @@ export function AddIngredientSheet({
               ))}
             </View>
           ))}
-          <Springy onPress={() => setMode('gallery')} style={{ marginTop: 10, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, padding: 6 }}>
-            <Icon name="image" size={16} color={c.link} />
-            <Text variant="small" weight={700} color="link">
-              {t('Choose from photos')}
-            </Text>
-          </Springy>
           <Springy onPress={() => setMode('type')} scaleTo={0.985} style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, padding: 14, backgroundColor: 'rgba(127,127,135,0.1)' }}>
             <Icon name="edit" size={20} color={c.cobalt} />
             <View style={{ flex: 1 }}>

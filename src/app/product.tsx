@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
-import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, TextInput, View } from 'react-native';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Platform, TextInput, View } from 'react-native';
 
 import { Field } from '@/components/Field';
 import { AllergyWarn } from '@/components/food/AllergyWarn';
@@ -18,7 +18,8 @@ import { productAllergies } from '@/lib/allergies';
 import { useFood, useLogFood } from '@/lib/food';
 import { aiErrorText, askAI } from '@/lib/ai';
 import { lookupProduct, normBarcode, type Product } from '@/lib/products';
-import { takeLabelPhoto } from '@/lib/photo';
+import { type Photo, takePhoto } from '@/lib/photo';
+import { takePendingCapture } from '@/lib/pending';
 import { supabase } from '@/lib/supabase';
 import { EXTRA_KEYS, extraFacts, type Facts, FACTS, factsKey, myNameFor, offFactsFor, setMyName, withMine } from '@/lib/nutrients';
 import { fmt } from '@/lib/nutrition';
@@ -337,10 +338,9 @@ function Manual({ code, offline, init }: { code?: string; offline: boolean; init
   const ok = !!v.name.trim() && num(v.k) > 0 && to100 > 0 && eaten > 0;
   const u = t(unit);
 
-  // Read the numbers from a photo of the label (fills the form; you can still fix them).
-  const readLabel = async () => {
-    const pic = await takeLabelPhoto(true);
-    if (!pic) return;
+  // Read the numbers from a photo of the label (fills the form; you can still fix them). Phone apps take it on our
+  // camera screen, which hands it back here.
+  const fillLabel = async (pic: Photo) => {
     setReading(true);
     const r = await askAI<{ name?: string; unit?: 'g' | 'ml'; serving?: number; kcal_100: number; protein_100: number; carbs_100: number; fat_100: number; sugar_100?: number; fiber_100?: number; sodium_100?: number; extra_100?: Facts; readable: boolean }>('label_photo', { lang, image: pic.base64, mime: pic.mime });
     setReading(false);
@@ -357,6 +357,22 @@ function Manual({ code, offline, init }: { code?: string; offline: boolean; init
     }
     if (!x.readable) toast(t('Some numbers were hard to read. Please check them.'), { icon: 'info' });
   };
+
+  const readLabel = async () => {
+    if (Platform.OS !== 'web') return router.push({ pathname: '/meal-camera', params: { kind: 'label', pick: '1' } });
+    const pic = await takePhoto(true);
+    if (pic) fillLabel(pic);
+  };
+  const fillRef = useRef<(pic: Photo) => void>(() => {});
+  useEffect(() => {
+    fillRef.current = fillLabel;
+  });
+  useFocusEffect(
+    useCallback(() => {
+      const cap = takePendingCapture();
+      if (cap?.kind === 'label') fillRef.current(cap.photo);
+    }, []),
+  );
 
   const add = async () => {
     if (!ok || busy) return;

@@ -54,8 +54,5 @@ export function takePhoto(camera: boolean): Promise<Photo | null> {
   });
 }
 
-/** A photo of a nutrition label (the phone apps use Apple's document scanner on iPhone). */
-export const takeLabelPhoto = (camera: boolean) => takePhoto(camera);
-
 /** Phone apps only (our own camera screen); never used on the web. */
 export const photoFromUri = async (_uri: string, _w?: number, _h?: number): Promise<Photo | null> => null;

@@ -18,11 +18,12 @@ export const takePendingBarcode = () => {
   return c;
 };
 
-/** A meal photo taken for "Add an ingredient" (its foods are added to the meal you're making). */
-let pendingIng: Photo | null = null;
-export const setPendingIngredientPhoto = (p: Photo | null) => (pendingIng = p);
-export const takePendingIngredientPhoto = () => {
-  const p = pendingIng;
-  pendingIng = null;
-  return p;
+/** A photo from our camera screen for a screen that asked for one (adding to a meal, or reading a label into a form). */
+export type Capture = { kind: 'meal' | 'label'; photo: Photo };
+let pendingCap: Capture | null = null;
+export const setPendingCapture = (c: Capture | null) => (pendingCap = c);
+export const takePendingCapture = () => {
+  const c = pendingCap;
+  pendingCap = null;
+  return c;
 };
