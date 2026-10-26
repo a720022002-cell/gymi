@@ -530,7 +530,7 @@ Passwords and keys are left out on purpose.
 - "New milestone" pop-up: once, the first time your streak reaches a milestone higher than any celebrated before (kept per account on the phone; the first run after the update only remembers where you are, no pop-up for the past). It waits 3 s after the data loads.
 - Opened from the Streaks tab (Overall card) and the Overall box in the Home streaks card. The same "streak" as before: any day you log food, a workout, water, a check-in or a measurement.
 - Checked on web: a 9-day streak showed 9, "5 days to Two weeks", started Oct 18, 2/16, First spark reached Oct 20, One week Oct 24, and the One week pop-up. Test user deleted (0 left).
-- Files: src/app/day-streak.tsx, src/lib/streakMilestones.ts, src/components/streak/MilestoneUnlocked.tsx, _layout.tsx, progress/Streaks.tsx, home/InfoCards.tsx, Arabic strings. JS only (build 17 fingerprint). Not sent yet.
+- Files: src/app/day-streak.tsx, src/lib/streakMilestones.ts, src/components/streak/MilestoneUnlocked.tsx, _layout.tsx, progress/Streaks.tsx, home/InfoCards.tsx, Arabic strings. JS only (build 17 fingerprint). Sent: OTA 70632b83 (26 Oct).
 - ON HOLD (owner wants to review): `STREAK_PAGE = false` in src/lib/config.ts hides the links and the pop-up, so an OTA can go out without it. Preview sent as Adro-day-streak-preview.pdf. To turn it on: set STREAK_PAGE to true.
 
 ## Home: Discover more (26 Oct 2026)
@@ -562,14 +562,14 @@ Passwords and keys are left out on purpose.
 
 - Exercise picker (Replace / Add exercise): two squares a row with the exercise's photo, a cobalt swap (or +) badge, name, muscle and equipment; a red strip when it may strain an injury. Used for "same muscle" and the full search. File: src/components/train/ExercisePicker.tsx.
 - Day streak page and its milestone pop-up turned on (STREAK_PAGE = true in src/lib/config.ts).
-- JS only. Not sent yet.
+- JS only. Sent: OTA 70632b83 (26 Oct).
 
 ## Workout screen: one exercise a page, tabs on top (26 Oct 2026)
 
 - Approved design: the exercises as tabs under the progress bar (number in a circle, white pill for the one you're on, a green check once all its sets are done); one exercise per page; swipe left/right (reversed in Arabic) or tap a tab; "Next: {exercise}" under the card; page dots (green = done).
 - When the last set of an exercise is checked, it moves on to the next exercise with sets to do (0.6 s later). Moving an exercise up/down takes the page with it.
 - Checked on web: 3 of 3 sets on Barbell row → page moved to Lat pulldown, first dot green. Test user deleted (0 left).
-- File: src/app/active.tsx (+1 Arabic string). JS only. Not sent yet.
+- File: src/app/active.tsx (+1 Arabic string). JS only. Sent: OTA 70632b83 (26 Oct).
 
 ## Barcode: black camera on one iPhone (26 Oct 2026)
 
