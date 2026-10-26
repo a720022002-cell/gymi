@@ -578,6 +578,13 @@ Passwords and keys are left out on purpose.
 - Done: Apple's scanner now starts after the screen has opened (half a second). Under "Enter the code by hand" there's a small link, "Camera not showing? Use the other camera", that switches to our regular camera (the one Meal photo uses).
 - Files: src/app/barcode.tsx, src/i18n/ar.ts. JS only, works with build 17. Sent: OTA 70632b83 (26 Oct).
 
+## Workout: replacing an exercise froze the app (26 Oct 2026)
+
+- Problem: in a plan workout (Legs A), tapping the swap button and picking a new exercise froze the whole app.
+- Cause: right after you pick, the "Only this time / Always" sheet opened while the exercise list was still closing. Two sheets opening at once freeze the iPhone app.
+- Done: that sheet now opens once the list has closed (afterSheet, the same fix used elsewhere in the app).
+- File: src/app/active.tsx. JS only, works with build 17. Not sent yet.
+
 ---
 
 

@@ -7,7 +7,7 @@ import { Glass } from '@/components/Glass';
 import { Icon, Mark } from '@/components/Icon';
 import { Bar, Ring } from '@/components/Ring';
 import { Screen } from '@/components/Screen';
-import { Sheet } from '@/components/Sheet';
+import { afterSheet, Sheet } from '@/components/Sheet';
 import { fontFor, Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { ExercisePicker } from '@/components/train/ExercisePicker';
@@ -649,7 +649,8 @@ export default function Active() {
           swapEx(swapFor, pe);
           setSwapFor(null);
           const name = e.name_ar && lang === 'ar' ? e.name_ar : e.name_en;
-          if (canAlways(oldId)) setSwapped({ oldId, ex: pe, name });
+          // The next sheet opens once the list has closed: two sheets opening at once freeze the iPhone app.
+          if (canAlways(oldId)) afterSheet(() => setSwapped({ oldId, ex: pe, name }));
           else toast(t('{x} swapped in', { x: name }), { icon: 'check' });
         }}
       />
