@@ -486,6 +486,13 @@ Passwords and keys are left out on purpose.
 - Library: react-native-document-scanner-plugin 2.0.4 (installed with npx expo install, config plugin added). Native code, so it needs a new build: the fingerprint changed (cd9dea8… → 3f4057e…), and OTAs from now on reach the new build, not build 15.
 - Files: src/lib/photo.native.ts (takeLabelPhoto), src/lib/photo.ts, LogSheet, AddIngredientSheet, product.tsx, app.json, package.json. Not built yet (waits for "صدر النسخة").
 
+## Meal photo: our own camera screen (26 Oct 2026)
+
+- Ask: when Meal photo opens the camera, make it look like the barcode screen, as part of our app.
+- Done: new screen /meal-camera (expo-camera): rounded camera view with a frame, flash, a big shutter button, "Choose from photos", and a tip to fit the whole plate in from a little above. The photo goes to the AI as before.
+- Used from Log food (Meal photo), Retake on the meal result, and Add an ingredient (the foods come back to the meal you're making). The web keeps the old file picker.
+- Files: src/app/meal-camera.tsx (new), src/lib/photo(.native).ts (photoFromUri), src/lib/pending.ts, LogSheet, AddIngredientSheet, saved-meals.tsx, meal-result.tsx, +2 Arabic strings. Goes with the next build.
+
 ---
 
 

@@ -12,11 +12,11 @@ export async function takePhoto(camera: boolean): Promise<Photo | null> {
   const r = camera ? await ImagePicker.launchCameraAsync(opts) : await ImagePicker.launchImageLibraryAsync(opts);
   if (r.canceled || !r.assets?.[0]) return null;
   const a = r.assets[0];
-  return shrink(a.uri, a.width, a.height);
+  return photoFromUri(a.uri, a.width, a.height);
 }
 
-/** Max side 1280 px, as JPEG text the AI can read. */
-async function shrink(uri: string, width?: number, height?: number): Promise<Photo | null> {
+/** Max side 1280 px, as JPEG text the AI can read (also for pictures from our own camera screen). */
+export async function photoFromUri(uri: string, width?: number, height?: number): Promise<Photo | null> {
   const ctx = ImageManipulator.manipulate(uri);
   if (width && height && Math.max(width, height) > 1280) ctx.resize(width >= height ? { width: 1280, height: null } : { width: null, height: 1280 });
   else if (!width) ctx.resize({ width: 1280, height: null });
@@ -52,7 +52,7 @@ export async function takeLabelPhoto(camera: boolean): Promise<Photo | null> {
     const r = await scan.scanDocument({ croppedImageQuality: 90, responseType: 'imageFilePath' });
     const path = r.status === 'success' ? r.scannedImages?.[0] : undefined;
     if (!path) return null;
-    return shrink(path.startsWith('file://') ? path : `file://${path}`);
+    return photoFromUri(path.startsWith('file://') ? path : `file://${path}`);
   } catch {
     return takePhoto(true);
   }

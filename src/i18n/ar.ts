@@ -5036,4 +5036,6 @@ export const AR: Record<string, string> = {
   "Saved. 1 piece = {n} {u}": "انحفظ. الحبة = {n} {u}",
   "Change what one piece weighs": "غيّر وزن الحبة",
   "Count it in pieces": "احسبه بالحبة",
+  "Allow the camera to take meal photos": "اسمح للكاميرا عشان تصوّر وجباتك",
+  "Fit the whole plate in the frame, from a little above. The AI finds what’s on it.": "خل الصحن كله داخل الإطار، وصوّر من فوق شوي. الذكاء الاصطناعي يعرف وش فيه.",
 };

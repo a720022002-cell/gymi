@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { Platform, TextInput, View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
@@ -44,6 +44,12 @@ export function LogSheet() {
   };
   /** Open the camera now (it must start from the tap), then read the photo on the next screen. Cancel offers the gallery. */
   const photo = async (path: '/meal-result' | '/label-result', camera = true) => {
+    // Phone apps: a meal photo is taken on our own camera screen.
+    if (path === '/meal-result' && camera && Platform.OS !== 'web') {
+      close();
+      setTimeout(() => router.push('/meal-camera'), 200);
+      return;
+    }
     const p = await (path === '/label-result' ? takeLabelPhoto : takePhoto)(camera);
     if (!p) {
       setChooser(path);

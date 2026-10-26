@@ -17,3 +17,12 @@ export const takePendingBarcode = () => {
   pendingCode = null;
   return c;
 };
+
+/** A meal photo taken for "Add an ingredient" (its foods are added to the meal you're making). */
+let pendingIng: Photo | null = null;
+export const setPendingIngredientPhoto = (p: Photo | null) => (pendingIng = p);
+export const takePendingIngredientPhoto = () => {
+  const p = pendingIng;
+  pendingIng = null;
+  return p;
+};

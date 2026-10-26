@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { ActivityIndicator, ScrollView, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, ScrollView, TextInput, View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { type AiError, aiErrorText, askAI } from '@/lib/ai';
 import type { SavedMeal } from '@/lib/food';
-import { takeLabelPhoto, takePhoto } from '@/lib/photo';
+import { type Photo, takeLabelPhoto, takePhoto } from '@/lib/photo';
 import { canListen, listen } from '@/lib/speech';
 import { fmt } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
@@ -17,6 +17,13 @@ import type { OwnFood } from './PickFood';
 
 type AiItem = { name: string; grams: number; kcal: number; protein: number; carbs: number; fat: number };
 type Label = { name?: string; serving?: number; kcal_100: number; protein_100: number; carbs_100: number; fat_100: number };
+
+/** The foods in a meal photo, as ingredients (or the AI's error). */
+export async function mealPhotoIngredients(p: Photo, lang: 'en' | 'ar'): Promise<{ items: OwnFood[]; error?: AiError }> {
+  const r = await askAI<{ items?: AiItem[] }>('meal_photo', { lang, image: p.base64, mime: p.mime });
+  if (r.error || !r.result) return { items: [], error: r.error ?? 'failed' };
+  return { items: toOwn(r.result.items ?? []) };
+}
 
 /** AI items (numbers for the amount eaten) as ingredients with numbers per 100 g. */
 const toOwn = (items: AiItem[]): OwnFood[] =>
@@ -36,6 +43,7 @@ export function AddIngredientSheet({
   onClose,
   onSearch,
   onScan,
+  onMealCamera,
   onAdd,
   saved,
   onSaved,
@@ -44,6 +52,8 @@ export function AddIngredientSheet({
   onClose: () => void;
   onSearch: () => void;
   onScan: () => void;
+  /** Phone apps: open our own camera screen for a meal photo (its foods come back to the meal). */
+  onMealCamera?: () => void;
   onAdd: (fs: OwnFood[]) => void;
   saved: SavedMeal[];
   onSaved: (m: SavedMeal) => void;
@@ -74,14 +84,19 @@ export function AddIngredientSheet({
   /** The camera must open from the tap. Cancelled: offer the camera or the gallery again. */
   const photo = async (kind: 'meal' | 'label', camera = true) => {
     setErr(null);
+    if (kind === 'meal' && camera && onMealCamera && Platform.OS !== 'web') {
+      close();
+      setTimeout(onMealCamera, 320);
+      return;
+    }
     const p = await (kind === 'label' ? takeLabelPhoto : takePhoto)(camera);
     if (!p) return setMode(kind);
     if (kind === 'meal') {
       setBusy('Looking at your meal');
-      const r = await askAI<{ items?: AiItem[] }>('meal_photo', { lang, image: p.base64, mime: p.mime });
+      const r = await mealPhotoIngredients(p, lang);
       setBusy(null);
-      if (r.error || !r.result) return fail(r.error), setMode('meal');
-      add(toOwn(r.result.items ?? []));
+      if (r.error) return fail(r.error), setMode('meal');
+      add(r.items);
     } else {
       setBusy('Reading the label');
       const r = await askAI<Label>('label_photo', { lang, image: p.base64, mime: p.mime });

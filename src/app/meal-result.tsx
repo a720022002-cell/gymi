@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { Platform, TextInput, View } from 'react-native';
 
 import { Field } from '@/components/Field';
 import { AllergyWarn, useAllergyCheck } from '@/components/food/AllergyWarn';
@@ -118,6 +118,8 @@ export default function MealResult() {
     { k: 0, p: 0, c: 0, f: 0 },
   );
   const retake = async (camera: boolean) => {
+    // Phone apps: retake on our own camera screen (it comes back here with the new photo).
+    if (camera && Platform.OS !== 'web') return router.replace('/meal-camera');
     const p = await takePhoto(camera);
     if (!p) return;
     setPhoto(p);
