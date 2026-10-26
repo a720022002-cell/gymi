@@ -521,7 +521,7 @@ Passwords and keys are left out on purpose.
 - Done: the camera screen (/meal-camera) takes `kind` = meal or label: title, tip ("Fit the nutrition facts table in the frame…") and where it goes (/meal-result or /label-result). Used by Log food (both tiles), Add an ingredient (both; the result comes back to the meal), and "Read the label from a photo" in the product form (the numbers fill the form). One hand-back slot for all of them (setPendingCapture).
 - The "Choose from photos" link is gone from Log food and Add an ingredient (the web keeps "Take photo / Choose from photos" after a cancelled camera).
 - Apple's document scanner is no longer used; its package stays installed so build 17's fingerprint (6e1d9a57…) doesn't change and this goes as an OTA.
-- Files: src/app/meal-camera.tsx, src/lib/pending.ts, src/lib/photo(.native).ts, LogSheet, AddIngredientSheet, saved-meals.tsx, product.tsx, +2 Arabic strings. Not sent yet.
+- Files: src/app/meal-camera.tsx, src/lib/pending.ts, src/lib/photo(.native).ts, LogSheet, AddIngredientSheet, saved-meals.tsx, product.tsx, +2 Arabic strings. Sent as OTA 0139911f (build 17).
 
 ## Day streak page + milestones (26 Oct 2026)
 
@@ -537,12 +537,12 @@ Passwords and keys are left out on purpose.
 
 - Ask: a "Discover more" section like WHOOP's, on our Home.
 - Done: at the bottom of today's Home (above Edit home), four cards with a soft coloured icon tile, a line and a link: Your blood tests (→ /blood), Connect your watch (→ /connections), Bring a friend (→ /invite), Get a coach (→ /findcoach). No shop (no selling). Arabic strings added.
-- File: src/components/home/DiscoverMore.tsx (new), src/app/(tabs)/home.tsx. JS only. Not sent yet.
+- File: src/components/home/DiscoverMore.tsx (new), src/app/(tabs)/home.tsx. JS only. Sent as OTA 0139911f (build 17).
 
 ## Product form: g / ml / pcs in one switch (26 Oct 2026)
 
 - Ask: tidy the "pcs" button (it sat alone under g/ml).
-- Done: one three-way switch next to Serving size: g | ml | pcs. pcs = counted in pieces (grams per piece fields show below). File: src/app/product.tsx. JS only. Not sent yet.
+- Done: one three-way switch next to Serving size: g | ml | pcs. pcs = counted in pieces (grams per piece fields show below). File: src/app/product.tsx. JS only. Sent as OTA 0139911f (build 17).
 
 ## Cardio: sport pickers as a simple list (26 Oct 2026)
 
@@ -550,7 +550,7 @@ Passwords and keys are left out on purpose.
 - Done: new SportList (replaces the grid of tiles): a search box, tabs (All, Cardio, Racket, Team, Combat, Mind & body, Other) with a cobalt underline, "Recent" (your last 3 sports, kept on the phone), then "All A–Z". Each row: the sport's coloured badge, name, and a chevron (or a check when picked). Short lists (8 or fewer) show just the rows.
 - Used in Start cardio (step 1) and the cardio plan (Cardio to add, Sports you play). The old SportTiles grid is removed.
 - Checked on web: Start cardio showed Recent (Padel, Run) and A–Z; the Racket tab showed 4 sports. Test user deleted (0 left).
-- Files: src/components/cardio/SportTiles.tsx (SportList), src/lib/recentSports.ts (new), src/app/cardio-live.tsx, src/components/train/CardioPlan.tsx, +4 Arabic strings. JS only. Not sent yet.
+- Files: src/components/cardio/SportTiles.tsx (SportList), src/lib/recentSports.ts (new), src/app/cardio-live.tsx, src/components/train/CardioPlan.tsx, +4 Arabic strings. JS only. Sent as OTA 0139911f (build 17).
 
 ---
 
