@@ -533,6 +533,12 @@ Passwords and keys are left out on purpose.
 - Files: src/app/day-streak.tsx, src/lib/streakMilestones.ts, src/components/streak/MilestoneUnlocked.tsx, _layout.tsx, progress/Streaks.tsx, home/InfoCards.tsx, Arabic strings. JS only (build 17 fingerprint). Not sent yet.
 - ON HOLD (owner wants to review): `STREAK_PAGE = false` in src/lib/config.ts hides the links and the pop-up, so an OTA can go out without it. Preview sent as Adro-day-streak-preview.pdf. To turn it on: set STREAK_PAGE to true.
 
+## Home: Discover more (26 Oct 2026)
+
+- Ask: a "Discover more" section like WHOOP's, on our Home.
+- Done: at the bottom of today's Home (above Edit home), four cards with a soft coloured icon tile, a line and a link: Your blood tests (→ /blood), Connect your watch (→ /connections), Bring a friend (→ /invite), Get a coach (→ /findcoach). No shop (no selling). Arabic strings added.
+- File: src/components/home/DiscoverMore.tsx (new), src/app/(tabs)/home.tsx. JS only. Not sent yet.
+
 ---
 
 

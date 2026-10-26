@@ -12,6 +12,7 @@ import { CardioHomeCard } from '@/components/home/CardioHomeCard';
 import { CheckinCard, CoachAppCard, CoachCard, CoachRow, CoachSetCard } from '@/components/home/CoachCards';
 import { DayRecap } from '@/components/home/DayRecap';
 import { CycleCard, ReadingsCard, StreaksCard, TipCard, WaterCard } from '@/components/home/InfoCards';
+import { DiscoverMore } from '@/components/home/DiscoverMore';
 import { MainCard } from '@/components/home/MainCard';
 import { Screen } from '@/components/Screen';
 import { Avatar } from '@/components/social/Avatar';
@@ -198,6 +199,7 @@ export default function Home() {
         </>
       ) : null}
       {past && layout.hidden.includes('workout') ? <DayRecap /> : null}
+      {past ? null : <DiscoverMore />}
       {past ? null : <Button title={t('Edit home')} icon="sliders" kind="glass" style={{ marginTop: 8 }} onPress={() => router.push('/customize')} />}
       <InviteCodeSheet
         open={askCode}
