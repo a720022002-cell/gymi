@@ -583,13 +583,13 @@ Passwords and keys are left out on purpose.
 - Problem: in a plan workout (Legs A), tapping the swap button and picking a new exercise froze the whole app.
 - Cause: right after you pick, the "Only this time / Always" sheet opened while the exercise list was still closing. Two sheets opening at once freeze the iPhone app.
 - Done: that sheet now opens once the list has closed (afterSheet, the same fix used elsewhere in the app).
-- File: src/app/active.tsx. JS only, works with build 17. Not sent yet.
+- File: src/app/active.tsx. JS only, works with build 17. Sent: OTA 35362d74 (26 Oct).
 
 ## Product: the + button was off the screen (26 Oct 2026)
 
 - Problem: on the product screen, under How much? → Servings, the − and the number showed but the + was gone (pushed off the screen).
 - Done: the − number + buttons have a fixed width there, and the "1 serving = 55 g" text takes the rest and wraps if it's long. Same for pieces, and on the add-a-product screen.
-- File: src/app/product.tsx. JS only, works with build 17. Not sent yet.
+- File: src/app/product.tsx. JS only, works with build 17. Sent: OTA 35362d74 (26 Oct).
 
 ---
 
