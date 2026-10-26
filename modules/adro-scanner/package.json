@@ -1,0 +1,8 @@
+{
+  "name": "adro-scanner",
+  "version": "1.0.0",
+  "description": "Apple's barcode scanner (VisionKit DataScannerViewController) as a view inside a screen",
+  "main": "index.ts",
+  "license": "UNLICENSED",
+  "private": true
+}

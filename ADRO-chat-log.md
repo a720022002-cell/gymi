@@ -501,6 +501,14 @@ Passwords and keys are left out on purpose.
 - Files: src/app/barcode.tsx, src/components/food/LogSheet.tsx. Not tested on a phone yet.
 - Sent to build 15 as OTA efd34ecc, published from commit 981db07 (the last OTA) + only this fix, because main now has the native document scanner (new fingerprint).
 
+## Barcode: Apple's scanner inside our screen (26 Oct 2026)
+
+- Ask: put Apple's own scanner inside our barcode screen (the box with the frame and flash), not opened over the app. (A first try that only changed our camera's lens was stopped by the owner: "I want Apple's own one".)
+- Done: a local native module modules/adro-scanner (Swift, Expo Modules): `AdroScannerView` hosts Apple's DataScannerViewController (VisionKit) as a child view controller, so it lives inside the box. EAN-13/8 and UPC-E (UPC-A comes as EAN-13), pinch to zoom, guidance, highlight; events onCode and onUnavailable; torch is best effort.
+- Barcode screen: the box shows Apple's scanner; if the phone can't run it (or an older app build), our camera view as before. The pop-over scanner and its "Open the scanner" card are gone.
+- Native code, so it needs the new build; the fingerprint changed again (3f4057e… → ab304eb…). The iPhone and web JS bundles build; the Swift is checked by the EAS build.
+- Files: modules/adro-scanner/{package.json, expo-module.config.json, index.ts, ios/AdroScanner.podspec, ios/AdroScannerModule.swift}, src/app/barcode.tsx.
+
 ---
 
 
