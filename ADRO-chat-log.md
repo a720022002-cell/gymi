@@ -552,12 +552,11 @@ Passwords and keys are left out on purpose.
 - Checked on web: Start cardio showed Recent (Padel, Run) and A–Z; the Racket tab showed 4 sports. Test user deleted (0 left).
 - Files: src/components/cardio/SportTiles.tsx (SportList), src/lib/recentSports.ts (new), src/app/cardio-live.tsx, src/components/train/CardioPlan.tsx, +4 Arabic strings. JS only. Sent as OTA 0139911f (build 17).
 
-## Workout: the coach's weight fills the next set (26 Oct 2026)
+## Workout: the next set starts at the weight you just lifted (26 Oct 2026)
 
-- Ask: the weight the AI suggests ("Top of the range. Try 86.5 kg next set.") should be filled in on the next set, and show on the widget.
-- Done: when a set is logged (on the screen or from the Live Activity), the coach's weight for the next working set is filled in on it (the weight it says, or the one to stay at), unless you already typed one. The Live Activity shows the current set's weight, so it shows the suggested weight with the tip.
-- Checked: 84 kg × 12 on 10–12 → next set 86.5 kg; then 86.5 × 9 → stays 86.5.
-- Files: src/lib/activeWorkout.ts (logSet takes the coach's history and step), src/app/active.tsx, src/components/WorkoutLive.tsx. JS only. Not sent yet.
+- First ask: fill the coach's suggested weight on the next set. Changed the same day: the user wants the last weight they typed instead (84 on set 1 → set 2 shows 84), on the screen and the widget.
+- Done: when a working set is logged (on the screen or from the Live Activity), its weight is filled in on the next working set, unless you already typed one there. Warm-up, timed and bodyweight sets are left alone. The coach's tip still shows as text. The Live Activity shows the current set's weight, so it shows 84 too.
+- Files: src/lib/activeWorkout.ts (logSet), src/app/active.tsx, src/components/WorkoutLive.tsx. JS only. Not sent yet.
 
 ## Approved: exercise picker grid, Day streak on (26 Oct 2026)
 

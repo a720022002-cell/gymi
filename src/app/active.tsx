@@ -159,7 +159,7 @@ export default function Active() {
   const markSet = (ei: number, si: number) => {
     const st = s.ex[ei].sets[si];
     if (st.done) return update((ss) => ({ ...ss, ex: ss.ex.map((e, i) => (i !== ei ? e : { ...e, sets: e.sets.map((y, j) => (j === si ? { ...y, done: false } : y)) })) }));
-    const { next, restFor, needWeight } = logSet(s, ei, si, lang, { hist: histFor(train.logs, train.plan, s.ex[ei].id), step: W.step });
+    const { next, restFor, needWeight } = logSet(s, ei, si, lang);
     // No weight typed and none from last time: ask for it instead of saving 0 kg.
     if (needWeight) {
       toast(t('Enter the weight for this set first.'), { icon: 'warn' });

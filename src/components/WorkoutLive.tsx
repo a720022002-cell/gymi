@@ -158,7 +158,7 @@ function LiveActivity() {
         const x = s.ex[cur.ei];
         const st = x.sets[cur.si];
         if (a === 'done') {
-          const { next, restFor, needWeight } = logSet(s, cur.ei, cur.si, lang, { hist: histFor(train.logs, train.plan, x.id), step: W.step });
+          const { next, restFor, needWeight } = logSet(s, cur.ei, cur.si, lang);
           // No weight for a weighted exercise: nothing is logged (never 0 kg), and the card stays on this set.
           if (needWeight) return;
           save(next);

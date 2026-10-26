@@ -82,16 +82,8 @@ export function restFor(x: SessionEx, warm?: boolean) {
 /**
  * Logs a set (empty weight and reps take last time's) and says how long to rest after it, or null when it was the last.
  * `needWeight`: a weighted exercise with no weight typed and none from last time; nothing is logged (never 0 kg).
- * `coach` (your last workouts with it and one weight step): the coach's weight for the next set is filled in on it,
- * unless you already typed one, so the screen and the Live Activity show it ready to lift.
  */
-export function logSet(
-  s: Session,
-  ei: number,
-  si: number,
-  lang: Parameters<typeof exInfo>[1],
-  coach?: { hist: SetIn[][]; step: number },
-): { next: Session; restFor: number | null; needWeight?: boolean } {
+export function logSet(s: Session, ei: number, si: number, lang: Parameters<typeof exInfo>[1]): { next: Session; restFor: number | null; needWeight?: boolean } {
   const x = s.ex[ei];
   const st = x.sets[si];
   const info = exInfo(x, lang);
@@ -105,18 +97,11 @@ export function logSet(
     lastAt: Date.now(),
     ex: s.ex.map((e, i) => (i !== ei ? e : { ...e, tip: e.tip || easy, sets: e.sets.map((y, j) => (j === si ? { ...y, w, r, done: true } : y)) })),
   };
-  if (coach && !st.warm && !info.timed && info.type !== 'Bodyweight' && +w > 0) {
-    const e = next.ex[ei];
-    const work = e.sets.filter((y) => !y.warm);
-    const nums = String(e.reps).match(/\d+/g)?.map(Number) ?? [10];
-    const a = coachSet({ done: work.filter((y) => y.done).map((y) => ({ w: +y.w || 0, r: +y.r || 0 })), left: work.filter((y) => !y.done).length, lo: Math.min(...nums), hi: Math.max(...nums), step: coach.step, hist: coach.hist });
-    // The weight it says for the next set ("Try 86.5 kg next set"), or the one to stay at.
-    const target = a ? (typeof a.vars.w2 === 'number' ? a.vars.w2 : typeof a.vars.w === 'number' ? a.vars.w : +w) : +w;
-    const ni = e.sets.findIndex((y, j) => j > si && !y.done && !y.warm);
-    if (ni >= 0 && e.sets[ni].w === '' && target > 0) {
-      const v = String(Math.round(target * 100) / 100);
-      next.ex = next.ex.map((x, i) => (i !== ei ? x : { ...x, sets: x.sets.map((y, j) => (j === ni ? { ...y, w: v } : y)) }));
-    }
+  // The weight you just lifted goes on the next set (unless you typed one there), so the screen and the Live Activity
+  // show it ready: change it there if you want more or less.
+  if (!st.warm && !info.timed && info.type !== 'Bodyweight' && +w > 0) {
+    const ni = x.sets.findIndex((y, j) => j > si && !y.done && !y.warm);
+    if (ni >= 0 && x.sets[ni].w === '') next.ex = next.ex.map((e, i) => (i !== ei ? e : { ...e, sets: e.sets.map((y, j) => (j === ni ? { ...y, w } : y)) }));
   }
   const more = next.ex.some((e) => e.sets.some((z) => !z.done));
   // Longer rest after the big lifts, shorter after a warm-up set.
