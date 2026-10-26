@@ -217,7 +217,8 @@
         }
       ],
       "expo-web-browser",
-      "./plugins/withWidgetIntents"
+      "./plugins/withWidgetIntents",
+      "react-native-document-scanner-plugin"
     ],
     "experiments": {
       "typedRoutes": true,

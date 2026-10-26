@@ -4,7 +4,7 @@ import { ActivityIndicator, ScrollView, TextInput, View } from 'react-native';
 import { useT } from '@/i18n';
 import { type AiError, aiErrorText, askAI } from '@/lib/ai';
 import type { SavedMeal } from '@/lib/food';
-import { takePhoto } from '@/lib/photo';
+import { takeLabelPhoto, takePhoto } from '@/lib/photo';
 import { canListen, listen } from '@/lib/speech';
 import { fmt } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
@@ -74,7 +74,7 @@ export function AddIngredientSheet({
   /** The camera must open from the tap. Cancelled: offer the camera or the gallery again. */
   const photo = async (kind: 'meal' | 'label', camera = true) => {
     setErr(null);
-    const p = await takePhoto(camera);
+    const p = await (kind === 'label' ? takeLabelPhoto : takePhoto)(camera);
     if (!p) return setMode(kind);
     if (kind === 'meal') {
       setBusy('Looking at your meal');

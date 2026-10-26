@@ -5,7 +5,7 @@ import { TextInput, View } from 'react-native';
 import { useT } from '@/i18n';
 import { useFood } from '@/lib/food';
 import { setPendingPhoto } from '@/lib/pending';
-import { takePhoto } from '@/lib/photo';
+import { takeLabelPhoto, takePhoto } from '@/lib/photo';
 import { canListen, listen } from '@/lib/speech';
 import { useSettings } from '@/theme/settings';
 
@@ -44,7 +44,7 @@ export function LogSheet() {
   };
   /** Open the camera now (it must start from the tap), then read the photo on the next screen. Cancel offers the gallery. */
   const photo = async (path: '/meal-result' | '/label-result', camera = true) => {
-    const p = await takePhoto(camera);
+    const p = await (path === '/label-result' ? takeLabelPhoto : takePhoto)(camera);
     if (!p) {
       setChooser(path);
       return;

@@ -478,6 +478,14 @@ Passwords and keys are left out on purpose.
 - Checked on web: typed 12 g a piece (540 kcal/100 g) → 65 kcal a piece; changed it to 20 g on the product screen → saved, rescan showed 108 kcal a piece. Test product and user deleted (0 left).
 - File: src/app/product.tsx, +7 Arabic strings. JS only. Sent as OTA ddb8b38d (build 15).
 
+## Label photo: Apple's document scanner (26 Oct 2026)
+
+- Ask: like the barcode (Apple's own scanner), use Apple's way for Label photo and Meal photo if it exists.
+- Meal photo already opens the iPhone's own camera (system picker); Apple has no special scanner for food, so it stays.
+- Label photo now opens Apple's document scanner (VisionKit, the one in Notes): it finds the label's edges, focuses up close and straightens the picture, then the first page goes to the AI as before. Used in Log food, Add an ingredient and "Read the label from a photo" on a product. "Choose from photos" and phones without it use the normal camera.
+- Library: react-native-document-scanner-plugin 2.0.4 (installed with npx expo install, config plugin added). Native code, so it needs a new build: the fingerprint changed (cd9dea8… → 3f4057e…), and OTAs from now on reach the new build, not build 15.
+- Files: src/lib/photo.native.ts (takeLabelPhoto), src/lib/photo.ts, LogSheet, AddIngredientSheet, product.tsx, app.json, package.json. Not built yet (waits for "صدر النسخة").
+
 ---
 
 

@@ -53,3 +53,6 @@ export function takePhoto(camera: boolean): Promise<Photo | null> {
     input.click();
   });
 }
+
+/** A photo of a nutrition label (the phone apps use Apple's document scanner on iPhone). */
+export const takeLabelPhoto = (camera: boolean) => takePhoto(camera);

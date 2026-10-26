@@ -18,7 +18,7 @@ import { productAllergies } from '@/lib/allergies';
 import { useFood, useLogFood } from '@/lib/food';
 import { aiErrorText, askAI } from '@/lib/ai';
 import { lookupProduct, normBarcode, type Product } from '@/lib/products';
-import { takePhoto } from '@/lib/photo';
+import { takeLabelPhoto } from '@/lib/photo';
 import { supabase } from '@/lib/supabase';
 import { EXTRA_KEYS, extraFacts, type Facts, FACTS, factsKey, myNameFor, offFactsFor, setMyName, withMine } from '@/lib/nutrients';
 import { fmt } from '@/lib/nutrition';
@@ -339,7 +339,7 @@ function Manual({ code, offline, init }: { code?: string; offline: boolean; init
 
   // Read the numbers from a photo of the label (fills the form; you can still fix them).
   const readLabel = async () => {
-    const pic = await takePhoto(true);
+    const pic = await takeLabelPhoto(true);
     if (!pic) return;
     setReading(true);
     const r = await askAI<{ name?: string; unit?: 'g' | 'ml'; serving?: number; kcal_100: number; protein_100: number; carbs_100: number; fat_100: number; sugar_100?: number; fiber_100?: number; sodium_100?: number; extra_100?: Facts; readable: boolean }>('label_photo', { lang, image: pic.base64, mime: pic.mime });
