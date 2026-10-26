@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
@@ -296,7 +297,7 @@ function OverallStreak() {
   });
   const logged = cells.filter((x) => x.st === 'done').length;
   return (
-    <Card style={{ alignItems: 'center', paddingVertical: 24 }}>
+    <Card onPress={() => router.push('/day-streak')} style={{ alignItems: 'center', paddingVertical: 24 }}>
       <Ring value={s.overall} max={Math.max(s.best, 1)} size={150} stroke={14}>
         <Icon name="flame" size={28} color={c.cobalt} strokeWidth={2} />
         <Text num size={36}>
@@ -310,6 +311,9 @@ function OverallStreak() {
         {t('Any day you log something counts: food, a workout, water, or your check-in. Best: {n} days.', { n: s.best })}
       </Text>
       <WeekDots cells={cells} caption={t('This week: {n} of 7 days logged', { n: logged })} />
+      <Text variant="small" weight={700} color="link" style={{ marginTop: 12 }}>
+        {t('Milestones and your flame')} ›
+      </Text>
     </Card>
   );
 }

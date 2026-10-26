@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Platform, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 
 import { Field } from '@/components/Field';
 import { Glass } from '@/components/Glass';
@@ -151,7 +151,9 @@ export function StreaksCard() {
         <Icon name="chev" size={18} color={c.sec} />
       </Row>
       <Row gap={8}>
-        {box('o', s.overall, s.best, 'flame', t('{n} days', { n: s.overall }), t('Overall'))}
+        <Pressable style={{ flex: 1 }} accessibilityRole="button" onPress={() => router.push('/day-streak')}>
+          {box('o', s.overall, s.best, 'flame', t('{n} days', { n: s.overall }), t('Overall'))}
+        </Pressable>
         {box('w', s.workouts, s.bestWorkouts, 'train', String(s.workouts), t('Workouts in a row'))}
         {box('c', s.commitment ?? 0, 100, 'check', s.commitment == null ? '–' : `${s.commitment}%`, t('Commitment'))}
       </Row>

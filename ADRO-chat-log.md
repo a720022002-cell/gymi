@@ -523,6 +523,15 @@ Passwords and keys are left out on purpose.
 - Apple's document scanner is no longer used; its package stays installed so build 17's fingerprint (6e1d9a57…) doesn't change and this goes as an OTA.
 - Files: src/app/meal-camera.tsx, src/lib/pending.ts, src/lib/photo(.native).ts, LogSheet, AddIngredientSheet, saved-meals.tsx, product.tsx, +2 Arabic strings. Not sent yet.
 
+## Day streak page + milestones (26 Oct 2026)
+
+- Ask: a day-streak page like WHOOP's, where every stretch of the streak unlocks a new milestone. Then: "don't copy the picture, make it different and fit our app".
+- Done: new screen /day-streak in Adro's own style. A cobalt ring that fills up on the way to the next milestone, with the streak in the middle and "5 days to Two weeks" under it. Three tiles: best streak, when it started, milestones reached (x/16). This week with the same dots as the Streaks tab. "Your journey": milestones down a path (First spark 3, One week 7, Two weeks 14, Habit formed 21, One month 30, 50, 75, The 100 club, 150 … One year 365, 500, Two years 730, Legend 1000): reached ones show the date, the next one a progress bar, the rest are locked; "Show all milestones". Share your streak.
+- "New milestone" pop-up: once, the first time your streak reaches a milestone higher than any celebrated before (kept per account on the phone; the first run after the update only remembers where you are, no pop-up for the past). It waits 3 s after the data loads.
+- Opened from the Streaks tab (Overall card) and the Overall box in the Home streaks card. The same "streak" as before: any day you log food, a workout, water, a check-in or a measurement.
+- Checked on web: a 9-day streak showed 9, "5 days to Two weeks", started Oct 18, 2/16, First spark reached Oct 20, One week Oct 24, and the One week pop-up. Test user deleted (0 left).
+- Files: src/app/day-streak.tsx, src/lib/streakMilestones.ts, src/components/streak/MilestoneUnlocked.tsx, _layout.tsx, progress/Streaks.tsx, home/InfoCards.tsx, Arabic strings. JS only (build 17 fingerprint). Not sent yet.
+
 ---
 
 

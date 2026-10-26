@@ -29,6 +29,7 @@ import { BalanceSheet } from '@/components/food/BalanceSheet';
 import { CaffeineSheet } from '@/components/food/CaffeineSheet';
 import { LogSheet } from '@/components/food/LogSheet';
 import { RingClosed } from '@/components/food/RingClosed';
+import { MilestoneUnlocked } from '@/components/streak/MilestoneUnlocked';
 import { CheckinSheet } from '@/components/health/CheckinSheet';
 import { FriendAlerts } from '@/components/FriendAlerts';
 import { NotifyBanner } from '@/components/NotifyBanner';
@@ -180,6 +181,7 @@ function AppStack({ ready }: { ready: boolean }) {
       <BalanceSheet />
       <CaffeineSheet />
       <RingClosed />
+      <MilestoneUnlocked />
       <CheckinSheet />
       <ReminderSync />
       <PushSync />
