@@ -229,29 +229,33 @@ function Found({ x, code, onFix }: { x: Product; code: string; onFix: () => void
             </Row>
           </View>
         ) : um === 'pcs' && piece ? (
-          <Row style={{ justifyContent: 'space-between', marginTop: 12 }}>
-            <Springy onPress={() => setPieceEdit(String(piece))} accessibilityRole="button" accessibilityLabel={t('Change what one piece weighs')} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Row gap={12} style={{ justifyContent: 'space-between', marginTop: 12 }}>
+            <Springy onPress={() => setPieceEdit(String(piece))} accessibilityRole="button" accessibilityLabel={t('Change what one piece weighs')} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Text variant="small" color="sec">
                 {t('1 piece = {n} {u}', { n: piece, u: t(x.unit) })}
               </Text>
               <Icon name="edit" size={14} color={c.link} />
             </Springy>
-            <Stepper bg={c.inset} minusDisabled={pc <= 1} onMinus={() => setPc(Math.max(1, pc - 1))} onPlus={() => setPc(pc + 1)} labels={[t('Less'), t('More')]}>
-              <Text num style={{ width: 34, textAlign: 'center' }}>
-                {pc}
-              </Text>
-            </Stepper>
+            <View style={{ width: 150 }}>
+              <Stepper bg={c.inset} minusDisabled={pc <= 1} onMinus={() => setPc(Math.max(1, pc - 1))} onPlus={() => setPc(pc + 1)} labels={[t('Less'), t('More')]}>
+                <Text num style={{ width: 34, textAlign: 'center' }}>
+                  {pc}
+                </Text>
+              </Stepper>
+            </View>
           </Row>
         ) : um === 'serving' ? (
-          <Row style={{ justifyContent: 'space-between', marginTop: 12 }}>
-            <Text variant="small" color="sec">
+          <Row gap={12} style={{ justifyContent: 'space-between', marginTop: 12 }}>
+            <Text variant="small" color="sec" style={{ flex: 1 }}>
               {t('1 serving = {n} {u}', { n: x.size, u: t(x.unit) })}
             </Text>
-            <Stepper bg={c.inset} minusDisabled={sv <= 0.5} onMinus={() => setSv(Math.max(0.5, sv - 0.5))} onPlus={() => setSv(sv + 0.5)} labels={[t('Less'), t('More')]}>
-              <Text num style={{ width: 34, textAlign: 'center' }}>
-                {sv}
-              </Text>
-            </Stepper>
+            <View style={{ width: 150 }}>
+              <Stepper bg={c.inset} minusDisabled={sv <= 0.5} onMinus={() => setSv(Math.max(0.5, sv - 0.5))} onPlus={() => setSv(sv + 0.5)} labels={[t('Less'), t('More')]}>
+                <Text num style={{ width: 34, textAlign: 'center' }}>
+                  {sv}
+                </Text>
+              </Stepper>
+            </View>
           </Row>
         ) : (
           <View>
@@ -575,26 +579,30 @@ function Manual({ code, offline, init }: { code?: string; offline: boolean; init
           }
         />
         {mode === 'pcs' && piece ? (
-          <Row style={{ justifyContent: 'space-between', marginTop: 12 }}>
-            <Text variant="small" color="sec">
+          <Row gap={12} style={{ justifyContent: 'space-between', marginTop: 12 }}>
+            <Text variant="small" color="sec" style={{ flex: 1 }}>
               {t('1 piece = {n} {u}', { n: piece, u })}
             </Text>
-            <Stepper bg={c.inset} minusDisabled={pc <= 1} onMinus={() => setPc(Math.max(1, pc - 1))} onPlus={() => setPc(pc + 1)} labels={[t('Less'), t('More')]}>
-              <Text num style={{ width: 34, textAlign: 'center' }}>
-                {pc}
-              </Text>
-            </Stepper>
+            <View style={{ width: 150 }}>
+              <Stepper bg={c.inset} minusDisabled={pc <= 1} onMinus={() => setPc(Math.max(1, pc - 1))} onPlus={() => setPc(pc + 1)} labels={[t('Less'), t('More')]}>
+                <Text num style={{ width: 34, textAlign: 'center' }}>
+                  {pc}
+                </Text>
+              </Stepper>
+            </View>
           </Row>
         ) : mode === 'serving' && canServing ? (
-          <Row style={{ justifyContent: 'space-between', marginTop: 12 }}>
-            <Text variant="small" color="sec">
+          <Row gap={12} style={{ justifyContent: 'space-between', marginTop: 12 }}>
+            <Text variant="small" color="sec" style={{ flex: 1 }}>
               {t('1 serving = {n} {u}', { n: size, u })}
             </Text>
-            <Stepper bg={c.inset} minusDisabled={sv <= 0.5} onMinus={() => setSv(Math.max(0.5, sv - 0.5))} onPlus={() => setSv(sv + 0.5)} labels={[t('Less'), t('More')]}>
-              <Text num style={{ width: 34, textAlign: 'center' }}>
-                {sv}
-              </Text>
-            </Stepper>
+            <View style={{ width: 150 }}>
+              <Stepper bg={c.inset} minusDisabled={sv <= 0.5} onMinus={() => setSv(Math.max(0.5, sv - 0.5))} onPlus={() => setSv(sv + 0.5)} labels={[t('Less'), t('More')]}>
+                <Text num style={{ width: 34, textAlign: 'center' }}>
+                  {sv}
+                </Text>
+              </Stepper>
+            </View>
           </Row>
         ) : (
           <Row gap={8} style={{ marginTop: 12 }}>
