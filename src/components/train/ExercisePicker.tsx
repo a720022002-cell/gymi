@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -119,33 +120,35 @@ export function ExercisePicker({
   const hurts = (e: DbExercise) => injuriesStrained(e, injuries ?? []);
   // Safe exercises first; ones that load an injury keep their order at the end.
   const safeFirst = (xs: DbExercise[]) => [...xs.filter((e) => !hurts(e).length), ...xs.filter((e) => hurts(e).length)];
-  const row = (e: DbExercise, i: number) => {
+  // Two squares a row: the exercise's picture, its name, then muscle and equipment.
+  const tile = (e: DbExercise) => {
     const hurt = hurts(e);
+    const img = e.images?.[0];
     return (
-    <Springy key={e.id} onPress={() => pick(e)} scaleTo={0.99} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 56, paddingVertical: 8, paddingHorizontal: 14, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
-      {isCustom(e.id) ? (
-        // Your own exercise: no picture, a plain mark instead.
-        <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name="train" size={16} color={c.sec} />
+      <Springy key={e.id} onPress={() => pick(e)} scaleTo={0.97} accessibilityRole="button" accessibilityLabel={dbExName(e, lang)} style={{ width: '48%', flexGrow: 1, marginBottom: 12 }}>
+        <View style={{ aspectRatio: 1, borderRadius: 20, overflow: 'hidden', backgroundColor: img ? '#FFFFFF' : c.inset, alignItems: 'center', justifyContent: 'center' }}>
+          {img ? <Image source={{ uri: img }} style={{ width: '100%', height: '100%' }} contentFit="cover" recyclingKey={e.id} transition={150} /> : <Icon name="train" size={30} color={c.sec} />}
+          <View style={{ position: 'absolute', top: 8, end: 8, width: 30, height: 30, borderRadius: 15, backgroundColor: c.cobalt, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name={replacing ? 'swap' : 'plus'} size={15} color="#FFFFFF" strokeWidth={2.4} />
+          </View>
+          {hurt.length ? (
+            <View style={{ position: 'absolute', bottom: 8, start: 8, end: 8, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: 'rgba(220,38,38,0.9)' }}>
+              <Text variant="xs" weight={700} color="#FFFFFF" numberOfLines={1}>
+                {t('May strain your injury: {x}', { x: hurt.map((x) => t(x)).join(t(', ')) })}
+              </Text>
+            </View>
+          ) : null}
         </View>
-      ) : null}
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text weight={700} numberOfLines={1}>
+        <Text weight={700} numberOfLines={2} style={{ marginTop: 8, marginHorizontal: 2 }}>
           {dbExName(e, lang)}
         </Text>
-        <Text variant="xs" color="sec" numberOfLines={1}>
-          {[muscleLabel(exMuscle(e.id, e.muscle, e.muscles), lang, t), t(e.equipment), e.machines?.[0] ? (lang === 'ar' ? e.machines[0][1] : e.machines[0][0]) : null].filter(Boolean).join(t(', '))}
+        <Text variant="xs" color="sec" numberOfLines={1} style={{ marginHorizontal: 2 }}>
+          {[muscleLabel(exMuscle(e.id, e.muscle, e.muscles), lang, t), t(e.equipment)].filter(Boolean).join(t(', '))}
         </Text>
-        {hurt.length ? (
-          <Text variant="xs" weight={700} color="down" numberOfLines={1}>
-            {t('May strain your injury: {x}', { x: hurt.map((x) => t(x)).join(t(', ')) })}
-          </Text>
-        ) : null}
-      </View>
-      <Icon name={replacing ? 'swap' : 'plus'} size={18} color={c.cobalt} strokeWidth={2.2} />
-    </Springy>
+      </Springy>
     );
   };
+  const grid = (xs: DbExercise[]) => <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 12 }}>{xs.map(tile)}</View>;
 
   if (own)
     return (
@@ -171,7 +174,7 @@ export function ExercisePicker({
           {!sim ? (
             <ActivityIndicator color={c.cobalt} style={{ marginTop: 30 }} />
           ) : sim.length ? (
-            <View style={{ backgroundColor: 'rgba(127,127,135,0.1)', borderRadius: 22, overflow: 'hidden' }}>{sim.map(row)}</View>
+            grid(sim)
           ) : (
             <Text color="sec" center style={{ marginTop: 30 }}>
               {t('No exercises match.')}
@@ -207,9 +210,7 @@ export function ExercisePicker({
         {loading && !list.length ? (
           <ActivityIndicator color={c.cobalt} style={{ marginTop: 30 }} />
         ) : list.length ? (
-          <View style={{ backgroundColor: 'rgba(127,127,135,0.1)', borderRadius: 22, overflow: 'hidden' }}>
-            {list.map(row)}
-          </View>
+          grid(list)
         ) : (
           <Text color="sec" center style={{ marginTop: 30 }}>
             {t('No exercises match.')}

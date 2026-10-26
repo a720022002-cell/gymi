@@ -559,6 +559,12 @@ Passwords and keys are left out on purpose.
 - Checked: 84 kg × 12 on 10–12 → next set 86.5 kg; then 86.5 × 9 → stays 86.5.
 - Files: src/lib/activeWorkout.ts (logSet takes the coach's history and step), src/app/active.tsx, src/components/WorkoutLive.tsx. JS only. Not sent yet.
 
+## Approved: exercise picker grid, Day streak on (26 Oct 2026)
+
+- Exercise picker (Replace / Add exercise): two squares a row with the exercise's photo, a cobalt swap (or +) badge, name, muscle and equipment; a red strip when it may strain an injury. Used for "same muscle" and the full search. File: src/components/train/ExercisePicker.tsx.
+- Day streak page and its milestone pop-up turned on (STREAK_PAGE = true in src/lib/config.ts).
+- JS only. Not sent yet.
+
 ---
 
 
