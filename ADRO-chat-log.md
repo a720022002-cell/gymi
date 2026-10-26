@@ -451,12 +451,14 @@ Passwords and keys are left out on purpose.
 - Done: the meal you pick yourself (the chips in Log food or search, a meal card, or the meal on a result) is remembered for that day and kept on the phone, so it survives closing the app. Opening Log food again starts on it. A new day starts fresh: the meal for the time of day (today) or the first empty main meal (an earlier day).
 - File: src/lib/food.tsx. JS only. Not sent yet.
 
-## Rings: changed on an earlier day (26 Oct 2026)
+## Rings on an earlier day: Recovery and Commitment show too (26 Oct 2026)
 
-- Ask: changed the rings while looking at yesterday, and the change didn't show.
-- Found (web test): the rings are one setting for every day and do save; today showed Calories, Commitment and Recovery. But an earlier day can't show Recovery or Commitment (they're about today), so yesterday's card stayed on Calories alone with no word why.
-- Done: on an earlier day "Your rings" says Recovery and Commitment only show on today's Home, marks them "Shows on today only", and adding one there says "Added. It shows on today's Home."
-- File: src/components/home/RingPickSheet.tsx (+3 Arabic strings). JS only. Not sent yet.
+- Ask: changed the rings while looking at yesterday and they didn't show; then "can't you make them show on yesterday?"
+- Found (web test): the rings are one setting and saved fine, but an earlier day hid Recovery and Commitment, so yesterday stayed on Calories alone.
+- Done: every ring now shows on an earlier day with that day's value. Recovery uses that day's check-in or watch sleep, training load up to that day, that day's protein and water, and the watch's HRV and resting heart rate (recovery tools count for today only). Commitment is the 7 days up to that day ("Last 7 days"). The "today only" note added earlier was taken back out.
+- Also fixed: coming back to today from an earlier day could pop up "Goal hit!" with the earlier day's calories. The celebration now waits until today's own food is loaded.
+- Checked on web: Oct 25 showed Commitment 69% (last 7 days) and Recovery 60% (5 h sleep); today showed 77% and 93% (8 h sleep), and no popup. Test user deleted (0 left).
+- Files: src/components/train/RecoveryCard.tsx, src/components/home/metrics.ts, src/components/home/MainCard.tsx, src/components/food/RingClosed.tsx, +1 Arabic string. JS only. Not sent yet.
 
 ---
 

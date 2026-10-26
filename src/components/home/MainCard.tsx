@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { RCOL, useDayRings, useMetrics } from '@/components/home/metrics';
+import { RCOL, useDayCommit, useDayRings, useMetrics } from '@/components/home/metrics';
 import { RingPickSheet } from '@/components/home/RingPickSheet';
 import { Icon } from '@/components/Icon';
 import { Ring } from '@/components/Ring';
@@ -22,7 +22,6 @@ import { useTrain } from '@/lib/train';
 import { useCardioWeek } from '@/lib/useCardioWeek';
 import { forReadiness } from '@/lib/cardioPlan';
 import { fx } from '@/lib/progress';
-import { useStreaks } from '@/lib/useProgress';
 import { fmt } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
 
@@ -124,8 +123,8 @@ function HeroCard({ k, sw }: { k: RingKey; sw: React.ReactNode }) {
   const { session } = useAuth();
   const STEP_GOAL = useStepGoal(session?.user.id);
   const train = useTrain();
-  const s = useStreaks();
-  const { r } = useRecovery();
+  const { r } = useRecovery(food.day);
+  const cm = useDayCommit();
   const cw = useCardioWeek();
   const m = useMetrics()[k];
   const wGoal = food.waterGoal;
@@ -197,8 +196,8 @@ function HeroCard({ k, sw }: { k: RingKey; sw: React.ReactNode }) {
       action = <Button small kind="glass" icon="run" title={t('Start {sport} · {n} min', { sport: t(SPORT_LABEL[s.sport]), n: s.min })} style={{ marginTop: 12, alignSelf: 'center' }} onPress={() => startCardio(s)} />;
     }
   } else if (k === 'commit') {
-    unit = t('commitment this week');
-    const p = s.c7.parts;
+    unit = t(food.isToday ? 'commitment this week' : 'commitment, last 7 days');
+    const p = cm.parts;
     stats = [
       [`${p.work[0]}/${p.work[1]}`, t('Workouts')],
       [`${p.cal[0]}/${p.cal[1]}`, t('Calories')],

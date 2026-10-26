@@ -77,30 +77,35 @@ function useLoggedCardio(userId: string | undefined, today: string, refresh: unk
 }
 
 /** Everything the recovery score needs, from food, training and the watch. */
-export function useRecovery() {
+export function useRecovery(day?: string) {
   const train = useTrain();
   const food = useFood();
   const { session, profile } = useAuth();
   const devices = useDevices(session?.user.id);
+  // Today unless asked for an earlier day (Home looking back): that day's sleep, check-in, load and watch.
+  const on = day && day < train.today ? day : train.today;
+  const isToday = on === train.today;
   // Refetched when today's cardio changes (logged or deleted).
-  const logged = useLoggedCardio(session?.user.id, train.today, food.isToday ? food.cardio.length : -1);
-  const watchCardio = watchCardioLoad(devices.days, train.today, profile?.date_of_birth, profile?.gender === 'female');
+  const logged = useLoggedCardio(session?.user.id, on, isToday && food.isToday ? food.cardio.length : -1);
+  const watchCardio = watchCardioLoad(devices.days, on, profile?.date_of_birth, profile?.gender === 'female');
   // A day the watch recorded cardio uses the watch's, so the same run isn't counted twice.
   const watchDays = new Set(watchCardio.map((x) => x.day));
-  const { todayCheckin: ci, days } = useHealth();
+  const { todayCheckin, checkins, days } = useHealth();
+  const ci = isToday ? todayCheckin : (checkins.find((x) => x.day === on) ?? null);
   // Sleep you logged wins; otherwise last night's sleep from your watch.
-  const watchSleep = devices.days.find((d) => d.day === train.today)?.sleep_h ?? null;
+  const watchSleep = devices.days.find((d) => d.day === on)?.sleep_h ?? null;
   const sleep = ci?.sleep_h ?? watchSleep;
   const input = {
-    today: train.today,
-    checkin: ci || sleep != null ? { day: train.today, sleep, sore: ci?.sore ?? null, energy: ci?.energy ?? null } : null,
+    today: on,
+    checkin: ci || sleep != null ? { day: on, sleep, sore: ci?.sore ?? null, energy: ci?.energy ?? null } : null,
     logs: train.logs,
     // From the day totals, so looking at another day on the Food page doesn't change it.
-    protein: food.setupDone ? { eaten: days[train.today]?.p ?? 0, yesterday: days[addDays(train.today, -1)]?.p ?? null, target: food.target.p } : null,
+    protein: food.setupDone ? { eaten: days[on]?.p ?? 0, yesterday: days[addDays(on, -1)]?.p ?? null, target: food.target.p } : null,
     // Today's water, even when the Food page is showing another day.
-    water: { ml: food.isToday ? food.water : (days[food.today]?.w ?? 0), goal: food.waterGoal },
-    tools: train.recTools,
-    body: watchBody(devices.days, train.today),
+    water: { ml: isToday ? (food.isToday ? food.water : (days[food.today]?.w ?? 0)) : (days[on]?.w ?? 0), goal: food.waterGoal },
+    // Recovery tools are kept for today only.
+    tools: isToday ? train.recTools : [],
+    body: watchBody(devices.days, on),
     cardio: [...watchCardio, ...logged.filter((x) => !watchDays.has(x.day))],
   };
   return { input, r: recovery(input), watchSleep };

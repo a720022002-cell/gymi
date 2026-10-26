@@ -1,13 +1,12 @@
 import { Pressable, View } from 'react-native';
 
-import { DAY_RINGS, RCOL } from '@/components/home/metrics';
+import { RCOL } from '@/components/home/metrics';
 import { Icon } from '@/components/Icon';
 import { Sheet } from '@/components/Sheet';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button } from '@/components/ui';
 import { useT } from '@/i18n';
-import { useFood } from '@/lib/food';
 import { RING_INFO, RING_NAMES, RINGS, type RingKey, useHomeLayout } from '@/lib/homeLayout';
 import { useSettings } from '@/theme/settings';
 
@@ -17,9 +16,6 @@ export function RingPickSheet({ open, onClose }: { open: boolean; onClose: () =>
   const { colors: c } = useSettings();
   const toast = useToast();
   const [l, save] = useHomeLayout();
-  // Your rings are the same every day, but an earlier day can't show Recovery or Commitment (they're about today).
-  const past = !useFood().isToday;
-  const todayOnly = (k: RingKey) => past && !DAY_RINGS.includes(k);
   const sel = l.rings;
   const cols = RCOL(c);
   const rest = RINGS.filter((k) => !sel.includes(k));
@@ -31,7 +27,6 @@ export function RingPickSheet({ open, onClose }: { open: boolean; onClose: () =>
     }
     if (sel.length >= 3) return toast(t('You can show 3 rings. Remove one first.'), { icon: 'info' });
     set([...sel, k]);
-    if (todayOnly(k)) toast(t('Added. It shows on today’s Home.'), { icon: 'check' });
   };
   const up = (i: number) => {
     if (!i) return;
@@ -48,11 +43,6 @@ export function RingPickSheet({ open, onClose }: { open: boolean; onClose: () =>
       <Text variant="xs" color="sec" style={{ marginTop: 2, marginBottom: 12 }}>
         {sel.length === 1 ? t('One ring shows big on Home.') : t('They show inside each other. Number 1 is the outside ring.')}
       </Text>
-      {past ? (
-        <Text variant="xs" color="sec" style={{ marginTop: -6, marginBottom: 12 }}>
-          {t('This is an earlier day, so Recovery and Commitment only show on today’s Home.')}
-        </Text>
-      ) : null}
       <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden', marginBottom: 12 }}>
         {[0, 1, 2].map((i) => {
           const k = sel[i];
@@ -73,14 +63,9 @@ export function RingPickSheet({ open, onClose }: { open: boolean; onClose: () =>
                 <Text variant="xs" weight={700} color="#FFFFFF">{`${i + 1}`}</Text>
               </View>
               <Icon name={RING_INFO[k].icon} size={16} />
-              <View style={{ flex: 1 }}>
-                <Text weight={700}>{t(RING_NAMES[k])}</Text>
-                {todayOnly(k) ? (
-                  <Text variant="xs" color="sec">
-                    {t('Shows on today only')}
-                  </Text>
-                ) : null}
-              </View>
+              <Text weight={700} style={{ flex: 1 }}>
+                {t(RING_NAMES[k])}
+              </Text>
               <Pressable onPress={() => up(i)} disabled={!i} accessibilityLabel={t('Move up')} style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center', opacity: i ? 1 : 0.3 }}>
                 <Icon name="up" size={14} strokeWidth={2.2} />
               </Pressable>
@@ -101,7 +86,7 @@ export function RingPickSheet({ open, onClose }: { open: boolean; onClose: () =>
             <View style={{ flex: 1 }}>
               <Text weight={700}>{t(RING_NAMES[k])}</Text>
               <Text variant="xs" color="sec">
-                {todayOnly(k) ? `${t(RING_INFO[k].desc)}. ${t('Shows on today only')}` : t(RING_INFO[k].desc)}
+                {t(RING_INFO[k].desc)}
               </Text>
             </View>
             <Icon name="plus" size={18} color={c.cobalt} strokeWidth={2.4} />

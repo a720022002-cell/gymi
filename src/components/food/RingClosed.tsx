@@ -25,12 +25,16 @@ export function RingClosed() {
   const food = useFood();
   const max = food.dayGoal(food.today) + food.burned;
   const eaten = Math.round(food.eaten.k);
-  const now = food.ready && food.setupDone && food.isToday && hit(eaten, max);
+  // Only while today's own food is loaded: just after coming back from an earlier day, the numbers on hand are still
+  // that day's, and they must not count as closing today's ring.
+  const live = food.ready && food.setupDone && food.isToday && food.loadedDay === food.today;
+  const now = live && hit(eaten, max);
   const [show, setShow] = useState<{ k: number; p: boolean; cheer: string } | null>(null);
   // Only a change counts (logging the meal that closes it), not opening the app on a day that's already closed.
   const prev = useRef<{ day: string; on: boolean } | null>(null);
 
   useEffect(() => {
+    if (!live) return;
     const day = food.today;
     const before = prev.current?.day === day ? prev.current.on : null;
     prev.current = { day, on: now };
@@ -43,7 +47,7 @@ export function RingClosed() {
         AsyncStorage.setItem(KEY, day).catch(() => {});
         setShow({ k: eaten, p: pOk, cheer: CHEERS[Math.floor(Math.random() * CHEERS.length)] });
       });
-  }, [now, food.today, eaten, food.eaten.p, food.target.p]);
+  }, [live, now, food.today, eaten, food.eaten.p, food.target.p]);
 
   if (!show) return null;
   return <Celebration k={show.k} goal={max} protein={show.p} cheer={t(show.cheer)} onClose={() => setShow(null)} />;
