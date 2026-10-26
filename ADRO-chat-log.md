@@ -499,6 +499,7 @@ Passwords and keys are left out on purpose.
 - Likely cause: the scanner opened by itself right away, while Log food's sheet was still closing, so it ended up hidden behind the screen and took the taps.
 - Fix: it now opens after the screen has finished opening (after interactions + 0.5 s); any half-open scanner is closed before a new one opens; Log food opens the next screen only after its sheet has closed (afterSheet).
 - Files: src/app/barcode.tsx, src/components/food/LogSheet.tsx. Not tested on a phone yet.
+- Sent to build 15 as OTA efd34ecc, published from commit 981db07 (the last OTA) + only this fix, because main now has the native document scanner (new fingerprint).
 
 ---
 
