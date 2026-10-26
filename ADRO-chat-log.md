@@ -451,6 +451,13 @@ Passwords and keys are left out on purpose.
 - Done: the meal you pick yourself (the chips in Log food or search, a meal card, or the meal on a result) is remembered for that day and kept on the phone, so it survives closing the app. Opening Log food again starts on it. A new day starts fresh: the meal for the time of day (today) or the first empty main meal (an earlier day).
 - File: src/lib/food.tsx. JS only. Not sent yet.
 
+## Rings: changed on an earlier day (26 Oct 2026)
+
+- Ask: changed the rings while looking at yesterday, and the change didn't show.
+- Found (web test): the rings are one setting for every day and do save; today showed Calories, Commitment and Recovery. But an earlier day can't show Recovery or Commitment (they're about today), so yesterday's card stayed on Calories alone with no word why.
+- Done: on an earlier day "Your rings" says Recovery and Commitment only show on today's Home, marks them "Shows on today only", and adding one there says "Added. It shows on today's Home."
+- File: src/components/home/RingPickSheet.tsx (+3 Arabic strings). JS only. Not sent yet.
+
 ---
 
 

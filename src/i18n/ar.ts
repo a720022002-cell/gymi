@@ -5022,4 +5022,7 @@ export const AR: Record<string, string> = {
   "Open the scanner": "افتح الماسح",
   "Point at the barcode, near or far. Pinch to zoom if it’s small.": "وجّه الكاميرا على الباركود، من قريب أو بعيد. قرّب بإصبعين إذا كان صغير.",
   "I couldn’t work that out. Try again.": "ما قدرت أحسبها. جرّب مرة ثانية.",
+  "Added. It shows on today’s Home.": "انضافت. تظهر في رئيسية اليوم.",
+  "This is an earlier day, so Recovery and Commitment only show on today’s Home.": "هذا يوم سابق، فالاستشفاء والالتزام يظهرون بس في رئيسية اليوم.",
+  "Shows on today only": "تظهر في اليوم الحالي بس",
 };
