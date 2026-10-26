@@ -5099,4 +5099,5 @@ export const AR: Record<string, string> = {
   "Results": "النتائج",
   "All A–Z": "الكل من أ إلى ي",
   "No sport matches “{q}”": "ما فيه رياضة باسم «{q}»",
+  "Next: {x}": "التالي: {x}",
 };

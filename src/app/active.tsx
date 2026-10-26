@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { type ComponentProps, useEffect, useMemo, useRef, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Glass } from '@/components/Glass';
@@ -36,6 +36,9 @@ const digits = (v: string, dec: boolean) => {
 type W = ReturnType<typeof useWeight>;
 
 /** The workout in progress (design: active). */
+/** A rest of `sec` seconds starting now. */
+const restOf = (sec: number): Rest => ({ end: Date.now() + sec * 1000, total: sec });
+
 export default function Active() {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
@@ -76,6 +79,13 @@ export default function Active() {
     [s, train.logs, train.plan, W, lang, t],
   );
 
+  // One exercise a page: the one you picked in the tabs on top, else the first with sets still to do.
+  const [pageSel, setPageSel] = useState<number | null>(null);
+  const tabsRef = useRef<ScrollView>(null);
+  const tabX = useRef<Record<number, number>>({});
+  // Where a swipe across the page started (left/right goes to the next or previous exercise).
+  const touch = useRef<{ x: number; y: number } | null>(null);
+
   if (!s)
     return (
       <Screen title={t('Workout')} back>
@@ -89,6 +99,16 @@ export default function Active() {
   // Only working sets make a workout: warm-ups alone don't save a log, mark the day done or raise the streak.
   const workDone = s.ex.reduce((a, x) => a + x.sets.filter((y) => y.done && !y.warm).length, 0);
 
+  const exDone = (x: SessionEx) => x.sets.length > 0 && x.sets.every((y) => y.done);
+  const firstOpen = Math.max(0, s.ex.findIndex((x) => !exDone(x)));
+  const page = Math.min(s.ex.length - 1, Math.max(0, pageSel ?? firstOpen));
+  const goPage = (i: number) => {
+    if (i < 0 || i >= s.ex.length) return;
+    setNoteAt(null);
+    setPageSel(i);
+    tabsRef.current?.scrollTo({ x: Math.max(0, (tabX.current[i] ?? 0) - 20), animated: true });
+  };
+
   const update = (fn: (x: Session) => Session) => train.setSession(fn(s));
   // Change the order mid-workout: move an exercise up or down (its sets go with it).
   const move = (ei: number, d: -1 | 1) => {
@@ -100,6 +120,8 @@ export default function Active() {
       [ex[ei], ex[j]] = [ex[j], ex[ei]];
       return { ...x, ex };
     });
+    // The page follows the exercise you moved.
+    if (ei + d >= 0 && ei + d < s.ex.length) setPageSel(ei + d);
   };
   // Water you drink while training goes to today's water.
   const drink = async (ml: number) => {
@@ -145,8 +167,14 @@ export default function Active() {
       return;
     }
     train.setSession(next);
-    if (restFor) setRest({ end: Date.now() + restFor * 1000, total: restFor });
+    if (restFor) setRest(restOf(restFor));
     else toast(t('All sets done. Tap Finish.'), { ai: true });
+    // This exercise is done: on to the next one with sets to do (its tab turns green).
+    if (exDone(next.ex[ei])) {
+      const after = next.ex.findIndex((x, i) => i > ei && !exDone(x));
+      const any = after >= 0 ? after : next.ex.findIndex((x) => !exDone(x));
+      if (any >= 0) setTimeout(() => goPage(any), 600);
+    }
   };
 
   // Put another exercise in place of this one. Finished sets stay with the old exercise; the rest move to the new one.
@@ -219,8 +247,56 @@ export default function Active() {
           <Elapsed start={s.start} />
         </Row>
         <Bar value={dn} max={tot} color={c.cobalt} />
-        <View style={{ height: 14 }} />
+        {/* Your exercises: tap one to go to it. A green check once all its sets are done. */}
+        <ScrollView
+          ref={tabsRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ flexGrow: 0, marginHorizontal: -20, marginTop: 14, marginBottom: 12 }}
+          contentContainerStyle={{ gap: 8, paddingHorizontal: 20 }}>
+          {s.ex.map((x, i) => {
+            const on = i === page;
+            const done = exDone(x);
+            return (
+              <Springy
+                key={`${x.id}-${i}`}
+                onPress={() => goPage(i)}
+                onLayout={(e) => (tabX.current[i] = e.nativeEvent.layout.x)}
+                scaleTo={0.96}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: on }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 8, height: 40, paddingStart: 6, paddingEnd: 14, borderRadius: 20, backgroundColor: on ? c.text : c.card }}>
+                <View style={[{ width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }, done ? { backgroundColor: c.up } : { borderWidth: 2, borderColor: on ? c.cobalt : c.line }]}>
+                  {done ? (
+                    <Icon name="check" size={14} color="#FFFFFF" strokeWidth={3} />
+                  ) : (
+                    <Text num size={12} color={on ? c.cobalt : 'sec'}>
+                      {i + 1}
+                    </Text>
+                  )}
+                </View>
+                <Text weight={700} size={14} color={on ? c.bg : c.text} numberOfLines={1}>
+                  {exInfo(x, lang).name}
+                </Text>
+              </Springy>
+            );
+          })}
+        </ScrollView>
+        <View
+          onTouchStart={(e) => (touch.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY })}
+          onTouchEnd={(e) => {
+            const st = touch.current;
+            touch.current = null;
+            if (!st) return;
+            const dx = e.nativeEvent.pageX - st.x;
+            const dy = e.nativeEvent.pageY - st.y;
+            if (Math.abs(dx) < 70 || Math.abs(dx) < 2 * Math.abs(dy)) return;
+            // Swipe left for the next one (right in Arabic, where the page reads the other way).
+            const fwd = lang === 'ar' ? dx > 0 : dx < 0;
+            goPage(page + (fwd ? 1 : -1));
+          }}>
         {s.ex.map((x, ei) => {
+          if (ei !== page) return null;
           const info = exInfo(x, lang);
           const a = perEx[ei]?.arrow;
           const mach = info.mach[train.plan?.machines[x.id] ?? 0];
@@ -421,6 +497,16 @@ export default function Active() {
             </Card>
           );
         })}
+        </View>
+        {page < s.ex.length - 1 ? (
+          <Button title={t('Next: {x}', { x: exInfo(s.ex[page + 1], lang).name })} style={{ marginBottom: 4 }} onPress={() => goPage(page + 1)} />
+        ) : null}
+        {/* Which page you're on; green ones are done. */}
+        <Row gap={6} style={{ justifyContent: 'center', marginTop: 10, marginBottom: 14 }}>
+          {s.ex.map((x, i) => (
+            <View key={i} style={{ width: i === page ? 20 : 7, height: 7, borderRadius: 4, backgroundColor: i === page ? c.text : exDone(x) ? c.up : c.line }} />
+          ))}
+        </Row>
         <Card onPress={() => router.push({ pathname: '/machine', params: { live: '1' } })} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
             <Icon name="camera" size={20} color={c.cobalt} />

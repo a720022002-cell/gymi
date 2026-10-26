@@ -565,6 +565,13 @@ Passwords and keys are left out on purpose.
 - Day streak page and its milestone pop-up turned on (STREAK_PAGE = true in src/lib/config.ts).
 - JS only. Not sent yet.
 
+## Workout screen: one exercise a page, tabs on top (26 Oct 2026)
+
+- Approved design: the exercises as tabs under the progress bar (number in a circle, white pill for the one you're on, a green check once all its sets are done); one exercise per page; swipe left/right (reversed in Arabic) or tap a tab; "Next: {exercise}" under the card; page dots (green = done).
+- When the last set of an exercise is checked, it moves on to the next exercise with sets to do (0.6 s later). Moving an exercise up/down takes the page with it.
+- Checked on web: 3 of 3 sets on Barbell row → page moved to Lat pulldown, first dot green. Test user deleted (0 left).
+- File: src/app/active.tsx (+1 Arabic string). JS only. Not sent yet.
+
 ---
 
 
