@@ -531,6 +531,7 @@ Passwords and keys are left out on purpose.
 - Opened from the Streaks tab (Overall card) and the Overall box in the Home streaks card. The same "streak" as before: any day you log food, a workout, water, a check-in or a measurement.
 - Checked on web: a 9-day streak showed 9, "5 days to Two weeks", started Oct 18, 2/16, First spark reached Oct 20, One week Oct 24, and the One week pop-up. Test user deleted (0 left).
 - Files: src/app/day-streak.tsx, src/lib/streakMilestones.ts, src/components/streak/MilestoneUnlocked.tsx, _layout.tsx, progress/Streaks.tsx, home/InfoCards.tsx, Arabic strings. JS only (build 17 fingerprint). Not sent yet.
+- ON HOLD (owner wants to review): `STREAK_PAGE = false` in src/lib/config.ts hides the links and the pop-up, so an OTA can go out without it. Preview sent as Adro-day-streak-preview.pdf. To turn it on: set STREAK_PAGE to true.
 
 ---
 

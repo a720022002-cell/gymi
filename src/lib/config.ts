@@ -7,5 +7,8 @@
  */
 export const EMAIL_CODES = true;
 
+/** Day streak page and its milestone pop-up: on hold until the owner signs off on the design (screen at /day-streak). */
+export const STREAK_PAGE = false;
+
 /** Where email links send people back to (this website). */
 export const siteUrl = () => (typeof window !== 'undefined' && window.location ? window.location.origin : 'https://adroapp.com');

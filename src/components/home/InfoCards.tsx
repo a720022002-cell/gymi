@@ -14,6 +14,7 @@ import { useT } from '@/i18n';
 import { allergensIn, noteHit } from '@/lib/allergies';
 import { healthFoodTips } from '@/lib/bloodFood';
 import { useFood } from '@/lib/food';
+import { STREAK_PAGE } from '@/lib/config';
 import { useHealth } from '@/lib/health';
 import { fx } from '@/lib/progress';
 import { useStreaks } from '@/lib/useProgress';
@@ -151,7 +152,7 @@ export function StreaksCard() {
         <Icon name="chev" size={18} color={c.sec} />
       </Row>
       <Row gap={8}>
-        <Pressable style={{ flex: 1 }} accessibilityRole="button" onPress={() => router.push('/day-streak')}>
+        <Pressable style={{ flex: 1 }} accessibilityRole="button" disabled={!STREAK_PAGE} onPress={() => router.push('/day-streak')}>
           {box('o', s.overall, s.best, 'flame', t('{n} days', { n: s.overall }), t('Overall'))}
         </Pressable>
         {box('w', s.workouts, s.bestWorkouts, 'train', String(s.workouts), t('Workouts in a row'))}
