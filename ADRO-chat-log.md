@@ -443,13 +443,13 @@ Passwords and keys are left out on purpose.
 
 - Ask: keep only "Add an ingredient" and have it open the same look as Log food, so the screens match.
 - Done: the "Scan a barcode" button is gone. "Add an ingredient" opens a new sheet built like Log food: search, Meal photo (AI lists the ingredients and adds them all), Scan barcode, Label photo (adds the product per 100 g, one serving), Saved meals (adds another saved meal's ingredients), Choose from photos, and Type what you ate (AI). Everything is added to the meal, not logged. Grams can be changed in the list as before.
-- Files: src/components/food/AddIngredientSheet.tsx (new), src/app/saved-meals.tsx, +1 Arabic string. Checked on web: sheet, saved meals, search. JS only. Not sent yet.
+- Files: src/components/food/AddIngredientSheet.tsx (new), src/app/saved-meals.tsx, +1 Arabic string. Checked on web: sheet, saved meals, search. JS only. Sent as OTA ddb8b38d (build 15).
 
 ## Log food: keep the meal you picked (26 Oct 2026)
 
 - Ask: pick Lunch on the first add, and the next adds stay Lunch; pick Dinner later, and it goes to Dinner.
 - Done: the meal you pick yourself (the chips in Log food or search, a meal card, or the meal on a result) is remembered for that day and kept on the phone, so it survives closing the app. Opening Log food again starts on it. A new day starts fresh: the meal for the time of day (today) or the first empty main meal (an earlier day).
-- File: src/lib/food.tsx. JS only. Not sent yet.
+- File: src/lib/food.tsx. JS only. Sent as OTA ddb8b38d (build 15).
 
 ## Rings on an earlier day: Recovery and Commitment show too (26 Oct 2026)
 
@@ -458,7 +458,7 @@ Passwords and keys are left out on purpose.
 - Done: every ring now shows on an earlier day with that day's value. Recovery uses that day's check-in or watch sleep, training load up to that day, that day's protein and water, and the watch's HRV and resting heart rate (recovery tools count for today only). Commitment is the 7 days up to that day ("Last 7 days"). The "today only" note added earlier was taken back out.
 - Also fixed: coming back to today from an earlier day could pop up "Goal hit!" with the earlier day's calories. The celebration now waits until today's own food is loaded.
 - Checked on web: Oct 25 showed Commitment 69% (last 7 days) and Recovery 60% (5 h sleep); today showed 77% and 93% (8 h sleep), and no popup. Test user deleted (0 left).
-- Files: src/components/train/RecoveryCard.tsx, src/components/home/metrics.ts, src/components/home/MainCard.tsx, src/components/food/RingClosed.tsx, +1 Arabic string. JS only. Not sent yet.
+- Files: src/components/train/RecoveryCard.tsx, src/components/home/metrics.ts, src/components/home/MainCard.tsx, src/components/food/RingClosed.tsx, +1 Arabic string. JS only. Sent as OTA ddb8b38d (build 15).
 
 ## Barcode: count in pieces (26 Oct 2026)
 
@@ -468,7 +468,7 @@ Passwords and keys are left out on purpose.
 - How much: a "Pieces" option (first, when the product has pieces) with a stepper; logged as "Name, 3 pcs".
 - Scanning it again: it starts on Pieces. Open Food Facts products get pieces too when their serving reads like "2 biscuits (25 g)".
 - Checked on web: saved piece_g 15, logged "Test dates, 3 pcs" 225 kcal (3 × 15 g at 500 kcal/100 g), and the rescan opened on Pieces. Test product and user deleted (0 left).
-- Files: src/app/product.tsx, src/lib/products.ts, src/lib/foodsDb.ts, +6 Arabic strings. JS only for the app. Not sent yet.
+- Files: src/app/product.tsx, src/lib/products.ts, src/lib/foodsDb.ts, +6 Arabic strings. JS only for the app. Sent as OTA ddb8b38d (build 15).
 
 ## Barcode: change what one piece weighs (26 Oct 2026)
 
@@ -476,7 +476,7 @@ Passwords and keys are left out on purpose.
 - New product form: next to "Pieces in one serving" there's now "One piece weighs" (g/ml). Type either; the other follows from the serving size. With the label "per 100", the piece weight alone is enough.
 - Product screen: tap "1 piece = 15 g ✎" to change it, or "Count it in pieces" on a product without pieces. It's saved as your own copy of the product (like fixing its numbers), so your next scan uses it.
 - Checked on web: typed 12 g a piece (540 kcal/100 g) → 65 kcal a piece; changed it to 20 g on the product screen → saved, rescan showed 108 kcal a piece. Test product and user deleted (0 left).
-- File: src/app/product.tsx, +7 Arabic strings. JS only. Not sent yet.
+- File: src/app/product.tsx, +7 Arabic strings. JS only. Sent as OTA ddb8b38d (build 15).
 
 ---
 
