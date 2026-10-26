@@ -509,6 +509,12 @@ Passwords and keys are left out on purpose.
 - Native code, so it needs the new build; the fingerprint changed again (3f4057e… → ab304eb…). The iPhone and web JS bundles build; the Swift is checked by the EAS build.
 - Files: modules/adro-scanner/{package.json, expo-module.config.json, index.ts, ios/AdroScanner.podspec, ios/AdroScannerModule.swift}, src/app/barcode.tsx.
 
+## Build 17 (26 Oct 2026)
+
+- Build 16 failed at "Configure expo-updates": `.gitignore` had `ios/`, which also hid modules/adro-scanner/ios, so the Swift never reached EAS (runtime mismatch). Fixed to `/ios/` and `/android/`; the module files are committed.
+- Build 17 (f5acf278) finished and was sent to App Store Connect (auto-submit). Runtime 6e1d9a57…, same as the local fingerprint, so OTAs from here reach build 17.
+- In it: Apple's scanner inside the barcode screen, Apple's document scanner for label photos, our own meal camera, and everything sent before.
+
 ---
 
 
