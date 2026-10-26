@@ -10,7 +10,7 @@ import { canListen, listen } from '@/lib/speech';
 import { useSettings } from '@/theme/settings';
 
 import { Icon, type IconName } from '../Icon';
-import { Sheet } from '../Sheet';
+import { afterSheet, Sheet } from '../Sheet';
 import { fontFor, Text } from '../Text';
 import { Button, Chip, Row, Springy } from '../ui';
 import { MealPick } from './MealPick';
@@ -40,7 +40,8 @@ export function LogSheet() {
   };
   const go = (path: '/food-search' | '/barcode' | '/saved-meals' | '/recipe-import') => {
     close();
-    setTimeout(() => router.push(path), 200);
+    // After the sheet has closed: iOS shows one modal at a time, and the next screen may open one (the scanner).
+    afterSheet(() => router.push(path));
   };
   /** Open the camera now (it must start from the tap), then read the photo on the next screen. Cancel offers the gallery. */
   const photo = async (path: '/meal-result' | '/label-result', camera = true) => {

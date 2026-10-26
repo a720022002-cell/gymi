@@ -493,6 +493,13 @@ Passwords and keys are left out on purpose.
 - Used from Log food (Meal photo), Retake on the meal result, and Add an ingredient (the foods come back to the meal you're making). The web keeps the old file picker.
 - Files: src/app/meal-camera.tsx (new), src/lib/photo(.native).ts (photoFromUri), src/lib/pending.ts, LogSheet, AddIngredientSheet, saved-meals.tsx, meal-result.tsx, +2 Arabic strings. Goes with the next build.
 
+## Barcode: Apple's scanner got stuck (26 Oct 2026)
+
+- Report: the barcode screen tries to open the scanner, then hangs and its buttons stop working (camera dot stays on).
+- Likely cause: the scanner opened by itself right away, while Log food's sheet was still closing, so it ended up hidden behind the screen and took the taps.
+- Fix: it now opens after the screen has finished opening (after interactions + 0.5 s); any half-open scanner is closed before a new one opens; Log food opens the next screen only after its sheet has closed (afterSheet).
+- Files: src/app/barcode.tsx, src/components/food/LogSheet.tsx. Not tested on a phone yet.
+
 ---
 
 

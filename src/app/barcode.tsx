@@ -1,7 +1,7 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Linking, Platform, View } from 'react-native';
+import { InteractionManager, Linking, Platform, View } from 'react-native';
 
 import { ManualCode } from '@/components/food/ManualCode';
 import { Icon } from '@/components/Icon';
@@ -43,8 +43,12 @@ export default function Barcode() {
   // zoom, so it reads a barcode near or far. Our camera view stays for phones that can't run it.
   const [apple, setApple] = useState(Platform.OS === 'ios' && CameraView.isModernBarcodeScannerAvailable);
   const useApple = apple && !!perm?.granted;
+  // A scanner left half-open (it can sit unseen behind the screen and take the taps) is closed before a new one opens.
   const openApple = () =>
-    CameraView.launchScanner({ barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e'], isGuidanceEnabled: true, isHighlightingEnabled: true }).catch(() => setApple(false));
+    CameraView.dismissScanner()
+      .catch(() => {})
+      .then(() => CameraView.launchScanner({ barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e'], isGuidanceEnabled: true, isHighlightingEnabled: true }))
+      .catch(() => setApple(false));
   useEffect(() => {
     if (!useApple) return;
     const sub = CameraView.onModernBarcodeScanned((r) => {
@@ -56,8 +60,15 @@ export default function Barcode() {
         .catch(() => {})
         .finally(() => setTimeout(() => go(code), 450));
     });
-    openApple();
+    // Not straight away: coming from Log food, its sheet is still closing, and a scanner opened on top of it ends up
+    // hidden behind this screen. Wait for the screen to finish opening.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const task = InteractionManager.runAfterInteractions(() => {
+      timer = setTimeout(openApple, 500);
+    });
     return () => {
+      task.cancel();
+      if (timer) clearTimeout(timer);
       sub.remove();
       CameraView.dismissScanner().catch(() => {});
     };
