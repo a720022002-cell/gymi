@@ -552,6 +552,13 @@ Passwords and keys are left out on purpose.
 - Checked on web: Start cardio showed Recent (Padel, Run) and A–Z; the Racket tab showed 4 sports. Test user deleted (0 left).
 - Files: src/components/cardio/SportTiles.tsx (SportList), src/lib/recentSports.ts (new), src/app/cardio-live.tsx, src/components/train/CardioPlan.tsx, +4 Arabic strings. JS only. Sent as OTA 0139911f (build 17).
 
+## Workout: the coach's weight fills the next set (26 Oct 2026)
+
+- Ask: the weight the AI suggests ("Top of the range. Try 86.5 kg next set.") should be filled in on the next set, and show on the widget.
+- Done: when a set is logged (on the screen or from the Live Activity), the coach's weight for the next working set is filled in on it (the weight it says, or the one to stay at), unless you already typed one. The Live Activity shows the current set's weight, so it shows the suggested weight with the tip.
+- Checked: 84 kg × 12 on 10–12 → next set 86.5 kg; then 86.5 × 9 → stays 86.5.
+- Files: src/lib/activeWorkout.ts (logSet takes the coach's history and step), src/app/active.tsx, src/components/WorkoutLive.tsx. JS only. Not sent yet.
+
 ---
 
 
