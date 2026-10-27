@@ -612,6 +612,12 @@ Passwords and keys are left out on purpose.
 - Not changed (on purpose): the days count from your first day in the app (16 days), so days before you joined don't pull you down; sleep counts only the nights you logged or your watch measured (10), so a night without data isn't counted as bad sleep.
 - File: src/lib/progress.ts. JS only, works with build 17. Not sent yet.
 
+## AI: Meal photo and Label photo on Gemini 3.5 Flash-Lite (27 Oct 2026)
+
+- Ask: switch to Gemini 3.5 Flash-Lite only for photos.
+- Done (code): the ai function uses google/gemini-3.5-flash-lite (PHOTO_MODEL, through OpenRouter, same key) for meal_photo and label_photo. Everything else stays on Claude Haiku 5.5: chat, typed food, recipes, plans, the machine photo and lab reports (PDF). A retry uses the same model. The admin's model comparison still overrides it.
+- File: supabase/functions/ai/index.ts. Server only (no app update needed). Not deployed yet: waiting for "طبّق".
+
 ---
 
 

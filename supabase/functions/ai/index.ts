@@ -1,6 +1,7 @@
 // Adro AI: the only place that talks to an AI model. The app sends a task; keys never leave the server.
 //
-// Every AI answer in the app comes from Claude Haiku 5.5 (through OpenRouter). No other model, no backup model.
+// Every AI answer in the app comes from Claude Haiku 5.5 (through OpenRouter), except Meal photo and Label photo,
+// which use Gemini 3.5 Flash-Lite (PHOTO_MODEL). No backup model.
 // Secrets (Supabase > Edge Functions > Secrets):
 //   OPENROUTER_API_KEY  (also read as "OpenRouter") the key for OpenRouter
 //   AI_DAILY_LIMIT      requests per person per day, default 80
@@ -21,6 +22,9 @@ const env = (k: string, d = '') => Deno.env.get(k) ?? d;
 const HAIKU = 'anthropic/claude-haiku-5.5';
 /** Watches a whole video (Haiku reads pictures only): a recipe from a TikTok link is read from the video itself. */
 const VIDEO_MODEL = 'google/gemini-3.5-flash-lite';
+/** Reads Meal photo and Label photo (the owner's choice); every other task stays on Haiku. */
+const PHOTO_MODEL = 'google/gemini-3.5-flash-lite';
+const PHOTO_TASKS = ['meal_photo', 'label_photo'];
 /** Models an admin may ask for instead, only to measure them against Haiku on the same photos. */
 const BENCH_MODELS = ['anthropic/claude-sonnet-5.5', 'anthropic/claude-opus-5.5', 'google/gemini-4-argon', 'google/gemini-3.8-flash', 'google/gemini-3.5-flash-lite'];
 /** Settings and results of one request. Each request has its own, so requests running at the same time never mix
@@ -84,7 +88,7 @@ async function openrouter(system: string, msgs: Msg[], schema?: object): Promise
   try {
     return await openrouterCall(cx().model ?? HAIKU, system, msgs, schema);
   } catch (e) {
-    // Only a busy model, a timeout, an empty answer or a server error is tried once more (Haiku again, never another
+    // Only a busy model, a timeout, an empty answer or a server error is tried once more (the same model, never another
     // model), and only with time left. A bad key or a bad request won't work on a second try.
     if (!retryable(e) || timeLeft() < 15_000) throw e;
     await new Promise((r) => setTimeout(r, 1500));
@@ -1154,7 +1158,7 @@ async function handle(req: Request) {
     cx().lastModel = '';
     cx().lastDetail = '';
     cx().db = userClient;
-    cx().model = undefined;
+    cx().model = PHOTO_TASKS.includes(task) ? PHOTO_MODEL : undefined;
     if (typeof body.model === 'string' && BENCH_MODELS.includes(body.model)) {
       const { data: isAdmin } = await admin.from('admins').select('user_id').eq('user_id', u.user.id).maybeSingle();
       if (!isAdmin) return json({ error: 'auth' }, 403);
