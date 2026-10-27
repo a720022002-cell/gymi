@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { injuriesStrained } from '@/lib/coachPlan';
@@ -126,7 +126,7 @@ export function ExercisePicker({
     const img = e.images?.[0];
     return (
       <Springy key={e.id} onPress={() => pick(e)} scaleTo={0.97} accessibilityRole="button" accessibilityLabel={dbExName(e, lang)} style={{ width: '48%', flexGrow: 1, marginBottom: 12 }}>
-        <View style={{ aspectRatio: 1, borderRadius: 20, overflow: 'hidden', backgroundColor: img ? '#FFFFFF' : c.inset, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ aspectRatio: 1, borderRadius: 20, overflow: 'hidden', backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
           {img ? <Image source={{ uri: img }} style={{ width: '100%', height: '100%' }} contentFit="cover" recyclingKey={e.id} transition={150} /> : <Icon name="train" size={30} color={c.sec} />}
           <View style={{ position: 'absolute', top: 8, end: 8, width: 30, height: 30, borderRadius: 15, backgroundColor: c.cobalt, alignItems: 'center', justifyContent: 'center' }}>
             <Icon name={replacing ? 'swap' : 'plus'} size={15} color="#FFFFFF" strokeWidth={2.4} />
@@ -149,6 +149,18 @@ export function ExercisePicker({
     );
   };
   const grid = (xs: DbExercise[]) => <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 12 }}>{xs.map(tile)}</View>;
+  // While the list loads: gray squares in the same places, so nothing jumps when the photos come in.
+  const waiting = (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 12 }}>
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <View key={i} style={{ width: '48%', flexGrow: 1, marginBottom: 12 }}>
+          <View style={{ aspectRatio: 1, borderRadius: 20, backgroundColor: c.inset }} />
+          <View style={{ marginTop: 10, height: 12, width: '70%', borderRadius: 6, backgroundColor: c.inset }} />
+          <View style={{ marginTop: 6, height: 10, width: '45%', borderRadius: 5, backgroundColor: c.inset }} />
+        </View>
+      ))}
+    </View>
+  );
 
   if (own)
     return (
@@ -172,7 +184,7 @@ export function ExercisePicker({
         <Button kind="soft" icon="search" title={t('Other exercise')} color={c.text} style={{ marginTop: 12 }} onPress={() => setAll(true)} />
         <View style={{ marginTop: 12, minHeight: 240 }}>
           {!sim ? (
-            <ActivityIndicator color={c.cobalt} style={{ marginTop: 30 }} />
+            waiting
           ) : sim.length ? (
             grid(sim)
           ) : (
@@ -208,7 +220,7 @@ export function ExercisePicker({
       <Button small kind="soft" icon="plus" title={t('Make your own exercise')} color={c.text} style={{ marginTop: 10, alignSelf: 'flex-start' }} onPress={() => setOwn(true)} />
       <View style={{ marginTop: 10, minHeight: 240 }}>
         {loading && !list.length ? (
-          <ActivityIndicator color={c.cobalt} style={{ marginTop: 30 }} />
+          waiting
         ) : list.length ? (
           grid(list)
         ) : (

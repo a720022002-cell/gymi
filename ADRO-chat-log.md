@@ -591,6 +591,12 @@ Passwords and keys are left out on purpose.
 - Done: the − number + buttons have a fixed width there, and the "1 serving = 55 g" text takes the rest and wraps if it's long. Same for pieces, and on the add-a-product screen.
 - File: src/app/product.tsx. JS only, works with build 17. Sent: OTA 35362d74 (26 Oct).
 
+## Exercise picker: opens smoothly (27 Oct 2026)
+
+- Problem (screen recording): replacing an exercise, the list opened small with a spinner, then grew tall at once, and showed big white squares until the photos loaded.
+- Done: while it loads, the list shows 6 gray squares where the exercises will be, so the sheet opens at its full height and nothing jumps. The photo boxes are dark (not white) until the photo fades in. Same in the full search.
+- File: src/components/train/ExercisePicker.tsx. JS only, works with build 17. Not sent yet.
+
 ---
 
 
