@@ -33,3 +33,7 @@ Higgsfield video models need a paid plan, so the 5 shots are Soul 2.0 photos (0.
 ## Full-motion version (27 Oct 2026)
 
 12 real moving clips: Soul 2.0 photos animated with Seedance 1.5 (image-to-video, 720p, 4 s, about 4.8 credits each; the only video model the free plan allowed). Edit: hard cuts, upscaled to 1080 × 1920, the cards and text on a transparent layer (`overlay.html`), then the end card. Video: `docs/marketing/Adro-reel-coming-soon-motion.mp4` (28.8 s, no music). Rebuild: put fonts in `<dir>/fonts` and clips in `<dir>/vid`, then `node compose.js <dir> out.mp4`.
+
+## With sound effects (27 Oct 2026)
+
+`docs/marketing/Adro-reel-coming-soon-motion-sfx.mp4`: the same video with sound effects made from scratch in `higgsfield-reel/sfx.py` (whooshes on cuts, chalk clap, footsteps, card pops, count-up ticks, set and streak dings, camera shutter, typing, bar thud, plate clanks, riser and boom with a shimmer on the logo), loudness normalized to -15 LUFS. Rebuild: `python3 sfx.py sfx.wav`, `ffmpeg -i sfx.wav -af loudnorm=I=-15:TP=-1.5:LRA=11 sfx_n.wav`, then mux with the video. Higgsfield's sound-effects model is for its game pipeline only, so no credits were used.
