@@ -5102,4 +5102,7 @@ export const AR: Record<string, string> = {
   "Next: {x}": "التالي: {x}",
   "Camera not showing? Use the other camera": "الكاميرا ما تظهر؟ استخدم الكاميرا الثانية",
   "Unlimited meal photos: the AI finds the ingredients": "صور وجبات بلا حدود: الذكاء الاصطناعي يطلع المكونات",
+  "You used today’s 3 free photos. Subscribe for unlimited photos, or try again tomorrow.": "استخدمت صورك المجانية الـ 3 اليوم. اشترك وصوّر بدون حدود، أو جرّب بكرة.",
+  "You used today’s 4 free messages. Subscribe to talk to your coach without limits, or try again tomorrow.": "استخدمت رسايلك المجانية الـ 4 اليوم. اشترك وكلّم مدربك بدون حدود، أو جرّب بكرة.",
+  "Your free week is over. Subscribe to keep using the AI coach and food photos.": "خلص أسبوعك المجاني. اشترك عشان تكمل مع المدرب الذكي وصور الأكل.",
 };
