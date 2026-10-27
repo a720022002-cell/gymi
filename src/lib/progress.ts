@@ -88,7 +88,7 @@ export const COMMIT_LABEL: Record<CommitKey, [string, string, string]> = {
 export function commitWindow(x: ProgressInput, from: string, to: string, first: string | null) {
   const parts: Record<CommitKey, [number, number]> = { work: [0, 0], cal: [0, 0], prot: [0, 0], water: [0, 0], sleep: [0, 0] };
   if (!first) return { parts, pct: null as number | null };
-  const done = new Set(x.logs.map((l) => l.day));
+  const done = new Set(allWorkouts(x).map((l) => l.day));
   const sleep = new Map(x.checkins.map((c) => [c.day, c.sleep_h]));
   for (const [d, h] of Object.entries(x.watchSleep ?? {})) if (sleep.get(d) == null) sleep.set(d, h);
   const add = (k: CommitKey, met: boolean, d: string) => {
@@ -99,11 +99,14 @@ export function commitWindow(x: ProgressInput, from: string, to: string, first: 
   let extra = 0;
   for (let d = from < first ? first : from; d <= to; d = addDays(d, 1)) {
     const p = x.plan;
-    if (p && !(p.since && d < p.since)) {
+    if (p && !((p.since && d < p.since) || (p.weekSince && d < p.weekSince))) {
       // That week's plan, with moves for that week only; skipped and dismissed days don't count.
       const planned = plannedOn(p, d);
       if (planned) add('work', done.has(d), d);
       else if (done.has(d)) extra++;
+    } else if (done.has(d)) {
+      // Before this plan (or its days) started: a workout you did still counts, a day without one isn't judged.
+      add('work', true, d);
     }
     const v = x.days[d];
     if (x.foodSetup) {

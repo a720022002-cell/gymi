@@ -604,6 +604,14 @@ Passwords and keys are left out on purpose.
 - Done: the weight column title is a small kg | lb switch for that exercise. The choice is kept on the phone by exercise id (settings `exUnit`) and used in every workout; exercises you never switched use your usual unit from Settings, and nothing else in the app changes. Sets stay saved in kg. For that exercise, the boxes, the coach's tip under it (5 lb steps in lb), the Live Activity and its +/− buttons use its unit. The AI coach gets `exerciseWeightUnits` next to `weightUnit`. The arrows and move() are gone. The column title reads "reps 4–6" ("seconds 30" for timed ones).
 - Files: src/app/active.tsx, src/components/WorkoutLive.tsx, src/lib/units.ts (useExerciseWeight), src/theme/settings.tsx, src/app/coach.tsx. JS only, works with build 17. Sent: OTA 6c1e064b (27 Oct).
 
+## Commitment rate: workouts before the plan changed now count (27 Oct 2026)
+
+- Ask: on Last 30 days, "Workouts as planned" said "0 of 1 workouts"; it should count the workouts of the last 30 days. Also asked why sleep is out of 10 and the rest out of 16.
+- Cause: workouts only counted from the day the plan was made or its days last changed (since / weekSince), so workouts done before that change disappeared. It also read only the recent workout logs.
+- Done: before the plan (or its days) started, a day you trained counts as a workout done as planned; a day without one isn't judged (we don't know that old plan). It reads your whole workout history. Same for the 7 days, the home card and the reports (all use commitWindow).
+- Not changed (on purpose): the days count from your first day in the app (16 days), so days before you joined don't pull you down; sleep counts only the nights you logged or your watch measured (10), so a night without data isn't counted as bad sleep.
+- File: src/lib/progress.ts. JS only, works with build 17. Not sent yet.
+
 ---
 
 
