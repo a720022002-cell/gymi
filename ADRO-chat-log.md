@@ -595,14 +595,14 @@ Passwords and keys are left out on purpose.
 
 - Problem (screen recording): replacing an exercise, the list opened small with a spinner, then grew tall at once, and showed big white squares until the photos loaded.
 - Done: while it loads, the list shows 6 gray squares where the exercises will be, so the sheet opens at its full height and nothing jumps. The photo boxes are dark (not white) until the photo fades in. Same in the full search.
-- File: src/components/train/ExercisePicker.tsx. JS only, works with build 17. Not sent yet.
+- File: src/components/train/ExercisePicker.tsx. JS only, works with build 17. Sent: OTA 6c1e064b (27 Oct).
 
 ## Workout screen: kg/lb switch per exercise, no move arrows, reps range by "reps" (27 Oct 2026)
 
 - Ask: a kg/lb switch by the weight column, with the coach knowing the unit; remove the move up/down arrows (the tabs replace them); show the reps range next to "reps" instead of up top.
 - Changed the same day: the switch first changed the whole app's unit; the user wants it for that exercise only.
 - Done: the weight column title is a small kg | lb switch for that exercise. The choice is kept on the phone by exercise id (settings `exUnit`) and used in every workout; exercises you never switched use your usual unit from Settings, and nothing else in the app changes. Sets stay saved in kg. For that exercise, the boxes, the coach's tip under it (5 lb steps in lb), the Live Activity and its +/− buttons use its unit. The AI coach gets `exerciseWeightUnits` next to `weightUnit`. The arrows and move() are gone. The column title reads "reps 4–6" ("seconds 30" for timed ones).
-- Files: src/app/active.tsx, src/components/WorkoutLive.tsx, src/lib/units.ts (useExerciseWeight), src/theme/settings.tsx, src/app/coach.tsx. JS only, works with build 17. Not sent yet.
+- Files: src/app/active.tsx, src/components/WorkoutLive.tsx, src/lib/units.ts (useExerciseWeight), src/theme/settings.tsx, src/app/coach.tsx. JS only, works with build 17. Sent: OTA 6c1e064b (27 Oct).
 
 ---
 
