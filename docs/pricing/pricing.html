@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Plex;font-weight:400;src:url(file:///home/user/gymi/node_modules/@expo-google-fonts/ibm-plex-sans-arabic/400Regular/IBMPlexSansArabic_400Regular.ttf)}
+@font-face{font-family:Plex;font-weight:600;src:url(file:///home/user/gymi/node_modules/@expo-google-fonts/ibm-plex-sans-arabic/600SemiBold/IBMPlexSansArabic_600SemiBold.ttf)}
+@font-face{font-family:Plex;font-weight:700;src:url(file:///home/user/gymi/node_modules/@expo-google-fonts/ibm-plex-sans-arabic/700Bold/IBMPlexSansArabic_700Bold.ttf)}
+@page{size:A4;margin:16mm 15mm}
+*{box-sizing:border-box}
+body{font-family:Plex,sans-serif;color:#111827;font-size:10.8pt;line-height:1.6;margin:0}
+table,.box,.grid2,.kpis{break-inside:avoid}
+h2,h3{break-after:avoid}
+h1{font-size:25pt;margin:0 0 4px;letter-spacing:-.3px}
+h2{font-size:15pt;margin:22px 0 8px;color:#1f2a7a;border-bottom:2px solid #3355FF;padding-bottom:4px}
+h3{font-size:12pt;margin:14px 0 6px}
+.sub{color:#6b7280;margin:0 0 14px}
+.cover{background:linear-gradient(135deg,#0B0B0D,#1d2a8f);color:#fff;border-radius:18px;padding:26px 28px;margin-bottom:16px}
+.cover h1{color:#fff}.cover .sub{color:#c7d2fe}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}
+.kpi{background:rgba(255,255,255,.1);border-radius:12px;padding:10px 12px}
+.kpi b{display:block;font-size:17pt;line-height:1.2}
+.kpi span{font-size:9.5pt;color:#c7d2fe}
+table{width:100%;border-collapse:collapse;margin:6px 0 4px;font-size:10.5pt}
+th{background:#eef2ff;color:#1f2a7a;font-weight:700;text-align:right;padding:7px 9px}
+td{padding:6px 9px;border-bottom:1px solid #e5e7eb;vertical-align:top}
+td.n,th.n{text-align:left;direction:ltr;white-space:nowrap}
+tr.tot td{font-weight:700;background:#f9fafb;border-top:2px solid #111827}
+.box{border-radius:12px;padding:12px 14px;margin:10px 0;background:#f3f4f6}
+.good{background:#ecfdf5;border-right:4px solid #16a34a}
+.warn{background:#fff7ed;border-right:4px solid #ea580c}
+.blue{background:#eef2ff;border-right:4px solid #3355FF}
+.small{font-size:9.5pt;color:#6b7280}
+.big{font-size:20pt;font-weight:700;color:#3355FF}
+ul{margin:4px 0;padding-right:18px}
+li{margin:2px 0}
+.pb{page-break-before:always}
+.ltr{direction:ltr;unicode-bidi:embed}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+</style></head><body>
+
+<div class="cover">
+  <h1>تسعيرة Adro</h1>
+  <p class="sub">كم يكلف التطبيق، كم تكلف التجربة المجانية، وكم يكلف كل مشترك · 27 أكتوبر 2026</p>
+  <div class="kpis">
+    <div class="kpi"><b>277 ريال</b><span>المصاريف الثابتة بالشهر (عند الإطلاق)</span></div>
+    <div class="kpi"><b>0.05 ريال</b><span>تكلفة مستخدم التجربة المجانية</span></div>
+    <div class="kpi"><b>~1 ريال</b><span>تكلفة الذكاء الاصطناعي لمشترك بالشهر</span></div>
+    <div class="kpi"><b>10 مشتركين</b><span>تغطي كل المصاريف (بسعر 39 ريال)</span></div>
+  </div>
+</div>
+
+<h2>الخلاصة</h2>
+<div class="box blue">
+<ul>
+<li>التطبيق يكلف تقريباً <b>74 دولار (277 ريال) بالشهر</b> ثابتة عند الإطلاق، مهما كان عدد المستخدمين في البداية.</li>
+<li>مستخدم التجربة المجانية (أسبوع، 3 صور، 4 رسايل) يكلف تقريباً <b>5 هللات</b>. يعني 1,000 شخص يجربون = تقريباً 52 ريال.</li>
+<li>المشترك العادي يكلف تقريباً <b>1 ريال بالشهر</b> ذكاء اصطناعي، والكثير الاستخدام تقريباً 2.4 ريال.</li>
+<li>بسعر <b>39 ريال بالشهر</b> يوصلك تقريباً <b>28.8 ريال</b> من كل مشترك بعد الضريبة وعمولة Apple، والربح تقريباً <b>27.8 ريال</b> بعد الذكاء الاصطناعي.</li>
+<li><b>10 مشتركين</b> يغطون كل المصاريف الثابتة، وأي مشترك بعدها ربح.</li>
+</ul>
+</div>
+<p class="small">كل تكاليف الذكاء الاصطناعي هنا من أرقامك الحقيقية: 1,153 طلب في جدول ai_calls بين 11 و27 أكتوبر. أسعار الخدمات من صفحاتها (المصادر في آخر صفحة). الدولار = 3.75 ريال.</p>
+
+<h2>1. المصاريف الثابتة بالشهر</h2>
+<table>
+<tr><th>الخدمة</th><th>وش تسوي</th><th class="n">الحين</th><th class="n">عند الإطلاق</th></tr>
+<tr><td>Apple Developer</td><td>نشر التطبيق في App Store (99 دولار بالسنة)</td><td class="n">$8.25</td><td class="n">$8.25</td></tr>
+<tr><td>Supabase</td><td>قاعدة البيانات، الحسابات، السيرفر</td><td>مجاني</td><td class="n">$25 (Pro)</td></tr>
+<tr><td>Expo EAS</td><td>بناء التطبيق والتحديثات (OTA)</td><td>مجاني</td><td class="n">$19 (Starter)</td></tr>
+<tr><td>Vercel</td><td>موقع adroapp.com</td><td class="n">$0 (Hobby)</td><td class="n">$20 (Pro)</td></tr>
+<tr><td>Resend</td><td>إيميلات الكود والترحيب (3,000 بالشهر مجاناً)</td><td class="n">$0</td><td class="n">$0</td></tr>
+<tr><td>الدومين adroapp.com</td><td>GoDaddy (تقريباً 20 دولار بالسنة)</td><td class="n">$1.70</td><td class="n">$1.70</td></tr>
+<tr><td>Zoho Mail</td><td>إيميل الشركة</td><td class="n">$0</td><td class="n">$0</td></tr>
+<tr><td>OpenRouter</td><td>الذكاء الاصطناعي (تدفع على قد الاستخدام، تحت)</td><td>حسب الاستخدام</td><td>حسب الاستخدام</td></tr>
+<tr class="tot"><td>المجموع</td><td></td><td>≈ 37 ريال ($10)</td><td>≈ 277 ريال ($74)</td></tr>
+</table>
+<div class="box warn">
+<b>ليش نرقّي عند الإطلاق؟</b>
+<ul>
+<li><b>Supabase Pro:</b> المجاني يوقف المشروع إذا ما استُخدم أسبوع، وما فيه نسخ احتياطية يومية. مع مستخدمين حقيقيين لازم Pro.</li>
+<li><b>Expo Starter:</b> المجاني يعطي التحديثات (OTA) لـ 1,000 مستخدم بالشهر بس. Starter يعطي 3,000 وبناء أسرع.</li>
+<li><b>Vercel Pro:</b> الخطة المجانية للاستخدام الشخصي بس، والموقع تجاري.</li>
+</ul>
+</div>
+
+<h2>2. تكلفة الذكاء الاصطناعي لكل طلب (أرقامك الحقيقية)</h2>
+<table>
+<tr><th>الطلب</th><th>الموديل</th><th class="n">التكلفة (دولار)</th><th class="n">بالريال</th></tr>
+<tr><td>تصوير وجبة (Meal photo)</td><td>Claude Haiku 5.5</td><td class="n">0.00089</td><td class="n">0.0033</td></tr>
+<tr><td>تصوير وجبة (Meal photo)</td><td>Gemini 3.5 Flash-Lite</td><td class="n">0.00171</td><td class="n">0.0064</td></tr>
+<tr><td>رسالة للكوتش</td><td>Claude Haiku 5.5</td><td class="n">0.00084</td><td class="n">0.0032</td></tr>
+<tr><td>أكل مكتوب</td><td>Claude Haiku 5.5</td><td class="n">0.00034</td><td class="n">0.0013</td></tr>
+<tr><td>تصوير جهاز في الجيم</td><td>Claude Haiku 5.5</td><td class="n">0.00134</td><td class="n">0.0050</td></tr>
+<tr><td>نصيحة الكارديو</td><td>Claude Haiku 5.5</td><td class="n">0.00031</td><td class="n">0.0012</td></tr>
+<tr><td>ملخص الأسبوع</td><td>Claude Haiku 5.5</td><td class="n">0.00161</td><td class="n">0.0060</td></tr>
+<tr><td>خطة التمرين</td><td>Claude Haiku 5.5</td><td class="n">0.00253</td><td class="n">0.0095</td></tr>
+<tr><td>مراجعة الخطة الأسبوعية</td><td>Claude Haiku 5.5</td><td class="n">0.00097</td><td class="n">0.0036</td></tr>
+<tr><td>وصفات (5 وصفات)</td><td>Claude Haiku 5.5</td><td class="n">0.00322</td><td class="n">0.0121</td></tr>
+<tr><td>وصفة من فيديو</td><td>Claude Haiku 5.5</td><td class="n">0.00171</td><td class="n">0.0064</td></tr>
+<tr><td>شرح قراءة (نوم، نبض…)</td><td>Claude Haiku 5.5</td><td class="n">0.00057</td><td class="n">0.0021</td></tr>
+</table>
+<div class="box warn"><b>ملاحظة مهمة على Gemini:</b> حسب أرقامك الحقيقية (40 تجربة لكل موديل)، تصوير الوجبة بـ Gemini 3.5 Flash-Lite كلّف <b>ضعف</b> Haiku تقريباً (0.00171 مقابل 0.00089 دولار)، لأنه يقرا الصورة بتوكنز أكثر. الفرق صغير بالريال (تقريباً 0.3 ريال لمشترك بالشهر)، فالقرار يكون على الدقة والسرعة مو السعر. الحسابات تحت محسوبة بـ Gemini للصور (الأغلى) عشان تكون على الأمان.</div>
+
+<h2>3. التجربة المجانية (أسبوع، 3 صور، 4 رسايل)</h2>
+<div class="grid2">
+<div>
+<table>
+<tr><th>اللي يصير في التجربة</th><th class="n">ريال</th></tr>
+<tr><td>3 صور وجبات (Gemini)</td><td class="n">0.019</td></tr>
+<tr><td>4 رسايل للكوتش</td><td class="n">0.013</td></tr>
+<tr><td>خطة التمرين الأولى</td><td class="n">0.009</td></tr>
+<tr><td>ملخص أسبوع واحد</td><td class="n">0.006</td></tr>
+<tr><td>4 نصايح كارديو</td><td class="n">0.005</td></tr>
+<tr class="tot"><td>المجموع لكل مستخدم</td><td class="n">≈ 0.05</td></tr>
+</table>
+</div>
+<div>
+<table>
+<tr><th>عدد اللي يجربون</th><th class="n">التكلفة</th></tr>
+<tr><td>100</td><td>5 ريال</td></tr>
+<tr><td>1,000</td><td>52 ريال</td></tr>
+<tr><td>10,000</td><td>521 ريال</td></tr>
+</table>
+<p class="small">بقية التطبيق (تسجيل الأكل بالبحث والباركود، التمارين، الستريك…) ما فيه ذكاء اصطناعي، فتكلفته على السيرفر قريبة من الصفر.</p>
+</div>
+</div>
+<div class="box good">التجربة رخيصة جداً: حتى لو 10,000 شخص جربوا وما اشترك ولا واحد، التكلفة تقريباً 521 ريال.</div>
+
+<h2>4. تكلفة المشترك بالشهر</h2>
+<table>
+<tr><th>نوع المستخدم</th><th>استخدامه بالشهر</th><th class="n">التكلفة</th></tr>
+<tr><td>خفيف</td><td>36 صورة، 24 رسالة، والباقي قليل</td><td>0.42 ريال</td></tr>
+<tr><td>عادي</td><td>90 صورة (3 باليوم)، 60 رسالة (2 باليوم)، 30 أكل مكتوب، 4 ملخصات، وصفات، نصايح</td><td>0.98 ريال</td></tr>
+<tr><td>كثير الاستخدام</td><td>225 صورة، 150 رسالة، والباقي ضعفين ونص</td><td>2.39 ريال</td></tr>
+<tr><td>أقصى حد ممكن</td><td>80 طلب كل يوم طول الشهر (الحد اليومي في السيرفر)</td><td>12.08 ريال</td></tr>
+</table>
+<p class="small">الحد اليومي (80 طلب للشخص) يحميك: ما أحد يقدر يكلف أكثر من تقريباً 12 ريال بالشهر حتى لو استخدم التطبيق بشكل غير طبيعي.</p>
+
+<h3>كم يوصلك من كل مشترك؟</h3>
+<table>
+<tr><th>سعر الباقة</th><th class="n">بعد ضريبة 15%</th><th class="n">بعد عمولة Apple 15%</th><th class="n">ناقص الذكاء الاصطناعي (عادي)</th><th class="n">الربح من المشترك</th></tr>
+<tr><td>29 ريال بالشهر</td><td class="n">25.22</td><td class="n">21.43</td><td class="n">−0.98</td><td>20.45 ريال</td></tr>
+<tr style="background:#eef2ff"><td><b>39 ريال بالشهر (سعر الموقع)</b></td><td class="n">33.91</td><td class="n">28.83</td><td class="n">−0.98</td><td class="n"><b>27.85 ريال</b></td></tr>
+<tr><td>49 ريال بالشهر</td><td class="n">42.61</td><td class="n">36.22</td><td class="n">−0.98</td><td>35.24 ريال</td></tr>
+<tr><td>299 ريال بالسنة (24.9 بالشهر)</td><td class="n">21.67</td><td class="n">18.42</td><td class="n">−0.98</td><td>17.44 ريال</td></tr>
+</table>
+<p class="small">عمولة Apple 15% لأنك في برنامج الشركات الصغيرة (أقل من مليون دولار بالسنة). الضريبة 15% داخلة في السعر اللي يدفعه المشترك.</p>
+
+<h3>متى تغطي المصاريف؟</h3>
+<div class="box good">بسعر 39 ريال: المصاريف الثابتة 277 ريال ÷ 27.85 ريال ربح من كل مشترك = <span class="big">10 مشتركين</span> وأنت مغطي كل شي.</div>
+
+<h2>5. لو كبر التطبيق</h2>
+<table>
+<tr><th>المشتركين</th><th class="n">يوصلك (39 ريال)</th><th class="n">مصاريف ثابتة</th><th class="n">ذكاء اصطناعي</th><th class="n">الربح بالشهر</th></tr>
+<tr><td>100</td><td class="n">2,883</td><td class="n">277</td><td class="n">98</td><td>2,508 ريال</td></tr>
+<tr><td>1,000</td><td class="n">28,830</td><td class="n">334</td><td class="n">983</td><td>27,513 ريال</td></tr>
+<tr><td>10,000</td><td class="n">288,300</td><td class="n">1,252</td><td class="n">9,825</td><td>277,223 ريال</td></tr>
+</table>
+<p class="small">مع الكبر تزيد المصاريف الثابتة: عند 1,000 مشترك سيرفر Supabase أكبر (+15 دولار)، وعند 10,000 خطة Expo Production (199 دولار) وسيرفر أكبر وResend المدفوع. الأرقام بالريال وبدون مصاريف التسويق والرواتب.</p>
+
+<h2>6. ملاحظات مهمة</h2>
+<ul>
+<li><b>الدفع مو شغال للحين:</b> صفحة الاشتراك مقفلة في التطبيق (PAID_PLANS_LIVE = false) لين نربط الشراء داخل التطبيق من Apple.</li>
+<li><b>عمولة Apple:</b> سجّل في Small Business Program من حسابك في App Store Connect عشان تكون 15% من أول يوم بدل 30%.</li>
+<li><b>الدقة:</b> أرقام الذكاء الاصطناعي من استخدام فريق صغير (7 حسابات) خلال 17 يوم. بعد الإطلاق أحدّثها من استخدام المشتركين الحقيقي.</li>
+<li><b>أسعار الخدمات</b> ممكن تتغير. تأكد منها من صفحاتها قبل القرار النهائي.</li>
+</ul>
+
+<h3>المصادر</h3>
+<ul class="small ltr" style="direction:ltr;text-align:left;padding-left:18px;padding-right:0">
+<li>Real AI costs: Adro database, table ai_calls, 1,153 requests, 11–27 Oct 2026</li>
+<li>Supabase pricing (Pro $25 with $10 compute credit): makerkit.dev/blog/saas/supabase-pricing, jetadmin.io/blog/supabase-pricing-2026-guide-to-plans-limits-and-real-world-costs</li>
+<li>Expo EAS pricing (Starter $19, Production $199): expo.dev/pricing, docs.expo.dev/billing/plans</li>
+<li>Apple Small Business Program (15%): developer.apple.com/app-store/small-business-program, revenuecat.com/blog/engineering/app-store-fees</li>
+<li>Apple Developer Program: $99 a year. Saudi VAT: 15%.</li>
+</ul>
+</body></html>

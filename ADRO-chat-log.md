@@ -618,6 +618,12 @@ Passwords and keys are left out on purpose.
 - Done (code): the ai function uses google/gemini-3.5-flash-lite (PHOTO_MODEL, through OpenRouter, same key) for meal_photo and label_photo. Everything else stays on Claude Haiku 5.5: chat, typed food, recipes, plans, the machine photo and lab reports (PDF). A retry uses the same model. The admin's model comparison still overrides it.
 - File: supabase/functions/ai/index.ts. Server only (no app update needed). Not deployed yet: waiting for "طبّق".
 
+## Pricing file (27 Oct 2026)
+
+- Ask: what the app costs with the services we pay for, the cost of a 1-week free trial (3 photos, 4 messages), and the cost of a monthly subscriber; as a PDF.
+- Done: docs/Adro-pricing.pdf (Arabic, 4 pages; source docs/pricing/pricing.html and calc.py). AI costs from the real ai_calls table (1,153 requests, 11 to 27 Oct). Fixed costs about $74 (277 SAR) a month at launch (Apple, Supabase Pro, Expo Starter, Vercel Pro, domain; Resend and Zoho free), about $10 now. Trial user about 0.05 SAR. Subscriber about 1 SAR of AI a month (heavy 2.4, capped at about 12 by the 80-a-day limit). At 39 SAR a month: 28.83 SAR reaches us after 15% VAT and Apple's 15%, about 27.85 profit; 10 subscribers cover the fixed costs.
+- Found: on the real data, Meal photo on Gemini 3.5 Flash-Lite costs about twice Haiku ($0.00171 vs $0.00089 a photo).
+
 ---
 
 
