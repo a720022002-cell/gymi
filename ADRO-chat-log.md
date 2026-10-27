@@ -624,6 +624,13 @@ Passwords and keys are left out on purpose.
 - Done: docs/Adro-pricing.pdf (Arabic, 4 pages; source docs/pricing/pricing.html and calc.py). AI costs from the real ai_calls table (1,153 requests, 11 to 27 Oct). Fixed costs about $74 (277 SAR) a month at launch (Apple, Supabase Pro, Expo Starter, Vercel Pro, domain; Resend and Zoho free), about $10 now. Trial user about 0.05 SAR. Subscriber about 1 SAR of AI a month (heavy 2.4, capped at about 12 by the 80-a-day limit). At 39 SAR a month: 28.83 SAR reaches us after 15% VAT and Apple's 15%, about 27.85 profit; 10 subscribers cover the fixed costs.
 - Found: on the real data, Meal photo on Gemini 3.5 Flash-Lite costs about twice Haiku ($0.00171 vs $0.00089 a photo).
 
+## Pricing decided: one unlimited plan, 29 SAR a month (27 Oct 2026)
+
+- Decided: one plan (no two tiers), unlimited, 29 SAR a month; yearly kept at 299. Free trial: 1 week (3 photos, 4 messages).
+- Done: app subscription page price 29 (src/app/subscription.tsx; still hidden while PAID_PLANS_LIVE is false), "Unlimited meal photos" line (+ Arabic); website price 29 and "Unlimited AI coach and food photos" (scripts/build_site.py, public/site rebuilt).
+- Numbers at 29: 21.43 SAR reaches us after VAT and Apple; AI about 1.27 a month (2.26 heavy, 12 at the daily cap) so about 20 SAR profit; about 14 subscribers cover the fixed costs.
+- Open: the site and the app still show a "Free forever" plan next to it; the trial isn't built yet.
+
 ---
 
 

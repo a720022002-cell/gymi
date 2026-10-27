@@ -5101,4 +5101,5 @@ export const AR: Record<string, string> = {
   "No sport matches “{q}”": "ما فيه رياضة باسم «{q}»",
   "Next: {x}": "التالي: {x}",
   "Camera not showing? Use the other camera": "الكاميرا ما تظهر؟ استخدم الكاميرا الثانية",
+  "Unlimited meal photos: the AI finds the ingredients": "صور وجبات بلا حدود: الذكاء الاصطناعي يطلع المكونات",
 };

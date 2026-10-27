@@ -10,9 +10,9 @@ import { useT } from '@/i18n';
 import { myInvite } from '@/lib/invites';
 import { useSettings } from '@/theme/settings';
 
-const PRO = { m: 39, y: 299 };
+const PRO = { m: 29, y: 299 };
 const FREE = ['Calories, macros and water', 'Barcode scan and food search', 'Workout plan, logging and records', 'Weight, sleep and streaks', 'Gym Bros friends and cheers', 'Cycle tracking'];
-const PLUS = ['AI coach chat, no limits', 'Meal photo: the AI finds the ingredients', 'Label, machine and blood test photos', 'Recovery score with Apple Health and WHOOP', 'Groups, challenges and train together', 'Weekly reports and PDF export'];
+const PLUS = ['AI coach chat, no limits', 'Unlimited meal photos: the AI finds the ingredients', 'Label, machine and blood test photos', 'Recovery score with Apple Health and WHOOP', 'Groups, challenges and train together', 'Weekly reports and PDF export'];
 
 /** Adro+ plans (design: subscription). Payments open when the phone apps are in the stores. */
 export default function Subscription() {
