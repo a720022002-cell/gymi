@@ -597,6 +597,12 @@ Passwords and keys are left out on purpose.
 - Done: while it loads, the list shows 6 gray squares where the exercises will be, so the sheet opens at its full height and nothing jumps. The photo boxes are dark (not white) until the photo fades in. Same in the full search.
 - File: src/components/train/ExercisePicker.tsx. JS only, works with build 17. Not sent yet.
 
+## Workout screen: kg/lb switch, no move arrows, reps range by "reps" (27 Oct 2026)
+
+- Ask: a kg/lb switch by the weight column, with the coach knowing the unit; remove the move up/down arrows (the tabs replace them); show the reps range next to "reps" instead of up top.
+- Done: the weight column title is a small kg | lb switch. It changes the app's weight unit (the same one as in Settings): sets stay saved in kg, the boxes, the coach's tips under each exercise (5 lb steps in lb) and the Live Activity show the unit you pick, and the AI coach already gets it ("weightUnit"). The arrows and move() are gone. The column title reads "reps 4–6" ("seconds 30" for timed ones).
+- File: src/app/active.tsx. JS only, works with build 17. Not sent yet.
+
 ---
 
 

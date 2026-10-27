@@ -41,7 +41,7 @@ const restOf = (sec: number): Rest => ({ end: Date.now() + sec * 1000, total: se
 
 export default function Active() {
   const { t, lang } = useT();
-  const { colors: c } = useSettings();
+  const { colors: c, setUnit } = useSettings();
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const train = useTrain();
@@ -111,18 +111,6 @@ export default function Active() {
 
   const update = (fn: (x: Session) => Session) => train.setSession(fn(s));
   // Change the order mid-workout: move an exercise up or down (its sets go with it).
-  const move = (ei: number, d: -1 | 1) => {
-    setNoteAt(null);
-    update((x) => {
-      const j = ei + d;
-      if (j < 0 || j >= x.ex.length) return x;
-      const ex = [...x.ex];
-      [ex[ei], ex[j]] = [ex[j], ex[ei]];
-      return { ...x, ex };
-    });
-    // The page follows the exercise you moved.
-    if (ei + d >= 0 && ei + d < s.ex.length) setPageSel(ei + d);
-  };
   // Water you drink while training goes to today's water.
   const drink = async (ml: number) => {
     setWaterOpen(false);
@@ -324,19 +312,6 @@ export default function Active() {
                   {a === 'up' ? <Icon name="up" size={18} color={c.up} strokeWidth={2.6} /> : a === 'down' ? <Icon name="down" size={18} color={c.down} strokeWidth={2.6} /> : a === 'same' ? <Text variant="small" weight={700} color="sec">{t('same')}</Text> : null}
                 </Row>
                 <Row gap={4}>
-                  <Text variant="small" weight={700} color="sec">
-                    {info.timed ? `${x.reps} ${t('s')}` : x.reps}
-                  </Text>
-                  {s.ex.length > 1 ? (
-                    <View style={{ alignItems: 'center' }}>
-                      <Springy onPress={() => move(ei, -1)} disabled={!ei} scaleTo={0.9} accessibilityRole="button" accessibilityLabel={t('Move {x} up', { x: info.name })} style={{ width: 30, height: 20, alignItems: 'center', justifyContent: 'center', opacity: ei ? 1 : 0.25 }}>
-                        <Icon name="chevup" size={16} color={c.sec} strokeWidth={2.4} />
-                      </Springy>
-                      <Springy onPress={() => move(ei, 1)} disabled={ei === s.ex.length - 1} scaleTo={0.9} accessibilityRole="button" accessibilityLabel={t('Move {x} down', { x: info.name })} style={{ width: 30, height: 20, alignItems: 'center', justifyContent: 'center', opacity: ei === s.ex.length - 1 ? 0.25 : 1 }}>
-                        <Icon name="chevd" size={16} color={c.sec} strokeWidth={2.4} />
-                      </Springy>
-                    </View>
-                  ) : null}
                   <Springy
                     onPress={() => setSwapFor(ei)}
                     scaleTo={0.9}
@@ -368,11 +343,33 @@ export default function Active() {
                 <Text variant="xs" weight={700} color="sec" center style={{ width: 36 }}>
                   {t('Set')}
                 </Text>
+                {info.timed ? (
+                  <Text variant="xs" weight={700} color="sec" center style={{ flex: 1 }}>
+                    —
+                  </Text>
+                ) : (
+                  // kg or lb: sets stay saved in kg, the boxes and the coach's tips switch to the unit you pick.
+                  <View style={{ flex: 1, alignItems: 'center' }}>
+                    <View style={{ flexDirection: 'row', borderRadius: 10, padding: 2, backgroundColor: c.inset }}>
+                      {(['kg', 'lb'] as const).map((u) => (
+                        <Springy
+                          key={u}
+                          onPress={() => setUnit(u)}
+                          scaleTo={0.94}
+                          accessibilityRole="radio"
+                          accessibilityState={{ selected: W.unit === u }}
+                          accessibilityLabel={t(u)}
+                          style={{ paddingHorizontal: 10, height: 22, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: W.unit === u ? c.text : 'transparent' }}>
+                          <Text variant="xs" weight={700} color={W.unit === u ? c.bg : c.sec}>
+                            {t(u)}
+                          </Text>
+                        </Springy>
+                      ))}
+                    </View>
+                  </View>
+                )}
                 <Text variant="xs" weight={700} color="sec" center style={{ flex: 1 }}>
-                  {info.timed ? '—' : W.label}
-                </Text>
-                <Text variant="xs" weight={700} color="sec" center style={{ flex: 1 }}>
-                  {t(info.timed ? 'seconds' : 'reps')}
+                  {`${t(info.timed ? 'seconds' : 'reps')} ${x.reps}`}
                 </Text>
                 <View style={{ width: 52 }} />
               </View>
