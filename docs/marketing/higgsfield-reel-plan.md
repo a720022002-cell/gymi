@@ -21,7 +21,11 @@ Format: 9:16 (1080 × 1920), about 20 s, English text, no music (added in Instag
 | 5 | 16–18 s | Night, the same man on a sofa, relaxed, phone in hand (screen not visible), city lights through the window, slow dolly, 9:16 | Day streak "12 days" | — |
 | 6 | 18–21 s | (ours, no footage) black → Adro logo | — | **Adro** · Coming soon · App Store badge |
 
-## Waiting on
+## Made (27 Oct 2026)
+
+Higgsfield video models need a paid plan, so the 5 shots are Soul 2.0 photos (0.12 credits each) with a slow camera move added in the page, plus the real-looking app cards and the end card. Video: `docs/marketing/Adro-reel-coming-soon.mp4` (1080 × 1920, 21.5 s, no music). Source: `docs/marketing/higgsfield-reel/` (reel.html, render.js: `node render.js <dir> out.mp4 21.5`; fonts from node_modules/@expo-google-fonts copied to `<dir>/fonts`).
+
+## Was waiting on
 
 - Higgsfield connected (claude.ai → Connectors), then a new session.
 - OK on the shots above, or changes.
