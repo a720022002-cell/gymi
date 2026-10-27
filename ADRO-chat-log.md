@@ -632,6 +632,13 @@ Passwords and keys are left out on purpose.
 - Numbers at 29: 21.43 SAR reaches us after VAT and Apple; AI about 1.27 a month (2.26 heavy, 12 at the daily cap) so about 20 SAR profit; about 14 subscribers cover the fixed costs.
 - Open: the site and the app still show a "Free forever" plan next to it; the trial isn't built yet.
 
+## Decided: trial and free use (27 Oct 2026)
+
+- Trial: the first 7 days after sign-up, AI limited to 3 photos and 4 coach messages a day.
+- After the trial without a subscription: the app stays open (workouts, food by search and barcode, streak, friends), with no AI.
+- Subscription: one plan, unlimited, 29 SAR a month (299 a year). To be built before launch.
+- Payment way (RevenueCat or Apple StoreKit directly): explained to the owner, waiting for the choice.
+
 ---
 
 
