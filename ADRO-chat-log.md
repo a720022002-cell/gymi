@@ -616,7 +616,8 @@ Passwords and keys are left out on purpose.
 
 - Ask: switch to Gemini 3.5 Flash-Lite only for photos.
 - Done (code): the ai function uses google/gemini-3.5-flash-lite (PHOTO_MODEL, through OpenRouter, same key) for meal_photo and label_photo. Everything else stays on Claude Haiku 5.5: chat, typed food, recipes, plans, the machine photo and lab reports (PDF). A retry uses the same model. The admin's model comparison still overrides it.
-- File: supabase/functions/ai/index.ts. Server only (no app update needed). Not deployed yet: waiting for "طبّق".
+- File: supabase/functions/ai/index.ts. Server only (no app update needed).
+- Applied (owner: "طبق"): deployed ai v102. Tested with a test user: meal_photo went to google/gemini-3.5-flash-lite (6.5 s, $0.0019, found chicken, brown rice, salad); food_text stayed on claude-haiku-5.5 ($0.0003). Test user deleted (0 left).
 
 ## Pricing file (27 Oct 2026)
 
