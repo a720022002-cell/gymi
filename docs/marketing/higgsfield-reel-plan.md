@@ -29,3 +29,7 @@ Higgsfield video models need a paid plan, so the 5 shots are Soul 2.0 photos (0.
 
 - Higgsfield connected (claude.ai → Connectors), then a new session.
 - OK on the shots above, or changes.
+
+## Full-motion version (27 Oct 2026)
+
+12 real moving clips: Soul 2.0 photos animated with Seedance 1.5 (image-to-video, 720p, 4 s, about 4.8 credits each; the only video model the free plan allowed). Edit: hard cuts, upscaled to 1080 × 1920, the cards and text on a transparent layer (`overlay.html`), then the end card. Video: `docs/marketing/Adro-reel-coming-soon-motion.mp4` (28.8 s, no music). Rebuild: put fonts in `<dir>/fonts` and clips in `<dir>/vid`, then `node compose.js <dir> out.mp4`.
