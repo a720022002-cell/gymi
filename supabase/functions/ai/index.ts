@@ -5,6 +5,8 @@
 // Secrets (Supabase > Edge Functions > Secrets):
 //   OPENROUTER_API_KEY  (also read as "OpenRouter") the key for OpenRouter
 //   AI_DAILY_LIMIT      requests per person per day, default 80
+//   PAYWALL             "on" once subscriptions are live: the free trial's daily limits and no AI without a
+//                       subscription (public.ai_gate). Off (unset): everyone gets AI up to AI_DAILY_LIMIT, as before.
 // (Only the admin's artwork tool, admin_image, uses an image model: Haiku can't draw.)
 import { AsyncLocalStorage } from 'node:async_hooks';
 
@@ -1151,9 +1153,16 @@ async function handle(req: Request) {
       const { data: hit } = await admin.from('ai_plan_cache').select('result').eq('key', planKey).maybeSingle();
       if (hit?.result) return json({ result: hit.result, cached: true });
     }
-    const { data: ok } = await admin.rpc('ai_take', { p_user: u.user.id, p_limit: Number(env('AI_DAILY_LIMIT', '80')) });
-    // Only a clear yes lets the request through (an error checking the limit doesn't).
-    if (ok !== true) return json({ error: 'limit' }, 429);
+    if (env('PAYWALL') === 'on') {
+      // Subscribed: AI up to the daily cap. Free trial: 3 photos and 4 coach messages a day. After it: no AI.
+      const { data: gate } = await admin.rpc('ai_gate', { p_user: u.user.id, p_task: task, p_limit: Number(env('AI_DAILY_LIMIT', '80')) });
+      // Only a clear ok lets the request through (an error checking it doesn't).
+      if (gate !== 'ok') return json({ error: ['trial_photos', 'trial_chat', 'paywall'].includes(String(gate)) ? gate : 'limit' }, gate === 'paywall' ? 402 : 429);
+    } else {
+      const { data: ok } = await admin.rpc('ai_take', { p_user: u.user.id, p_limit: Number(env('AI_DAILY_LIMIT', '80')) });
+      // Only a clear yes lets the request through (an error checking the limit doesn't).
+      if (ok !== true) return json({ error: 'limit' }, 429);
+    }
 
     cx().lastModel = '';
     cx().lastDetail = '';
