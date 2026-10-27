@@ -19,7 +19,7 @@ import { toPlanEx } from '@/lib/exercisesDb';
 import { type Rest, type Session, type SessionEx, useTrain, vsLastTime } from '@/lib/train';
 import { useFood } from '@/lib/food';
 import { exInfo, type PlanEx, topReps } from '@/lib/training';
-import { useWeight } from '@/lib/units';
+import { useExerciseWeight, type useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 import { goBack } from '@/lib/nav';
 
@@ -41,11 +41,12 @@ const restOf = (sec: number): Rest => ({ end: Date.now() + sec * 1000, total: se
 
 export default function Active() {
   const { t, lang } = useT();
-  const { colors: c, setUnit } = useSettings();
+  const { colors: c, setExUnit } = useSettings();
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const train = useTrain();
-  const W = useWeight();
+  // Each exercise in its own unit (kg or lb, switched on its card), else your usual one.
+  const Wf = useExerciseWeight();
   const s = train.session;
   // The rest timer is kept with the workout (lib/train), so the Live Activity can start and skip it too.
   const { rest, setRest } = train;
@@ -74,9 +75,9 @@ export default function Active() {
       (s?.ex ?? []).map((x) => {
         const info = exInfo(x, lang);
         const hist = histFor(train.logs, train.plan, x.id);
-        return { adv: setAdvice(x, info.timed, info.type === 'Bodyweight', hist, t, W), arrow: vsLastTime(x, hist[0]) };
+        return { adv: setAdvice(x, info.timed, info.type === 'Bodyweight', hist, t, Wf(x.id)), arrow: vsLastTime(x, hist[0]) };
       }),
-    [s, train.logs, train.plan, W, lang, t],
+    [s, train.logs, train.plan, Wf, lang, t],
   );
 
   // One exercise a page: the one you picked in the tabs on top, else the first with sets still to do.
@@ -288,6 +289,7 @@ export default function Active() {
           const info = exInfo(x, lang);
           const a = perEx[ei]?.arrow;
           const mach = info.mach[train.plan?.machines[x.id] ?? 0];
+          const W = Wf(x.id);
           return (
             <Card key={`${x.id}-${ei}`}>
               <Row style={{ justifyContent: 'space-between' }}>
@@ -348,13 +350,13 @@ export default function Active() {
                     —
                   </Text>
                 ) : (
-                  // kg or lb: sets stay saved in kg, the boxes and the coach's tips switch to the unit you pick.
+                  // kg or lb for this exercise only: sets stay saved in kg, its boxes and the coach's tips switch to it.
                   <View style={{ flex: 1, alignItems: 'center' }}>
                     <View style={{ flexDirection: 'row', borderRadius: 10, padding: 2, backgroundColor: c.inset }}>
                       {(['kg', 'lb'] as const).map((u) => (
                         <Springy
                           key={u}
-                          onPress={() => setUnit(u)}
+                          onPress={() => setExUnit(x.id, u)}
                           scaleTo={0.94}
                           accessibilityRole="radio"
                           accessibilityState={{ selected: W.unit === u }}

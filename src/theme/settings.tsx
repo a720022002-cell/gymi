@@ -28,6 +28,8 @@ type Stored = {
   reduceReset?: boolean;
   /** Show the workout on the Lock Screen and in the Dynamic Island (iPhone). On unless turned off. */
   liveActivity?: boolean;
+  /** An exercise switched to kg or lb on the workout screen (by exercise id); the others use `unit`. */
+  exUnit?: Record<string, WeightUnit>;
 };
 
 type Settings = {
@@ -47,6 +49,9 @@ type Settings = {
   setReduce: (r: boolean) => void;
   unit: WeightUnit;
   setUnit: (u: WeightUnit) => void;
+  /** The unit one exercise is lifted in: its own if you switched it, else `unit`. */
+  exUnits: Record<string, WeightUnit>;
+  setExUnit: (id: string, u: WeightUnit) => void;
   liveActivity: boolean;
   setLiveActivity: (on: boolean) => void;
 };
@@ -183,6 +188,8 @@ export function SettingsProvider({ children }: PropsWithChildren) {
       setReduce: (reduce) => save({ reduce }),
       unit: stored.unit === 'lb' ? 'lb' : 'kg',
       setUnit: (unit) => save({ unit }),
+      exUnits: stored.exUnit ?? {},
+      setExUnit: (id, u) => save({ exUnit: { ...stored.exUnit, [id]: u } }),
       liveActivity: stored.liveActivity !== false,
       setLiveActivity: (liveActivity) => save({ liveActivity }),
     }),

@@ -15,12 +15,29 @@ export const fromUnit = (v: number, unit: WeightUnit) => (unit === 'lb' ? Math.r
 export function useWeight() {
   const { unit } = useSettings();
   const { t } = useT();
-  const show = useCallback((kg: number) => String(toUnit(kg, unit)), [unit]);
-  const num = useCallback((kg: number) => toUnit(kg, unit), [unit]);
-  const toKg = useCallback((v: number) => fromUnit(v, unit), [unit]);
-  /** A sentence written with "kg" (or "كجم") in your unit's word. */
-  const words = useCallback((s: string) => (unit === 'lb' ? s.replace(/\bkg\b/g, 'lb').replace(/كجم|كغ/g, 'باوند') : s), [unit]);
-  /** A weight with its unit, like "80.4 kg" or "177.5 lb". */
-  const text = useCallback((kg: number) => `${toUnit(kg, unit)} ${t(unit)}`, [unit, t]);
-  return useMemo(() => ({ unit, label: t(unit), show, num, toKg, words, text, step: unit === 'lb' ? 5 / LB : 2.5 }), [unit, t, show, num, toKg, words, text]);
+  return useMemo(() => weightIn(unit, t), [unit, t]);
+}
+
+/** The same helpers for one exercise: in the unit you switched it to on the workout screen, else your usual unit. */
+export function useExerciseWeight() {
+  const { unit, exUnits } = useSettings();
+  const { t } = useT();
+  const kg = useMemo(() => weightIn('kg', t), [t]);
+  const lb = useMemo(() => weightIn('lb', t), [t]);
+  return useCallback((id?: string) => ((id && exUnits[id]) || unit) === 'lb' ? lb : kg, [exUnits, unit, kg, lb]);
+}
+
+function weightIn(unit: WeightUnit, t: (s: string) => string) {
+  return {
+    unit,
+    label: t(unit),
+    show: (kg: number) => String(toUnit(kg, unit)),
+    num: (kg: number) => toUnit(kg, unit),
+    toKg: (v: number) => fromUnit(v, unit),
+    /** A sentence written with "kg" (or "كجم") in your unit's word. */
+    words: (s: string) => (unit === 'lb' ? s.replace(/\bkg\b/g, 'lb').replace(/كجم|كغ/g, 'باوند') : s),
+    /** A weight with its unit, like "80.4 kg" or "177.5 lb". */
+    text: (kg: number) => `${toUnit(kg, unit)} ${t(unit)}`,
+    step: unit === 'lb' ? 5 / LB : 2.5,
+  };
 }

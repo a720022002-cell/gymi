@@ -9,7 +9,7 @@ import { restDone } from '@/lib/beep';
 import { useFood } from '@/lib/food';
 import { useTrain } from '@/lib/train';
 import { exInfo } from '@/lib/training';
-import { useWeight } from '@/lib/units';
+import { useExerciseWeight } from '@/lib/units';
 import { onWorkoutAction, syncWorkoutActivity } from '@/lib/widgetSync';
 import type { WorkoutAction } from '@/widgets/WorkoutActivity';
 import { useSettings } from '@/theme/settings';
@@ -91,7 +91,7 @@ function LiveActivity() {
   const toast = useToast();
   const train = useTrain();
   const food = useFood();
-  const W = useWeight();
+  const Wf = useExerciseWeight();
   const { liveActivity } = useSettings();
   const s = train.session;
   const rest = train.rest;
@@ -108,6 +108,8 @@ function LiveActivity() {
     const w = st ? +(st.w || st.lw) || 0 : 0;
     const r = st ? +(st.r || st.lr) || 0 : 0;
     const xi = x ? exInfo(x, lang) : null;
+    // The unit this exercise is lifted in.
+    const W = Wf(x?.id);
     const timed = xi?.timed ?? false;
     // A weighted exercise always shows its weight, "– kg" until you set one (Done doesn't log a set without it).
     const weighted = !!xi && !timed && xi.type !== 'Bodyweight';
@@ -132,18 +134,18 @@ function LiveActivity() {
       total: s.ex.reduce((a, e) => a + e.sets.length, 0),
       L: { rest: t('Rest'), next: t('Next'), sets: t('sets'), done: t('Done'), skip: t('Skip') },
     });
-  }, [s, rest, lang, t, W, train.logs, train.plan, food.day, food.today, food.water, liveActivity]);
+  }, [s, rest, lang, t, Wf, train.logs, train.plan, food.day, food.today, food.water, liveActivity]);
 
   // The buttons on the Live Activity (iPhone, iOS 17+): change the set you're on, log it, or skip the rest, without
   // opening the app. They read the latest workout from a ref, so the listener is set up once.
-  const latest = useRef({ s, train, W, lang, toast, t, food });
+  const latest = useRef({ s, train, Wf, lang, toast, t, food });
   useEffect(() => {
-    latest.current = { s, train, W, lang, toast, t, food };
+    latest.current = { s, train, Wf, lang, toast, t, food };
   });
   useEffect(
     () =>
       onWorkoutAction((a: WorkoutAction) => {
-        const { s, train, W, lang, toast, t, food } = latest.current;
+        const { s, train, Wf, lang, toast, t, food } = latest.current;
         if (!s) return;
         // Taps in a row each build on the one before, before the screen catches up.
         const save = (next: typeof s) => {
@@ -173,6 +175,7 @@ function LiveActivity() {
           // One plate jump in your unit (2.5 kg or 5 lb), kept in kg. With no weight yet, + starts from a usual first
           // weight (the empty bar for a barbell) instead of 2.5 kg, so it takes a few taps, not twenty.
           const cur0 = +(st.w || st.lw) || 0;
+          const W = Wf(x.id);
           const lb = W.unit === 'lb';
           const type = exInfo(x, lang).type;
           const first = type === 'Barbell' ? (lb ? 45 : 20) : type === 'Dumbbell' ? (lb ? 15 : 7.5) : type === 'Machine' || type === 'Cable' ? (lb ? 30 : 15) : lb ? 5 : 2.5;

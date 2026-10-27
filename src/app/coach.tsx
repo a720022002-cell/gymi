@@ -53,7 +53,7 @@ const r1 = (n: number) => Math.round(n * 10) / 10;
 export default function Coach() {
   const { t, lang } = useT();
   const W = useWeight();
-  const { colors: c } = useSettings();
+  const { colors: c, exUnits } = useSettings();
   const insets = useSafeAreaInsets();
   const kb = useKeyboardHeight();
   const toast = useToast();
@@ -164,6 +164,8 @@ export default function Coach() {
       weightKg: health.weights.at(-1)?.value ?? food.plan.weight,
       // The unit the person sees and types weights in (weights in this data are always kg).
       weightUnit: W.unit,
+      // Exercises the person switched to kg or lb on the workout screen (by exercise id): use that unit for their weights.
+      exerciseWeightUnits: Object.keys(exUnits).length ? exUnits : undefined,
       pregnancy: preg ? { stage: preg.mode === 'preg' ? 'pregnant' : 'after birth', week: preg.week } : null,
       weightWeeklyAverages: weekly,
       goal: food.setupDone ? GOALS[food.plan.goal] : 'not set up',
