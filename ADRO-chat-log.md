@@ -693,6 +693,13 @@ Passwords and keys are left out on purpose.
 - Links: Home's Streaks card opens Streak; Overall's Streak tile opens Streak, its Commitment tile opens Commitment; Home's commitment ring opens Commitment.
 - Also put LoadView/NutritionView back to the project's single quotes (an earlier format run changed them).
 
+### 28 Oct 2026: Gym Bro characters on Gym Bros (Friends and Groups)
+- Design: AI cartoon (Higgsfield FLUX 3 + Seedream 5.0 Flash edits), 5 levels for men and 5 for women (women: sports top and shorts, ponytail). Pictures in `assets/images/bro/m1-5.png`, `w1-5.png` (420 px tall, about 20-36 KB each).
+- `src/components/social/GymBro.tsx`: the picture with the adro ring drawn on the head (filled to the 30-day commitment) and `@username` on the neck. Level: under 40 = 1, 40-59 = 2, 60-74 = 3, 75-89 = 4, 90+ = 5 (`src/lib/bro.ts`). Someone who doesn't share their streak shows level 2 with an empty ring.
+- `src/components/social/BroBox.tsx`: above "Gym Bros". Friends and Activity: "Your crew" (you first, then friends by commitment; tap a friend for their page, tap yourself for Commitment). Groups: your character next to a ring for each group, filled with the members' average commitment.
+- Database (applied 28 Oct, "طبق"): `supabase/migrations/20261202000000_gym_bro.sql`: table `bro_levels` (own row only), `my_crew()` and `group_bros(group)`; a friend's commitment shows only if they share their streak. Tested on a local Postgres first (twice-apply, crew, group, non-member, RLS).
+- The app saves your 30-day commitment to `bro_levels` when Gym Bros opens (only when it changed).
+
 ---
 
 

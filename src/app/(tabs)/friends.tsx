@@ -10,6 +10,7 @@ import { Avatar } from '@/components/social/Avatar';
 import { ReportSheet } from '@/components/social/ReportSheet';
 import { List, ListRow } from '@/components/social/List';
 import { PartnerCycles } from '@/components/social/PartnerCycles';
+import { CrewBox, GroupBox } from '@/components/social/BroBox';
 import { SocialInvites } from '@/components/social/SocialInvites';
 import { Text } from '@/components/Text';
 import { TourTarget, useTour } from '@/components/tour/Tour';
@@ -88,7 +89,18 @@ export default function Friends() {
   );
 
   return (
-    <Screen title={t('Gym Bros')} large tabs right={
+    <Screen
+      title={t('Gym Bros')}
+      large
+      tabs
+      pre={
+        offline ? null : tab === 'groups' ? (
+          <GroupBox groups={groups} hasFriends={!!friends?.some((f) => f.status === 'accepted')} onAdd={() => setAdding(true)} />
+        ) : (
+          <CrewBox onAdd={() => setAdding(true)} />
+        )
+      }
+      right={
         <TourTarget id="friends.add">
           <NavButton icon="userplus" label={t('Add a friend')} onPress={() => setAdding(true)} />
         </TourTarget>
