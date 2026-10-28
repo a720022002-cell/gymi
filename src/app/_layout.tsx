@@ -47,7 +47,10 @@ import { WorkoutLive } from '@/components/WorkoutLive';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { FoodProvider } from '@/lib/food';
 import { HealthProvider } from '@/lib/health';
+import { whenAiNeedsSubscription } from '@/lib/ai';
+import { refreshAccess } from '@/lib/access';
 import { installLatinDigits } from '@/lib/latinDigits';
+import { linkPurchases } from '@/lib/purchases';
 import { TrainProvider } from '@/lib/train';
 import { SignupDraftProvider } from '@/lib/signupDraft';
 import { RESUME_KEY, SettingsProvider, useSettings } from '@/theme/settings';
@@ -115,6 +118,24 @@ function AppStack({ ready }: { ready: boolean }) {
   useEffect(() => {
     if (show) SplashScreen.hideAsync().catch(() => {});
   }, [show]);
+
+  // Purchases belong to the signed-in account; the subscription page opens when the AI needs Adro+.
+  const uid = session?.user.id ?? null;
+  useEffect(() => {
+    linkPurchases(uid);
+    if (uid) refreshAccess().catch(() => {});
+  }, [uid]);
+  useEffect(() => {
+    let last = 0;
+    whenAiNeedsSubscription(() => {
+      // Once a minute at most, so a screen trying again doesn't stack pages.
+      if (Date.now() - last < 60_000) return;
+      last = Date.now();
+      refreshAccess().catch(() => {});
+      router.push('/subscription');
+    });
+    return () => whenAiNeedsSubscription(null);
+  }, []);
 
   // Logged out (or never logged in) on a signed-in screen: go to Welcome, closing what's open.
   const first = segments[0];
