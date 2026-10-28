@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Image, View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 
 import { cleanLook, RING_COLORS } from '@/lib/avatar';
 import { type Bro, broLevel } from '@/lib/bro';
@@ -15,41 +15,54 @@ const IMG: Record<BroKey, number> = {
   m3: require('../../../assets/images/bro/m3.png'),
   m4: require('../../../assets/images/bro/m4.png'),
   m5: require('../../../assets/images/bro/m5.png'),
+  m6: require('../../../assets/images/bro/m6.png'),
+  m7: require('../../../assets/images/bro/m7.png'),
   w1: require('../../../assets/images/bro/w1.png'),
   w2: require('../../../assets/images/bro/w2.png'),
   w3: require('../../../assets/images/bro/w3.png'),
   w4: require('../../../assets/images/bro/w4.png'),
   w5: require('../../../assets/images/bro/w5.png'),
+  w6: require('../../../assets/images/bro/w6.png'),
+  w7: require('../../../assets/images/bro/w7.png'),
 };
 
 /** The width of a character drawn at a height. */
 export const broWidth = (height: number) => height * BRO_GEO.m1[0];
 
 /**
- * A Gym Bros character (design: owner's flexing cartoon): stronger at each commitment level (1–5; someone who
- * doesn't share it stands at level 2). Its face is the adro logo in their colour (always the same), with the
- * username under it.
+ * A Gym Bros character (design: owner's flexing cartoon): stronger at each commitment level (1–7; someone who
+ * doesn't share it stands at level 3). Its face is the glowing adro logo in their colour (the same at every
+ * level, same size and place), with the username under it.
  */
 export function GymBro({ pct, female, look, username, height, level }: { pct: number | null; female?: boolean; look?: unknown; username: string; height: number; level?: number }) {
-  const key = `${female ? 'w' : 'm'}${level ?? (broLevel(pct) || 2)}` as BroKey;
+  const key = `${female ? 'w' : 'm'}${level ?? (broLevel(pct) || 3)}` as BroKey;
   const [ar, cx0, cy0, r0] = BRO_GEO[key];
   const w = height * ar;
   const cx = cx0 * w;
   const cy = cy0 * height;
   const r = r0 * height;
-  const R = r * 0.6;
-  const sw = r * 0.36;
+  // The adro logo (as the app icon): a white ring, open at the top left, on the colour; glowing around it.
+  const R = r * 0.55;
+  const sw = r * 0.25;
   const C = 2 * Math.PI * R;
   const color = RING_COLORS[cleanLook(look).color];
+  const glow = `g${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
+  const white = color === '#F2F2F2';
   const fs = Math.max(7, Math.round(height * 0.045));
   return (
     <View style={{ width: w, height }} accessible={false}>
       <Image source={IMG[key]} style={{ width: w, height }} resizeMode="contain" />
       <Svg width={w} height={height} style={{ position: 'absolute', left: 0, top: 0 }}>
-        <Circle cx={cx} cy={cy} r={r} fill="#10131C" stroke="#0A0A0B" strokeWidth={Math.max(1.5, r * 0.08)} />
-        <Circle cx={cx} cy={cy} r={R} fill="none" stroke="#2A3047" strokeWidth={sw} />
-        {/* The adro logo: always the same; only the body shows the commitment. */}
-        <Circle cx={cx} cy={cy} r={R} fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeDasharray={`${C * 0.72} ${C}`} transform={`rotate(-90 ${cx} ${cy})`} />
+        <Defs>
+          <RadialGradient id={glow} cx="50%" cy="50%" r="50%">
+            <Stop offset="0.55" stopColor={color} stopOpacity={0.55} />
+            <Stop offset="1" stopColor={color} stopOpacity={0} />
+          </RadialGradient>
+        </Defs>
+        {/* Always the same logo at every level: only the body shows the commitment. */}
+        <Circle cx={cx} cy={cy} r={r * 1.7} fill={`url(#${glow})`} />
+        <Circle cx={cx} cy={cy} r={r} fill={color} stroke="#0A0A0B" strokeWidth={Math.max(1.5, r * 0.06)} />
+        <Circle cx={cx} cy={cy} r={R} fill="none" stroke={white ? '#3355FF' : '#FFFFFF'} strokeWidth={sw} strokeLinecap="round" strokeDasharray={`${C * 0.8} ${C}`} transform={`rotate(-90 ${cx} ${cy})`} />
       </Svg>
       {username ? (
         <View style={{ position: 'absolute', top: cy + r + 2, left: 0, right: 0, alignItems: 'center' }}>

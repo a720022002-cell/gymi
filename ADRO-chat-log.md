@@ -793,6 +793,17 @@ Passwords and keys are left out on purpose.
 - "Your crew" lines everyone up: you in front in the middle, friends beside you by commitment (smaller and a step back), more friends in a row behind.
 - The Bitmoji-style drawn version was removed. The `look` column stays (it now holds `{color}`).
 
+## Gym Bros: 7 levels, tighter flex, same height, glowing logo head (29 Oct 2026)
+
+**Asked:** fists closer to the biceps in all of them; all the same height; a character between levels 1–2 and 2–3 (men and women); men's growth in small steps, not over the top; the head lights up our logo and never changes between levels.
+
+**Built:**
+- All pictures edited with Seedream 5.0 Flash: forearms folded in, fists by the biceps (like the reference).
+- 7 levels each for men and women, with new in-between characters. The men's set now tops out at the old level 3 (abs, not huge), so each step is small.
+- Every picture scaled to the same height (neck to feet) and standing on one line, so the logo sits in exactly the same place and size at every level.
+- The head is the app logo (white ring open at the top left, on the person's colour) with a glow around it. It doesn't change with level.
+- Levels from the 30-day commitment: under 30, 30–41, 42–54, 55–67, 68–79, 80–89, 90+ (Starter, Warming up, Getting there, Solid, Strong, Very strong, Beast). Someone who doesn't share it shows level 3.
+
 ---
 
 

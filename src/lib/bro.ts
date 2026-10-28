@@ -4,9 +4,9 @@ import { supabase } from './supabase';
 /** A Gym Bros cartoon: you, a friend or a group member, with their 30-day commitment (null when they don't share it). */
 export type Bro = { user_id: string; username: string; name: string | null; gender: string | null; pct: number | null; look?: unknown };
 
-/** The cartoon's level from the 30-day commitment: under 40, 40–59, 60–74, 75–89, 90 and up. */
-export const broLevel = (pct: number | null | undefined) => (pct == null ? 0 : pct >= 90 ? 5 : pct >= 75 ? 4 : pct >= 60 ? 3 : pct >= 40 ? 2 : 1);
-export const BRO_LEVELS = ['Starter', 'Getting there', 'Solid', 'Strong', 'Beast'];
+/** The cartoon's level (1–7) from the 30-day commitment: under 30, 30–41, 42–54, 55–67, 68–79, 80–89, 90 and up. */
+export const broLevel = (pct: number | null | undefined) => (pct == null ? 0 : pct >= 90 ? 7 : pct >= 80 ? 6 : pct >= 68 ? 5 : pct >= 55 ? 4 : pct >= 42 ? 3 : pct >= 30 ? 2 : 1);
+export const BRO_LEVELS = ['Starter', 'Warming up', 'Getting there', 'Solid', 'Strong', 'Very strong', 'Beast'];
 
 /** You and your friends. Null when it couldn't load (offline, or the database doesn't have it yet). */
 export async function myCrew(): Promise<Bro[] | null> {

@@ -16,7 +16,7 @@ import { useSettings } from '@/theme/settings';
 
 /**
  * Your Gym Bros character: pick the colour of your adro ring (its face). The body isn't chosen: it follows your
- * 30-day commitment, and you can preview the five levels here.
+ * 30-day commitment, and you can preview the seven levels here.
  */
 export default function BroEdit() {
   const { t } = useT();
@@ -62,7 +62,7 @@ export default function BroEdit() {
           {preview == null ? t('Your build follows your 30-day commitment. Stay committed and it gets stronger.') : t('A preview. Your real build follows your commitment.')}
         </Text>
         <Row gap={6} style={{ marginTop: 10 }}>
-          {[1, 2, 3, 4, 5].map((n) => (
+          {[1, 2, 3, 4, 5, 6, 7].map((n) => (
             <Springy
               key={n}
               onPress={() => setPreview(n === lvl ? null : n)}

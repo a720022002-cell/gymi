@@ -5393,4 +5393,6 @@ export const AR: Record<string, string> = {
   "Your build follows your 30-day commitment. Stay committed and it gets stronger.": "جسم شخصيتك يمشي مع التزامك آخر 30 يوم. كل ما التزمت أكثر صار أقوى.",
   "Your character": "شخصيتك",
   "Ring color": "لون الحلقة",
+  "Warming up": "يسخّن",
+  "Very strong": "قوي جدًا",
 };
