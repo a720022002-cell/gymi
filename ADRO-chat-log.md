@@ -738,7 +738,7 @@ Passwords and keys are left out on purpose.
 - The tap is read by a clear layer over the chart, measured against the chart's place on screen (works on phone and web). Tested on the web with a cutting test user (target 82 kg): tapping Oct 20 showed 88.6 kg, +0.5 since Oct 16, body fat 21.5% and waist 92 cm. Test user deleted.
 
 ### 28 Oct 2026: Gift Adro+ (admin), no Apple and no charge
-- Migration `20261203000000_gifts.sql` (not applied yet): table `gifts` (no direct access), `access_of` now gives 'sub' with why 'gift' while a gift is on (checked after paid, before the trial), `admin_give_gift(username, days, note)` (a new gift starts when the current one ends), `admin_gifts()`, `admin_end_gift(id)` (ends now; one not started yet is removed). Admins only. When a gift ends the person falls back to the regular version by themselves.
+- Migration `20261203000000_gifts.sql` (applied 28 Oct after "طبق"; live check with temporary users: free → gift 30 days until Nov 27 → ended → free; non-admin 403; users and gift deleted): table `gifts` (no direct access), `access_of` now gives 'sub' with why 'gift' while a gift is on (checked after paid, before the trial), `admin_give_gift(username, days, note)` (a new gift starts when the current one ends), `admin_gifts()`, `admin_end_gift(id)` (ends now; one not started yet is removed). Admins only. When a gift ends the person falls back to the regular version by themselves.
 - Tested on a local Postgres: twice-apply, free → gift 30 + 7 stacked = 37 days → end → free, unknown username, non-admin refused, table not readable.
 - App: Admin → "Gift Adro+" (`src/app/admin-gifts.tsx`): username, 1 week to 1 year, note, list with End. Admin tiles now two rows of three.
 
