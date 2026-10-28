@@ -265,7 +265,7 @@ function Measurements() {
   const have = MEAS.filter((k) => series(k).length);
 
   const openSheet = () => {
-    const ks = have.length ? [...have] : (['waist', 'chest', 'arm'] as (typeof MEAS)[number][]);
+    const ks = have.length ? [...have] : (['waist', 'chest', 'arm_r', 'arm_l'] as (typeof MEAS)[number][]);
     const v: Partial<Record<MeasKind, number>> = {};
     ks.forEach((k) => (v[k] = series(k).at(-1)?.value ?? MEAS_INFO[k][3]));
     setKeys(ks);
@@ -358,11 +358,12 @@ function Measurements() {
             </Card>
           );
         })}
-        {MEAS.some((k) => !keys.includes(k)) ? (
+        {MEAS.some((k) => !keys.includes(k) && (k !== 'arm' || series(k).length)) ? (
           <>
             <Label>{t('Add more')}</Label>
             <Row gap={8} style={{ flexWrap: 'wrap' }}>
-              {MEAS.filter((k) => !keys.includes(k)).map((k) => (
+              {/* One arm only for the numbers saved before right and left: new ones are right or left. */}
+              {MEAS.filter((k) => !keys.includes(k) && (k !== 'arm' || series(k).length)).map((k) => (
                 <Chip
                   key={k}
                   title={`+ ${t(MEAS_INFO[k][0])}`}

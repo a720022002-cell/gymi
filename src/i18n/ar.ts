@@ -5157,4 +5157,6 @@ export const AR: Record<string, string> = {
   "{n} one-time codes": "{n} كود لمرة وحدة",
   "Step {n} of {m}": "الخطوة {n} من {m}",
   "Sleep from your watch: {h}": "نومك من الساعة: {h}",
+  "Right arm": "اليد اليمين",
+  "Left arm": "اليد اليسار",
 };

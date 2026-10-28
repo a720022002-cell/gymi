@@ -661,6 +661,13 @@ Passwords and keys are left out on purpose.
 - Done: the steps are now sleep, weight, how you feel. When the watch measured last night (the same night the sleep step already started from), the sleep step isn't shown: the check-in is 2 steps, the weight step says "Sleep from your watch: 7h 20m", and the night is saved from the watch (hours, plus bed and wake times when the watch has them). The steps are fixed once you move on, so a watch night arriving late can't shift them. Progress dots and "Step n of m" follow the number of steps.
 - File: src/components/health/CheckinSheet.tsx (+ Arabic). JS only, works with build 17. Not sent yet.
 
+## Measurements: right arm and left arm (28 Oct 2026)
+
+- Ask: add right arm and left arm.
+- Done: two new measurements, Right arm and Left arm (shown by default with waist and chest for someone with no measurements yet). The old single "Arm" stays only for people who already saved it (one row in the database), so its history isn't lost; it isn't offered for new entries.
+- Database: migration 20261201000000_arm_sides.sql adds arm_r and arm_l to measurements_kind_check. Not applied yet: needs "طبّق" (and must be applied before the app update, or saving right/left arm fails).
+- Files: src/lib/health.tsx, src/components/progress/Body.tsx (+ Arabic). JS only, works with build 17. Not sent yet.
+
 ---
 
 

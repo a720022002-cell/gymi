@@ -28,12 +28,15 @@ export type Checkin = {
 };
 export type SleepPart = { bed: string; wake: string };
 
-export const MEAS = ['waist', 'chest', 'arm', 'neck', 'shoulders', 'hips', 'thigh', 'calf', 'forearm', 'bf'] as const;
+/** `arm` is the one arm measured before right and left were separate: kept for the numbers already saved. */
+export const MEAS = ['waist', 'chest', 'arm_r', 'arm_l', 'arm', 'neck', 'shoulders', 'hips', 'thigh', 'calf', 'forearm', 'bf'] as const;
 export type MeasKind = 'weight' | (typeof MEAS)[number];
 /** Name, unit, and whether smaller is better (design: MEAS). */
 export const MEAS_INFO: Record<(typeof MEAS)[number], [string, string, boolean, number]> = {
   waist: ['Waist', 'cm', true, 85],
   chest: ['Chest', 'cm', false, 100],
+  arm_r: ['Right arm', 'cm', false, 34],
+  arm_l: ['Left arm', 'cm', false, 34],
   arm: ['Arm', 'cm', false, 34],
   neck: ['Neck', 'cm', false, 39],
   shoulders: ['Shoulders', 'cm', false, 120],
