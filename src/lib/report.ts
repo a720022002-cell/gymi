@@ -18,6 +18,10 @@ export type ReportData = {
   checkins: Checkin[];
   weights: Measure[];
   waist: Measure[];
+  /** Every tape measurement in the period (waist, chest, arms…), oldest first. */
+  tape: Measure[];
+  /** Cardio sessions in the period. */
+  cardio: { day: string; name: string | null; minutes: number; kcal: number }[];
   /** Calories added to each day's goal (moved from other days, burned in cardio). */
   kcalExtra: Record<string, number>;
   /** Sleep from the watch by day, for nights without a check-in. */
@@ -59,11 +63,12 @@ export function useReportData(from: string, to: string) {
     let alive = true;
     (async () => {
       // Food and water come as one short row per day: the database sends at most 1000 rows, and single logs would go over it.
-      const [f, l, c, m, kcalExtra, watchSleep, goals] = await Promise.all([
+      const [f, l, c, m, cd, kcalExtra, watchSleep, goals] = await Promise.all([
         supabase.rpc('my_day_totals').gte('day', from).lte('day', to),
         supabase.from('workout_logs').select('*').gte('day', from).lte('day', to).order('day').limit(500),
         supabase.from('checkins').select('day,sleep_h,sleep_q,bed,wake,energy,sore,score').gte('day', from).lte('day', to).order('day'),
-        supabase.from('measurements').select('day,kind,value').in('kind', ['weight', 'waist']).gte('day', from).lte('day', to).order('day'),
+        supabase.from('measurements').select('day,kind,value').gte('day', from).lte('day', to).order('day').limit(2000),
+        supabase.from('cardio_logs').select('day,name,minutes,kcal').gte('day', from).lte('day', to).order('day').limit(1000),
         loadKcalExtras(from, to).catch(() => ({})),
         loadWatchSleep(from, to),
         loadGoalRows(from, to),
@@ -80,6 +85,8 @@ export function useReportData(from: string, to: string) {
           checkins: ((c.data as Checkin[]) ?? []).map((x) => ({ ...x, sleep_h: x.sleep_h == null ? null : Number(x.sleep_h) })),
           weights: ms.filter((x) => x.kind === 'weight'),
           waist: ms.filter((x) => x.kind === 'waist'),
+          tape: ms.filter((x) => x.kind !== 'weight'),
+          cardio: ((cd.data as ReportData['cardio'] | null) ?? []).map((x) => ({ ...x, minutes: Number(x.minutes || 0), kcal: Number(x.kcal || 0) })),
           kcalExtra,
           watchSleep,
           goals,
@@ -161,7 +168,66 @@ export function useReportStats(from: string, to: string, data: ReportData | null
     .sort((p, q) => q.b - q.a - (p.b - p.a))
     .slice(0, 3)
     .map((v) => ({ id: v.id, name: v.n, from: v.a, to: v.b }));
+  // Every lift that went up, biggest jump first (the top 3 are liftUps).
+  const allUps = Object.values(lifts)
+    .filter((v) => v.b > v.a)
+    .sort((p, q) => q.b - q.a - (p.b - p.a))
+    .map((v) => ({ id: v.id, name: v.n, from: v.a, to: v.b }));
+  const avg = (v: number[]) => (v.length ? Math.round((v.reduce((a, b) => a + b, 0) / v.length) * 10) / 10 : null);
+  const ws = w.map((m) => m.value);
+  const weeks = Math.max(1, daysBetween(w[0]?.day ?? from, w.at(-1)?.day ?? to) / 7);
+  // Each measurement's first and last value in the period.
+  const tape = [...new Set(data.tape.map((m) => m.kind))].map((k) => {
+    const s = data.tape.filter((m) => m.kind === k);
+    return { kind: k, first: s[0].value, last: s.at(-1)!.value, change: Math.round((s.at(-1)!.value - s[0].value) * 10) / 10, entries: s.length };
+  });
+  const feel = (k: 'energy' | 'sore') => [0, 1, 2].map((v) => data.checkins.filter((c) => c[k] === v).length) as [number, number, number];
+  const scores = data.checkins.map((c) => c.score).filter((v): v is number => v != null && v > 0).map(Number);
+  // Week by week (7 days each, from the first day).
+  const weekRows: { from: string; to: string; kcal: number | null; protein: number | null; workouts: number; sleep: number | null; weight: number | null }[] = [];
+  for (let d = from; d <= to; d = addDays(d, 7)) {
+    const e = addDays(d, 6) < to ? addDays(d, 6) : to;
+    const fd = Object.entries(data.days).filter(([k, v]) => k >= d && k <= e && v.k > 0).map(([, v]) => v);
+    const sl: number[] = [];
+    for (let i = d; i <= e; i = addDays(i, 1)) {
+      const h = sleepOn(x, i);
+      if (h != null) sl.push(h);
+    }
+    weekRows.push({
+      from: d,
+      to: e,
+      kcal: fd.length ? Math.round(avg(fd.map((v) => v.k))!) : null,
+      protein: fd.length ? Math.round(avg(fd.map((v) => v.p))!) : null,
+      workouts: data.logs.filter((l) => l.day >= d && l.day <= e).length,
+      sleep: avg(sl),
+      weight: w.filter((m) => m.day >= d && m.day <= e).at(-1)?.value ?? null,
+    });
+  }
+  const detail = {
+    food: {
+      daysLogged: foodDays.length,
+      proteinAvg: foodDays.length ? Math.round(avg(foodDays.map((d) => d.p))!) : null,
+      waterAvg: Object.values(data.days).filter((d) => d.w > 0).length ? Math.round(avg(Object.values(data.days).filter((d) => d.w > 0).map((d) => d.w))!) : null,
+      waterGoal: Math.round(endGoals.water),
+      lowest: foodDays.length ? Math.min(...foodDays.map((d) => d.k)) : null,
+      highest: foodDays.length ? Math.max(...foodDays.map((d) => d.k)) : null,
+    },
+    train: {
+      minutes: data.logs.reduce((a, l) => a + (l.minutes || 0), 0),
+      sets: data.logs.reduce((a, l) => a + (l.sets_done || 0), 0),
+      kcal: Math.round(data.logs.reduce((a, l) => a + Number(l.kcal || 0), 0)),
+      list: data.logs.map((l) => ({ day: l.day, name: l.name, minutes: l.minutes, sets: l.sets_done, volume: Math.round(l.volume), prs: (l.prs ?? []).length })),
+      prList: prs.map((p) => ({ id: p.id, name: p.n, w: p.w })),
+      ups: allUps,
+      cardio: { sessions: data.cardio.length, minutes: data.cardio.reduce((a, c) => a + c.minutes, 0), kcal: Math.round(data.cardio.reduce((a, c) => a + c.kcal, 0)) },
+    },
+    sleep: { min: sleeps.length ? Math.min(...sleeps) : null, max: sleeps.length ? Math.max(...sleeps) : null, energy: feel('energy'), sore: feel('sore'), recoveryAvg: scores.length ? Math.round(avg(scores)!) : null },
+    body: { min: ws.length ? Math.min(...ws) : null, max: ws.length ? Math.max(...ws) : null, perWeek: ws.length > 1 ? Math.round(((ws.at(-1)! - ws[0]) / weeks) * 100) / 100 : null, entries: ws.length, tape },
+    weeks: weekRows,
+    commitParts: cw.parts,
+  };
   return {
+    detail,
     days: n,
     workouts: { done: data.logs.length, planned: cw.parts.work[1], asPlanned: cw.parts.work[0] },
     volume: Math.round(data.logs.reduce((a, l) => a + l.volume, 0)),
@@ -208,6 +274,9 @@ export function pdfPage(o: { lang: 'en' | 'ar'; title: string; sub: string; rang
     .top{display:flex;justify-content:space-between;align-items:center}.brand{height:22px;width:auto;display:block}
     h1{font-size:22px;margin:16px 0 4px}h2{font-size:15px;margin:22px 0 6px}.sub{color:#52525B;font-size:13px}.lbl{color:#52525B;font-size:12px;margin-top:18px}
     table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}td{padding:8px 0;border-bottom:1px solid #E4E4E7;vertical-align:top}td:last-child{text-align:end;font-weight:600}
+    h2{border-bottom:2px solid #0A0A0B;padding-bottom:4px;page-break-after:avoid}tr{page-break-inside:avoid}
+    table.grid{font-size:12px}table.grid th{text-align:start;color:#52525B;font-weight:600;padding:6px 4px;border-bottom:1px solid #A1A1AA}table.grid td{padding:6px 4px;text-align:start;font-weight:400}table.grid td:first-child{white-space:nowrap}
+    .ai{background:#F4F6FF;border-radius:12px;padding:4px 16px 12px;margin-top:18px}.ai h2{color:#3355FF;border:0}.ai ul{margin:6px 0;padding-inline-start:18px;font-size:13px}.ai li{margin:4px 0}.ai p{font-size:13px;margin:6px 0}
     .note{color:#52525B;font-size:11px;margin-top:24px}</style></head><body>
     <div class="top">${brandSvg()}<span class="sub">${escHtml(o.range)}</span></div>
     <h1>${escHtml(o.title)}</h1><div class="sub">${escHtml(o.sub)}</div>

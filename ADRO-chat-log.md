@@ -676,6 +676,11 @@ Passwords and keys are left out on purpose.
 - Checked on the web app with a test user (3 dates, waist/chest/right/left arm, weight): See all, the cards, the analysis card (waiting for the server), the compare table (waist −4, chest +2, right arm +1.1, left arm +0.9), charts, entries and the edit sheet. Test user deleted (0 left). tsc and lint pass.
 - Files: src/app/measurements.tsx, src/components/progress/Body.tsx, src/components/health/ReadingInsight.tsx (task prop), src/lib/health.tsx, supabase/functions/ai/index.ts (+ Arabic). App part JS only, works with build 17. Not sent yet; the ai function needs "طبّق" to deploy.
 
+### 28 Oct 2026: Detailed PDF report with optional AI analysis
+- Export report now has sections: Summary (commitment, goal, days logged), Weight and body (weight chart, first to last, lowest and highest, change per week, weigh-ins, every tape measurement incl. right and left arm), Food and protein (avg calories, lowest and highest day, calories on target, avg protein, protein and water goals), Training (workouts, time, sets, volume, PRs, cardio, a table of every workout, lifts that went up), Sleep and recovery (avg, shortest and longest night, short nights, energy, soreness, avg recovery), Week by week table, Vitamins and blood tests.
+- New "AI analysis" switch: the AI reads the whole report (uses the existing `report` AI task, no server change) and adds "What went well / What to improve / Focus" at the top of the PDF. Asks for AI consent first. A finished period is saved so Reports shows it too.
+- Files: `src/app/export.tsx`, `src/lib/report.ts` (loads all measurements and cardio, new `detail` stats, table styles).
+
 ---
 
 
