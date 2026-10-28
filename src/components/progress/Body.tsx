@@ -11,12 +11,14 @@ import { useFood } from '@/lib/food';
 import { MEAS, MEAS_INFO, type MeasKind, useHealth } from '@/lib/health';
 import { addDays, targetFits } from '@/lib/nutrition';
 import { takePhoto } from '@/lib/photo';
+import { useTrain } from '@/lib/train';
+import { armGap, hasOneArm, oneArmPlan, twoArmCount } from '@/lib/training';
 import { fx, shortDate, weekAvg } from '@/lib/progress';
 import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
 import { Icon, Mark } from '../Icon';
-import { Sheet } from '../Sheet';
+import { afterSheet, Sheet } from '../Sheet';
 import { Text } from '../Text';
 import { useToast } from '../Toast';
 import { Button, Card, Chip, Label, Row, Springy } from '../ui';
@@ -334,6 +336,10 @@ function Measurements() {
   const have = MEAS.filter((k) => series(k).length);
   const food = useFood();
   const { profile } = useAuth();
+  const train = useTrain();
+  // One arm clearly smaller after saving: offer one-arm exercises (asked again on every save while the gap is there).
+  const [armAsk, setArmAsk] = useState<{ weak: 'right' | 'left'; cm: number } | null>(null);
+  const weakArm = (w: 'right' | 'left') => t(w === 'right' ? 'right arm' : 'left arm');
 
   const openSheet = () => {
     const ks = have.length ? [...have] : (['waist', 'chest', 'arm_r', 'arm_l'] as (typeof MEAS)[number][]);
@@ -475,8 +481,32 @@ function Measurements() {
             setOpen(false);
             const ok = await health.saveMeasures(out);
             toast(ok ? t('Saved {n} measurements', { n: keys.length }) : t('Couldn’t save. Please try again.'), { icon: ok ? 'check' : 'warn' });
+            if (!ok || (out.arm_r == null && out.arm_l == null)) return;
+            const gap = armGap([...health.measures, ...Object.entries(out).map(([kind, value]) => ({ kind, day: '9999', value: value as number }))]);
+            const plan = train.plan;
+            if (!gap || !plan) return;
+            if (twoArmCount(plan)) afterSheet(() => setArmAsk(gap));
+            else if (hasOneArm(plan)) setTimeout(() => toast(t('Your {a} is {n} cm smaller. On one-arm exercises, start with it.', { a: weakArm(gap.weak), n: fx(gap.cm) }), { icon: 'info' }), 2200);
           }}
         />
+      </Sheet>
+
+      <Sheet open={!!armAsk} onClose={() => setArmAsk(null)}>
+        <Text variant="h2">{t('One arm is smaller')}</Text>
+        <Text color="sec" style={{ marginTop: 6 }}>
+          {armAsk ? t('Your {a} is {n} cm smaller than the other. Update your plan so arm exercises are done one arm at a time? The smaller arm can then catch up.', { a: weakArm(armAsk.weak), n: fx(armAsk.cm) }) : ''}
+        </Text>
+        <Button
+          title={t('Yes, update my plan')}
+          style={{ marginTop: 16 }}
+          onPress={async () => {
+            const gap = armAsk;
+            setArmAsk(null);
+            const ok = await train.changePlan((p) => oneArmPlan(p));
+            toast(ok && gap ? t('Plan updated. Start each one-arm exercise with your {a}.', { a: weakArm(gap.weak) }) : t('Couldn’t save. Please try again.'), { icon: ok ? 'check' : 'warn' });
+          }}
+        />
+        <Button kind="ghost" title={t('No thanks')} style={{ marginTop: 8 }} onPress={() => setArmAsk(null)} />
       </Sheet>
     </View>
   );

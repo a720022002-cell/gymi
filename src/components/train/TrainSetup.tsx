@@ -5,11 +5,12 @@ import { View } from 'react-native';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { useFood } from '@/lib/food';
+import { useHealth } from '@/lib/health';
 import { ageFromIso } from '@/lib/nutrition';
 import { useTrain } from '@/lib/train';
 import { aiErrorText, askAI } from '@/lib/ai';
 import { type CardioInput, makeCardioPlan } from '@/lib/cardioPlan';
-import { aiSplit, DAYS, type Day, EX, INJURIES, LEVEL_DESC, type Level, onceNote, planFromSplit, planOwn, SPLITS, SPREAD, type TrainPlan, workoutMinutes } from '@/lib/training';
+import { aiSplit, armGap, DAYS, type Day, EX, INJURIES, LEVEL_DESC, type Level, oneArmPlan, onceNote, planFromSplit, planOwn, SPLITS, SPREAD, type TrainPlan, twoArmCount, workoutMinutes } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
 
 import { Thinking } from '../food/Thinking';
@@ -30,6 +31,7 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
   const toast = useToast();
   const train = useTrain();
   const food = useFood();
+  const health = useHealth();
   const { profile } = useAuth();
   const [step, setStep] = useState(0);
   const [level, setLevel] = useState<Level | null>(train.plan?.level ?? null);
@@ -98,6 +100,10 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
       const k = pick === 'ai' ? best : pick;
       plan = k === 'own' ? { ...planOwn(days, injuries), level: level ?? undefined } : planFromSplit(days, injuries, SPLITS[days][k as number][0], SPLITS[days][k as number][1], level ?? undefined);
     }
+    // One arm clearly smaller (from your measurements): arm exercises one arm at a time, so the smaller arm catches up.
+    const gap = armGap(health.measures);
+    const oneArm = !!gap && twoArmCount(plan) > 0;
+    if (oneArm) plan = oneArmPlan(plan);
     // Redoing setup keeps what's yours: days off and breaks, machines you picked, and home mode.
     const cur = train.plan;
     const keep = cur ? { skipped: { ...cur.skipped, ...plan.skipped }, dismiss: { ...cur.dismiss, ...plan.dismiss }, machines: { ...cur.machines, ...plan.machines }, homeMode: cur.homeMode } : {};
@@ -112,7 +118,9 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
     if (pick === 'own') {
       setTimeout(() => router.push({ pathname: '/day-edit', params: { d: String(SPREAD[days][0]) } }), 400);
       toast(t('Name each workout and add your exercises. Drag days to move them.'), { icon: 'edit' });
-    } else toast(t('Your plan is ready. Drag days to fit your week.'), { ai: true });
+    } else if (oneArm && gap)
+      toast(t('Your plan is ready. Your {a} is {n} cm smaller, so arm exercises are one arm at a time: start each with it.', { a: t(gap.weak === 'right' ? 'right arm' : 'left arm'), n: gap.cm }), { ai: true });
+    else toast(t('Your plan is ready. Drag days to fit your week.'), { ai: true });
   };
 
   const title = t(inTab ? 'Set up training' : 'Training setup');

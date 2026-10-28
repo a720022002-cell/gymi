@@ -18,7 +18,8 @@ import { histFor, logSet, ltrNums, REST, setAdvice } from '@/lib/activeWorkout';
 import { toPlanEx } from '@/lib/exercisesDb';
 import { type Rest, type Session, type SessionEx, useTrain, vsLastTime } from '@/lib/train';
 import { useFood } from '@/lib/food';
-import { exInfo, type PlanEx, topReps } from '@/lib/training';
+import { useHealth } from '@/lib/health';
+import { armGap, exInfo, isOneArm, type PlanEx, topReps } from '@/lib/training';
 import { useExerciseWeight, type useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 import { goBack } from '@/lib/nav';
@@ -45,6 +46,8 @@ export default function Active() {
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const train = useTrain();
+  // One arm clearly smaller (measurements): one-arm exercises say which to start with.
+  const gap = armGap(useHealth().measures);
   // Each exercise in its own unit (kg or lb, switched on its card), else your usual one.
   const Wf = useExerciseWeight();
   const s = train.session;
@@ -341,6 +344,16 @@ export default function Active() {
               ) : null}
               <LastNoteLine note={train.lastNotes[x.id]} />
               <CutLine cut={x.cut} deload={!!s.deload} />
+              {gap && isOneArm(x) ? (
+                <Row gap={6} style={{ marginTop: 4, alignItems: 'flex-start' }}>
+                  <View style={{ marginTop: 2 }}>
+                    <Icon name="info" size={14} color={c.cobalt} />
+                  </View>
+                  <Text variant="small" color="sec" style={{ flex: 1 }}>
+                    {t('Start with your {a}: it’s {n} cm smaller.', { a: t(gap.weak === 'right' ? 'right arm' : 'left arm'), n: gap.cm })}
+                  </Text>
+                </Row>
+              ) : null}
               <View style={{ flexDirection: 'row', marginTop: 12, marginBottom: 4 }}>
                 <Text variant="xs" weight={700} color="sec" center style={{ width: 36 }}>
                   {t('Set')}

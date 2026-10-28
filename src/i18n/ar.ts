@@ -5289,4 +5289,13 @@ export const AR: Record<string, string> = {
   "Before launch every feature is open to everyone, so a gift shows its effect once subscriptions start.": "قبل الإطلاق كل المزايا مفتوحة للكل، فأثر الإهداء يبان لما تبدأ الاشتراكات.",
   "Active calories": "السعرات النشطة",
   "Usual {n}": "المعتاد {n}",
+  "right arm": "يدك اليمين",
+  "left arm": "يدك اليسار",
+  "One arm is smaller": "فيه يد أصغر من الثانية",
+  "Your {a} is {n} cm smaller than the other. Update your plan so arm exercises are done one arm at a time? The smaller arm can then catch up.": "{a} أصغر من الثانية بـ {n} سم. تبي نحدّث جدولك وتصير تمارين الذراع بيد وحدة؟ كذا اليد الأصغر تلحق على الثانية.",
+  "Yes, update my plan": "إيه، حدّث جدولي",
+  "Plan updated. Start each one-arm exercise with your {a}.": "تحدّث جدولك. ابدأ كل تمرين بيد وحدة بـ{a}.",
+  "Your {a} is {n} cm smaller. On one-arm exercises, start with it.": "{a} أصغر بـ {n} سم. في تمارين اليد الوحدة ابدأ فيها.",
+  "Your plan is ready. Your {a} is {n} cm smaller, so arm exercises are one arm at a time: start each with it.": "جدولك جاهز. {a} أصغر بـ {n} سم، فخلّينا تمارين الذراع بيد وحدة: ابدأ كل تمرين فيها.",
+  "Start with your {a}: it’s {n} cm smaller.": "ابدأ بـ{a}: أصغر بـ {n} سم.",
 };

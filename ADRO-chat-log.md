@@ -746,6 +746,18 @@ Passwords and keys are left out on purpose.
 - Progress → Overall: when a watch or phone sends data, the tile grid also has Steps (goal = personal step goal, green when met), Active calories, Resting HR and HRV (each against your usual, the 7 readings before the newest; green when resting HR is at most 3 above usual, HRV at least 90% of usual). Each opens its reading page. "From your watch" below stays as it was.
 - File: `src/components/progress/Overall.tsx`. Tested on the web with watch data (8,800 steps, 420 kcal, 58 bpm usual 60, 55 ms usual 51). Test user deleted.
 
+## Arm gap: one-arm exercises (28 Oct 2026)
+
+**Asked:** keep the measurements AI analysis, and add help when one arm is clearly smaller.
+
+**Built:**
+- A gap of 1.5 cm or more between right and left arm counts.
+- **No plan yet:** setup swaps two-arm arm exercises for one-arm ones, and says to start with the smaller arm.
+- **Plan exists:** saving measurements with a gap asks "Update your plan so arm exercises are done one arm at a time?" Yes changes the plan; No closes it, and it asks again on the next save while the gap is there.
+- **Plan already has one-arm exercises:** a note says to start with the smaller arm.
+- In a workout, one-arm exercises show "Start with your left arm: it's 2.5 cm smaller."
+- Swaps come from the exercise library: concentration curl, alternate hammer curl, one-arm cable curl, one-arm preacher curl, one-arm cable and dumbbell triceps extensions. Sets and reps stay the same.
+
 ---
 
 

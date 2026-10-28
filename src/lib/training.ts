@@ -93,6 +93,53 @@ export function exMuscle(id: string, muscle: string, muscles?: string[] | null) 
   if (m === 'biceps' || m === 'triceps' || m === 'forearms') return m[0].toUpperCase() + m.slice(1);
   return ARM_PART[id] ?? muscle;
 }
+/** One-arm versions of the two-arm arm exercises (from the exercise library), for when one arm is smaller. */
+const ONE_ARM: Record<string, PlanEx> = {
+  curl: { id: 'Concentration_Curls', sets: 3, reps: '10–12', n: 'Concentration Curls', ar: 'باي تركيز', m: 'Arms', t: 'Dumbbell', pri: 'Biceps' },
+  dbcurl: { id: 'Concentration_Curls', sets: 3, reps: '10–12', n: 'Concentration Curls', ar: 'باي تركيز', m: 'Arms', t: 'Dumbbell', pri: 'Biceps' },
+  hammer: { id: 'Alternate_Hammer_Curl', sets: 3, reps: '10–12', n: 'Alternate Hammer Curl', ar: 'باي هامر بالتبادل', m: 'Arms', t: 'Dumbbell', pri: 'Biceps' },
+  cablecurl: { id: 'Standing_One-Arm_Cable_Curl', sets: 3, reps: '10–12', n: 'Standing One-Arm Cable Curl', ar: 'باي كيبل بيد وحدة واقف', m: 'Arms', t: 'Cable', pri: 'Biceps' },
+  preacher: { id: 'One_Arm_Dumbbell_Preacher_Curl', sets: 3, reps: '10–12', n: 'One Arm Dumbbell Preacher Curl', ar: 'باي دمبل على المسند بيد وحدة', m: 'Arms', t: 'Dumbbell', pri: 'Biceps' },
+  pushdown: { id: 'Cable_One_Arm_Tricep_Extension', sets: 3, reps: '10–12', n: 'Cable One Arm Tricep Extension', ar: 'تراي كيبل بيد وحدة', m: 'Arms', t: 'Cable', pri: 'Triceps' },
+  overhead: { id: 'Standing_One-Arm_Dumbbell_Triceps_Extension', sets: 3, reps: '10–12', n: 'Standing One-Arm Dumbbell Triceps Extension', ar: 'تراي دمبل بيد وحدة واقف', m: 'Arms', t: 'Dumbbell', pri: 'Triceps' },
+  skull: { id: 'Dumbbell_One-Arm_Triceps_Extension', sets: 3, reps: '10–12', n: 'Dumbbell One-Arm Triceps Extension', ar: 'تراي دمبل بيد وحدة', m: 'Arms', t: 'Dumbbell', pri: 'Triceps' },
+};
+/** A gap this big (cm) between the arms is worth training each arm on its own. */
+export const ARM_GAP_CM = 1.5;
+
+/** The latest right and left arm, and which is smaller when the gap is big enough. */
+export function armGap(measures: { kind: string; day: string; value: number }[]): { weak: 'right' | 'left'; cm: number } | null {
+  const last = (k: string) => measures.filter((m) => m.kind === k).sort((a, b) => a.day.localeCompare(b.day)).at(-1)?.value;
+  const r = last('arm_r');
+  const l = last('arm_l');
+  if (r == null || l == null) return null;
+  const cm = Math.round(Math.abs(r - l) * 10) / 10;
+  return cm >= ARM_GAP_CM ? { weak: r < l ? 'right' : 'left', cm } : null;
+}
+
+/** An exercise done one arm at a time. */
+export function isOneArm(x: { id: string; n?: string }) {
+  return Object.values(ONE_ARM).some((o) => o.id === x.id) || /one[- ]arm|single[- ]arm|concentration|alternate/i.test(x.n ?? EX[x.id]?.en ?? x.id);
+}
+
+/** How many two-arm arm exercises in the plan have a one-arm version. */
+export const twoArmCount = (p: Pick<TrainPlan, 'workouts'>) => Object.values(p.workouts).reduce((n, w) => n + w.ex.filter((x) => ONE_ARM[x.id]).length, 0);
+export const hasOneArm = (p: Pick<TrainPlan, 'workouts'>) => Object.values(p.workouts).some((w) => w.ex.some(isOneArm));
+
+/** The plan with its arm exercises done one arm at a time (sets and reps kept; no exercise twice in a workout). */
+export function oneArmPlan<P extends Pick<TrainPlan, 'workouts'>>(p: P): P {
+  const workouts: Record<string, Workout> = {};
+  for (const [name, w] of Object.entries(p.workouts)) {
+    const ex: PlanEx[] = [];
+    for (const x of w.ex) {
+      const o = ONE_ARM[x.id];
+      const y = o ? { ...o, sets: x.sets, reps: x.reps } : x;
+      if (!ex.some((e) => e.id === y.id)) ex.push(y);
+    }
+    workouts[name] = { ...w, ex };
+  }
+  return { ...p, workouts };
+}
 /** Specific muscles for naming your own exercise (design: MUSCLES), and their muscle group (MGROUP). */
 export const MUSCLES_FINE = ['Chest', 'Upper chest', 'Back', 'Lats', 'Front shoulders', 'Side shoulders', 'Rear shoulders', 'Biceps', 'Triceps', 'Forearms', 'Abs', 'Lower back', 'Glutes', 'Quads', 'Hamstrings', 'Calves'];
 export const muscleGroup = (m: string): Muscle =>
