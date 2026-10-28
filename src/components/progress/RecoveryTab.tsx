@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { View } from 'react-native';
 
 import { useT } from '@/i18n';
@@ -17,11 +18,36 @@ import { Icon } from '../Icon';
 import { Ring } from '../Ring';
 import { Text } from '../Text';
 import { useRecovery } from '../train/RecoveryCard';
-import { Card } from '../ui';
+import { SleepView } from '../sleep/SleepView';
+import { Card, Segmented } from '../ui';
 import { SecHead } from './bits';
+import { LoadView } from './LoadView';
+import { NutritionView } from './NutritionView';
 
-/** Recovery score now and over time (design: progRecovery). Sleep has its own page. */
+/** Recovery first, then its parts: sleep, training load and soreness, and food. */
 export function RecoveryTab() {
+  const { t } = useT();
+  const [sub, setSub] = useState(0);
+  return (
+    <View>
+      <Segmented<string>
+        value={String(sub)}
+        options={[
+          { value: '0', label: t('Recovery') },
+          { value: '1', label: t('Sleep') },
+          { value: '2', label: t('Load') },
+          { value: '3', label: t('Nutrition') },
+        ]}
+        onChange={(v) => setSub(Number(v))}
+      />
+      <View style={{ height: 12 }} />
+      {sub === 0 ? <RecoveryNow /> : sub === 1 ? <SleepView /> : sub === 2 ? <LoadView /> : <NutritionView />}
+    </View>
+  );
+}
+
+/** Recovery score now and over time (design: progRecovery). */
+function RecoveryNow() {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
   const health = useHealth();

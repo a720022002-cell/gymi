@@ -22,10 +22,11 @@ import { Text } from '../Text';
 import { useToast } from '../Toast';
 import { Button, Card, Row, Segmented, Springy, Toggle } from '../ui';
 import { SecHead } from './bits';
+import { WeightGoal } from './WeightGoal';
 
 const LVN = ['Locked', 'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5'];
 
-/** Streaks, workouts in a row, commitment rate and badges (design: achievements). */
+/** Commitment rate, streaks (days and workouts in a row), target weight, and badges (design: achievements). */
 export function Streaks({ sub, setSub }: { sub: number; setSub: (n: number) => void }) {
   const { t } = useT();
   const { colors: c } = useSettings();
@@ -64,14 +65,25 @@ export function Streaks({ sub, setSub }: { sub: number; setSub: (n: number) => v
       <Segmented<string>
         value={String(sub)}
         options={[
-          { value: '0', label: t('Overall') },
-          { value: '1', label: t('Workouts') },
-          { value: '2', label: t('Commitment') },
+          { value: '0', label: t('Commitment') },
+          { value: '1', label: t('Streak') },
+          { value: '2', label: t('Target weight') },
         ]}
         onChange={(v) => setSub(Number(v))}
       />
       <View style={{ height: 12 }} />
-      {sub === 0 ? <OverallStreak /> : sub === 1 ? <WorkoutStreak /> : <Commitment />}
+      {sub === 0 ? (
+        <Commitment />
+      ) : sub === 1 ? (
+        <>
+          <OverallStreak />
+          <WorkoutStreak />
+        </>
+      ) : (
+        <WeightGoal />
+      )}
+      {sub === 2 ? null : (
+        <>
       <SecHead title={t('Badges')} />
       <Text variant="small" color="sec" style={{ marginHorizontal: 4, marginTop: -4, marginBottom: 12 }}>
         {t('Each badge has levels. Tap one to see what’s next or show it on your profile.')}
@@ -102,6 +114,8 @@ export function Streaks({ sub, setSub }: { sub: number; setSub: (n: number) => v
       <Sheet open={!!badge} onClose={() => setBadge(null)}>
         {badge ? <BadgeDetail b={badge} pinned={pinned.includes(badge.id)} count={pinned.length} canPin={!!show} onPin={() => togglePin(badge)} onClose={() => setBadge(null)} /> : null}
       </Sheet>
+        </>
+      )}
     </View>
   );
 }

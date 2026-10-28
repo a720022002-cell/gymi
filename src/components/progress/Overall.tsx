@@ -139,8 +139,8 @@ export function Overall({ go }: { go: (t: PTab, sub?: number) => void }) {
         {tile('ruler', t('Waist'), waist.length ? `${fx(waist.at(-1)!.value)} cm` : '–', waist.length > 1 ? `${arrow(dWaist)} ${fx(Math.abs(dWaist))} cm` : t('Add measurements'), () => go('body'), waist.length > 1 ? dWaist < 0 : null)}
         {tile('moon', t('Sleep'), sAvg != null ? `${fx(sAvg)} ${t('h')}` : '–', t('Average, last 7 nights'), () => router.push('/sleep'), sAvg != null ? sAvg >= 7 : null)}
         {tile('bolt', t('Recovery'), `${r.score}%`, t(recLabel(r.score)[0]), () => go('recovery'), r.score >= 60)}
-        {tile('flame', t('Streak'), t('{n} days', { n: s.overall }), t('Best {n}', { n: s.best }), () => go('streaks', 0), s.overall > 0 ? true : null)}
-        {tile('check', t('Commitment'), cm == null ? '–' : `${cm}%`, t('Last 30 days'), () => go('streaks', 2), cm == null ? null : cm >= 80)}
+        {tile('flame', t('Streak'), t('{n} days', { n: s.overall }), t('Best {n}', { n: s.best }), () => go('streaks', 1), s.overall > 0 ? true : null)}
+        {tile('check', t('Commitment'), cm == null ? '–' : `${cm}%`, t('Last 30 days'), () => go('streaks', 0), cm == null ? null : cm >= 80)}
         {tile('food', t('Calories today'), fmt(todayFood.k), t('of {n} kcal', { n: fmt(food.dayGoal(food.today)) }), () => router.push('/food'), null)}
         {tile('drop', t('Water today'), `${fx(todayFood.w / 1000)} L`, t('of {n} L', { n: fx(food.waterGoal / 1000) }), () => router.push('/water'), todayFood.w >= food.waterGoal * 0.8 ? true : null)}
       </View>

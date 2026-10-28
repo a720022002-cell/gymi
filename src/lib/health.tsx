@@ -28,12 +28,15 @@ export type Checkin = {
 };
 export type SleepPart = { bed: string; wake: string };
 
-export const MEAS = ['waist', 'chest', 'arm', 'neck', 'shoulders', 'hips', 'thigh', 'calf', 'forearm', 'bf'] as const;
+/** `arm` is the one arm measured before right and left were separate: kept for the numbers already saved. */
+export const MEAS = ['waist', 'chest', 'arm_r', 'arm_l', 'arm', 'neck', 'shoulders', 'hips', 'thigh', 'calf', 'forearm', 'bf'] as const;
 export type MeasKind = 'weight' | (typeof MEAS)[number];
 /** Name, unit, and whether smaller is better (design: MEAS). */
 export const MEAS_INFO: Record<(typeof MEAS)[number], [string, string, boolean, number]> = {
   waist: ['Waist', 'cm', true, 85],
   chest: ['Chest', 'cm', false, 100],
+  arm_r: ['Right arm', 'cm', false, 34],
+  arm_l: ['Left arm', 'cm', false, 34],
   arm: ['Arm', 'cm', false, 34],
   neck: ['Neck', 'cm', false, 39],
   shoulders: ['Shoulders', 'cm', false, 120],
@@ -70,7 +73,9 @@ type Health = {
   deleteWeight: (day: string) => Promise<void>;
   /** Correct or delete (null) one day's weigh-in. When it's your latest, targets and profile follow the corrected weight. */
   fixWeight: (day: string, kg: number | null) => Promise<boolean>;
-  saveMeasures: (vals: Partial<Record<MeasKind, number>>) => Promise<boolean>;
+  saveMeasures: (vals: Partial<Record<MeasKind, number>>, on?: string) => Promise<boolean>;
+  /** Changes one tape measurement (or body fat) of a past day, or deletes it (null). Weight has fixWeight. */
+  fixMeasure: (day: string, kind: Exclude<MeasKind, 'weight'>, value: number | null) => Promise<boolean>;
   photos: ProgressPhoto[];
   addPhoto: (p: Photo) => Promise<boolean>;
   deletePhoto: (id: string) => Promise<void>;
@@ -222,6 +227,17 @@ export function HealthProvider({ children }: PropsWithChildren) {
       return ok;
     },
     [putMeasures, updateProfile, measures, today, applyWeight],
+  );
+
+  const fixMeasure = useCallback(
+    async (day: string, kind: Exclude<MeasKind, 'weight'>, value: number | null) => {
+      if (value != null) return putMeasures({ [kind]: value }, day);
+      const { error } = await supabase.from('measurements').delete().eq('kind', kind).eq('day', day);
+      if (error) return false;
+      setMeasures((xs) => xs.filter((x) => !(x.kind === kind && x.day === day)));
+      return true;
+    },
+    [putMeasures],
   );
 
   const deleteWeight = useCallback(async (day: string) => {
@@ -412,6 +428,7 @@ export function HealthProvider({ children }: PropsWithChildren) {
       deleteWeight,
       fixWeight,
       saveMeasures: putMeasures,
+      fixMeasure,
       photos,
       addPhoto,
       deletePhoto,
@@ -428,7 +445,7 @@ export function HealthProvider({ children }: PropsWithChildren) {
       checkinOpen,
       setCheckinOpen,
     }),
-    [checkinOpen, ready, checkins, todayCheckin, saveCheckin, measures, weights, logWeight, deleteWeight, fixWeight, putMeasures, photos, addPhoto, deletePhoto, photoUrls, supplements, saveSupplement, deleteSupplement, restoreSupplement, blood, addBlood, bloodFileUrl, deleteBlood, days],
+    [checkinOpen, ready, checkins, todayCheckin, saveCheckin, measures, weights, logWeight, deleteWeight, fixWeight, putMeasures, fixMeasure, photos, addPhoto, deletePhoto, photoUrls, supplements, saveSupplement, deleteSupplement, restoreSupplement, blood, addBlood, bloodFileUrl, deleteBlood, days],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

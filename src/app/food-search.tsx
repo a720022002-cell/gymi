@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, TextInput, View } from 'react-native';
+import { ActivityIndicator, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Glass } from '@/components/Glass';
@@ -15,7 +15,7 @@ import { useT } from '@/i18n';
 import { type FoodLog, useFood } from '@/lib/food';
 import { productAllergies } from '@/lib/allergies';
 import { useProgressive } from '@/lib/useProgressive';
-import { type DbFood, foodName, foodSource, listRestaurants, type Restaurant, searchFoods, servingLabel } from '@/lib/foodsDb';
+import { type DbFood, foodName, foodSource, listRestaurants, type Restaurant, restaurantMenu, searchFoods, servingLabel } from '@/lib/foodsDb';
 import { myNames, type RecentFood, recentFoods } from '@/lib/nutrients';
 import { fmt } from '@/lib/nutrition';
 import { canListen, listen, stopListening } from '@/lib/speech';
@@ -49,6 +49,15 @@ export default function FoodSearch() {
   // Your allergies in a food, from its name in English and Arabic (and your own words).
   const allergic = (f: { name_en?: string | null; name_ar?: string | null }) => productAllergies({ name: `${f.name_en ?? ''} | ${f.name_ar ?? ''}` }, food.plan.allergies, food.plan.allergyNote);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  // Restaurants: a list of them first; tapping one opens its whole menu here.
+  const [rest, setRest] = useState<Restaurant | null>(null);
+  const [menu, setMenu] = useState<{ name: string; items: DbFood[] | null } | null>(null);
+  const openRest = (r: Restaurant | null) => {
+    setRest(r);
+    if (!r) return;
+    restaurantMenu(r.restaurant).then((items) => setMenu({ name: r.restaurant, items }));
+  };
+  const restName = (r: Restaurant) => (lang === 'ar' && r.name_ar) || r.restaurant;
   // What you logged lately, and the names you gave foods (only you see them). Fresh each time you come back.
   const [recent, setRecent] = useState<RecentFood[]>([]);
   const [names, setNames] = useState<Record<string, string>>({});
@@ -83,6 +92,9 @@ export default function FoodSearch() {
   );
   const nameOf = (r: RecentFood) => names[r.key] ?? (r.food ? foodName(r.food, lang) : r.logName);
   const ql = q.trim().toLowerCase();
+  const restList = cat === 'rest' && !rest && !ql;
+  const menuItems = rest && menu?.name === rest.restaurant ? menu.items : undefined;
+  const menuShown = (menuItems ?? []).filter((f) => !ql || f.name_en.toLowerCase().includes(ql) || (f.name_ar ?? '').includes(q.trim()) || (names[f.id] ?? '').toLowerCase().includes(ql));
   // Empty box: your recent foods. Typing: the recent ones that match (your own names too) come first.
   const mine = (ql ? recent.filter((r) => nameOf(r).toLowerCase().includes(ql) || (r.food && foodName(r.food, 'en').toLowerCase().includes(ql)) || r.logName.toLowerCase().includes(ql)) : recent).filter(
     (r) => !cat || r.food?.category === cat || (cat === 'product' && !r.food),
@@ -119,25 +131,107 @@ export default function FoodSearch() {
     return () => clearTimeout(timer.current);
   }, [q, cat]);
 
+  // A list of foods: name, where it's from (not inside a restaurant's own menu) and serving, allergy warning, calories.
+  const foodRows = (list: DbFood[], inMenu = false) => (
+    <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden' }}>
+      {list.map((f, i) => (
+        <Springy key={f.id} onPress={() => setPicked(f)} scaleTo={0.99} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 60, paddingVertical: 10, paddingHorizontal: 16, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text weight={700} numberOfLines={2}>
+              {names[f.id] ?? foodName(f, lang)}
+            </Text>
+            <Text variant="small" color="sec" numberOfLines={1}>
+              {(inMenu ? [servingLabel(f, lang)] : [foodSource(f, lang), servingLabel(f, lang)]).filter(Boolean).join(t(', '))}
+            </Text>
+            {allergic(f).length ? (
+              <Text variant="xs" weight={700} color={c.down} numberOfLines={1}>
+                {t('May contain {x}', { x: allergic(f).map((a) => t(a)).join(t(', ')) })}
+              </Text>
+            ) : null}
+          </View>
+          {f.sugar_high || f.fat_high ? <Icon name="warn" size={16} color={c.down} strokeWidth={2} /> : null}
+          <Text num>{fmt((f.kcal_100 * f.serving_g) / 100)}</Text>
+          <Text variant="small" color="sec">
+            {t('kcal')}
+          </Text>
+        </Springy>
+      ))}
+    </View>
+  );
+
   return (
     <View style={{ flex: 1 }}>
       <Screen title={t('Search food')} back>
         <MealPick />
         <Row gap={8} style={{ flexWrap: 'wrap', marginTop: 12 }}>
           {CATS.map(([k, l]) => (
-            <Chip key={l} title={t(l)} on={cat === k} onPress={() => setCat(k)} />
+            <Chip
+              key={l}
+              title={t(l)}
+              on={cat === k}
+              onPress={() => {
+                setCat(k);
+                openRest(null);
+              }}
+            />
           ))}
         </Row>
-        {cat === 'rest' && restaurants.length ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10, marginHorizontal: -16 }} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
-            {restaurants.map((r) => {
-              const on = q.toLowerCase() === r.restaurant.toLowerCase();
-              return <Chip key={r.restaurant} title={(lang === 'ar' && r.name_ar) || r.restaurant} on={on} onPress={() => setQ(on ? '' : r.restaurant)} />;
-            })}
-          </ScrollView>
-        ) : null}
         <View style={{ marginTop: 12, paddingBottom: 90 }}>
-          {shownMine.length ? (
+          {rest ? (
+            <>
+              <Springy onPress={() => openRest(null)} accessibilityRole="button" accessibilityLabel={t('All restaurants')} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10, marginHorizontal: 4, alignSelf: 'flex-start' }}>
+                <Icon name="back" size={16} color={c.link} />
+                <Text variant="small" weight={700} color="link">
+                  {t('All restaurants')}
+                </Text>
+              </Springy>
+              <Text variant="h2" style={{ marginHorizontal: 4 }}>
+                {restName(rest)}
+              </Text>
+              <Text variant="small" color="sec" style={{ marginHorizontal: 4, marginBottom: 12 }}>
+                {t('{n} items on the menu', { n: rest.items })}
+              </Text>
+              {menuItems === undefined ? (
+                <ActivityIndicator color={c.cobalt} style={{ marginTop: 30 }} />
+              ) : menuItems === null ? (
+                <Card style={{ alignItems: 'center', paddingVertical: 20 }}>
+                  <Text center>{t('Couldn’t load the menu. Please try again.')}</Text>
+                  <Button small kind="soft" title={t('Try again')} style={{ marginTop: 12, alignSelf: 'center' }} onPress={() => openRest(rest)} />
+                </Card>
+              ) : menuShown.length ? (
+                foodRows(menuShown, true)
+              ) : (
+                <Text color="sec" center style={{ marginTop: 20 }}>
+                  {t('No match for “{q}”', { q })}
+                </Text>
+              )}
+            </>
+          ) : restList ? (
+            restaurants.length ? (
+              <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden' }}>
+                {restaurants.map((r, i) => (
+                  <Springy key={r.restaurant} onPress={() => openRest(r)} scaleTo={0.99} accessibilityRole="button" accessibilityLabel={restName(r)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingVertical: 10, paddingHorizontal: 16, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
+                    <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
+                      <Text weight={700} color="link">
+                        {restName(r).slice(0, 1)}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text weight={700} numberOfLines={1}>
+                        {restName(r)}
+                      </Text>
+                      <Text variant="small" color="sec">
+                        {t('{n} items on the menu', { n: r.items })}
+                      </Text>
+                    </View>
+                    <Icon name="chev" size={16} color={c.sec} />
+                  </Springy>
+                ))}
+              </View>
+            ) : (
+              <ActivityIndicator color={c.cobalt} style={{ marginTop: 30 }} />
+            )
+          ) : shownMine.length ? (
             <>
               <Text variant="small" weight={700} color="sec" style={{ marginBottom: 8, marginHorizontal: 4 }}>
                 {t(ql ? 'Yours' : 'Recent')}
@@ -191,33 +285,10 @@ export default function FoodSearch() {
               ) : null}
             </>
           ) : null}
-          {loading && !results.length ? (
+          {rest || restList ? null : loading && !results.length ? (
             <ActivityIndicator color={c.cobalt} style={{ marginTop: 30 }} />
           ) : results.length ? (
-            <View style={{ backgroundColor: c.card, borderRadius: 22, overflow: 'hidden' }}>
-              {results.slice(0, shown).map((f, i) => (
-                <Springy key={f.id} onPress={() => setPicked(f)} scaleTo={0.99} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 60, paddingVertical: 10, paddingHorizontal: 16, borderTopWidth: i ? 1 : 0, borderTopColor: c.line }}>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text weight={700} numberOfLines={2}>
-                      {names[f.id] ?? foodName(f, lang)}
-                    </Text>
-                    <Text variant="small" color="sec" numberOfLines={1}>
-                      {[foodSource(f, lang), servingLabel(f, lang)].filter(Boolean).join(t(', '))}
-                    </Text>
-                    {allergic(f).length ? (
-                      <Text variant="xs" weight={700} color={c.down} numberOfLines={1}>
-                        {t('May contain {x}', { x: allergic(f).map((a) => t(a)).join(t(', ')) })}
-                      </Text>
-                    ) : null}
-                  </View>
-                  {f.sugar_high || f.fat_high ? <Icon name="warn" size={16} color={c.down} strokeWidth={2} /> : null}
-                  <Text num>{fmt((f.kcal_100 * f.serving_g) / 100)}</Text>
-                  <Text variant="small" color="sec">
-                    {t('kcal')}
-                  </Text>
-                </Springy>
-              ))}
-            </View>
+            foodRows(results.slice(0, shown))
           ) : (
             <Card style={{ alignItems: 'center', paddingVertical: 26 }}>
               <Icon name="search" size={30} color={c.sec} />

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useToast } from '@/components/Toast';
 import { useT } from '@/i18n';
+import { appleScan } from '@/lib/appleScan';
 import { takePendingBarcode } from '@/lib/pending';
 import { lookupProduct } from '@/lib/products';
 
@@ -22,10 +23,8 @@ export function useScanProduct(onFound: (f: ScannedFood) => void, onMissing: () 
   useEffect(() => {
     cb.current = { onFound, onMissing };
   });
-  useFocusEffect(
-    useCallback(() => {
-      const code = takePendingBarcode();
-      if (!code) return;
+  const lookup = useCallback(
+    (code: string) => {
       setScanning(true);
       lookupProduct(code, lang)
         .catch(() => null)
@@ -39,8 +38,19 @@ export function useScanProduct(onFound: (f: ScannedFood) => void, onMissing: () 
           cb.current.onFound({ id: p.id, n, g: Math.round(p.size), per: { k: p.k, p: p.p, c: p.c, f: p.f } });
           toast(t('Added {name}', { name: n }), { icon: 'check' });
         });
-    }, [lang, t, toast]),
+    },
+    [lang, t, toast],
   );
-  const scan = () => router.push({ pathname: '/barcode', params: { pick: '1' } });
+  // A code from the barcode screen (phones that can't run Apple's scanner).
+  useFocusEffect(
+    useCallback(() => {
+      const code = takePendingBarcode();
+      if (code) lookup(code);
+    }, [lookup]),
+  );
+  // iPhone: Apple's own scanner straight away; elsewhere our barcode screen, which hands the code back.
+  const scan = async () => {
+    if (!(await appleScan(lookup))) router.push({ pathname: '/barcode', params: { pick: '1' } });
+  };
   return { scanning, scan };
 }

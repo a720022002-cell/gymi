@@ -1,0 +1,36 @@
+import { supabase } from './supabase';
+
+/** A Gym Bros cartoon: you, a friend or a group member, with their 30-day commitment (null when they don't share it). */
+export type Bro = { user_id: string; username: string; name: string | null; gender: string | null; pct: number | null };
+
+/** The cartoon's level from the 30-day commitment: under 40, 40–59, 60–74, 75–89, 90 and up. */
+export const broLevel = (pct: number | null | undefined) => (pct == null ? 0 : pct >= 90 ? 5 : pct >= 75 ? 4 : pct >= 60 ? 3 : pct >= 40 ? 2 : 1);
+export const BRO_LEVELS = ['Starter', 'Getting there', 'Solid', 'Strong', 'Beast'];
+
+/** You and your friends. Null when it couldn't load (offline, or the database doesn't have it yet). */
+export async function myCrew(): Promise<Bro[] | null> {
+  const { data, error } = await supabase.rpc('my_crew');
+  return error ? null : ((data as Bro[] | null) ?? []);
+}
+
+/** A group's members (only for its members). */
+export async function groupBros(group: string): Promise<Bro[] | null> {
+  const { data, error } = await supabase.rpc('group_bros', { p_group: group });
+  return error ? null : ((data as Bro[] | null) ?? []);
+}
+
+/** Average commitment of the members who share it. */
+export const groupPct = (xs: Bro[]) => {
+  const v = xs.map((x) => x.pct).filter((p): p is number => p != null);
+  return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null;
+};
+
+// The last commitment saved this session, so it's only sent when it changes.
+let sent: string | null = null;
+/** Save your 30-day commitment, so friends see your cartoon at the right level. */
+export async function saveMyBro(uid: string, pct: number | null) {
+  const key = `${uid}|${pct}`;
+  if (sent === key) return;
+  const { error } = await supabase.from('bro_levels').upsert({ user_id: uid, pct, updated_at: new Date().toISOString() });
+  if (!error) sent = key;
+}

@@ -16,7 +16,20 @@ type Insight = { summary: string; points: string[]; tip: string };
  * The coach's analysis of one reading over its last 30 days. Asked once and kept until the numbers change
  * (counted readings like steps only when a past day changes, so walking today doesn't ask again).
  */
-export function ReadingInsight({ id, day, data, ready }: { id: string; day: string; data: Record<string, unknown> & { series: (number | null)[]; counted?: boolean; liveToday?: boolean }; ready: boolean }) {
+export function ReadingInsight({
+  id,
+  day,
+  data,
+  ready,
+  task = 'reading_insight',
+}: {
+  id: string;
+  day: string;
+  /** For a reading: its 30 days (`series`). For measurements (task measure_insight): the request itself. */
+  data: Record<string, unknown> & { series?: (number | null)[]; counted?: boolean; liveToday?: boolean };
+  ready: boolean;
+  task?: 'reading_insight' | 'measure_insight';
+}) {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
   const [v, setV] = useState<Insight | null>(null);
@@ -24,12 +37,12 @@ export function ReadingInsight({ id, day, data, ready }: { id: string; day: stri
   const [busy, setBusy] = useState(false);
   const key = `ai-reading:${id}:${lang}`;
   // Today's number left out when it moves all day (counted readings, the live recovery score): asked again tomorrow.
-  const sig = `${day}|${JSON.stringify(data.counted || data.liveToday ? data.series.slice(0, -1) : data.series)}`;
+  const sig = task === 'measure_insight' ? JSON.stringify(data) : `${day}|${JSON.stringify(data.counted || data.liveToday ? (data.series ?? []).slice(0, -1) : data.series)}`;
 
   const ask = async (alive: () => boolean) => {
     setBusy(true);
     setErr(null);
-    const { result, error } = await askAI<Insight>('reading_insight', { lang, data });
+    const { result, error } = await askAI<Insight>(task, task === 'measure_insight' ? { lang, ...data } : { lang, data });
     if (!alive()) return;
     setBusy(false);
     if (error || !result?.summary) return setErr(error ?? 'failed');

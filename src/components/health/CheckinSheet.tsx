@@ -75,13 +75,28 @@ function Steps() {
   const [sore, setSore] = useState<number | null>(null);
   const [skip, setSkip] = useState({ w: false, s: false });
   const hours = mode === 'times' ? sleepHours(bed, wake) : hm[0] + hm[1] / 60;
+  // Sleep comes first. When the watch measured last night, Adro writes it down by itself and doesn't ask.
+  // The watch's night can arrive a moment after the sheet opens: the steps are fixed once you move on.
+  const [locked, setLocked] = useState<boolean | null>(null);
+  const auto = (locked ?? watchH != null) && watchH != null;
+  const flow = auto ? (['weight', 'feel'] as const) : (['sleep', 'weight', 'feel'] as const);
+  const at = Math.min(step, flow.length - 1);
+  const kind = flow[at];
+  const next = () => {
+    if (locked === null) setLocked(auto);
+    setStep(at + 1);
+  };
   const tired = energy === 0 || sore === 2;
   const canLighten = !!today.name && !today.done && !today.deload;
 
   const finish = async (skipFeel: boolean) => {
-    const sleepPart = skip.s ? {} : { sleep_h: Math.round(hours * 10) / 10, sleep_q: quality, ...(mode === 'times' ? { bed, wake } : {}) };
+    const sleepPart = auto
+      ? { sleep_h: Math.round(watchH * 10) / 10, ...(night?.bed_min != null ? { bed: clock(night.bed_min), wake: clock(night.bed_min + watchH * 60) } : {}) }
+      : skip.s
+        ? {}
+        : { sleep_h: Math.round(hours * 10) / 10, sleep_q: quality, ...(mode === 'times' ? { bed, wake } : {}) };
     const feel = skipFeel ? {} : { energy, sore };
-    const ci = { day: train.today, sleep: skip.s ? null : hours, sore: skipFeel ? null : sore, energy: skipFeel ? null : energy };
+    const ci = { day: train.today, sleep: auto ? watchH : skip.s ? null : hours, sore: skipFeel ? null : sore, energy: skipFeel ? null : energy };
     const score = recovery({ ...input, checkin: ci }).score;
     // Not a weight you didn't touch when a scale sends one (it would block today's scale reading).
     if (!skip.w && (weightSet || !scale)) health.logWeight(weight);
@@ -99,9 +114,9 @@ function Steps() {
     }
     health.setCheckinOpen(false);
     if (!ok) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
-    const skipped = [skip.w && 'weight', skip.s && 'sleep', skipFeel && 'how you feel'].filter(Boolean) as string[];
+    const skipped = [skip.w && 'weight', !auto && skip.s && 'sleep', skipFeel && 'how you feel'].filter(Boolean) as string[];
     toast(
-      skipped.length === 3
+      skipped.length === flow.length
         ? t('Check-in skipped for today. See you tomorrow.')
         : lighter
           ? t('Check-in saved. Today’s workout is lighter.')
@@ -112,13 +127,13 @@ function Steps() {
     );
   };
 
-  const head = (icon: IconName, n: number, title: string) => (
+  const head = (icon: IconName, title: string) => (
     <>
-      <ProgDots step={step} />
+      <ProgDots step={at} total={flow.length} />
       <Row gap={8}>
         <Icon name={icon} size={20} color={c.cobalt} />
         <Text variant="small" weight={700} color="sec">
-          {t('Step {n} of 3', { n })}
+          {t('Step {n} of {m}', { n: at + 1, m: flow.length })}
         </Text>
       </Row>
       <Text variant="h1" style={{ marginTop: 4 }}>
@@ -127,10 +142,18 @@ function Steps() {
     </>
   );
 
-  if (step === 0)
+  if (kind === 'weight')
     return (
       <View>
-        {head('scale', 1, t('Morning weight'))}
+        {head('scale', t('Morning weight'))}
+        {auto ? (
+          <Row gap={6} style={{ marginTop: 6 }}>
+            <Icon name="moon" size={16} color={c.cobalt} />
+            <Text variant="small" color="sec">
+              {t('Sleep from your watch: {h}', { h: fmtDur(watchH, t) })}
+            </Text>
+          </Row>
+        ) : null}
         <Card style={{ marginTop: 16, paddingVertical: 4 }}>
           <WeightWheel
             value={weight}
@@ -143,15 +166,15 @@ function Steps() {
             {t('Weigh yourself after using the bathroom, before eating or drinking.')}
           </Text>
         </Row>
-        <Button title={t('Next')} style={{ marginTop: 16 }} onPress={() => (setSkip((s) => ({ ...s, w: false })), setStep(1))} />
-        <Button kind="ghost" title={t('Skip weight today')} style={{ marginTop: 4 }} onPress={() => (setSkip((s) => ({ ...s, w: true })), setStep(1))} />
+        <Button title={t('Next')} style={{ marginTop: 16 }} onPress={() => (setSkip((s) => ({ ...s, w: false })), next())} />
+        <Button kind="ghost" title={t('Skip weight today')} style={{ marginTop: 4 }} onPress={() => (setSkip((s) => ({ ...s, w: true })), next())} />
       </View>
     );
 
-  if (step === 1)
+  if (kind === 'sleep')
     return (
       <View>
-        {head('moon', 2, t('How did you sleep?'))}
+        {head('moon', t('How did you sleep?'))}
         <View style={{ marginTop: 12 }}>
           <Segmented<'times' | 'hours'>
             value={mode}
@@ -194,14 +217,14 @@ function Steps() {
         </Row>
         <Label>{t('Sleep quality')}</Label>
         <Choices options={['Poor', 'Okay', 'Great']} value={quality} onChange={setQuality} />
-        <Button title={t('Next')} style={{ marginTop: 20 }} onPress={() => (setSkip((s) => ({ ...s, s: false })), setStep(2))} />
-        <Button kind="ghost" title={t('Skip sleep today')} style={{ marginTop: 4 }} onPress={() => (setSkip((s) => ({ ...s, s: true })), setStep(2))} />
+        <Button title={t('Next')} style={{ marginTop: 20 }} onPress={() => (setSkip((s) => ({ ...s, s: false })), next())} />
+        <Button kind="ghost" title={t('Skip sleep today')} style={{ marginTop: 4 }} onPress={() => (setSkip((s) => ({ ...s, s: true })), next())} />
       </View>
     );
 
   return (
     <View>
-      {head('bolt', 3, t('How do you feel?'))}
+      {head('bolt', t('How do you feel?'))}
       <Label>{t('Energy')}</Label>
       <Choices options={['Tired', 'Normal', 'Great']} value={energy} onChange={setEnergy} />
       <Label>{t('Muscle soreness')}</Label>

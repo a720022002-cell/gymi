@@ -65,7 +65,8 @@ export default function MealResult() {
   const toast = useToast();
   const logFood = useLogFood();
   const food = useFood();
-  const { text } = useLocalSearchParams<{ text?: string }>();
+  // `desc`: what you wrote about the dish on the camera screen, sent with the photo.
+  const { text, desc } = useLocalSearchParams<{ text?: string; desc?: string }>();
   const [photo, setPhoto] = useState<Photo | null>(() => takePendingPhoto());
   const planned = planMeals(food.plan);
   const mealNames = mealChoices(planned);
@@ -76,7 +77,7 @@ export default function MealResult() {
   const [rows, setRows] = useState<Row_[]>([]);
   const [err, setErr] = useState<AiError | null>(null);
   const [busy, setBusy] = useState(true);
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState(desc ?? '');
   const [title, setTitle] = useState('');
   // A scanned product is added as one more ingredient (the photo isn't looked at again).
   const { scanning, scan } = useScanProduct(
@@ -105,7 +106,7 @@ export default function MealResult() {
       goBack();
       return;
     }
-    fetchResult();
+    fetchResult(desc?.trim() || undefined);
     // Run once when the screen opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

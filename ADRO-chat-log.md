@@ -647,6 +647,80 @@ Passwords and keys are left out on purpose.
 - App on branch `payments` (pushed): react-native-purchases 10.16 (npx expo install), src/lib/purchases.ts (+ web stub), src/lib/access.ts, new subscription page (trial days left and today's use, App Store prices, subscribe, restore, change or cancel, Apple's renewal text, terms and privacy links), You shows the status, terms paragraph updated (the free week doesn't turn into a paid plan), site text updated, PAID_PLANS_LIVE true. tsc, lint, iOS and web bundles pass. Kept off main so OTAs keep reaching build 17 (fingerprint checked: unchanged).
 - Steps for the owner and for launch: docs/PAYMENTS.md.
 
+## Free codes with Apple Offer Codes (28 Oct 2026)
+
+- Ask: type a code on the subscription page for a free subscription, and a tool to make codes with their length. Explained Apple's rule 3.1.1 (own unlock codes in the app can be rejected); the owner chose Apple Offer Codes (they work with RevenueCat as normal purchases, no conflict, no extra cost).
+- Server (main, not deployed): supabase/functions/offer-codes (admins only, App Store Connect API with an ES256 token; the signing was checked locally with a test key): list offers with named codes and one-time batches and how many subscribed with each (RevenueCat's offer_code on purchase events), make a named code or a batch (free time from 3 days to 1 year, monthly or yearly after, who can use it, limit, end date, sandbox batches), download a batch, stop a code.
+- App on main: Admin → Free codes (/admin-codes), also on adroapp.com in the browser for admins (+ Arabic). JS only, build 17 fingerprint unchanged.
+- App on branch payments: "Have a code?" on the subscription page opens Apple's code screen (RevenueCat presentCodeRedemptionSheet), then checks the subscription. tsc, lint, iOS bundle pass.
+- Owner: an App Store Connect API key (Admin role) into Supabase secrets ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY. Steps in docs/PAYMENTS.md.
+
+## Morning check-in: sleep first, watch sleep filled in by itself (28 Oct 2026)
+
+- Ask: sleep before weight; with a watch connected, Adro writes the sleep down by itself.
+- Done: the steps are now sleep, weight, how you feel. When the watch measured last night (the same night the sleep step already started from), the sleep step isn't shown: the check-in is 2 steps, the weight step says "Sleep from your watch: 7h 20m", and the night is saved from the watch (hours, plus bed and wake times when the watch has them). The steps are fixed once you move on, so a watch night arriving late can't shift them. Progress dots and "Step n of m" follow the number of steps.
+- File: src/components/health/CheckinSheet.tsx (+ Arabic). JS only, works with build 17. Not sent yet.
+
+## Measurements: right arm and left arm (28 Oct 2026)
+
+- Ask: add right arm and left arm.
+- Done: two new measurements, Right arm and Left arm (shown by default with waist and chest for someone with no measurements yet). The old single "Arm" stays only for people who already saved it (one row in the database), so its history isn't lost; it isn't offered for new entries.
+- Database (owner: "طبق"): migration 20261201000000_arm_sides.sql applied; arm_r and arm_l are allowed. Tested with a test user: right 36.5 and left 35.8 saved, an unknown kind still refused. Test user deleted (0 left).
+- Files: src/lib/health.tsx, src/components/progress/Body.tsx (+ Arabic). JS only, works with build 17. Not sent yet.
+
+## Measurements: AI analysis and a See all page (28 Oct 2026)
+
+- Ask: an AI analysis under the measurements, and "See all" to see old measurements, change them and compare.
+- Done (app): Progress → Body: "See all" next to Measurements, and "Adro's analysis" under the cards (asked again only when a number changes). New page /measurements: Compare (pick From and To dates; each measurement's change, green when it goes the way the goal wants; a measurement not taken that day uses the one before it), then each measurement with a small chart and every entry (date, value, change from the one before); tap one to change or delete it. health.fixMeasure (change or delete any tape measurement of any day).
+- Done (server, not deployed yet): ai task measure_insight. The server works out every number (latest, change since the first, per month, since the previous, right minus left arm, weight change) and the model only words them for the goal (cut: a smaller waist is the best sign; gain: chest/arms/thighs up with a steady waist), 2 or 3 points and one tip.
+- Checked on the web app with a test user (3 dates, waist/chest/right/left arm, weight): See all, the cards, the analysis card (waiting for the server), the compare table (waist −4, chest +2, right arm +1.1, left arm +0.9), charts, entries and the edit sheet. Test user deleted (0 left). tsc and lint pass.
+- Files: src/app/measurements.tsx, src/components/progress/Body.tsx, src/components/health/ReadingInsight.tsx (task prop), src/lib/health.tsx, supabase/functions/ai/index.ts (+ Arabic). App part JS only, works with build 17. Not sent yet; the ai function needs "طبّق" to deploy.
+
+### 28 Oct 2026: Detailed PDF report with optional AI analysis
+- Export report now has sections: Summary (commitment, goal, days logged), Weight and body (weight chart, first to last, lowest and highest, change per week, weigh-ins, every tape measurement incl. right and left arm), Food and protein (avg calories, lowest and highest day, calories on target, avg protein, protein and water goals), Training (workouts, time, sets, volume, PRs, cardio, a table of every workout, lifts that went up), Sleep and recovery (avg, shortest and longest night, short nights, energy, soreness, avg recovery), Week by week table, Vitamins and blood tests.
+- New "AI analysis" switch: the AI reads the whole report (uses the existing `report` AI task, no server change) and adds "What went well / What to improve / Focus" at the top of the PDF. Asks for AI consent first. A finished period is saved so Reports shows it too.
+- Files: `src/app/export.tsx`, `src/lib/report.ts` (loads all measurements and cardio, new `detail` stats, table styles).
+
+### 28 Oct 2026: Recovery tab sub-tabs (Recovery, Sleep, Load, Nutrition)
+- Progress, Recovery now has its own row like Streaks: **Recovery** (opens first, the old page), **Sleep**, **Load**, **Nutrition**.
+- Sleep: the whole Sleep page (moved into `src/components/sleep/SleepView.tsx`; `/sleep` uses the same component).
+- Load (`LoadView.tsx`): this week against your usual (×, with a bar and plain words), training load 14 days, week against week (workouts, sets, volume, minutes), muscle soreness 14 days (colored bars, counts, after-workout vs rest days), muscles ready, AI analysis.
+- Nutrition (`NutritionView.tsx`): week/month, average calories, protein, water, days on target, calorie and protein charts (green when met), next-morning recovery after protein/calorie days hit vs missed (hidden until there's data), AI analysis.
+
+### 28 Oct 2026: Streaks tab becomes Commitment (Commitment, Streak, Target weight)
+- Progress main tab "Streaks" is now **Commitment**. Its row: **Commitment** (first, the commitment rate), **Streak** (days in a row and workouts in a row together), **Target weight** (new). Badges stay under Commitment and Streak.
+- Target weight (`WeightGoal.tsx`): start, now (week average), target, progress bar, kg to go, pace per week (vs 4 weeks ago or your first week, needs 2 weeks) and weeks to target. "What moves your weight": Food (calories on target, average calories vs what you burn, expected kg a week, weeks on target vs off), Training (workouts, per week, weeks with all workouts vs fewer), Cardio (minutes, kcal, note that cardio calories are added to the food goal). Week by week table (last 4 weeks: weight change, on target, workouts, cardio). AI analysis.
+- Links: Home's Streaks card opens Streak; Overall's Streak tile opens Streak, its Commitment tile opens Commitment; Home's commitment ring opens Commitment.
+- Also put LoadView/NutritionView back to the project's single quotes (an earlier format run changed them).
+
+### 28 Oct 2026: Gym Bro characters on Gym Bros (Friends and Groups)
+- Design: AI cartoon (Higgsfield FLUX 3 + Seedream 5.0 Flash edits), 5 levels for men and 5 for women (women: sports top and shorts, ponytail). Pictures in `assets/images/bro/m1-5.png`, `w1-5.png` (420 px tall, about 20-36 KB each).
+- `src/components/social/GymBro.tsx`: the picture with the adro ring drawn on the head (filled to the 30-day commitment) and `@username` on the neck. Level: under 40 = 1, 40-59 = 2, 60-74 = 3, 75-89 = 4, 90+ = 5 (`src/lib/bro.ts`). Someone who doesn't share their streak shows level 2 with an empty ring.
+- `src/components/social/BroBox.tsx`: above "Gym Bros". Friends and Activity: "Your crew" (you first, then friends by commitment; tap a friend for their page, tap yourself for Commitment). Groups: your character next to a ring for each group, filled with the members' average commitment.
+- Database (applied 28 Oct, "طبق"): `supabase/migrations/20261202000000_gym_bro.sql`: table `bro_levels` (own row only), `my_crew()` and `group_bros(group)`; a friend's commitment shows only if they share their streak. Tested on a local Postgres first (twice-apply, crew, group, non-member, RLS).
+- The app saves your 30-day commitment to `bro_levels` when Gym Bros opens (only when it changed).
+
+### 28 Oct 2026: Describe the dish before the meal photo
+- Meal photo camera (`src/app/meal-camera.tsx`): an optional "Describe the dish" field under the camera (meals only, not labels or "pick" mode), up to 300 characters.
+- It goes to `/meal-result` as `desc`, is sent as `note` with the first AI call, and fills the "How was it cooked?" field so it can be changed and asked again (`src/app/meal-result.tsx`).
+- No server change: the `meal_photo` task already takes `note` and trusts it over the photo. Checked with the same photo: without a note "Grilled chicken breast with rice", with "Chicken kabsa: 1 cup of rice cooked with ghee, 1 grilled chicken thigh" it answered "Chicken kabsa" with the thigh.
+
+### 28 Oct 2026: Restaurants as a list that opens each menu
+- Search food → Restaurants: instead of a row of restaurant chips above the results, the restaurants are listed where the foods go (name, "N items on the menu"). Tapping one opens its whole menu A to Z with "All restaurants" to go back; typing filters inside that menu. Typing with no restaurant open still searches all restaurant dishes. Picking another category closes the menu.
+- In a menu the restaurant name isn't repeated under each item (just the serving).
+- Files: `src/app/food-search.tsx` (list, menu view, a shared `foodRows`), `src/lib/foodsDb.ts` (`restaurantMenu`).
+
+### 28 Oct 2026: Barcode opens Apple's scanner directly
+- iPhone: "Scan barcode" (log sheet) and scanning a product into a meal (`useScanProduct`) now open Apple's own full-screen scanner straight away (expo-camera `CameraView.launchScanner`, VisionKit DataScanner), with no screen of ours around it. First code read: the scanner closes and the product opens (or is added to the meal). Swipe down to cancel.
+- New `src/lib/appleScan.ts`. JS only (expo-camera already has it), so it goes out with an update, no new build.
+- Falls back to the old `/barcode` screen (our camera, typing the code by hand) on Android, iPhones without Apple's scanner, or without camera permission.
+- Not testable on the web; test on an iPhone.
+
+### 28 Oct 2026: Update sent (everything except payments)
+- OTA 6f0fd14f (iOS update 01a1807e), runtime 6e1d9a57 = build 17, commit 03f9680: commitment fix, check-in order with watch sleep, right and left arm, measurements page and AI card, detailed PDF report with AI, Recovery sub-tabs, Commitment tab with Target weight, Gym Bro characters, meal description, restaurant menus, Apple's barcode scanner, admin Free codes page, AI trial messages.
+- Not sent: payments (subscriptions migration, revenuecat and offer-codes functions, the payments branch).
+- ai function deployed after the owner's OK: v103 (measure_insight; the paywall gate stays off without PAYWALL=on). Checked: measure_insight 200 with a real analysis, food_text 200 (no limits). Test user deleted.
+
 ---
 
 
