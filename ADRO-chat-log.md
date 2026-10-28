@@ -763,6 +763,25 @@ Passwords and keys are left out on purpose.
 - Ali → ali@adroapp.com, Ahmed → ahmed@adroapp.com, Hamdan → hamdan@adroapp.com (sign-in email and identity).
 - Same passwords and admin rights; new emails confirmed. admin@gymi.app left as is.
 
+## Gym Bros characters redone, Bitmoji style, with Customize (28 Oct 2026)
+
+**Asked:** the old cartoon pictures weren't liked at all. Make it like Snapchat's Bitmoji, with a Customize button in the box to change clothes, and keep the commitment changing the body.
+
+**Built:**
+- New characters drawn in code (no pictures): big head, face, hair, clothes, sneakers.
+- **Customize** button in "Your crew" (and under you in the groups box) opens "Your character":
+  - Man / Woman
+  - Skin tone (8)
+  - Hair: 7 styles for men, 6 for women, 9 colors
+  - Face: eyebrows, eye color, beard (stubble, short, full, goatee, mustache), glasses (round, square, sunglasses)
+  - Headwear: cap, beanie, headband, shemagh with agal (men), hijab (women), with colors
+  - Top: T-shirt, tank top, hoodie, long sleeve, compression, no shirt (men) or sports bra (women), 14 colors
+  - Bottom: shorts, long shorts, joggers, leggings
+  - Sneaker color
+- **The build follows the 30-day commitment (levels 1–5):** shoulders, arms, legs and abs grow; level 1 has a small belly. The editor can preview each level.
+- The look is saved and friends and group members see it. The commitment only shows if the person shares their streak, as before.
+- Database: `bro_levels.look` (JSON, size-limited); `my_crew` and `group_bros` return it (migration 20261204000000_bro_looks.sql).
+
 ---
 
 
