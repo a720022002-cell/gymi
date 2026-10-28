@@ -5,25 +5,49 @@ import Svg, { Circle } from 'react-native-svg';
 
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
-import { type Bro, BRO_LEVELS, broLevel, groupBros, groupPct, myCrew, saveMyBro } from '@/lib/bro';
+import { type Bro, BRO_LEVELS, broLevel, cachedLook, groupBros, groupPct, loadMyLook, myCrew, rememberLook, saveMyBro } from '@/lib/bro';
 import type { Group } from '@/lib/social';
 import { useStreaks } from '@/lib/useProgress';
 import { useSettings } from '@/theme/settings';
 
 import { Icon } from '../Icon';
 import { Text } from '../Text';
-import { Card, Springy } from '../ui';
+import { Card, Row, Springy } from '../ui';
 import { GymBro } from './GymBro';
 
-/** You, from what's on this phone: your 30-day commitment (saved so friends see the same). */
+/** You, from what's on this phone: your 30-day commitment (saved so friends see the same) and your character's look. */
 function useMe() {
   const { session, profile } = useAuth();
   const pct = useStreaks().c30.pct;
   const uid = session?.user.id;
+  const [look, setLook] = useState<unknown>(() => cachedLook(uid));
   useEffect(() => {
     if (uid) saveMyBro(uid, pct).catch(() => {});
   }, [uid, pct]);
-  return { uid, pct, female: profile?.gender === 'female', username: profile?.username ?? '' };
+  // Read again on coming back (after dressing it).
+  useFocusEffect(
+    useCallback(() => {
+      if (!uid) return;
+      const have = cachedLook(uid);
+      if (have !== undefined) setLook(have);
+      else loadMyLook(uid).then(setLook).catch(() => {});
+    }, [uid]),
+  );
+  return { uid, pct, look, female: profile?.gender === 'female', username: profile?.username ?? '' };
+}
+
+/** "Customize": dress your character. */
+function Customize() {
+  const { t } = useT();
+  const { colors: c } = useSettings();
+  return (
+    <Springy onPress={() => router.push('/bro-edit')} accessibilityRole="button" style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, height: 32, borderRadius: 16, backgroundColor: c.inset }}>
+      <Icon name="edit" size={14} color={c.cobalt} />
+      <Text variant="small" weight={700} color={c.cobalt}>
+        {t('Customize')}
+      </Text>
+    </Springy>
+  );
 }
 
 const pctText = (p: number | null) => (p == null ? '–' : `${p}%`);
@@ -37,19 +61,27 @@ export function CrewBox({ onAdd }: { onAdd: () => void }) {
   useFocusEffect(
     useCallback(() => {
       let alive = true;
-      myCrew().then((x) => alive && setCrew(x));
+      myCrew().then((x) => {
+        if (!alive) return;
+        setCrew(x);
+        const mine = x?.find((b) => b.user_id === me.uid);
+        if (me.uid && mine?.look) rememberLook(me.uid, mine.look);
+      });
       return () => {
         alive = false;
       };
-    }, []),
+    }, [me.uid]),
   );
   // You first (with today's number), then friends by commitment.
   const friends = (crew ?? []).filter((x) => x.user_id !== me.uid).sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1));
-  const people = [{ user_id: me.uid ?? 'me', username: me.username, name: null, gender: me.female ? 'female' : 'male', pct: me.pct }, ...friends];
+  const people: Bro[] = [{ user_id: me.uid ?? 'me', username: me.username, name: null, gender: me.female ? 'female' : 'male', pct: me.pct, look: me.look ?? crew?.find((b) => b.user_id === me.uid)?.look }, ...friends];
   const lvl = broLevel(me.pct);
   return (
     <Card style={{ marginBottom: 6 }}>
-      <Text weight={700}>{t('Your crew')}</Text>
+      <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text weight={700}>{t('Your crew')}</Text>
+        <Customize />
+      </Row>
       <Text variant="small" color="sec">
         {lvl ? t('You’re level {n}: {l}. Stay committed and your character gets stronger.', { n: lvl, l: t(BRO_LEVELS[lvl - 1]) }) : t('Stay committed and your character gets stronger.')}
       </Text>
@@ -61,7 +93,7 @@ export function CrewBox({ onAdd }: { onAdd: () => void }) {
             accessibilityRole="button"
             accessibilityLabel={`${p.name || p.username}, ${pctText(p.pct)}`}
             style={{ alignItems: 'center' }}>
-            <GymBro pct={p.pct} female={p.gender === 'female'} username={p.username} height={i ? 120 : 140} />
+            <GymBro pct={p.pct} female={p.gender === 'female'} look={p.look} username={p.username} height={i ? 150 : 175} />
             <Text variant="xs" weight={700} color={i ? 'text' : c.cobalt} style={{ marginTop: 4 }}>
               {i ? pctText(p.pct) : `${t('You')} · ${pctText(p.pct)}`}
             </Text>
@@ -128,8 +160,11 @@ export function GroupBox({ groups, hasFriends, onAdd }: { groups: Group[]; hasFr
   return (
     <Card style={{ marginBottom: 6, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
       <View style={{ alignItems: 'center' }}>
-        <GymBro pct={me.pct} female={me.female} username={me.username} height={150} />
+        <GymBro pct={me.pct} female={me.female} look={me.look} username={me.username} height={175} />
         <Text variant="xs" weight={700} color={c.cobalt} style={{ marginTop: 4 }}>{`${t('You')} · ${pctText(me.pct)}`}</Text>
+        <View style={{ marginTop: 8 }}>
+          <Customize />
+        </View>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, flexGrow: 1, justifyContent: 'center', alignItems: 'center' }}>
         {groups.length ? (
