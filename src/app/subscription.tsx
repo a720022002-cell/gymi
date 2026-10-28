@@ -9,7 +9,7 @@ import { Button, Card, Row, Segmented, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { daysLeft, refreshAccess, TRIAL, useAccess } from '@/lib/access';
 import { myInvite } from '@/lib/invites';
-import { buy, canBuy, getPlans, manage, type Plans, restore } from '@/lib/purchases';
+import { buy, canBuy, getPlans, manage, type Plans, redeemCode, restore } from '@/lib/purchases';
 import { useSettings } from '@/theme/settings';
 
 /** One plan, unlimited. Prices here only show until the App Store's own (in your currency) arrive. */
@@ -69,6 +69,12 @@ export default function Subscription() {
     if (ok) await waitForAccess();
     toast(ok ? t('Your subscription is back.') : t('No subscription found for this Apple ID.'), { icon: ok ? 'check' : 'warn' });
     setBusy(null);
+  };
+
+  // Apple's code screen closes by itself; the subscription then arrives like a purchase.
+  const code = async () => {
+    await redeemCode();
+    if (await waitForAccess()) toast(t('Your code worked. Enjoy Adro+.'), { icon: 'check' });
   };
 
   return (
@@ -186,7 +192,14 @@ export default function Subscription() {
         ))}
       </Card>
 
-      <Row style={{ justifyContent: 'center', gap: 18, marginTop: 4 }}>
+      <Row style={{ justifyContent: 'center', flexWrap: 'wrap', columnGap: 18, rowGap: 8, marginTop: 4 }}>
+        {canBuy() && !subscribed ? (
+          <Springy onPress={code} accessibilityRole="button">
+            <Text variant="small" color="link">
+              {t('Have a code?')}
+            </Text>
+          </Springy>
+        ) : null}
         {canBuy() ? (
           <Springy onPress={bringBack} accessibilityRole="button">
             <Text variant="small" color="link">

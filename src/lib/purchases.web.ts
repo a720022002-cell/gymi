@@ -12,3 +12,4 @@ export async function restore() {
   return false;
 }
 export async function manage() {}
+export async function redeemCode() {}

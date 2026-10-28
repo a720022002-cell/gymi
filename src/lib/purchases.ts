@@ -56,6 +56,14 @@ export async function restore(): Promise<boolean> {
   }
 }
 
+/** Apple's own screen to type a free code (Offer Code); redeeming it is a normal subscription with free time first. */
+export async function redeemCode() {
+  if (!canBuy() || !configured) return;
+  try {
+    await Purchases.presentCodeRedemptionSheet();
+  } catch {}
+}
+
 /** Apple's own page to change or cancel the subscription. */
 export async function manage() {
   if (!canBuy() || !configured) return;
