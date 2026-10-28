@@ -725,7 +725,7 @@ Passwords and keys are left out on purpose.
 - Owner set up App Store Connect (Adro+ group, `adro_monthly` 29 SAR, `adro_yearly` 299 SAR, waiting in draft for the next version), RevenueCat (App Store app `com.adroapp.app`, entitlement `adro_plus`, default offering with Monthly and Annual, webhook), Supabase secrets `REVENUECAT_API_KEY` and `REVENUECAT_WEBHOOK_SECRET`, EAS `EXPO_PUBLIC_REVENUECAT_IOS_KEY`.
 - After "طبق": applied `20261130000000_subscriptions.sql` (subscriptions, subscription_events, ai_gate, access_of, my_access), deployed `revenuecat` v1 (no JWT check) and `offer-codes` v1. Webhook answers 401 without or with a wrong secret.
 - Payments branch: merged main (ar.ts conflict, both sides kept, no duplicates), typecheck and lint clean, pushed (53eb1d3). `npm prune` after switching back; fingerprint still 6e1d9a57 (build 17).
-- Owner added `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`. Checked with a temporary admin (deleted): offer-codes `list` answers 200 from Apple (0 offers yet). RevenueCat test event sent: the function answers TEST with 200 and doesn't store it, so `subscription_events` stays empty until a real purchase; delivery status to be read on RevenueCat's webhook page.
+- Owner added `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`. Checked with a temporary admin (deleted): offer-codes `list` answers 200 from Apple (0 offers yet). RevenueCat test event sent: the function answers TEST with 200 and doesn't store it, so `subscription_events` stays empty until a real purchase; owner confirmed RevenueCat shows the delivery succeeded (webhook connected).
 - Still to do: merge payments into main and build on "صدر النسخة"; sandbox test; `PAYWALL=on` on launch day.
 
 ---
