@@ -21,15 +21,16 @@ const TABS: PTab[] = ['overall', 'body', 'recovery', 'streaks'];
 export default function Progress() {
   const { t } = useT();
   const { colors: c } = useSettings();
-  const params = useLocalSearchParams<{ tab?: string }>();
+  const params = useLocalSearchParams<{ tab?: string; sub?: string }>();
   const [tab, setTab] = useState<PTab>(TABS.includes(params.tab as PTab) ? (params.tab as PTab) : 'overall');
-  const [sub, setSub] = useState(0);
-  const [seen, setSeen] = useState(params.tab);
+  const [sub, setSub] = useState(Number(params.sub) || 0);
+  const [seen, setSeen] = useState(`${params.tab}|${params.sub}`);
   const scrollRef = useRef<ScrollView>(null);
   // Opening Progress from Home's Streaks card picks that tab.
-  if (params.tab !== seen) {
-    setSeen(params.tab);
+  if (`${params.tab}|${params.sub}` !== seen) {
+    setSeen(`${params.tab}|${params.sub}`);
     if (TABS.includes(params.tab as PTab)) setTab(params.tab as PTab);
+    if (params.sub) setSub(Number(params.sub) || 0);
   }
 
   useTour('progress');
@@ -52,7 +53,7 @@ export default function Progress() {
           { value: 'overall', label: t('Overall') },
           { value: 'body', label: t('Body') },
           { value: 'recovery', label: t('Recovery') },
-          { value: 'streaks', label: t('Streaks') },
+          { value: 'streaks', label: t('Commitment') },
         ]}
         onChange={(v) => go(v)}
         />

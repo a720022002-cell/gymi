@@ -687,6 +687,12 @@ Passwords and keys are left out on purpose.
 - Load (`LoadView.tsx`): this week against your usual (×, with a bar and plain words), training load 14 days, week against week (workouts, sets, volume, minutes), muscle soreness 14 days (colored bars, counts, after-workout vs rest days), muscles ready, AI analysis.
 - Nutrition (`NutritionView.tsx`): week/month, average calories, protein, water, days on target, calorie and protein charts (green when met), next-morning recovery after protein/calorie days hit vs missed (hidden until there's data), AI analysis.
 
+### 28 Oct 2026: Streaks tab becomes Commitment (Commitment, Streak, Target weight)
+- Progress main tab "Streaks" is now **Commitment**. Its row: **Commitment** (first, the commitment rate), **Streak** (days in a row and workouts in a row together), **Target weight** (new). Badges stay under Commitment and Streak.
+- Target weight (`WeightGoal.tsx`): start, now (week average), target, progress bar, kg to go, pace per week (vs 4 weeks ago or your first week, needs 2 weeks) and weeks to target. "What moves your weight": Food (calories on target, average calories vs what you burn, expected kg a week, weeks on target vs off), Training (workouts, per week, weeks with all workouts vs fewer), Cardio (minutes, kcal, note that cardio calories are added to the food goal). Week by week table (last 4 weeks: weight change, on target, workouts, cardio). AI analysis.
+- Links: Home's Streaks card opens Streak; Overall's Streak tile opens Streak, its Commitment tile opens Commitment; Home's commitment ring opens Commitment.
+- Also put LoadView/NutritionView back to the project's single quotes (an earlier format run changed them).
+
 ---
 
 

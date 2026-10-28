@@ -146,7 +146,7 @@ export function StreaksCard() {
     </View>
   );
   return (
-    <Card onPress={() => router.push({ pathname: '/progress', params: { tab: 'streaks' } })}>
+    <Card onPress={() => router.push({ pathname: '/progress', params: { tab: 'streaks', sub: '1' } })}>
       <Row style={{ justifyContent: 'space-between', marginBottom: 12 }}>
         <Text weight={700}>{t('Streaks')}</Text>
         <Icon name="chev" size={18} color={c.sec} />

@@ -56,6 +56,6 @@ export function useMetrics(): Record<RingKey, Metric> {
     workouts: food.isToday
       ? { v: done, max: Math.max(1, planned), big: `${done}/${planned}`, txt: t('{a} of {b} this week', { a: done, b: planned }), go: () => router.push('/train') }
       : { v: dayDone ? 1 : 0, max: 1, big: dayDone ? '1' : '0', txt: t(dayDone ? 'Workout done' : dayPlanned ? 'Missed' : 'Rest day'), go: () => router.push('/train') },
-    commit: { v: c7, max: 100, big: cm.pct == null ? '–' : `${c7}%`, txt: t(food.isToday ? 'This week' : 'Last 7 days'), go: () => router.push({ pathname: '/progress', params: { tab: 'streaks' } }) },
+    commit: { v: c7, max: 100, big: cm.pct == null ? '–' : `${c7}%`, txt: t(food.isToday ? 'This week' : 'Last 7 days'), go: () => router.push({ pathname: '/progress', params: { tab: 'streaks', sub: '0' } }) },
   };
 }
