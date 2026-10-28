@@ -758,6 +758,11 @@ Passwords and keys are left out on purpose.
 - In a workout, one-arm exercises show "Start with your left arm: it's 2.5 cm smaller."
 - Swaps come from the exercise library: concentration curl, alternate hammer curl, one-arm cable curl, one-arm preacher curl, one-arm cable and dumbbell triceps extensions. Sets and reps stay the same.
 
+## Admin emails moved to adroapp.com (28 Oct 2026)
+
+- Ali → ali@adroapp.com, Ahmed → ahmed@adroapp.com, Hamdan → hamdan@adroapp.com (sign-in email and identity).
+- Same passwords and admin rights; new emails confirmed. admin@gymi.app left as is.
+
 ---
 
 
