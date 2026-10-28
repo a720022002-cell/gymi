@@ -15,7 +15,6 @@ import { fx, shortDate, weekAvg } from '@/lib/progress';
 import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
-import { LineChart } from '../Charts';
 import { Icon, Mark } from '../Icon';
 import { Sheet } from '../Sheet';
 import { Text } from '../Text';
@@ -24,6 +23,7 @@ import { Button, Card, Chip, Label, Row, Springy } from '../ui';
 import { WeightWheel } from '../health/bits';
 import { ReadingInsight } from '../health/ReadingInsight';
 import { SecHead } from './bits';
+import { WeightChart } from './WeightChart';
 
 /** Weight, measurements and progress photos (design: progWeightBody). */
 export function Body() {
@@ -59,6 +59,8 @@ function Weight() {
   const [editDay, setEditDay] = useState<string | null>(null);
   const [ev, setEv] = useState(0);
   const [busy, setBusy] = useState(false);
+  // The weigh-in picked on the chart (its day), shown under it with that day's other readings.
+  const [pickDay, setPickDay] = useState<string | null>(null);
   const w = health.weights.slice(-30);
   const cur = w.at(-1);
   const a = weekAvg(health.weights, food.today);
@@ -71,7 +73,11 @@ function Weight() {
     setV(cur?.value ?? Number(profile?.weight_kg ?? 75));
     setOpen(true);
   };
-  const labels = w.map((x, i) => ((i % Math.max(1, Math.ceil(w.length / 4)) === 0 && i < w.length - Math.ceil(w.length / 8)) || i === w.length - 1 ? shortDate(x.day, lang) : ''));
+  const sel = pickDay ? w.findIndex((x) => x.day === pickDay) : -1;
+  const picked = sel >= 0 ? w[sel] : null;
+  const before = sel > 0 ? w[sel - 1] : null;
+  // Tape measurements and body fat taken that same day.
+  const sameDay = picked ? health.measures.filter((m) => m.day === picked.day && m.kind !== 'weight' && MEAS_INFO[m.kind as keyof typeof MEAS_INFO]) : [];
   // Weekly averages, now against 4 weeks ago (or your first full week when that's newer), so one heavy day doesn't flip it.
   const oldest = health.weights[0]?.day;
   const back = addDays(food.today, -28);
@@ -90,7 +96,7 @@ function Weight() {
   }
   return (
     <View>
-      <Card onPress={cur ? () => (setEditDay(null), setHistory(true)) : undefined}>
+      <Card>
         {cur ? (
           <>
             <Row style={{ justifyContent: 'space-between', alignItems: 'flex-end' }}>
@@ -119,17 +125,59 @@ function Weight() {
             </Row>
             {w.length > 1 ? (
               <View style={{ marginTop: 16 }}>
-                <LineChart values={w.map((x) => W.num(x.value))} labels={labels} goal={target != null ? W.num(target) : undefined} />
-                {target != null ? (
-                  <Text variant="xs" color="sec" center style={{ marginTop: 4 }}>
-                    {t('Dashed line: your target, {w}', { w: W.text(target) })}
+                <WeightChart
+                  points={w.map((x) => ({ day: x.day, value: W.num(x.value) }))}
+                  target={target != null ? W.num(target) : null}
+                  labels={{ target: t('Target'), current: t('Now'), num: (n) => `${fx(n)} ${W.label}` }}
+                  dateLabel={(d) => shortDate(d, lang)}
+                  selected={sel >= 0 ? sel : null}
+                  onSelect={(i) => setPickDay(i == null ? null : w[i].day)}
+                />
+                {picked ? (
+                  <View style={{ marginTop: 10, backgroundColor: c.inset, borderRadius: 16, padding: 12 }}>
+                    <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <View style={{ flex: 1 }}>
+                        <Text variant="small" weight={700} color="sec">
+                          {longDate(picked.day, lang)}
+                        </Text>
+                        <Text num size={22}>
+                          {W.text(picked.value)}
+                        </Text>
+                        {before ? (
+                          <Text variant="xs" weight={700} color="sec">
+                            {Math.abs(picked.value - before.value) < 0.05 ? t('Same as the weigh-in before') : t('{n} since {d}', { n: `${picked.value > before.value ? '+' : '−'}${W.text(Math.abs(picked.value - before.value))}`, d: shortDate(before.day, lang) })}
+                          </Text>
+                        ) : null}
+                      </View>
+                      <Button small kind="soft" icon="edit" title={t('Edit')} onPress={() => (setEv(picked.value), setEditDay(picked.day), setHistory(true))} />
+                    </Row>
+                    {sameDay.length ? (
+                      <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: c.line, paddingTop: 8 }}>
+                        <Text variant="xs" weight={700} color="sec">
+                          {t('Also that day')}
+                        </Text>
+                        {sameDay.map((m) => {
+                          const [n, u] = MEAS_INFO[m.kind as keyof typeof MEAS_INFO];
+                          return (
+                            <Row key={m.kind} style={{ justifyContent: 'space-between', marginTop: 4 }}>
+                              <Text variant="small">{t(n)}</Text>
+                              <Text variant="small" weight={700} num>{`${fx(m.value)} ${u}`}</Text>
+                            </Row>
+                          );
+                        })}
+                      </View>
+                    ) : null}
+                  </View>
+                ) : (
+                  <Text variant="xs" color="sec" center style={{ marginTop: 6 }}>
+                    {t('Tap a dot to see that day')}
                   </Text>
-                ) : null}
-                <Row gap={6} style={{ marginTop: 8, justifyContent: 'center' }}>
+                )}
+                <Springy onPress={() => (setEditDay(null), setHistory(true))} accessibilityRole="button" style={{ marginTop: 8, alignSelf: 'center', padding: 4 }}>
                   <Text variant="xs" weight={700} color="link">
-                    {t('Tap to see every weigh-in and fix one')}
+                    {t('See every weigh-in')}
                   </Text>
-                </Row>
+                </Springy>
               </View>
             ) : (
               <Text variant="small" color="sec" style={{ marginTop: 8 }}>

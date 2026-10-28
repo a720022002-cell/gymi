@@ -721,6 +721,27 @@ Passwords and keys are left out on purpose.
 - Not sent: payments (subscriptions migration, revenuecat and offer-codes functions, the payments branch).
 - ai function deployed after the owner's OK: v103 (measure_insight; the paywall gate stays off without PAYWALL=on). Checked: measure_insight 200 with a real analysis, food_text 200 (no limits). Test user deleted.
 
+### 28 Oct 2026: Payments connected on the server (paywall still off)
+- Owner set up App Store Connect (Adro+ group, `adro_monthly` 29 SAR, `adro_yearly` 299 SAR, waiting in draft for the next version), RevenueCat (App Store app `com.adroapp.app`, entitlement `adro_plus`, default offering with Monthly and Annual, webhook), Supabase secrets `REVENUECAT_API_KEY` and `REVENUECAT_WEBHOOK_SECRET`, EAS `EXPO_PUBLIC_REVENUECAT_IOS_KEY`.
+- After "طبق": applied `20261130000000_subscriptions.sql` (subscriptions, subscription_events, ai_gate, access_of, my_access), deployed `revenuecat` v1 (no JWT check) and `offer-codes` v1. Webhook answers 401 without or with a wrong secret.
+- Payments branch: merged main (ar.ts conflict, both sides kept, no duplicates), typecheck and lint clean, pushed (53eb1d3). `npm prune` after switching back; fingerprint still 6e1d9a57 (build 17).
+- Owner added `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`. Checked with a temporary admin (deleted): offer-codes `list` answers 200 from Apple (0 offers yet). RevenueCat test event sent: the function answers TEST with 200 and doesn't store it, so `subscription_events` stays empty until a real purchase; owner confirmed RevenueCat shows the delivery succeeded (webhook connected).
+- Still to do: merge payments into main and build on "صدر النسخة"; sandbox test; `PAYWALL=on` on launch day.
+
+### 28 Oct 2026: Time fields: Apple's time picker, hold to repeat
+- `src/components/food/TimeField.tsx` (used by check-in sleep, Log sleep, meal times, notifications, gym hours, train together): on iPhone the time in the middle is Apple's own compact time picker (SwiftUI `DatePicker` from `@expo/ui`, already in build 17); tap it for the wheel. − and + still move 15 minutes; holding them repeats (after 0.4 s, then faster). Android keeps − and + with the hold.
+- JS only, fingerprint unchanged (6e1d9a57). Web keeps its own `TimeField.web.tsx`. Not testable on the web; test on an iPhone.
+
+### 28 Oct 2026: Weight chart redesign (owner's sketch)
+- New `src/components/progress/WeightChart.tsx`: axes; dates along the bottom (first, middle, last) placed by real date; on the side the target weight (green dashed line; above the line for a bulk, below for a cut) and the current weight ("Now"); a dot for every weigh-in, the latest bigger.
+- Tap near a dot: it's picked (ring and a vertical line). Under the chart (`Body.tsx`): that day's date and weight, the change since the weigh-in before, "Also that day" with body fat and tape measurements logged that day, and Edit (opens the existing fix/delete sheet). "See every weigh-in" opens the full list (the card itself is no longer one big button).
+- The tap is read by a clear layer over the chart, measured against the chart's place on screen (works on phone and web). Tested on the web with a cutting test user (target 82 kg): tapping Oct 20 showed 88.6 kg, +0.5 since Oct 16, body fat 21.5% and waist 92 cm. Test user deleted.
+
+### 28 Oct 2026: Gift Adro+ (admin), no Apple and no charge
+- Migration `20261203000000_gifts.sql` (not applied yet): table `gifts` (no direct access), `access_of` now gives 'sub' with why 'gift' while a gift is on (checked after paid, before the trial), `admin_give_gift(username, days, note)` (a new gift starts when the current one ends), `admin_gifts()`, `admin_end_gift(id)` (ends now; one not started yet is removed). Admins only. When a gift ends the person falls back to the regular version by themselves.
+- Tested on a local Postgres: twice-apply, free → gift 30 + 7 stacked = 37 days → end → free, unknown username, non-admin refused, table not readable.
+- App: Admin → "Gift Adro+" (`src/app/admin-gifts.tsx`): username, 1 week to 1 year, note, list with End. Admin tiles now two rows of three.
+
 ---
 
 
