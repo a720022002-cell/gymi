@@ -5287,4 +5287,6 @@ export const AR: Record<string, string> = {
   "Until {d}": "لين {d}",
   "No gifts yet.": "ما فيه إهداءات للحين.",
   "Before launch every feature is open to everyone, so a gift shows its effect once subscriptions start.": "قبل الإطلاق كل المزايا مفتوحة للكل، فأثر الإهداء يبان لما تبدأ الاشتراكات.",
+  "Active calories": "السعرات النشطة",
+  "Usual {n}": "المعتاد {n}",
 };

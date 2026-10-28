@@ -742,6 +742,10 @@ Passwords and keys are left out on purpose.
 - Tested on a local Postgres: twice-apply, free → gift 30 + 7 stacked = 37 days → end → free, unknown username, non-admin refused, table not readable.
 - App: Admin → "Gift Adro+" (`src/app/admin-gifts.tsx`): username, 1 week to 1 year, note, list with End. Admin tiles now two rows of three.
 
+### 28 Oct 2026: Watch readings in the Overall grid
+- Progress → Overall: when a watch or phone sends data, the tile grid also has Steps (goal = personal step goal, green when met), Active calories, Resting HR and HRV (each against your usual, the 7 readings before the newest; green when resting HR is at most 3 above usual, HRV at least 90% of usual). Each opens its reading page. "From your watch" below stays as it was.
+- File: `src/components/progress/Overall.tsx`. Tested on the web with watch data (8,800 steps, 420 kcal, 58 bpm usual 60, 55 ms usual 51). Test user deleted.
+
 ---
 
 

@@ -4,7 +4,7 @@ import { View } from 'react-native';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { useCycleToday } from '@/lib/cyclePhase';
-import { phoneSource, useDevices } from '@/lib/devices';
+import { phoneSource, stepGoal, useDevices } from '@/lib/devices';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { addDays, fmt } from '@/lib/nutrition';
@@ -103,7 +103,20 @@ export function Overall({ go }: { go: (t: PTab, sub?: number) => void }) {
   );
   const arrow = (d: number) => (d < 0 ? '↓' : '↑');
   // Newest value from the watch or phone in the last week.
-  const devLast = (k: 'steps' | 'hr_rest' | 'hrv') => [...dev.days].reverse().find((d) => d[k] != null)?.[k] ?? null;
+  const devLast = (k: 'steps' | 'hr_rest' | 'hrv' | 'active_kcal') => [...dev.days].reverse().find((d) => d[k] != null)?.[k] ?? null;
+  // Your usual (the week before the newest reading), to say if today is better or worse than normal.
+  const usual = (k: 'hr_rest' | 'hrv') => {
+    const xs = dev.days.filter((d) => d[k] != null).map((d) => d[k] as number);
+    const prev = xs.slice(-8, -1);
+    return prev.length >= 3 ? Math.round(prev.reduce((a, b) => a + b, 0) / prev.length) : null;
+  };
+  const steps = devLast('steps');
+  const sGoal = stepGoal(dev.days);
+  const rest = devLast('hr_rest');
+  const restUsual = usual('hr_rest');
+  const hrv = devLast('hrv');
+  const hrvUsual = usual('hrv');
+  const active = devLast('active_kcal');
   const watch: [string, string][] = [
     [t('Steps'), devLast('steps') != null ? fmt(devLast('steps') as number) : '–'],
     [t('Resting HR'), devLast('hr_rest') != null ? t('{n} bpm', { n: devLast('hr_rest') as number }) : '–'],
@@ -143,6 +156,15 @@ export function Overall({ go }: { go: (t: PTab, sub?: number) => void }) {
         {tile('check', t('Commitment'), cm == null ? '–' : `${cm}%`, t('Last 30 days'), () => go('streaks', 0), cm == null ? null : cm >= 80)}
         {tile('food', t('Calories today'), fmt(todayFood.k), t('of {n} kcal', { n: fmt(food.dayGoal(food.today)) }), () => router.push('/food'), null)}
         {tile('drop', t('Water today'), `${fx(todayFood.w / 1000)} L`, t('of {n} L', { n: fx(food.waterGoal / 1000) }), () => router.push('/water'), todayFood.w >= food.waterGoal * 0.8 ? true : null)}
+        {/* From your watch or phone (also in "From your watch" below). */}
+        {dev.hasData ? (
+          <>
+            {tile('walk', t('Steps'), steps != null ? fmt(steps) : '–', t('Goal {n}', { n: fmt(sGoal) }), () => router.push({ pathname: '/reading', params: { k: 'steps' } }), steps != null ? steps >= sGoal : null)}
+            {tile('flame', t('Active calories'), active != null ? t('{n} kcal', { n: fmt(Math.round(active)) }) : '–', t('From your watch'), () => router.push({ pathname: '/reading', params: { k: 'burned' } }), null)}
+            {tile('heart', t('Resting HR'), rest != null ? t('{n} bpm', { n: Math.round(rest) }) : '–', restUsual != null ? t('Usual {n}', { n: restUsual }) : t('From your watch'), () => router.push({ pathname: '/reading', params: { k: 'rest' } }), rest != null && restUsual != null ? rest <= restUsual + 3 : null)}
+            {tile('pulse', t('HRV'), hrv != null ? t('{n} ms', { n: Math.round(hrv) }) : '–', hrvUsual != null ? t('Usual {n}', { n: hrvUsual }) : t('From your watch'), () => router.push({ pathname: '/reading', params: { k: 'hrv' } }), hrv != null && hrvUsual != null ? hrv >= hrvUsual * 0.9 : null)}
+          </>
+        ) : null}
       </View>
 
       <SecHead title={t('Strength')} />
