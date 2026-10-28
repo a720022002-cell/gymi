@@ -84,7 +84,7 @@ function Overview({ go }: { go: (t: Tab) => void }) {
       <Text variant="small" weight={700} color="sec" style={{ marginHorizontal: 4, marginBottom: 8 }}>
         {t('Team tools')}
       </Text>
-      <Row gap={8} style={{ marginBottom: 14 }}>
+      <Row gap={8} style={{ marginBottom: 14, flexWrap: 'wrap' }}>
         {(
           [
             ['doc', 'Accounting', '/admin-money'],
@@ -92,9 +92,10 @@ function Overview({ go }: { go: (t: Tab) => void }) {
             ['sparkle', 'AI costs', '/admin-ai'],
             ['warn', 'User reports', '/admin-reports'],
             ['star', 'Free codes', '/admin-codes'],
+            ['heart', 'Gift Adro+', '/admin-gifts'],
           ] as const
         ).map(([i, l, r]) => (
-          <Card key={l} onPress={() => router.push(r)} style={{ flex: 1, alignItems: 'center', paddingVertical: 16, marginBottom: 0 }}>
+          <Card key={l} onPress={() => router.push(r)} style={{ width: '31.5%', alignItems: 'center', paddingVertical: 16, marginBottom: 0 }}>
             <Icon name={i} size={24} color={c.cobalt} />
             <Text variant="small" weight={700} center style={{ marginTop: 6 }}>
               {t(l)}
