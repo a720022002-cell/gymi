@@ -5269,4 +5269,9 @@ export const AR: Record<string, string> = {
   "All restaurants": "كل المطاعم",
   "{n} items on the menu": "{n} صنف في المنيو",
   "Couldn’t load the menu. Please try again.": "ما قدرنا نفتح المنيو. حاول مرة ثانية.",
+  "Same as the weigh-in before": "نفس الوزن اللي قبله",
+  "{n} since {d}": "{n} من {d}",
+  "Also that day": "بنفس اليوم",
+  "Tap a dot to see that day": "اضغط على نقطة عشان تشوف ذاك اليوم",
+  "See every weigh-in": "شوف كل الأوزان",
 };

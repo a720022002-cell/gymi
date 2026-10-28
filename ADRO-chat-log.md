@@ -732,6 +732,11 @@ Passwords and keys are left out on purpose.
 - `src/components/food/TimeField.tsx` (used by check-in sleep, Log sleep, meal times, notifications, gym hours, train together): on iPhone the time in the middle is Apple's own compact time picker (SwiftUI `DatePicker` from `@expo/ui`, already in build 17); tap it for the wheel. − and + still move 15 minutes; holding them repeats (after 0.4 s, then faster). Android keeps − and + with the hold.
 - JS only, fingerprint unchanged (6e1d9a57). Web keeps its own `TimeField.web.tsx`. Not testable on the web; test on an iPhone.
 
+### 28 Oct 2026: Weight chart redesign (owner's sketch)
+- New `src/components/progress/WeightChart.tsx`: axes; dates along the bottom (first, middle, last) placed by real date; on the side the target weight (green dashed line; above the line for a bulk, below for a cut) and the current weight ("Now"); a dot for every weigh-in, the latest bigger.
+- Tap near a dot: it's picked (ring and a vertical line). Under the chart (`Body.tsx`): that day's date and weight, the change since the weigh-in before, "Also that day" with body fat and tape measurements logged that day, and Edit (opens the existing fix/delete sheet). "See every weigh-in" opens the full list (the card itself is no longer one big button).
+- The tap is read by a clear layer over the chart, measured against the chart's place on screen (works on phone and web). Tested on the web with a cutting test user (target 82 kg): tapping Oct 20 showed 88.6 kg, +0.5 since Oct 16, body fat 21.5% and waist 92 cm. Test user deleted.
+
 ---
 
 
