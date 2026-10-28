@@ -639,6 +639,14 @@ Passwords and keys are left out on purpose.
 - Subscription: one plan, unlimited, 29 SAR a month (299 a year). To be built before launch.
 - Payment way (RevenueCat or Apple StoreKit directly): explained to the owner, waiting for the choice.
 
+## Payments with RevenueCat: built, not live (28 Oct 2026)
+
+- Owner: RevenueCat; start writing it now, but no new build until the owner says the app is finished.
+- Server (main, not live): migration 20261130000000_subscriptions.sql (subscriptions, trial counts, access_of, my_access, ai_gate). Tested on a local Postgres: trial 3 photos then trial_photos, 4 messages then trial_chat, other AI allowed in the trial, after the trial paywall, subscriber unlimited up to the 80 cap, expired = paywall, 5 active invites = 30 days of Adro+ after the trial, safe to run twice. revenuecat function (webhook with a secret header; reads the real state from RevenueCat; ignores repeats). ai function: the gate only when the secret PAYWALL=on.
+- App on main: messages for trial_photos, trial_chat and paywall (+ Arabic), and a hook to open the subscription page.
+- App on branch `payments` (pushed): react-native-purchases 10.16 (npx expo install), src/lib/purchases.ts (+ web stub), src/lib/access.ts, new subscription page (trial days left and today's use, App Store prices, subscribe, restore, change or cancel, Apple's renewal text, terms and privacy links), You shows the status, terms paragraph updated (the free week doesn't turn into a paid plan), site text updated, PAID_PLANS_LIVE true. tsc, lint, iOS and web bundles pass. Kept off main so OTAs keep reaching build 17 (fingerprint checked: unchanged).
+- Steps for the owner and for launch: docs/PAYMENTS.md.
+
 ---
 
 
