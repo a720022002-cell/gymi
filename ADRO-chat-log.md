@@ -665,7 +665,7 @@ Passwords and keys are left out on purpose.
 
 - Ask: add right arm and left arm.
 - Done: two new measurements, Right arm and Left arm (shown by default with waist and chest for someone with no measurements yet). The old single "Arm" stays only for people who already saved it (one row in the database), so its history isn't lost; it isn't offered for new entries.
-- Database: migration 20261201000000_arm_sides.sql adds arm_r and arm_l to measurements_kind_check. Not applied yet: needs "طبّق" (and must be applied before the app update, or saving right/left arm fails).
+- Database (owner: "طبق"): migration 20261201000000_arm_sides.sql applied; arm_r and arm_l are allowed. Tested with a test user: right 36.5 and left 35.8 saved, an unknown kind still refused. Test user deleted (0 left).
 - Files: src/lib/health.tsx, src/components/progress/Body.tsx (+ Arabic). JS only, works with build 17. Not sent yet.
 
 ---
