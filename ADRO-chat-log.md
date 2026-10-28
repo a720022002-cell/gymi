@@ -719,7 +719,7 @@ Passwords and keys are left out on purpose.
 ### 28 Oct 2026: Update sent (everything except payments)
 - OTA 6f0fd14f (iOS update 01a1807e), runtime 6e1d9a57 = build 17, commit 03f9680: commitment fix, check-in order with watch sleep, right and left arm, measurements page and AI card, detailed PDF report with AI, Recovery sub-tabs, Commitment tab with Target weight, Gym Bro characters, meal description, restaurant menus, Apple's barcode scanner, admin Free codes page, AI trial messages.
 - Not sent: payments (subscriptions migration, revenuecat and offer-codes functions, the payments branch).
-- The ai function deploy (measure_insight; the paywall gate stays off without PAYWALL=on) was blocked by the permission check; waiting on the owner.
+- ai function deployed after the owner's OK: v103 (measure_insight; the paywall gate stays off without PAYWALL=on). Checked: measure_insight 200 with a real analysis, food_text 200 (no limits). Test user deleted.
 
 ---
 
