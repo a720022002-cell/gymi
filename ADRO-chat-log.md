@@ -721,6 +721,12 @@ Passwords and keys are left out on purpose.
 - Not sent: payments (subscriptions migration, revenuecat and offer-codes functions, the payments branch).
 - ai function deployed after the owner's OK: v103 (measure_insight; the paywall gate stays off without PAYWALL=on). Checked: measure_insight 200 with a real analysis, food_text 200 (no limits). Test user deleted.
 
+### 28 Oct 2026: Payments connected on the server (paywall still off)
+- Owner set up App Store Connect (Adro+ group, `adro_monthly` 29 SAR, `adro_yearly` 299 SAR, waiting in draft for the next version), RevenueCat (App Store app `com.adroapp.app`, entitlement `adro_plus`, default offering with Monthly and Annual, webhook), Supabase secrets `REVENUECAT_API_KEY` and `REVENUECAT_WEBHOOK_SECRET`, EAS `EXPO_PUBLIC_REVENUECAT_IOS_KEY`.
+- After "طبق": applied `20261130000000_subscriptions.sql` (subscriptions, subscription_events, ai_gate, access_of, my_access), deployed `revenuecat` v1 (no JWT check) and `offer-codes` v1. Webhook answers 401 without or with a wrong secret.
+- Payments branch: merged main (ar.ts conflict, both sides kept, no duplicates), typecheck and lint clean, pushed (53eb1d3). `npm prune` after switching back; fingerprint still 6e1d9a57 (build 17).
+- Still to do: RevenueCat "Send test event" to check `subscription_events`; `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY` for free codes (not set yet); merge payments into main and build on "صدر النسخة"; sandbox test; `PAYWALL=on` on launch day.
+
 ---
 
 
