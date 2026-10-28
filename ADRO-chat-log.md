@@ -782,6 +782,17 @@ Passwords and keys are left out on purpose.
 - The look is saved and friends and group members see it. The commitment only shows if the person shares their streak, as before.
 - Database: `bro_levels.look` (JSON, size-limited); `my_crew` and `group_bros` return it (migration 20261204000000_bro_looks.sql).
 
+## Gym Bros characters from the owner's reference, made in Higgsfield (28 Oct 2026)
+
+**Asked:** the drawn characters weren't liked. Use the owner's flexing cartoon as the reference and make it in Higgsfield: a T-shirt only, few options, the adro logo as the face, stages that grow with commitment, and friends lined up side by side like the crew picture.
+
+**Built:**
+- 10 pictures made with FLUX 3 from the reference: men and women, levels 1 to 5 (skinny with a little belly up to huge). Black T-shirt, shorts and sneakers, double-biceps pose, no head. Backgrounds cut out; all share one frame.
+- The adro ring sits where the head is (measured per picture in `broGeo.ts`), filled to the commitment, with the username under it.
+- **Customize** now only picks your ring color (9 colors). The level preview stays.
+- "Your crew" lines everyone up: you in front in the middle, friends beside you by commitment (smaller and a step back), more friends in a row behind.
+- The Bitmoji-style drawn version was removed. The `look` column stays (it now holds `{color}`).
+
 ---
 
 

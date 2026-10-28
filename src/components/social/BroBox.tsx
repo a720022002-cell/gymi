@@ -13,7 +13,7 @@ import { useSettings } from '@/theme/settings';
 import { Icon } from '../Icon';
 import { Text } from '../Text';
 import { Card, Row, Springy } from '../ui';
-import { GymBro } from './GymBro';
+import { CrewLineup, GymBro } from './GymBro';
 
 /** You, from what's on this phone: your 30-day commitment (saved so friends see the same) and your character's look. */
 function useMe() {
@@ -85,29 +85,20 @@ export function CrewBox({ onAdd }: { onAdd: () => void }) {
       <Text variant="small" color="sec">
         {lvl ? t('You’re level {n}: {l}. Stay committed and your character gets stronger.', { n: lvl, l: t(BRO_LEVELS[lvl - 1]) }) : t('Stay committed and your character gets stronger.')}
       </Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 14, paddingTop: 12, alignItems: 'flex-end', flexGrow: 1, justifyContent: friends.length < 3 ? 'center' : 'flex-start' }}>
-        {people.map((p, i) => (
-          <Springy
-            key={p.user_id}
-            onPress={() => (i ? router.push({ pathname: '/friend', params: { id: p.user_id } }) : router.push({ pathname: '/progress', params: { tab: 'streaks', sub: '0' } }))}
-            accessibilityRole="button"
-            accessibilityLabel={`${p.name || p.username}, ${pctText(p.pct)}`}
-            style={{ alignItems: 'center' }}>
-            <GymBro pct={p.pct} female={p.gender === 'female'} look={p.look} username={p.username} height={i ? 150 : 175} />
-            <Text variant="xs" weight={700} color={i ? 'text' : c.cobalt} style={{ marginTop: 4 }}>
-              {i ? pctText(p.pct) : `${t('You')} · ${pctText(p.pct)}`}
-            </Text>
-          </Springy>
-        ))}
+      <View style={{ marginTop: 10 }}>
+        <CrewLineup people={people} height={friends.length ? 230 : 210} onPress={(p, i) => (i ? router.push({ pathname: '/friend', params: { id: p.user_id } }) : router.push({ pathname: '/progress', params: { tab: 'streaks', sub: '0' } }))} />
+      </View>
+      <Row style={{ justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 6 }}>
+        <Text variant="xs" weight={700} color={c.cobalt}>{`${t('You')} · ${pctText(me.pct)}`}</Text>
         {friends.length ? null : (
-          <Springy onPress={onAdd} accessibilityRole="button" accessibilityLabel={t('Add a friend')} style={{ alignItems: 'center', justifyContent: 'center', width: 96, height: 120, borderRadius: 20, borderWidth: 2, borderStyle: 'dashed', borderColor: c.line }}>
-            <Icon name="userplus" size={22} color={c.sec} />
-            <Text variant="xs" weight={700} color="sec" center style={{ marginTop: 6 }}>
+          <Springy onPress={onAdd} accessibilityRole="button" style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <Icon name="userplus" size={14} color={c.sec} />
+            <Text variant="xs" weight={700} color="sec">
               {t('Add friends to see them here')}
             </Text>
           </Springy>
         )}
-      </ScrollView>
+      </Row>
     </Card>
   );
 }
@@ -160,7 +151,7 @@ export function GroupBox({ groups, hasFriends, onAdd }: { groups: Group[]; hasFr
   return (
     <Card style={{ marginBottom: 6, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
       <View style={{ alignItems: 'center' }}>
-        <GymBro pct={me.pct} female={me.female} look={me.look} username={me.username} height={175} />
+        <GymBro pct={me.pct} female={me.female} look={me.look} username={me.username} height={170} />
         <Text variant="xs" weight={700} color={c.cobalt} style={{ marginTop: 4 }}>{`${t('You')} · ${pctText(me.pct)}`}</Text>
         <View style={{ marginTop: 8 }}>
           <Customize />
