@@ -99,6 +99,15 @@ export default function Subscription() {
               ) : null}
               <Button kind="soft" title={t('Change or cancel')} color={c.text} small style={{ marginTop: 10, alignSelf: 'flex-start' }} onPress={() => manage()} />
             </View>
+          ) : access.tier === 'sub' && access.why === 'gift' ? (
+            <View>
+              <Text weight={700}>{t('Adro+ is a gift for you')}</Text>
+              {access.until ? (
+                <Text variant="small" color="sec" style={{ marginTop: 2 }}>
+                  {t('Free until {d}. Nothing to pay and nothing renews.', { d: date(access.until) })}
+                </Text>
+              ) : null}
+            </View>
           ) : access.tier === 'sub' && access.why === 'invites' ? (
             <View>
               <Text weight={700}>{t('Free months from inviting friends')}</Text>

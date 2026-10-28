@@ -5318,4 +5318,6 @@ export const AR: Record<string, string> = {
   "Until {d}": "لين {d}",
   "No gifts yet.": "ما فيه إهداءات للحين.",
   "Before launch every feature is open to everyone, so a gift shows its effect once subscriptions start.": "قبل الإطلاق كل المزايا مفتوحة للكل، فأثر الإهداء يبان لما تبدأ الاشتراكات.",
+  "Adro+ is a gift for you": "Adro+ هدية لك",
+  "Free until {d}. Nothing to pay and nothing renews.": "مجاني لين {d}. بدون أي دفع وما يتجدد.",
 };

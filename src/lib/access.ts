@@ -2,12 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { supabase } from './supabase';
 
-/** Your access, from the server (public.my_access): subscribed (or free months from invites), the free trial, or free. */
+/** Your access, from the server (public.my_access): subscribed (or a gift, or free months from invites), the free trial, or free. */
 export type Access = {
   tier: 'sub' | 'trial' | 'free';
   /** When it ends (trial end, paid time, or free months); null when it doesn't. */
   until: string | null;
-  why: 'paid' | 'invites' | 'trial' | 'free' | 'admin';
+  why: 'paid' | 'gift' | 'invites' | 'trial' | 'free' | 'admin';
   photos_today: number;
   chats_today: number;
 };
