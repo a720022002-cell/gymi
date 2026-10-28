@@ -705,6 +705,11 @@ Passwords and keys are left out on purpose.
 - It goes to `/meal-result` as `desc`, is sent as `note` with the first AI call, and fills the "How was it cooked?" field so it can be changed and asked again (`src/app/meal-result.tsx`).
 - No server change: the `meal_photo` task already takes `note` and trusts it over the photo. Checked with the same photo: without a note "Grilled chicken breast with rice", with "Chicken kabsa: 1 cup of rice cooked with ghee, 1 grilled chicken thigh" it answered "Chicken kabsa" with the thigh.
 
+### 28 Oct 2026: Restaurants as a list that opens each menu
+- Search food → Restaurants: instead of a row of restaurant chips above the results, the restaurants are listed where the foods go (name, "N items on the menu"). Tapping one opens its whole menu A to Z with "All restaurants" to go back; typing filters inside that menu. Typing with no restaurant open still searches all restaurant dishes. Picking another category closes the menu.
+- In a menu the restaurant name isn't repeated under each item (just the serving).
+- Files: `src/app/food-search.tsx` (list, menu view, a shared `foodRows`), `src/lib/foodsDb.ts` (`restaurantMenu`).
+
 ---
 
 

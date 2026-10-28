@@ -36,7 +36,17 @@ export type DbFood = {
 export async function searchFoods(q: string, category: string | null, limit = 40): Promise<DbFood[]> {
   const { data, error } = await supabase.rpc('search_foods', { p_query: q, p_category: category, p_limit: limit });
   if (error) return [];
-  return (data as DbFood[]).map((f) => ({
+  return numbers(data as DbFood[]);
+}
+
+/** A restaurant's whole menu, A to Z. Null when it couldn't load. */
+export async function restaurantMenu(restaurant: string): Promise<DbFood[] | null> {
+  const { data, error } = await supabase.from('foods').select('*').eq('restaurant', restaurant).order('name_en').limit(500);
+  return error ? null : numbers((data as DbFood[]) ?? []);
+}
+
+const numbers = (xs: DbFood[]) =>
+  xs.map((f) => ({
     ...f,
     serving_g: +f.serving_g,
     kcal_100: +f.kcal_100,
@@ -45,7 +55,6 @@ export async function searchFoods(q: string, category: string | null, limit = 40
     fat_100: +f.fat_100,
     sugar_100: f.sugar_100 == null ? null : +f.sugar_100,
   }));
-}
 
 export type Restaurant = { restaurant: string; name_ar: string | null; items: number };
 

@@ -5266,4 +5266,7 @@ export const AR: Record<string, string> = {
   "Make a group": "سوّ قروب",
   "Describe the dish": "وصف الطبق",
   "For example: chicken kabsa, half a plate of rice, grilled chicken thigh.": "مثال: كبسة دجاج، نص صحن رز، فخذ دجاج مشوي.",
+  "All restaurants": "كل المطاعم",
+  "{n} items on the menu": "{n} صنف في المنيو",
+  "Couldn’t load the menu. Please try again.": "ما قدرنا نفتح المنيو. حاول مرة ثانية.",
 };
