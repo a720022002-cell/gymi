@@ -788,7 +788,7 @@ Passwords and keys are left out on purpose.
 
 **Built:**
 - 10 pictures made with FLUX 3 from the reference: men and women, levels 1 to 5 (skinny with a little belly up to huge). Black T-shirt, shorts and sneakers, double-biceps pose, no head. Backgrounds cut out; all share one frame.
-- The adro ring sits where the head is (measured per picture in `broGeo.ts`), filled to the commitment, with the username under it.
+- The adro logo sits where the head is (measured per picture in `broGeo.ts`), with the username under it. The logo is always the same (owner: only the body grows with commitment).
 - **Customize** now only picks your ring color (9 colors). The level preview stays.
 - "Your crew" lines everyone up: you in front in the middle, friends beside you by commitment (smaller and a step back), more friends in a row behind.
 - The Bitmoji-style drawn version was removed. The `look` column stays (it now holds `{color}`).

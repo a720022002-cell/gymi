@@ -27,7 +27,7 @@ export const broWidth = (height: number) => height * BRO_GEO.m1[0];
 
 /**
  * A Gym Bros character (design: owner's flexing cartoon): stronger at each commitment level (1–5; someone who
- * doesn't share it stands at level 2). Its face is the adro ring in their colour, filled to the commitment, with the
+ * doesn't share it stands at level 2). Its face is the adro logo in their colour (always the same), with the
  * username under it.
  */
 export function GymBro({ pct, female, look, username, height, level }: { pct: number | null; female?: boolean; look?: unknown; username: string; height: number; level?: number }) {
@@ -48,7 +48,8 @@ export function GymBro({ pct, female, look, username, height, level }: { pct: nu
       <Svg width={w} height={height} style={{ position: 'absolute', left: 0, top: 0 }}>
         <Circle cx={cx} cy={cy} r={r} fill="#10131C" stroke="#0A0A0B" strokeWidth={Math.max(1.5, r * 0.08)} />
         <Circle cx={cx} cy={cy} r={R} fill="none" stroke="#2A3047" strokeWidth={sw} />
-        {pct ? <Circle cx={cx} cy={cy} r={R} fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeDasharray={`${(C * Math.min(pct, 100)) / 100} ${C}`} transform={`rotate(-90 ${cx} ${cy})`} /> : null}
+        {/* The adro logo: always the same; only the body shows the commitment. */}
+        <Circle cx={cx} cy={cy} r={R} fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeDasharray={`${C * 0.72} ${C}`} transform={`rotate(-90 ${cx} ${cy})`} />
       </Svg>
       {username ? (
         <View style={{ position: 'absolute', top: cy + r + 2, left: 0, right: 0, alignItems: 'center' }}>

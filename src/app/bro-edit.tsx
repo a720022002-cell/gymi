@@ -54,7 +54,7 @@ export default function BroEdit() {
   return (
     <Screen title={t('Your character')} back>
       <Card style={{ alignItems: 'center', paddingVertical: 16 }}>
-        <GymBro pct={preview == null ? pct : Math.max(pct ?? 0, [0, 30, 50, 67, 82, 95][shown])} female={female} look={look} username={profile?.username ?? ''} height={300} level={shown} />
+        <GymBro pct={pct} female={female} look={look} username={profile?.username ?? ''} height={300} level={shown} />
         <Text variant="small" weight={700} color={c.cobalt} style={{ marginTop: 10 }}>
           {t('Level {n}: {l}', { n: shown, l: t(BRO_LEVELS[shown - 1]) })}
         </Text>
