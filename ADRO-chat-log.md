@@ -710,6 +710,12 @@ Passwords and keys are left out on purpose.
 - In a menu the restaurant name isn't repeated under each item (just the serving).
 - Files: `src/app/food-search.tsx` (list, menu view, a shared `foodRows`), `src/lib/foodsDb.ts` (`restaurantMenu`).
 
+### 28 Oct 2026: Barcode opens Apple's scanner directly
+- iPhone: "Scan barcode" (log sheet) and scanning a product into a meal (`useScanProduct`) now open Apple's own full-screen scanner straight away (expo-camera `CameraView.launchScanner`, VisionKit DataScanner), with no screen of ours around it. First code read: the scanner closes and the product opens (or is added to the meal). Swipe down to cancel.
+- New `src/lib/appleScan.ts`. JS only (expo-camera already has it), so it goes out with an update, no new build.
+- Falls back to the old `/barcode` screen (our camera, typing the code by hand) on Android, iPhones without Apple's scanner, or without camera permission.
+- Not testable on the web; test on an iPhone.
+
 ---
 
 

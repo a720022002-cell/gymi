@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Platform, TextInput, View } from 'react-native';
 
 import { useT } from '@/i18n';
+import { appleScan } from '@/lib/appleScan';
 import { useFood } from '@/lib/food';
 import { setPendingPhoto } from '@/lib/pending';
 import { takePhoto } from '@/lib/photo';
@@ -43,6 +44,14 @@ export function LogSheet() {
     // After the sheet has closed: iOS shows one modal at a time, and the next screen may open one (the scanner).
     afterSheet(() => router.push(path));
   };
+  // iPhone: Apple's own scanner opens straight away, then the product. Elsewhere (or if it can't run): our barcode screen.
+  const scanBarcode = () => {
+    close();
+    afterSheet(async () => {
+      const ok = await appleScan((code) => router.push({ pathname: '/product', params: { code } }));
+      if (!ok) router.push('/barcode');
+    });
+  };
   /** Open the camera now (it must start from the tap), then read the photo on the next screen. Cancel offers the gallery. */
   const photo = async (path: '/meal-result' | '/label-result', camera = true) => {
     // Phone apps: meal and label photos are taken on our own camera screen (it also picks from the gallery).
@@ -70,7 +79,7 @@ export function LogSheet() {
 
   const tiles: [IconName, string, string, () => void][] = [
     ['camera', 'Meal photo', 'AI finds the ingredients', () => photo('/meal-result')],
-    ['barcode', 'Scan barcode', 'Packaged food', () => go('/barcode')],
+    ['barcode', 'Scan barcode', 'Packaged food', scanBarcode],
     ['doc', 'Label photo', 'Photo + grams eaten', () => photo('/label-result')],
     ['bookmark', 'Saved meals', t('{n} saved', { n: food.saved.length }), () => go('/saved-meals')],
   ];
