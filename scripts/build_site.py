@@ -512,7 +512,7 @@ def home():
 <p class="sub2 rv d1">{t('Go Adro+ when you want more.', 'واشترك في Adro+ لما تبي أكثر.')}</p>
 <div class="plans">
 <div class="plan rv"><h3>{t('Free', 'مجاني')}</h3><div class="amount">0 <small>{t('SAR', 'ريال')}</small></div><div class="per">{t('Forever', 'للأبد')}</div>
-<ul><li>{t('Workout plans and the set coach', 'خطط التمارين ومدرب المجموعات')}</li><li>{t('Food log, calories and macros', 'تسجيل الأكل والسعرات والماكروز')}</li><li>{t('Recovery score and progress', 'درجة الاستشفاء والتقدّم')}</li><li>{t('A taste of the AI coach every day', 'تجربة يومية للمدرب الذكي')}</li></ul></div>
+<ul><li>{t('Workout plans and the set coach', 'خطط التمارين ومدرب المجموعات')}</li><li>{t('Food log, calories and macros', 'تسجيل الأكل والسعرات والماكروز')}</li><li>{t('Recovery score and progress', 'درجة الاستشفاء والتقدّم')}</li><li>{t('First week: 3 AI photos and 4 coach messages a day', 'أول أسبوع: 3 صور و4 رسايل للمدرب الذكي كل يوم')}</li></ul></div>
 <div class="plan pro rv d1"><h3>Adro+</h3><div class="amount">29 <small>{t('SAR / month', 'ريال / شهر')}</small></div><div class="per">{t('or 299 SAR a year', 'أو 299 ريال بالسنة')}</div>
 <ul><li>{t('Unlimited AI coach and food photos', 'مدرب ذكي وصور أكل بلا حدود')}</li><li>{t('Morning readiness note from your watch', 'ملاحظة الجاهزية كل صباح من ساعتك')}</li><li>{t('3-month trends and PDF reports', 'رسوم 3 شهور وتقارير PDF')}</li><li>{t('Weekly recap with one-tap changes', 'ملخص أسبوعي وتعديل بضغطة')}</li></ul></div>
 </div>
