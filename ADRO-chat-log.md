@@ -647,6 +647,14 @@ Passwords and keys are left out on purpose.
 - App on branch `payments` (pushed): react-native-purchases 10.16 (npx expo install), src/lib/purchases.ts (+ web stub), src/lib/access.ts, new subscription page (trial days left and today's use, App Store prices, subscribe, restore, change or cancel, Apple's renewal text, terms and privacy links), You shows the status, terms paragraph updated (the free week doesn't turn into a paid plan), site text updated, PAID_PLANS_LIVE true. tsc, lint, iOS and web bundles pass. Kept off main so OTAs keep reaching build 17 (fingerprint checked: unchanged).
 - Steps for the owner and for launch: docs/PAYMENTS.md.
 
+## Free codes with Apple Offer Codes (28 Oct 2026)
+
+- Ask: type a code on the subscription page for a free subscription, and a tool to make codes with their length. Explained Apple's rule 3.1.1 (own unlock codes in the app can be rejected); the owner chose Apple Offer Codes (they work with RevenueCat as normal purchases, no conflict, no extra cost).
+- Server (main, not deployed): supabase/functions/offer-codes (admins only, App Store Connect API with an ES256 token; the signing was checked locally with a test key): list offers with named codes and one-time batches and how many subscribed with each (RevenueCat's offer_code on purchase events), make a named code or a batch (free time from 3 days to 1 year, monthly or yearly after, who can use it, limit, end date, sandbox batches), download a batch, stop a code.
+- App on main: Admin → Free codes (/admin-codes), also on adroapp.com in the browser for admins (+ Arabic). JS only, build 17 fingerprint unchanged.
+- App on branch payments: "Have a code?" on the subscription page opens Apple's code screen (RevenueCat presentCodeRedemptionSheet), then checks the subscription. tsc, lint, iOS bundle pass.
+- Owner: an App Store Connect API key (Admin role) into Supabase secrets ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY. Steps in docs/PAYMENTS.md.
+
 ---
 
 

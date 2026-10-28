@@ -31,10 +31,26 @@ fingerprint and normal updates ("حدثه") would stop reaching build 17.
    (RevenueCat secret key). Never in the app or in the chat.
 7. **EAS** → Environment variables (production): `EXPO_PUBLIC_REVENUECAT_IOS_KEY` = RevenueCat's public Apple key (starts with `appl_`).
 
+## Free codes (Apple Offer Codes)
+
+- People type a code in the app: subscription page → "Have a code?" (Apple's own code screen, through RevenueCat), or open a
+  shared link `https://apps.apple.com/redeem?ctx=offercodes&id=6826500429&code=CODE`. Redeeming is a normal App Store
+  subscription that starts with the free time; RevenueCat and our webhook see it like a purchase. After the free time it
+  renews at 29 SAR (or 299 a year) unless the person cancels.
+- The team makes codes on Admin → Free codes (`/admin-codes`), in the iPhone app or on adroapp.com in the browser:
+  a named code (one code for many people, like ADRO2026: limit up to 25,000 uses, optional end date) or a batch of
+  one-time codes (500 to 25,000, end date up to 6 months; Apple makes them in a few minutes, then "Download codes").
+  Free time: 3 days, 1 week, 2 weeks, 1 month, 2 months, 3 months, 6 months or 1 year. Who: new people, ended
+  subscriptions, current subscribers. "Used" counts subscriptions that started with that code (from RevenueCat events).
+- Server: `supabase/functions/offer-codes` (admins only) uses the App Store Connect API.
+- Owner: App Store Connect → Users and Access → Integrations → App Store Connect API → a key with the Admin role.
+  Supabase secrets: `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY` (the .p8 file's text). Never in the chat.
+- Costs nothing extra: making codes is free and Apple takes nothing on the free time.
+
 ## Launch steps (Claude, when the owner says so)
 
 1. Apply the migration (needs "طبّق").
-2. Deploy `revenuecat` (no JWT check) and `ai`; send a test event from RevenueCat and check `subscription_events`.
+2. Deploy `revenuecat` (no JWT check), `offer-codes` and `ai`; send a test event from RevenueCat and check `subscription_events`; make a test batch of sandbox one-time codes on Free codes.
 3. Merge `payments` into main, typecheck, lint, then the new build ("صدر النسخة").
 4. Test with an App Store sandbox account: buy monthly, check `subscriptions`, cancel, restore.
 5. On launch day: set `PAYWALL=on` in Supabase secrets. The trial and the limits start for everyone then.
