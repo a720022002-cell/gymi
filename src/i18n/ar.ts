@@ -5159,4 +5159,10 @@ export const AR: Record<string, string> = {
   "Sleep from your watch: {h}": "نومك من الساعة: {h}",
   "Right arm": "اليد اليمين",
   "Left arm": "اليد اليسار",
+  "Compare": "قارن",
+  "Delete this entry": "احذف هذا القياس",
+  "Edit {x}": "تعديل {x}",
+  "Green: the way your goal wants it. A measurement not taken that day uses the one before it.": "الأخضر: في الاتجاه اللي يناسب هدفك. القياس اللي ما أخذته ذاك اليوم ينحسب من آخر قياس قبله.",
+  "Tap an entry to change or delete it.": "اضغط على أي قياس عشان تعدله أو تحذفه.",
+  "{n} entries": "{n} قياسات",
 };

@@ -487,6 +487,7 @@ function goodBody(task: string, b: Record<string, unknown>) {
   if (task === 'recipes') return arr(b.avoid, 60);
   if (task === 'machine') return arr(b.catalog, 400);
   if (task === 'reading_insight') return !!b.data && typeof b.data === 'object' && !Array.isArray(b.data) && JSON.stringify(b.data).length < 6000;
+  if (task === 'measure_insight') return Array.isArray(b.items) && (b.items as unknown[]).length <= 14 && JSON.stringify(b).length < 12000;
   if (task === 'cardio_tip') return !!b.data && typeof b.data === 'object' && !Array.isArray(b.data) && JSON.stringify(b.data).length < 4000;
   return true;
 }
@@ -1057,6 +1058,56 @@ If "daysWithData" is under 3, say kindly there isn't enough data yet and give on
 Every sentence is short and simple, no emoji, no markdown. Never diagnose; for a reading far outside normal that keeps repeating (like resting heart rate above 100 or blood oxygen under 92%), suggest seeing a doctor.
 ${BODY_RULES}`;
       const r = (await ask(task, system, [{ role: 'user', parts: [{ text: `${JSON.stringify({ ...d, series }).slice(0, 6000)}\nfacts: ${JSON.stringify(facts)}` }] }], {
+        type: 'object',
+        properties: { summary: { type: 'string' }, points: { type: 'array', items: { type: 'string' } }, tip: { type: 'string' } },
+        required: ['summary', 'points', 'tip'],
+      })) as { summary?: unknown; points?: unknown; tip?: unknown };
+      const summary = String(r?.summary ?? '').trim();
+      if (!summary) throw new Error('empty_insight');
+      return { summary, points: (Array.isArray(r.points) ? r.points : []).map((x) => String(x).trim()).filter(Boolean).slice(0, 3), tip: String(r?.tip ?? '').trim() };
+    }
+    case 'measure_insight': {
+      // A short coach analysis of the person's tape measurements (waist, chest, arms…), under Measurements on Progress.
+      type Pt = { day: string; value: number };
+      const items = ((b.items as { kind?: string; name?: string; unit?: string; less?: boolean; points?: Pt[] }[]) ?? [])
+        .map((x) => ({ kind: String(x.kind ?? ''), name: String(x.name ?? '').slice(0, 30), unit: String(x.unit ?? 'cm').slice(0, 4), less: x.less === true, points: (x.points ?? []).filter((p) => /^\d{4}-\d{2}-\d{2}$/.test(String(p.day)) && Number(p.value) > 0).slice(-24) }))
+        .filter((x) => x.points.length);
+      const r1 = (v: number) => Math.round(v * 10) / 10;
+      const days = (a: string, z: string) => Math.max(1, Math.round((Date.parse(z) - Date.parse(a)) / 86400000));
+      // The comparisons are worked out here (the model only words them).
+      const facts = items.map((x) => {
+        const first = x.points[0];
+        const last = x.points.at(-1)!;
+        const prev = x.points.at(-2);
+        const n = days(first.day, last.day);
+        return {
+          name: x.name,
+          unit: x.unit,
+          smallerIsBetter: x.less,
+          latest: r1(last.value),
+          latestDay: last.day,
+          entries: x.points.length,
+          ...(x.points.length > 1
+            ? { first: r1(first.value), firstDay: first.day, changeSinceFirst: r1(last.value - first.value), daysBetween: n, changePerMonth: r1(((last.value - first.value) / n) * 30), changeSincePrevious: prev ? r1(last.value - prev.value) : null }
+            : {}),
+        };
+      });
+      const arm = (k: string) => items.find((x) => x.kind === k)?.points.at(-1)?.value;
+      const ar = arm('arm_r');
+      const al = arm('arm_l');
+      const sides = ar && al ? { rightArm: r1(ar), leftArm: r1(al), rightMinusLeft: r1(ar - al) } : null;
+      const w = ((b.weight as Pt[]) ?? []).filter((p) => Number(p.value) > 0);
+      const weight = w.length > 1 ? { first: r1(w[0].value), latest: r1(w.at(-1)!.value), change: r1(w.at(-1)!.value - w[0].value), firstDay: w[0].day, latestDay: w.at(-1)!.day } : null;
+      const system = `You are Adro, a warm, expert fitness coach. You look at the person's body measurements (tape measurements like waist, chest, arms, and body fat) and explain what they show for their goal. ${LANG(lang)}${lang === 'ar' ? ` Use a warm, simple Gulf/Saudi tone${b.female === true ? ', talking to a woman in feminine forms' : ''}.` : ''}
+You get "facts" (worked out for you, one entry per measurement: latest, and when there are two or more entries the change since the first, per month and since the previous), "arms" (right vs left, when both are measured), "weight" (first and latest body weight), and context: "goalType" (cut = losing fat, maintain, gain = building muscle), "sex", "age".
+Use ONLY these numbers and never calculate or guess one yourself. A negative change means smaller. Write numbers with Western digits (0-9) and the unit. Never invent numbers.
+- "summary": one or two short sentences on the big picture for their goal (for fat loss: a smaller waist is the best sign, even when the scale is slow; for muscle: chest, arms, thighs going up with a waist that stays steady is ideal).
+- "points": 2 or 3 short, specific insights from their numbers (like waist down while weight is steady means losing fat and keeping muscle; a right/left arm gap of 1 cm or more and what to do about it; which measurement moved most).
+- "tip": ONE concrete action, like measuring every 2 weeks in the morning at the same spot, or one training change.
+If every measurement has only one entry, say kindly this is their starting point, what to watch next time, and to measure again in 2 weeks; "points" can hold one or two notes on the starting numbers (like the right/left arm gap).
+Every sentence is short and simple, no emoji, no markdown. Never diagnose.
+${BODY_RULES}`;
+      const r = (await ask(task, system, [{ role: 'user', parts: [{ text: JSON.stringify({ facts, arms: sides, weight, goalType: b.goalType ?? null, sex: b.sex ?? null, age: b.age ?? null }).slice(0, 8000) }] }], {
         type: 'object',
         properties: { summary: { type: 'string' }, points: { type: 'array', items: { type: 'string' } }, tip: { type: 'string' } },
         required: ['summary', 'points', 'tip'],

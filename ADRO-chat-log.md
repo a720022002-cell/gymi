@@ -668,6 +668,14 @@ Passwords and keys are left out on purpose.
 - Database (owner: "طبق"): migration 20261201000000_arm_sides.sql applied; arm_r and arm_l are allowed. Tested with a test user: right 36.5 and left 35.8 saved, an unknown kind still refused. Test user deleted (0 left).
 - Files: src/lib/health.tsx, src/components/progress/Body.tsx (+ Arabic). JS only, works with build 17. Not sent yet.
 
+## Measurements: AI analysis and a See all page (28 Oct 2026)
+
+- Ask: an AI analysis under the measurements, and "See all" to see old measurements, change them and compare.
+- Done (app): Progress → Body: "See all" next to Measurements, and "Adro's analysis" under the cards (asked again only when a number changes). New page /measurements: Compare (pick From and To dates; each measurement's change, green when it goes the way the goal wants; a measurement not taken that day uses the one before it), then each measurement with a small chart and every entry (date, value, change from the one before); tap one to change or delete it. health.fixMeasure (change or delete any tape measurement of any day).
+- Done (server, not deployed yet): ai task measure_insight. The server works out every number (latest, change since the first, per month, since the previous, right minus left arm, weight change) and the model only words them for the goal (cut: a smaller waist is the best sign; gain: chest/arms/thighs up with a steady waist), 2 or 3 points and one tip.
+- Checked on the web app with a test user (3 dates, waist/chest/right/left arm, weight): See all, the cards, the analysis card (waiting for the server), the compare table (waist −4, chest +2, right arm +1.1, left arm +0.9), charts, entries and the edit sheet. Test user deleted (0 left). tsc and lint pass.
+- Files: src/app/measurements.tsx, src/components/progress/Body.tsx, src/components/health/ReadingInsight.tsx (task prop), src/lib/health.tsx, supabase/functions/ai/index.ts (+ Arabic). App part JS only, works with build 17. Not sent yet; the ai function needs "طبّق" to deploy.
+
 ---
 
 

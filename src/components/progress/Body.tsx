@@ -1,9 +1,12 @@
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { TextInput, View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
+import { goalOf } from '@/lib/cardioCoach';
+import { ageOf } from '@/lib/coaching';
 import { useFood } from '@/lib/food';
 import { MEAS, MEAS_INFO, type MeasKind, useHealth } from '@/lib/health';
 import { addDays, targetFits } from '@/lib/nutrition';
@@ -19,6 +22,7 @@ import { Text } from '../Text';
 import { useToast } from '../Toast';
 import { Button, Card, Chip, Label, Row, Springy } from '../ui';
 import { WeightWheel } from '../health/bits';
+import { ReadingInsight } from '../health/ReadingInsight';
 import { SecHead } from './bits';
 
 /** Weight, measurements and progress photos (design: progWeightBody). */
@@ -30,9 +34,7 @@ export function Body() {
         {t('Weight')}
       </Text>
       <Weight />
-      <Text variant="h2" style={{ marginHorizontal: 4, marginTop: 28, marginBottom: 12 }}>
-        {t('Measurements')}
-      </Text>
+      <MeasHead />
       <Measurements />
       <Photos />
     </View>
@@ -252,6 +254,25 @@ function Weight() {
   );
 }
 
+/** "Measurements" with "See all" (every entry: edit, delete, compare two dates) once there is one. */
+function MeasHead() {
+  const { t } = useT();
+  const health = useHealth();
+  const any = health.measures.some((m) => m.kind !== 'weight');
+  return (
+    <Row style={{ justifyContent: 'space-between', alignItems: 'center', marginHorizontal: 4, marginTop: 28, marginBottom: 12 }}>
+      <Text variant="h2">{t('Measurements')}</Text>
+      {any ? (
+        <Springy onPress={() => router.push('/measurements')} accessibilityRole="link">
+          <Text variant="small" weight={700} color="link">
+            {t('See all')}
+          </Text>
+        </Springy>
+      ) : null}
+    </Row>
+  );
+}
+
 function Measurements() {
   const { t } = useT();
   const { colors: c } = useSettings();
@@ -263,6 +284,8 @@ function Measurements() {
   const [text, setText] = useState<Partial<Record<MeasKind, string>>>({});
   const series = (k: MeasKind) => health.measures.filter((m) => m.kind === k);
   const have = MEAS.filter((k) => series(k).length);
+  const food = useFood();
+  const { profile } = useAuth();
 
   const openSheet = () => {
     const ks = have.length ? [...have] : (['waist', 'chest', 'arm_r', 'arm_l'] as (typeof MEAS)[number][]);
@@ -313,6 +336,25 @@ function Measurements() {
         <Text variant="xs" color="sec" style={{ marginTop: 8, marginHorizontal: 4 }}>
           {t('Change since your first entry')}
         </Text>
+      ) : null}
+      {/* The coach reads every measurement (and the weight beside it); asked again only when a number changes. */}
+      {have.length ? (
+        <View style={{ marginTop: 12 }}>
+          <ReadingInsight
+            id="measurements"
+            day={food.today}
+            task="measure_insight"
+            ready={health.ready}
+            data={{
+              items: have.map((k) => ({ kind: k, name: MEAS_INFO[k][0], unit: MEAS_INFO[k][1], less: MEAS_INFO[k][2], points: series(k).map(({ day, value }) => ({ day, value })) })),
+              weight: health.weights.map(({ day, value }) => ({ day, value })).slice(-60),
+              goalType: goalOf(food.plan?.goal),
+              age: ageOf(profile?.date_of_birth ?? null),
+              sex: profile?.gender ?? null,
+              female: profile?.gender === 'female',
+            }}
+          />
+        </View>
       ) : null}
       <Button icon="plus" title={t('Add measurements')} style={{ marginTop: 12 }} onPress={openSheet} />
 
