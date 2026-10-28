@@ -700,6 +700,11 @@ Passwords and keys are left out on purpose.
 - Database (applied 28 Oct, "طبق"): `supabase/migrations/20261202000000_gym_bro.sql`: table `bro_levels` (own row only), `my_crew()` and `group_bros(group)`; a friend's commitment shows only if they share their streak. Tested on a local Postgres first (twice-apply, crew, group, non-member, RLS).
 - The app saves your 30-day commitment to `bro_levels` when Gym Bros opens (only when it changed).
 
+### 28 Oct 2026: Describe the dish before the meal photo
+- Meal photo camera (`src/app/meal-camera.tsx`): an optional "Describe the dish" field under the camera (meals only, not labels or "pick" mode), up to 300 characters.
+- It goes to `/meal-result` as `desc`, is sent as `note` with the first AI call, and fills the "How was it cooked?" field so it can be changed and asked again (`src/app/meal-result.tsx`).
+- No server change: the `meal_photo` task already takes `note` and trusts it over the photo. Checked with the same photo: without a note "Grilled chicken breast with rice", with "Chicken kabsa: 1 cup of rice cooked with ghee, 1 grilled chicken thigh" it answered "Chicken kabsa" with the thigh.
+
 ---
 
 

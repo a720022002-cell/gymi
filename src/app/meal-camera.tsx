@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import { ActivityIndicator, Linking, View } from 'react-native';
 
+import { Field } from '@/components/Field';
 import { Glass } from '@/components/Glass';
 import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
@@ -21,6 +22,8 @@ export default function MealCamera() {
   const [perm, ask] = useCameraPermissions();
   const [torch, setTorch] = useState(false);
   const [busy, setBusy] = useState(false);
+  // What the dish is, in your words (optional): the AI trusts it over the photo, so the numbers come out closer.
+  const [desc, setDesc] = useState('');
   const cam = useRef<CameraView>(null);
   // `pick`: opened by a screen that wants the photo back ("Add an ingredient", reading a label into a product form)
   // instead of logging it.
@@ -35,7 +38,7 @@ export default function MealCamera() {
       goBack();
     } else {
       setPendingPhoto(p);
-      router.replace(label ? '/label-result' : '/meal-result');
+      router.replace(label ? '/label-result' : { pathname: '/meal-result', params: desc.trim() ? { desc: desc.trim() } : {} });
     }
   };
   const shoot = async () => {
@@ -93,6 +96,11 @@ export default function MealCamera() {
             </Text>
           ) : null}
         </Card>
+      )}
+      {label || pick ? null : (
+        <View style={{ marginTop: 12 }}>
+          <Field label={t('Describe the dish')} optional={t('(optional)')} value={desc} onChangeText={setDesc} maxLength={300} returnKeyType="done" placeholder={t('For example: chicken kabsa, half a plate of rice, grilled chicken thigh.')} />
+        </View>
       )}
       <Text color="sec" center style={{ marginTop: 12 }}>
         {t(label ? 'Fit the nutrition facts table in the frame, flat and sharp. The AI reads the numbers.' : 'Fit the whole plate in the frame, from a little above. The AI finds what’s on it.')}

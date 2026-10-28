@@ -5264,4 +5264,6 @@ export const AR: Record<string, string> = {
   "Add friends to see them here": "ضيف أصحابك عشان يطلعون هنا",
   "Group {n}": "القروب {n}",
   "Make a group": "سوّ قروب",
+  "Describe the dish": "وصف الطبق",
+  "For example: chicken kabsa, half a plate of rice, grilled chicken thigh.": "مثال: كبسة دجاج، نص صحن رز، فخذ دجاج مشوي.",
 };
