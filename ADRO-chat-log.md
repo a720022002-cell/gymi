@@ -681,6 +681,12 @@ Passwords and keys are left out on purpose.
 - New "AI analysis" switch: the AI reads the whole report (uses the existing `report` AI task, no server change) and adds "What went well / What to improve / Focus" at the top of the PDF. Asks for AI consent first. A finished period is saved so Reports shows it too.
 - Files: `src/app/export.tsx`, `src/lib/report.ts` (loads all measurements and cardio, new `detail` stats, table styles).
 
+### 28 Oct 2026: Recovery tab sub-tabs (Recovery, Sleep, Load, Nutrition)
+- Progress, Recovery now has its own row like Streaks: **Recovery** (opens first, the old page), **Sleep**, **Load**, **Nutrition**.
+- Sleep: the whole Sleep page (moved into `src/components/sleep/SleepView.tsx`; `/sleep` uses the same component).
+- Load (`LoadView.tsx`): this week against your usual (×, with a bar and plain words), training load 14 days, week against week (workouts, sets, volume, minutes), muscle soreness 14 days (colored bars, counts, after-workout vs rest days), muscles ready, AI analysis.
+- Nutrition (`NutritionView.tsx`): week/month, average calories, protein, water, days on target, calorie and protein charts (green when met), next-morning recovery after protein/calorie days hit vs missed (hidden until there's data), AI analysis.
+
 ---
 
 
