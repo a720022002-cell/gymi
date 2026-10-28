@@ -655,6 +655,12 @@ Passwords and keys are left out on purpose.
 - App on branch payments: "Have a code?" on the subscription page opens Apple's code screen (RevenueCat presentCodeRedemptionSheet), then checks the subscription. tsc, lint, iOS bundle pass.
 - Owner: an App Store Connect API key (Admin role) into Supabase secrets ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY. Steps in docs/PAYMENTS.md.
 
+## Morning check-in: sleep first, watch sleep filled in by itself (28 Oct 2026)
+
+- Ask: sleep before weight; with a watch connected, Adro writes the sleep down by itself.
+- Done: the steps are now sleep, weight, how you feel. When the watch measured last night (the same night the sleep step already started from), the sleep step isn't shown: the check-in is 2 steps, the weight step says "Sleep from your watch: 7h 20m", and the night is saved from the watch (hours, plus bed and wake times when the watch has them). The steps are fixed once you move on, so a watch night arriving late can't shift them. Progress dots and "Step n of m" follow the number of steps.
+- File: src/components/health/CheckinSheet.tsx (+ Arabic). JS only, works with build 17. Not sent yet.
+
 ---
 
 
