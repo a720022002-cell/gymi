@@ -728,6 +728,10 @@ Passwords and keys are left out on purpose.
 - Owner added `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`. Checked with a temporary admin (deleted): offer-codes `list` answers 200 from Apple (0 offers yet). RevenueCat test event sent: the function answers TEST with 200 and doesn't store it, so `subscription_events` stays empty until a real purchase; owner confirmed RevenueCat shows the delivery succeeded (webhook connected).
 - Still to do: merge payments into main and build on "صدر النسخة"; sandbox test; `PAYWALL=on` on launch day.
 
+### 28 Oct 2026: Time fields: Apple's time picker, hold to repeat
+- `src/components/food/TimeField.tsx` (used by check-in sleep, Log sleep, meal times, notifications, gym hours, train together): on iPhone the time in the middle is Apple's own compact time picker (SwiftUI `DatePicker` from `@expo/ui`, already in build 17); tap it for the wheel. − and + still move 15 minutes; holding them repeats (after 0.4 s, then faster). Android keeps − and + with the hold.
+- JS only, fingerprint unchanged (6e1d9a57). Web keeps its own `TimeField.web.tsx`. Not testable on the web; test on an iPhone.
+
 ---
 
 
