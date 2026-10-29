@@ -5400,4 +5400,9 @@ export const AR: Record<string, string> = {
   "Then and now": "قبل والحين",
   "Closest photo to that day": "أقرب صورة لذاك اليوم",
   "Same weight": "نفس الوزن",
+  "Delete photo": "احذف الصورة",
+  "Photo from {d}": "صورة {d}",
+  "Pick two photos to compare. Tap a photo to see it big. Only you can see them.": "اختر صورتين عشان تقارن. اضغط على الصورة عشان تكبر. بس أنت تشوفها.",
+  "Tap a photo to see it big. Only you can see them.": "اضغط على الصورة عشان تكبر. بس أنت تشوفها.",
+  "Delete the photo from {d}?": "تحذف صورة {d}؟",
 };

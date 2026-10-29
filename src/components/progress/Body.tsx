@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { Modal, ScrollView, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
@@ -354,7 +355,7 @@ function PhotoThen({ day, weight, latest }: { day: string; weight: number; lates
       <Text variant="xs" weight={700} color="sec" style={{ marginBottom: 6 }}>
         {t(same ? 'Your photo' : 'Then and now')}
       </Text>
-      <Row gap={10}>
+      <Row gap={10} style={{ alignItems: 'flex-start' }}>
         {shot(then, shortDate(then.day, lang), weight, then.day !== day ? t('Closest photo to that day') : undefined)}
         {same ? null : shot(now, `${t('Latest')} · ${shortDate(now.day, lang)}`, latest, Math.abs(diff) < 0.05 ? t('Same weight') : `${diff > 0 ? '+' : '−'}${W.text(Math.abs(diff))}`)}
       </Row>
@@ -575,13 +576,17 @@ function Photos() {
   const { colors: c } = useSettings();
   const toast = useToast();
   const health = useHealth();
+  const insets = useSafeAreaInsets();
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [sel, setSel] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
-  const [del, setDel] = useState(false);
+  // The photo open full screen, and the one waiting for "delete?".
+  const [view, setView] = useState<string | null>(null);
+  const [del, setDel] = useState<string | null>(null);
   const list = health.photos;
   const picked = (sel.length ? sel : list.slice(-2).map((p) => p.id)).map((id) => list.find((p) => p.id === id)).filter(Boolean) as typeof list;
-  const need = picked.map((p) => p.path).filter((p) => !urls[p]);
+  // Every photo's link (the strip shows them all), loaded once.
+  const need = list.map((p) => p.path).filter((p) => !urls[p]);
   const needKey = need.join('|');
 
   useEffect(() => {
@@ -610,6 +615,20 @@ function Photos() {
     setSel(next);
   };
 
+  const trash = (id: string, size = 32) => (
+    <Springy
+      onPress={() => setDel(id)}
+      accessibilityRole="button"
+      accessibilityLabel={t('Delete photo')}
+      hitSlop={6}
+      style={{ position: 'absolute', top: 8, right: 8, width: size, height: size, borderRadius: size / 2, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' }}>
+      <Icon name="trash" size={size * 0.5} color="#FFFFFF" />
+    </Springy>
+  );
+  const vi = view ? list.findIndex((p) => p.id === view) : -1;
+  const shown = vi >= 0 ? list[vi] : null;
+  const delPhoto = del ? list.find((p) => p.id === del) : null;
+
   return (
     <View>
       <SecHead title={t('Progress photos')} link={busy ? t('Saving…') : t('Add photo')} onLink={busy ? undefined : add} />
@@ -618,9 +637,10 @@ function Photos() {
           <Row gap={10}>
             {picked.map((p) => (
               <View key={p.id} style={{ flex: 1 }}>
-                <View style={{ aspectRatio: 3 / 4, borderRadius: 20, overflow: 'hidden', backgroundColor: c.card }}>
+                <Springy onPress={() => setView(p.id)} accessibilityRole="imagebutton" accessibilityLabel={t('Photo from {d}', { d: shortDate(p.day, lang) })} style={{ aspectRatio: 3 / 4, borderRadius: 20, overflow: 'hidden', backgroundColor: c.card }}>
                   {urls[p.path] ? <Image source={{ uri: urls[p.path] }} style={{ width: '100%', height: '100%' }} contentFit="cover" /> : null}
-                </View>
+                </Springy>
+                {trash(p.id)}
                 <Text variant="small" weight={700} center style={{ marginTop: 8 }}>
                   {shortDate(p.day, lang)}
                 </Text>
@@ -628,50 +648,69 @@ function Photos() {
             ))}
             {picked.length === 1 ? <View style={{ flex: 1 }} /> : null}
           </Row>
+          {/* All your photos as a strip: pick two to compare. */}
           {list.length > 2 ? (
-            <Row gap={6} style={{ flexWrap: 'wrap', justifyContent: 'center', marginTop: 12 }}>
-              {list.map((p) => (
-                <Chip key={p.id} title={shortDate(p.day, lang)} on={picked.some((x) => x.id === p.id)} onPress={() => pick(p.id)} />
-              ))}
-            </Row>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12, marginHorizontal: -16 }} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
+              {list.map((p) => {
+                const on = picked.some((x) => x.id === p.id);
+                return (
+                  <Springy key={p.id} onPress={() => pick(p.id)} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={t('Photo from {d}', { d: shortDate(p.day, lang) })} style={{ alignItems: 'center' }}>
+                    <View style={{ width: 58, height: 76, borderRadius: 12, overflow: 'hidden', borderWidth: 2.5, borderColor: on ? c.cobalt : 'transparent', backgroundColor: c.card }}>
+                      {urls[p.path] ? <Image source={{ uri: urls[p.path] }} style={{ width: '100%', height: '100%' }} contentFit="cover" /> : null}
+                    </View>
+                    <Text variant="xs" weight={700} color={on ? 'text' : 'sec'} style={{ marginTop: 3 }}>
+                      {shortDate(p.day, lang)}
+                    </Text>
+                  </Springy>
+                );
+              })}
+            </ScrollView>
           ) : null}
           <Text variant="xs" color="sec" center style={{ marginTop: 8 }}>
-            {t('Tap two dates to compare. Photos stay private.')}
+            {t(list.length > 2 ? 'Pick two photos to compare. Tap a photo to see it big. Only you can see them.' : 'Tap a photo to see it big. Only you can see them.')}
           </Text>
-          {picked.length ? (
-            <Button
-              small
-              kind="ghost"
-              icon="trash"
-              title={t('Delete a photo')}
-              style={{ alignSelf: 'center', marginTop: 4 }}
-              onPress={() => setDel(true)}
-            />
-          ) : null}
-          {/* You choose which of the photos on screen to delete, by its date, and it asks first. */}
-          <Sheet open={del} onClose={() => setDel(false)}>
-            <Text variant="h2" center>
-              {t('Delete a photo?')}
-            </Text>
-            <Text color="sec" center style={{ marginTop: 4 }}>
-              {t('This can’t be undone.')}
-            </Text>
-            {picked.map((p) => (
-              <Button
-                key={p.id}
-                kind="danger"
-                icon="trash"
-                title={t('Delete the photo from {d}', { d: shortDate(p.day, lang) })}
-                style={{ marginTop: 12 }}
-                onPress={() => {
-                  health.deletePhoto(p.id);
-                  setSel([]);
-                  setDel(false);
-                  toast(t('Photo deleted'), { icon: 'trash' });
-                }}
-              />
-            ))}
-            <Button kind="ghost" title={t('Cancel')} style={{ marginTop: 8 }} onPress={() => setDel(false)} />
+
+          {/* Full screen: the photo, its date, earlier and later photos, and delete. */}
+          <Modal visible={!!shown} animationType="fade" transparent onRequestClose={() => setView(null)}>
+            <View style={{ flex: 1, backgroundColor: '#000' }}>
+              {shown && urls[shown.path] ? <Image source={{ uri: urls[shown.path] }} style={{ flex: 1 }} contentFit="contain" /> : <View style={{ flex: 1 }} />}
+              <Row style={{ position: 'absolute', top: insets.top + 8, left: 12, right: 12, justifyContent: 'space-between', alignItems: 'center' }}>
+                <Springy onPress={() => setView(null)} accessibilityRole="button" accessibilityLabel={t('Close')} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name="close" size={18} color="#FFFFFF" />
+                </Springy>
+                <Text weight={700} color="#FFFFFF">
+                  {shown ? longDate(shown.day, lang) : ''}
+                </Text>
+                <Springy onPress={() => shown && setDel(shown.id)} accessibilityRole="button" accessibilityLabel={t('Delete photo')} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name="trash" size={18} color="#FFFFFF" />
+                </Springy>
+              </Row>
+              {list.length > 1 ? (
+                <Row style={{ position: 'absolute', bottom: insets.bottom + 20, left: 0, right: 0, justifyContent: 'center', gap: 24 }}>
+                  {[-1, 1].map((d) => {
+                    const to = list[vi + d];
+                    return (
+                      <Springy
+                        key={d}
+                        onPress={() => to && setView(to.id)}
+                        disabled={!to}
+                        accessibilityRole="button"
+                        accessibilityLabel={t(d < 0 ? 'Earlier' : 'Later')}
+                        style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', opacity: to ? 1 : 0.3 }}>
+                        <Icon name={d < 0 ? 'back' : 'chev'} size={20} color="#FFFFFF" />
+                      </Springy>
+                    );
+                  })}
+                </Row>
+              ) : null}
+            </View>
+            {/* Asks before deleting (inside the full view too). */}
+            <Sheet open={!!delPhoto && !!shown} onClose={() => setDel(null)}>
+              <DeleteAsk day={delPhoto?.day} onCancel={() => setDel(null)} onDelete={() => delPhoto && (health.deletePhoto(delPhoto.id), setSel([]), setDel(null), setView(null), toast(t('Photo deleted'), { icon: 'trash' }))} />
+            </Sheet>
+          </Modal>
+          <Sheet open={!!delPhoto && !shown} onClose={() => setDel(null)}>
+            <DeleteAsk day={delPhoto?.day} onCancel={() => setDel(null)} onDelete={() => delPhoto && (health.deletePhoto(delPhoto.id), setSel([]), setDel(null), toast(t('Photo deleted'), { icon: 'trash' }))} />
           </Sheet>
         </>
       ) : (
@@ -684,5 +723,22 @@ function Photos() {
         </Card>
       )}
     </View>
+  );
+}
+
+/** "Delete the photo from Oct 12?" with Delete and Cancel. */
+function DeleteAsk({ day, onDelete, onCancel }: { day?: string; onDelete: () => void; onCancel: () => void }) {
+  const { t, lang } = useT();
+  return (
+    <>
+      <Text variant="h2" center>
+        {day ? t('Delete the photo from {d}?', { d: shortDate(day, lang) }) : t('Delete a photo?')}
+      </Text>
+      <Text color="sec" center style={{ marginTop: 4 }}>
+        {t('This can’t be undone.')}
+      </Text>
+      <Button kind="danger" icon="trash" title={t('Delete')} style={{ marginTop: 14 }} onPress={onDelete} />
+      <Button kind="ghost" title={t('Cancel')} style={{ marginTop: 8 }} onPress={onCancel} />
+    </>
   );
 }

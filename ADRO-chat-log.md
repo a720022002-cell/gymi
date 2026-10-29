@@ -819,6 +819,12 @@ Passwords and keys are left out on purpose.
 - **Weight and Recovery chart:** slide across the dots too. Date labels no longer overlap.
 - **Weight:** tapping a weigh-in shows your progress photo from that day (or the closest one) next to your latest photo, with the weight then, your latest weight and the difference.
 
+## Progress photos redone (29 Oct 2026)
+
+- The date chips are gone. All photos sit in a strip of small thumbnails you scroll sideways, each with a short date; the two being compared have a blue border.
+- Tap a photo to see it full screen (date at the top, arrows to go to earlier or later photos).
+- "Delete a photo" is gone. Each photo has a trash icon in its top-right corner (and in the full view), and it asks before deleting.
+
 ---
 
 
