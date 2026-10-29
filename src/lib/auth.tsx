@@ -156,6 +156,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
     setProfileError(false);
     if (data) {
+      // The phone's time zone, so the free trial's daily limits start again at your midnight (only when it changed).
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (tz && (data as { tz?: string | null }).tz !== tz) supabase.rpc('set_my_tz', { p_tz: tz }).then(() => {}, () => {});
       setAvatarUrl([userId, (data as Profile).username], (data as Profile).avatar_url ?? null);
       AsyncStorage.setItem(PROFILE_KEY(userId), JSON.stringify(data)).catch(() => {});
     }
