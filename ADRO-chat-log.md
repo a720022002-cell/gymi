@@ -799,7 +799,7 @@ Passwords and keys are left out on purpose.
 
 **Built:**
 - All pictures edited with Seedream 5.0 Flash: forearms folded in, fists by the biceps (like the reference).
-- 7 levels each for men and women, with new in-between characters. Men: tried smaller steps first; the owner then asked for bigger differences, so men go from skinny to the big reference build.
+- 7 levels each for men and women, with new in-between characters. Men: tried smaller steps first; the owner then asked for bigger differences, so men go from skinny to the big reference build. Levels 5–7 then got progressively bigger legs (owner: more difference in the legs).
 - Every picture scaled to the same height (neck to feet) and standing on one line, so the logo sits in exactly the same place and size at every level.
 - The head is the app logo (white ring open at the top left, on the person's colour) with a glow around it. It doesn't change with level.
 - Levels from the 30-day commitment: under 30, 30–41, 42–54, 55–67, 68–79, 80–89, 90+ (Starter, Warming up, Getting there, Solid, Strong, Very strong, Beast). Someone who doesn't share it shows level 3.
