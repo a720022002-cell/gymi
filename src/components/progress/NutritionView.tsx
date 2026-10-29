@@ -6,13 +6,14 @@ import { useAuth } from '@/lib/auth';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { addDays, fmt } from '@/lib/nutrition';
+import { dayKcalGoal, fx, goalsFor, shortDate } from '@/lib/progress';
 import { weekStart } from '@/lib/training';
-import { dayKcalGoal, fx, goalsFor } from '@/lib/progress';
 import { useProgressInput } from '@/lib/useProgress';
 import { useSettings } from '@/theme/settings';
 
 import { BarChart } from '../Charts';
 import { ReadingInsight } from '../health/ReadingInsight';
+import { PeriodNav } from '../PeriodNav';
 import { Text } from '../Text';
 import { Card, Row, Segmented } from '../ui';
 import { SecHead } from './bits';
@@ -26,10 +27,12 @@ export function NutritionView() {
   const { profile } = useAuth();
   const x = useProgressInput();
   const [range, setRange] = useState<'week' | 'month'>('week');
+  // How many weeks or months back (0 = now).
+  const [back, setBack] = useState(0);
   const today = food.today;
   const span = range === 'week' ? 7 : 30;
-  // The week runs Sunday to Saturday (this week so far); the month is the last 30 days.
-  const days = range === 'week' ? Array.from({ length: 7 }, (_, i) => addDays(weekStart(today), i)) : Array.from({ length: span }, (_, i) => addDays(today, i - span + 1));
+  // The week runs Sunday to Saturday; the month is 30 days up to today. Earlier ones with the arrows.
+  const days = range === 'week' ? Array.from({ length: 7 }, (_, i) => addDays(weekStart(today), i - 7 * back)) : Array.from({ length: span }, (_, i) => addDays(today, i - span + 1 - span * back));
   const todayAt = days.indexOf(today);
   const locale = lang === 'ar' ? 'ar-u-nu-latn' : 'en-US';
   const labels = range === 'week' ? days.map((d) => new Intl.DateTimeFormat(locale, { weekday: 'narrow' }).format(new Date(`${d}T12:00:00`))) : days.map((d, i) => (i % 5 === 0 ? String(Number(d.slice(8))) : ''));
@@ -102,8 +105,12 @@ export function NutritionView() {
           { value: 'week', label: t('Week') },
           { value: 'month', label: t('Month') },
         ]}
-        onChange={setRange}
+        onChange={(v) => {
+          setRange(v);
+          setBack(0);
+        }}
       />
+      <PeriodNav from={days[0]} to={days[days.length - 1]} back={back} onBack={setBack} />
       <View
         style={{
           flexDirection: 'row',
@@ -138,7 +145,7 @@ export function NutritionView() {
       <Card>
         <Text weight={700}>{t('Calories')}</Text>
         <View style={{ marginTop: 10 }}>
-          <BarChart values={kcal} labels={labels} highlight={todayAt} goal={Math.round(x.kcal)} colors={days.map((d) => (of(d)?.k ? (onTarget(d) ? c.up : c.cobalt) : null))} />
+          <BarChart values={kcal} labels={labels} highlight={todayAt} tip={(i) => `${shortDate(days[i], lang)} · ${kcal[i] == null ? '–' : `${fmt(kcal[i] as number)} ${t('kcal')}`}`} goal={Math.round(x.kcal)} colors={days.map((d) => (of(d)?.k ? (onTarget(d) ? c.up : c.cobalt) : null))} />
         </View>
         <Text variant="xs" color="sec">
           {t('Green: within 10% of your goal. Dashed line: your goal.')}
@@ -147,7 +154,7 @@ export function NutritionView() {
       <Card>
         <Text weight={700}>{t('Protein')}</Text>
         <View style={{ marginTop: 10 }}>
-          <BarChart values={prot} labels={labels} highlight={todayAt} goal={Math.round(x.protein)} colors={days.map((d) => (of(d)?.k ? (protMet(d) ? c.up : c.cobalt) : null))} />
+          <BarChart values={prot} labels={labels} highlight={todayAt} tip={(i) => `${shortDate(days[i], lang)} · ${prot[i] == null ? '–' : `${prot[i]} ${t('g')}`}`} goal={Math.round(x.protein)} colors={days.map((d) => (of(d)?.k ? (protMet(d) ? c.up : c.cobalt) : null))} />
         </View>
         <Text variant="xs" color="sec">
           {t('Protein helps your muscles repair. Green: goal met.')}

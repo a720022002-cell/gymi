@@ -4,6 +4,7 @@ import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import { useHealth } from '@/lib/health';
 import { addDays, fmt } from '@/lib/nutrition';
+import { shortDate } from '@/lib/progress';
 import { dailyLoad, hoursToReady, muscleReady } from '@/lib/recovery';
 import { useTrain } from '@/lib/train';
 import { muscleLabel, MUSCLES } from '@/lib/training';
@@ -135,7 +136,7 @@ export function LoadView() {
       <Card>
         <Text weight={700}>{t('Training load, 14 days')}</Text>
         <View style={{ marginTop: 8 }}>
-          <BarChart values={load.map((x) => x.volume || (x.minutes ? x.minutes * 10 : 0))} labels={load.map((x, i) => (i % 2 ? '' : dayLabel(x.day)))} highlight={load.length - 1} height={120} />
+          <BarChart values={load.map((x) => x.volume || (x.minutes ? x.minutes * 10 : 0))} labels={load.map((x, i) => (i % 2 ? '' : dayLabel(x.day)))} highlight={load.length - 1} height={120} tip={(i) => `${shortDate(load[i].day, lang)} · ${load[i].volume ? `${fmt(Math.round(load[i].volume))} ${t('kg')}` : load[i].minutes ? `${load[i].minutes} ${t('min')}` : t('Rest')}`} />
         </View>
       </Card>
 

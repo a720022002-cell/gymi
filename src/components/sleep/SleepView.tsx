@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { BarChart } from '@/components/Charts';
+import { PeriodNav } from '@/components/PeriodNav';
 import { ReadingInsight } from '@/components/health/ReadingInsight';
 import { Sheet } from '@/components/Sheet';
 import { QL, SleepForm } from './SleepForm';
@@ -14,7 +15,8 @@ import { useDevices } from '@/lib/devices';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { addDays, fmtTime } from '@/lib/nutrition';
-import { fx, sleepOn } from '@/lib/progress';
+import { fx, shortDate, sleepOn } from '@/lib/progress';
+import { weekStart } from '@/lib/training';
 import { wearableName } from '@/lib/wearables';
 import { useSettings } from '@/theme/settings';
 
@@ -28,11 +30,14 @@ export function SleepView() {
   const dev = useDevices(session?.user.id);
   const [open, setOpen] = useState(false);
   const [range, setRange] = useState<'week' | 'month'>('week');
+  // How many weeks or months back (0 = now).
+  const [back, setBack] = useState(0);
   // Nights you didn't log come from your watch.
   const watchSleep = Object.fromEntries(dev.days.filter((d) => d.sleep_h != null && d.sleep_h > 0).map((d) => [d.day, d.sleep_h as number]));
   const night = (d: string) => sleepOn({ checkins: health.checkins, watchSleep }, d);
   const span = range === 'week' ? 7 : 30;
-  const days = Array.from({ length: span }, (_, i) => addDays(today, i - span + 1));
+  // The week runs Sunday to Saturday; the month is 30 days up to today. Earlier ones with the arrows.
+  const days = range === 'week' ? Array.from({ length: 7 }, (_, i) => addDays(weekStart(today), i - 7 * back)) : Array.from({ length: span }, (_, i) => addDays(today, i - span + 1 - span * back));
   const nights = days.map(night);
   const logged = nights.filter((x): x is number => x != null);
   const avg = logged.length ? logged.reduce((a, b) => a + b, 0) / logged.length : null;
@@ -127,11 +132,15 @@ export function SleepView() {
           { value: 'week', label: t('Week') },
           { value: 'month', label: t('Month') },
         ]}
-        onChange={setRange}
+        onChange={(v) => {
+          setRange(v);
+          setBack(0);
+        }}
       />
+      <PeriodNav from={days[0]} to={days[days.length - 1]} back={back} onBack={setBack} />
       <Card style={{ marginTop: 12 }}>
         <Row style={{ justifyContent: 'space-between' }}>
-          <Text weight={700}>{t(range === 'week' ? 'This week' : 'Last 30 days')}</Text>
+          <Text weight={700}>{back ? t(range === 'week' ? 'Week' : 'Month') : t(range === 'week' ? 'This week' : 'Last 30 days')}</Text>
           {avg != null ? (
             <Text variant="small" weight={700} color="sec">
               {t('Average {n} h', { n: fx(avg) })}
@@ -139,7 +148,7 @@ export function SleepView() {
           ) : null}
         </Row>
         <View style={{ marginTop: 12 }}>
-          <BarChart values={nights} labels={labels} highlight={span - 1} max={10} goal={7.5} />
+          <BarChart values={nights} labels={labels} highlight={days.indexOf(today)} max={10} goal={7.5} tip={(i) => `${shortDate(days[i], lang)} · ${nights[i] == null ? '–' : `${fx(nights[i] as number)} ${t('h')}`}`} />
         </View>
         <Text variant="xs" color="sec">
           {t('Dashed line: 7.5 h goal')}

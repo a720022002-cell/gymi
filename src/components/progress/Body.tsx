@@ -153,6 +153,7 @@ function Weight() {
                       </View>
                       <Button small kind="soft" icon="edit" title={t('Edit')} onPress={() => (setEv(picked.value), setEditDay(picked.day), setHistory(true))} />
                     </Row>
+                    {cur ? <PhotoThen day={picked.day} weight={picked.value} latest={cur.value} /> : null}
                     {sameDay.length ? (
                       <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: c.line, paddingTop: 8 }}>
                         <Text variant="xs" weight={700} color="sec">
@@ -300,6 +301,63 @@ function Weight() {
           }}
         />
       </Sheet>
+    </View>
+  );
+}
+
+/**
+ * Under a picked weigh-in: your progress photo from that day (or the nearest one), next to your latest photo, with
+ * the weight then and your latest weight.
+ */
+function PhotoThen({ day, weight, latest }: { day: string; weight: number; latest: number }) {
+  const { t, lang } = useT();
+  const { colors: c } = useSettings();
+  const health = useHealth();
+  const W = useWeight();
+  const [urls, setUrls] = useState<Record<string, string>>({});
+  const list = health.photos;
+  const gap = (d: string) => Math.abs(new Date(`${d}T12:00:00`).getTime() - new Date(`${day}T12:00:00`).getTime());
+  const then = list.length ? list.reduce((a, b) => (gap(b.day) < gap(a.day) ? b : a)) : null;
+  const now = list.length ? list.reduce((a, b) => (b.day >= a.day ? b : a)) : null;
+  const key = [then?.path, now?.path].filter(Boolean).join('|');
+  useEffect(() => {
+    if (!key) return;
+    let alive = true;
+    health.photoUrls(key.split('|')).then((u) => alive && setUrls(u));
+    return () => {
+      alive = false;
+    };
+  }, [key, health]);
+  if (!then || !now) return null;
+  const same = then.id === now.id;
+  const diff = latest - weight;
+  const shot = (p: typeof then, title: string, kg: number, sub?: string) => (
+    <View style={{ flex: 1 }}>
+      <View style={{ aspectRatio: 3 / 4, borderRadius: 12, overflow: 'hidden', backgroundColor: c.card }}>
+        {urls[p.path] ? <Image source={{ uri: urls[p.path] }} style={{ flex: 1 }} contentFit="cover" /> : null}
+      </View>
+      <Text variant="xs" weight={700} color="sec" style={{ marginTop: 4 }}>
+        {title}
+      </Text>
+      <Text weight={700} num>
+        {W.text(kg)}
+      </Text>
+      {sub ? (
+        <Text variant="xs" color="sec">
+          {sub}
+        </Text>
+      ) : null}
+    </View>
+  );
+  return (
+    <View style={{ marginTop: 10, borderTopWidth: 1, borderTopColor: c.line, paddingTop: 8 }}>
+      <Text variant="xs" weight={700} color="sec" style={{ marginBottom: 6 }}>
+        {t(same ? 'Your photo' : 'Then and now')}
+      </Text>
+      <Row gap={10}>
+        {shot(then, shortDate(then.day, lang), weight, then.day !== day ? t('Closest photo to that day') : undefined)}
+        {same ? null : shot(now, `${t('Latest')} · ${shortDate(now.day, lang)}`, latest, Math.abs(diff) < 0.05 ? t('Same weight') : `${diff > 0 ? '+' : '−'}${W.text(Math.abs(diff))}`)}
+      </Row>
     </View>
   );
 }

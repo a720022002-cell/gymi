@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
 
 import { useSettings } from '@/theme/settings';
@@ -70,13 +70,17 @@ export function WeightChart({
   const clash = yT != null && Math.abs(yT - yCur) < 30;
   const curLabelY = clash ? (yCur < (yT as number) ? (yT as number) - 30 : (yT as number) + 30) : yCur;
   // Dates along the bottom: first, last, and the middle when there's room.
-  const ticks = points.length > 1 ? [0, ...(span >= 10 ? [points.findIndex((p) => daysFrom(first, p.day) >= span / 2)] : []), li].filter((v, i, xs) => v >= 0 && xs.indexOf(v) === i) : [0];
+  // Dropped when it would sit too close to the next one (so two dates never overlap).
+  const ticks = (points.length > 1 ? [0, ...(span >= 10 ? [points.findIndex((p) => daysFrom(first, p.day) >= span / 2)] : []), li].filter((v, i, xs) => v >= 0 && xs.indexOf(v) === i) : [0]).filter(
+    (v, i, xs) => i === 0 || i === xs.length - 1 || (Math.abs(X(v) - X(xs[i - 1])) > 70 && Math.abs(X(xs[xs.length - 1]) - X(v)) > 70),
+  );
 
-  const pick = (lx: number) => {
+  const nearest = (lx: number) => {
     let best = 0;
     for (let i = 1; i < points.length; i++) if (Math.abs(X(i) - lx) < Math.abs(X(best) - lx)) best = i;
-    onSelect(selected === best ? null : best);
+    return best;
   };
+  const left = useRef(0);
 
   return (
     <View ref={box} onLayout={(e) => setW(Math.round(e.nativeEvent.layout.width))} style={{ height: h, direction: 'ltr' } as object}>
@@ -129,14 +133,22 @@ export function WeightChart({
               </SvgText>
             ))}
           </Svg>
-          {/* On top of the drawing, so the tap position is measured from the chart's own edge. */}
-          <Pressable
-            onPress={(e) => {
-              // Where the tap was across the chart: the tap on the screen minus where the chart starts.
+          {/* On top of the drawing: tap a day (again to hide it), or slide across to move between days. Positions are
+              the touch on the screen minus where the chart starts. */}
+          <View
+            onStartShouldSetResponder={() => true}
+            onResponderTerminationRequest={() => true}
+            onResponderGrant={(e) => {
               const px = e.nativeEvent.pageX;
-              box.current?.measureInWindow((bx) => pick(px - bx));
+              box.current?.measureInWindow((bx) => {
+                left.current = bx;
+                const i = nearest(px - bx);
+                onSelect(selected === i ? null : i);
+              });
             }}
-            accessibilityRole="button"
+            onResponderMove={(e) => onSelect(nearest(e.nativeEvent.pageX - left.current))}
+            accessible
+            accessibilityRole="adjustable"
             accessibilityLabel={labels.current}
             style={{ position: 'absolute', left: 0, top: 0, width: w, height: h }}
           />

@@ -5396,4 +5396,8 @@ export const AR: Record<string, string> = {
   "Warming up": "يسخّن",
   "Very strong": "قوي جدًا",
   "Dashed line: 60%, ready for a normal session. Tap a day to see it.": "الخط المتقطع: 60%، جاهز لتمرين عادي. اضغط على يوم عشان تشوفه.",
+  "Your photo": "صورتك",
+  "Then and now": "قبل والحين",
+  "Closest photo to that day": "أقرب صورة لذاك اليوم",
+  "Same weight": "نفس الوزن",
 };

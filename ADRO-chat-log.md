@@ -811,6 +811,14 @@ Passwords and keys are left out on purpose.
 - **Recovery history:** now the same chart as weight: a dot for every day on the line, the 60% ready line and today's score on the side. Tap a day to see its score, and "What's in your score" switches to that day (tap Today to go back).
 - **Segmented bars:** a long word ("Commitment") shrinks a little to fit its part instead of being cut off.
 
+## Every chart: tap, slide, go back; weight photos then and now (29 Oct 2026)
+
+- **All bar and line charts** (shared `Charts.tsx`): tap a bar or point to see it in a bubble, slide your finger to move between them, tap again to hide. Line charts show a dot on every point (up to 40) and their highest and lowest values on the left.
+- Bubbles show the date and value on the main charts: calories, protein, sleep, training load, readings.
+- **Nutrition and Sleep:** arrows above the charts go back to earlier weeks or months and forward again. Weeks run Sunday to Saturday.
+- **Weight and Recovery chart:** slide across the dots too. Date labels no longer overlap.
+- **Weight:** tapping a weigh-in shows your progress photo from that day (or the closest one) next to your latest photo, with the weight then, your latest weight and the difference.
+
 ---
 
 

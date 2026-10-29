@@ -17,7 +17,7 @@ import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { goalOf } from '@/lib/cardioCoach';
 import { addDays, fmt } from '@/lib/nutrition';
-import { fx } from '@/lib/progress';
+import { fx, shortDate } from '@/lib/progress';
 import { supabase } from '@/lib/supabase';
 import { useTrain } from '@/lib/train';
 import { useWeight } from '@/lib/units';
@@ -236,7 +236,7 @@ export default function Reading() {
         ) : range === 'day' ? (
           k === 'hr' ? <LineChart values={vals} dots={false} /> : <BarChart values={dayVals} labels={labels} />
         ) : info.bar ? (
-          <BarChart values={series} labels={labels} highlight={series.length - 1} goal={goalLine} />
+          <BarChart values={series} labels={labels} highlight={series.length - 1} goal={goalLine} tip={(i) => `${shortDate(days[i], lang)} · ${series[i] == null ? '–' : `${fx(series[i] as number)}${unit ? ` ${t(unit)}` : ''}`}`} />
         ) : (
           <LineChart values={vals} dots={range === 'week'} goal={goalLine} />
         )}
