@@ -832,7 +832,7 @@ Passwords and keys are left out on purpose.
 **Built:**
 - `profiles.tz`: the app sends the phone's time zone after sign-in, only when it changed (`set_my_tz`). It must be a real zone and can change at most once every 20 hours, so switching zones can't reset the limits. Users can't write the column directly.
 - `local_day(user)`: today in that time zone (UTC when unknown). `my_access` and `ai_gate` count the trial's use on it.
-- Migration `20261205000000_trial_local_day.sql`. Tested locally: run twice; 4 chats allowed and the 5th blocked, counted on the local day; second change and fake zones ignored.
+- Migration `20261205000000_trial_local_day.sql` (applied 29 Oct). Tested locally: run twice; 4 chats allowed and the 5th blocked, counted on the local day; second change and fake zones ignored.
 
 ---
 
