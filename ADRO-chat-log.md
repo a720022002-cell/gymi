@@ -808,6 +808,7 @@ Passwords and keys are left out on purpose.
 
 - **Nutrition charts:** the Week view runs Sunday to Saturday (this week), with today highlighted. Month stays the last 30 days.
 - **Commitment tab:** the sub-tab "Target weight" is now "Goal". Tapping Commitment in the top bar always opens on its first part (Commitment), unless a link asks for another.
+- **Recovery history:** now the same chart as weight: a dot for every day on the line, the 60% ready line and today's score on the side. Tap a day to see its score, and "What's in your score" switches to that day (tap Today to go back).
 - **Segmented bars:** a long word ("Commitment") shrinks a little to fit its part instead of being cut off.
 
 ---

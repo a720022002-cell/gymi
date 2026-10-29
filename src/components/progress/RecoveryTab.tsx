@@ -11,7 +11,6 @@ import { shortDate } from '@/lib/progress';
 import { recLabel } from '@/lib/recovery';
 import { useSettings } from '@/theme/settings';
 
-import { LineChart } from '../Charts';
 import { ReadingInsight } from '../health/ReadingInsight';
 import { ScoreParts } from '../health/ScoreParts';
 import { Icon } from '../Icon';
@@ -21,6 +20,7 @@ import { useRecovery } from '../train/RecoveryCard';
 import { SleepView } from '../sleep/SleepView';
 import { Card, Segmented } from '../ui';
 import { SecHead } from './bits';
+import { WeightChart } from './WeightChart';
 import { LoadView } from './LoadView';
 import { NutritionView } from './NutritionView';
 
@@ -54,6 +54,11 @@ function RecoveryNow() {
   const { r, input } = useRecovery();
   const [label, tone] = recLabel(r.score);
   const hist = health.checkins.filter((x) => x.score != null).slice(-30);
+  // Tap a day on the chart to see that day's score and what it was made of (like the weight chart).
+  const [sel, setSel] = useState<number | null>(null);
+  const selDay = sel != null ? hist[sel]?.day : undefined;
+  const picked = useRecovery(selDay);
+  const parts = selDay ? picked.r.parts : r.parts;
   const { session, profile } = useAuth();
   const dev = useDevices(session?.user.id);
   const today = input.today;
@@ -113,9 +118,29 @@ function RecoveryNow() {
         <Text weight={700}>{t('Recovery history')}</Text>
         {hist.length > 1 ? (
           <View style={{ marginTop: 8 }}>
-            <LineChart values={hist.map((x) => x.score as number)} labels={hist.map((x, i) => (i === 0 || i === hist.length - 1 ? shortDate(x.day, lang) : ''))} goal={60} />
-            <Text variant="xs" color="sec">
-              {t('Dashed line: 60%, ready for a normal session')}
+            <WeightChart
+              points={hist.map((x) => ({ day: x.day, value: x.score as number }))}
+              target={60}
+              labels={{ target: t('Ready'), current: t('Now'), num: (v) => `${Math.round(v)}%` }}
+              dateLabel={(d) => shortDate(d, lang)}
+              selected={sel}
+              onSelect={setSel}
+            />
+            {selDay && sel != null ? (
+              <View style={{ marginTop: 10, padding: 12, borderRadius: 16, backgroundColor: c.inset, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text variant="xs" weight={700} color="sec">
+                    {shortDate(selDay, lang)}
+                  </Text>
+                  <Text weight={700}>{`${hist[sel].score}% · ${t(recLabel(hist[sel].score as number)[0])}`}</Text>
+                </View>
+                <Text variant="small" weight={700} color="link" onPress={() => setSel(null)}>
+                  {t('Today')}
+                </Text>
+              </View>
+            ) : null}
+            <Text variant="xs" color="sec" style={{ marginTop: 6 }}>
+              {t('Dashed line: 60%, ready for a normal session. Tap a day to see it.')}
             </Text>
           </View>
         ) : (
@@ -124,8 +149,8 @@ function RecoveryNow() {
           </Text>
         )}
       </Card>
-      <SecHead title={t('What’s in your score')} />
-      <ScoreParts parts={r.parts} empty="Do your daily check-in to fill this in." />
+      <SecHead title={selDay ? `${t('What’s in your score')} · ${shortDate(selDay, lang)}` : t('What’s in your score')} />
+      <ScoreParts parts={parts} empty="Do your daily check-in to fill this in." />
       <ReadingInsight id="recovery-tab" day={today} data={aiData} ready={health.ready} />
     </View>
   );

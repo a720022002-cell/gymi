@@ -5395,4 +5395,5 @@ export const AR: Record<string, string> = {
   "Ring color": "لون الحلقة",
   "Warming up": "يسخّن",
   "Very strong": "قوي جدًا",
+  "Dashed line: 60%, ready for a normal session. Tap a day to see it.": "الخط المتقطع: 60%، جاهز لتمرين عادي. اضغط على يوم عشان تشوفه.",
 };
