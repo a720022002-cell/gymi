@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { BarChart } from '@/components/Charts';
+import { firstWeekday, startOfWeek } from '@/components/DayNav';
 import { PeriodNav } from '@/components/PeriodNav';
 import { ReadingInsight } from '@/components/health/ReadingInsight';
 import { Sheet } from '@/components/Sheet';
@@ -16,7 +17,6 @@ import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { addDays, fmtTime } from '@/lib/nutrition';
 import { fx, shortDate, sleepOn } from '@/lib/progress';
-import { weekStart } from '@/lib/training';
 import { wearableName } from '@/lib/wearables';
 import { useSettings } from '@/theme/settings';
 
@@ -36,8 +36,8 @@ export function SleepView() {
   const watchSleep = Object.fromEntries(dev.days.filter((d) => d.sleep_h != null && d.sleep_h > 0).map((d) => [d.day, d.sleep_h as number]));
   const night = (d: string) => sleepOn({ checkins: health.checkins, watchSleep }, d);
   const span = range === 'week' ? 7 : 30;
-  // The week runs Sunday to Saturday; the month is 30 days up to today. Earlier ones with the arrows.
-  const days = range === 'week' ? Array.from({ length: 7 }, (_, i) => addDays(weekStart(today), i - 7 * back)) : Array.from({ length: span }, (_, i) => addDays(today, i - span + 1 - span * back));
+  // The week starts on the day the phone's country starts it; the month is 30 days up to today. Earlier ones with the arrows.
+  const days = range === 'week' ? Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(today, firstWeekday()), i - 7 * back)) : Array.from({ length: span }, (_, i) => addDays(today, i - span + 1 - span * back));
   const nights = days.map(night);
   const logged = nights.filter((x): x is number => x != null);
   const avg = logged.length ? logged.reduce((a, b) => a + b, 0) / logged.length : null;

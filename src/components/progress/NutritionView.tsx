@@ -7,11 +7,11 @@ import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { addDays, fmt } from '@/lib/nutrition';
 import { dayKcalGoal, fx, goalsFor, shortDate } from '@/lib/progress';
-import { weekStart } from '@/lib/training';
 import { useProgressInput } from '@/lib/useProgress';
 import { useSettings } from '@/theme/settings';
 
 import { BarChart } from '../Charts';
+import { firstWeekday, startOfWeek } from '../DayNav';
 import { ReadingInsight } from '../health/ReadingInsight';
 import { PeriodNav } from '../PeriodNav';
 import { Text } from '../Text';
@@ -31,8 +31,8 @@ export function NutritionView() {
   const [back, setBack] = useState(0);
   const today = food.today;
   const span = range === 'week' ? 7 : 30;
-  // The week runs Sunday to Saturday; the month is 30 days up to today. Earlier ones with the arrows.
-  const days = range === 'week' ? Array.from({ length: 7 }, (_, i) => addDays(weekStart(today), i - 7 * back)) : Array.from({ length: span }, (_, i) => addDays(today, i - span + 1 - span * back));
+  // The week starts on the day the phone's country starts it; the month is 30 days up to today. Earlier ones with the arrows.
+  const days = range === 'week' ? Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(today, firstWeekday()), i - 7 * back)) : Array.from({ length: span }, (_, i) => addDays(today, i - span + 1 - span * back));
   const todayAt = days.indexOf(today);
   const locale = lang === 'ar' ? 'ar-u-nu-latn' : 'en-US';
   const labels = range === 'week' ? days.map((d) => new Intl.DateTimeFormat(locale, { weekday: 'narrow' }).format(new Date(`${d}T12:00:00`))) : days.map((d, i) => (i % 5 === 0 ? String(Number(d.slice(8))) : ''));

@@ -18,9 +18,8 @@ import { Button, Row, Springy } from './ui';
 const fmtDay = (day: string, lang: 'en' | 'ar', o: Intl.DateTimeFormatOptions) =>
   new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', o).format(new Date(`${day}T12:00:00`));
 
-/** The day a week starts on (0 = Sunday): Sunday in Arabic, otherwise what the phone's region uses (Sunday if it doesn't say). */
-export function firstWeekday(lang: 'en' | 'ar') {
-  if (lang === 'ar') return 0;
+/** The day a week starts on (0 = Sunday): what the phone's country uses, in any language (Sunday if it doesn't say). */
+export function firstWeekday(_lang?: 'en' | 'ar') {
   const fw = getCalendars()[0]?.firstWeekday;
   if (fw) return (fw - 1) % 7;
   // Some browsers only have the newer getWeekInfo() (Monday = 1 … Sunday = 7).
@@ -34,9 +33,9 @@ export function firstWeekday(lang: 'en' | 'ar') {
 }
 
 /** The first day of the week that holds `day`. */
-const startOfWeek = (day: string, first: number) => addDays(day, -((new Date(`${day}T12:00:00`).getDay() - first + 7) % 7));
+export const startOfWeek = (day: string, first: number) => addDays(day, -((new Date(`${day}T12:00:00`).getDay() - first + 7) % 7));
 
-/** One week, always in the same order (Sunday first in Arabic): tap a day, ‹ › for the week before or after, the month for the calendar.
+/** One week, starting on the day the phone's country starts it: tap a day, ‹ › for the week before or after, the month for the calendar.
  * Each day has a small ring for how much of that day's calories you ate. Logs, water and cardio follow the day you pick. */
 export function DayNav() {
   const { t, lang } = useT();

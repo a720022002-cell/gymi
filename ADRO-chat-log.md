@@ -834,6 +834,11 @@ Passwords and keys are left out on purpose.
 - `local_day(user)`: today in that time zone (UTC when unknown). `my_access` and `ai_gate` count the trial's use on it.
 - Migration `20261205000000_trial_local_day.sql` (applied 29 Oct). Tested locally: run twice; 4 chats allowed and the 5th blocked, counted on the local day; second change and fake zones ignored.
 
+## Week start follows the phone's country (29 Oct 2026)
+
+- Charts (nutrition, sleep) and the food day bar start the week on the day the phone's country uses (from the phone's region settings), in Arabic and English. Sunday when the phone doesn't say. Before: always Sunday in Arabic.
+- Training plan weeks are unchanged (Sunday to Saturday), since saved plans count weeks that way.
+
 ---
 
 
