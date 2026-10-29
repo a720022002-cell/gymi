@@ -36,7 +36,8 @@ export default function Progress() {
   useTour('progress');
   const go = (to: PTab, s?: number) => {
     setTab(to);
-    if (s != null) setSub(s);
+    // Commitment opens on its first part (Commitment) unless a link asks for another.
+    setSub(s ?? 0);
     scrollRef.current?.scrollTo({ y: 0, animated: true });
   };
 

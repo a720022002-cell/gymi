@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth';
 import { useFood } from '@/lib/food';
 import { useHealth } from '@/lib/health';
 import { addDays, fmt } from '@/lib/nutrition';
+import { weekStart } from '@/lib/training';
 import { dayKcalGoal, fx, goalsFor } from '@/lib/progress';
 import { useProgressInput } from '@/lib/useProgress';
 import { useSettings } from '@/theme/settings';
@@ -27,7 +28,9 @@ export function NutritionView() {
   const [range, setRange] = useState<'week' | 'month'>('week');
   const today = food.today;
   const span = range === 'week' ? 7 : 30;
-  const days = Array.from({ length: span }, (_, i) => addDays(today, i - span + 1));
+  // The week runs Sunday to Saturday (this week so far); the month is the last 30 days.
+  const days = range === 'week' ? Array.from({ length: 7 }, (_, i) => addDays(weekStart(today), i)) : Array.from({ length: span }, (_, i) => addDays(today, i - span + 1));
+  const todayAt = days.indexOf(today);
   const locale = lang === 'ar' ? 'ar-u-nu-latn' : 'en-US';
   const labels = range === 'week' ? days.map((d) => new Intl.DateTimeFormat(locale, { weekday: 'narrow' }).format(new Date(`${d}T12:00:00`))) : days.map((d, i) => (i % 5 === 0 ? String(Number(d.slice(8))) : ''));
   const of = (d: string) => x.days[d];
@@ -135,7 +138,7 @@ export function NutritionView() {
       <Card>
         <Text weight={700}>{t('Calories')}</Text>
         <View style={{ marginTop: 10 }}>
-          <BarChart values={kcal} labels={labels} highlight={span - 1} goal={Math.round(x.kcal)} colors={days.map((d) => (of(d)?.k ? (onTarget(d) ? c.up : c.cobalt) : null))} />
+          <BarChart values={kcal} labels={labels} highlight={todayAt} goal={Math.round(x.kcal)} colors={days.map((d) => (of(d)?.k ? (onTarget(d) ? c.up : c.cobalt) : null))} />
         </View>
         <Text variant="xs" color="sec">
           {t('Green: within 10% of your goal. Dashed line: your goal.')}
@@ -144,7 +147,7 @@ export function NutritionView() {
       <Card>
         <Text weight={700}>{t('Protein')}</Text>
         <View style={{ marginTop: 10 }}>
-          <BarChart values={prot} labels={labels} highlight={span - 1} goal={Math.round(x.protein)} colors={days.map((d) => (of(d)?.k ? (protMet(d) ? c.up : c.cobalt) : null))} />
+          <BarChart values={prot} labels={labels} highlight={todayAt} goal={Math.round(x.protein)} colors={days.map((d) => (of(d)?.k ? (protMet(d) ? c.up : c.cobalt) : null))} />
         </View>
         <Text variant="xs" color="sec">
           {t('Protein helps your muscles repair. Green: goal met.')}

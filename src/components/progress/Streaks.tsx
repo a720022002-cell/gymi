@@ -67,7 +67,7 @@ export function Streaks({ sub, setSub }: { sub: number; setSub: (n: number) => v
         options={[
           { value: '0', label: t('Commitment') },
           { value: '1', label: t('Streak') },
-          { value: '2', label: t('Target weight') },
+          { value: '2', label: t('Goal') },
         ]}
         onChange={(v) => setSub(Number(v))}
       />

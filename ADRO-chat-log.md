@@ -804,6 +804,12 @@ Passwords and keys are left out on purpose.
 - The head is the app logo (white ring open at the top left, on the person's colour) with a glow around it. It doesn't change with level.
 - Levels from the 30-day commitment: under 30, 30–41, 42–54, 55–67, 68–79, 80–89, 90+ (Starter, Warming up, Getting there, Solid, Strong, Very strong, Beast). Someone who doesn't share it shows level 3.
 
+## Small fixes: week from Sunday, Commitment tabs (29 Oct 2026)
+
+- **Nutrition charts:** the Week view runs Sunday to Saturday (this week), with today highlighted. Month stays the last 30 days.
+- **Commitment tab:** the sub-tab "Target weight" is now "Goal". Tapping Commitment in the top bar always opens on its first part (Commitment), unless a link asks for another.
+- **Segmented bars:** a long word ("Commitment") shrinks a little to fit its part instead of being cut off.
+
 ---
 
 

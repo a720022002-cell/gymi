@@ -284,10 +284,11 @@ export function Segmented<T extends string>({
             scaleTo={1.04}
             accessibilityState={{ selected: on }}
             style={[
-              { flex: 1, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+              { flex: 1, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
               on && { backgroundColor: c.segOn, boxShadow: '0px 1px 4px rgba(0,0,0,0.08)' },
             ]}>
-            <Text weight={700} size={14} color={on ? 'text' : 'sec'}>
+            {/* A long word shrinks a little to fit its part instead of being cut off. */}
+            <Text weight={700} size={14} color={on ? 'text' : 'sec'} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
               {o.label}
             </Text>
           </Springy>
