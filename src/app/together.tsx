@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import { Field } from '@/components/Field';
 import { Thinking } from '@/components/food/Thinking';
@@ -11,17 +11,27 @@ import { Sheet } from '@/components/Sheet';
 import { Avatar } from '@/components/social/Avatar';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
+import { ExercisePicker } from '@/components/train/ExercisePicker';
 import { StaleSessionChoice, useStaleSession } from '@/components/train/WorkoutCard';
 import { Button, Card, Chip, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
-import { friendLevels, setGroupSessionInfo, startGroupWorkout } from '@/lib/groupWorkout';
+import { toPlanEx } from '@/lib/exercisesDb';
+import { cardioEx, cardioSportOf, friendLevels, type GroupEx, groupExName, isCardio, setGroupSessionInfo, startGroupWorkout } from '@/lib/groupWorkout';
+import { SPORTS, type SportId, sportInfo } from '@/lib/sports';
 import { addDays, fmtTime } from '@/lib/nutrition';
 import { displayName, type FriendRow, myFriends } from '@/lib/social';
-import { applyTogether, buildTogether, COLORS, fallbackPlan, friendsDay, LEVELS, type Level, myDayInfo, noteText, type Person, scheme, type TogetherPlan } from '@/lib/together';
+import { applyTogether, buildTogether, COLORS, type DayInfo, fallbackPlan, FOCUS, type Focus, friendsDay, LEVELS, type Level, myDayInfo, noteText, type Person, scheme, type TogetherNote } from '@/lib/together';
 import { useTrain } from '@/lib/train';
 import { DAYS, DAYS_LONG, exInfo, exMuscle, muscleLabel, type PlanEx } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
+
+/** How the workout is made: the AI from everyone's plans, picked by you, or cardio side by side. */
+type Mode = 'ai' | 'own' | 'cardio';
+/** The workout being put together: you can still change it before sending. */
+type Draft = { key: string; title: string; ex: GroupEx[]; notes: Record<string, TogetherNote> };
+const CARDIO_SPORTS = SPORTS.filter((x) => x.group === 'Cardio').map((x) => x.id);
+const MINUTES = [15, 20, 30, 45, 60];
 
 /** A person in the group. known: their level comes from their own plan or history. */
 type P = Person & { known?: boolean; username?: string };
@@ -43,14 +53,19 @@ export default function Together() {
   const [people, setPeople] = useState<P[]>([]);
   const [name, setName] = useState('');
   const [level, setLevel] = useState<Level>('Intermediate');
-  const [ready, setReady] = useState(false);
+  // The steps: who's coming, how to make the workout, then the workout itself (to change before sending).
+  const [step, setStep] = useState<'people' | 'how' | 'plan'>('people');
+  const [mode, setMode] = useState<Mode>('ai');
+  const [focus, setFocus] = useState<Focus | null>(null);
+  const [pick, setPick] = useState(false);
+  const [cardioPick, setCardioPick] = useState(false);
   const [friends, setFriends] = useState<FriendRow[]>([]);
   const [levels, setLevels] = useState<Record<string, Level>>({});
   const [day, setDay] = useState(0);
   const [time, setTime] = useState('18:30');
   const [busy, setBusy] = useState(false);
-  // The workout the AI built from everyone's plan for the chosen day (and what joining means for each person).
-  const [built, setBuilt] = useState<{ key: string; plan: TogetherPlan } | null>(null);
+  // The workout for the chosen day (and what joining means for each person), with your changes.
+  const [draft, setDraft] = useState<Draft | null>(null);
 
   // Friends and their levels; friends passed in (from a friend's page or a group) are picked already.
   useEffect(() => {
@@ -63,10 +78,8 @@ export default function Together() {
       setLevels(lv);
       const want = [params.friend, ...(params.members ?? '').split(',')].filter((x): x is string => !!x && x !== session?.user.id);
       const pre = f.filter((x) => want.includes(x.id)).slice(0, 4);
-      if (pre.length) {
-        setPeople(pre.map((x) => ({ name: displayName(x), username: x.username, id: x.id, level: lv[x.id] ?? 'Beginner', known: true })));
-        setReady(true);
-      }
+      // Picked already, but you still check who's coming before going on.
+      if (pre.length) setPeople(pre.map((x) => ({ name: displayName(x), username: x.username, id: x.id, level: lv[x.id] ?? 'Beginner', known: true })));
     })();
     return () => {
       alive = false;
@@ -78,29 +91,37 @@ export default function Together() {
   const date = addDays(train.today, day);
   // Who's in, as keys: "me", a friend's id, or "local-<n>" for a friend who isn't on Adro.
   const keyOf = (p: P, i: number) => (p.me ? 'me' : (p.id ?? `local-${i}`));
-  const buildKey = `${date}|${all.map(keyOf).join(',')}`;
+  const buildKey = `${date}|${all.map(keyOf).join(',')}|${mode}|${focus ?? ''}`;
   useEffect(() => {
-    if (!ready) return;
+    if (step !== 'plan') return;
     let alive = true;
     (async () => {
       const friendsInfo = await friendsDay(appFriends.map((p) => p.id as string), date);
-      const info = all.map((p, i) => {
+      const info: DayInfo[] = all.map((p, i) => {
         if (p.me) return myDayInfo(train.plan, date, profile?.name || t('You'), myLevel, train.logs);
         const f = friendsInfo.find((x) => x.key === p.id);
         return f ?? { key: keyOf(p, i), name: p.name, level: p.level, planned: null, plannedEx: [], injuries: [], recent: [] };
       });
-      const plan = await buildTogether(info, date, lang).catch(() => fallbackPlan(info));
-      if (alive) setBuilt({ key: buildKey, plan });
+      let d: Omit<Draft, 'key'>;
+      if (mode === 'cardio') {
+        // Cardio side by side: everyone's own plan stays the same.
+        d = { title: 'Cardio', ex: [cardioEx('Run', 30)], notes: Object.fromEntries(info.map((p) => [p.key, { action: 'extra' as const, text: '' }])) };
+      } else {
+        const plan = mode === 'ai' ? await buildTogether(info, date, lang, focus ?? undefined).catch(() => fallbackPlan(info, focus ?? undefined)) : fallbackPlan(info, focus ?? 'Full body');
+        d = { title: plan.title, ex: plan.ex.map(([id, type]) => ({ id, type })), notes: plan.notes };
+      }
+      if (alive) setDraft({ key: buildKey, ...d });
     })();
     return () => {
       alive = false;
     };
-    // buildKey covers the people and the day.
+    // buildKey covers the people, the day, the way it's made and the type.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, buildKey]);
-  const plan = built?.key === buildKey ? built.plan : null;
+  }, [step, buildKey]);
+  const plan = draft?.key === buildKey ? draft : null;
   const TOG = plan?.ex ?? [];
   const title = plan ? t(plan.title) : '';
+  const setEx = (ex: GroupEx[]) => plan && setDraft({ ...plan, ex });
   /** Save the title and each person's note on the invite, and apply your own part to your plan. */
   const saveInfo = async (sid: string, when: string) => {
     if (!plan) return;
@@ -128,13 +149,15 @@ export default function Together() {
     setPeople([...people, { name: displayName(f), username: f.username, id: f.id, level: levels[f.id] ?? 'Beginner', known: true }]);
   };
 
-  const workout = TOG.map(([id, type]) => ({ id, type }));
+  const workout = TOG;
   const startLocal = () => {
     if (stale) return setStaleOpen(true);
     if (train.session) return router.replace('/active');
-    const ex: PlanEx[] = TOG.map(([id, type]) => {
-      const s = scheme(myLevel, type);
-      return { id, sets: s.sets, reps: String(s.reps) };
+    const ex: PlanEx[] = TOG.map((x) => {
+      // Cardio on your phone: one timed round of its minutes.
+      if (isCardio(x)) return { id: x.id, n: sportInfo(cardioSportOf(x)).name, sets: 1, reps: String((x.min ?? 20) * 60), time: true, m: 'Other' };
+      const s = scheme(myLevel, x.type);
+      return { id: x.id, sets: s.sets, reps: String(s.reps), ...(x.n ? { n: x.n, ar: x.ar, m: x.m } : {}) };
     });
     train.startWorkout('Together', false, false, { ex });
     router.replace('/active');
@@ -186,7 +209,7 @@ export default function Together() {
       </View>
     );
 
-  if (!ready)
+  if (step === 'people')
     return (
       <Screen title={t('Train together')} back>
         <Text color="sec">{t('Pick up to 4 friends. I’ll build one workout for the whole group, with the right sets and reps for each person’s level.')}</Text>
@@ -250,19 +273,55 @@ export default function Together() {
         <Text variant="small" weight={700} color="sec" center style={{ marginTop: 8 }}>
           {people.length ? t('{n} people, including you', { n: people.length + 1 }) : t('Choose at least one friend')}
         </Text>
-        <Button title={t('Build our workout')} disabled={!people.length} style={{ marginTop: 16 }} onPress={() => setReady(true)} />
+        <Button title={t('Next')} disabled={!people.length} style={{ marginTop: 16 }} onPress={() => setStep('how')} />
       </Screen>
     );
 
+  // How to make the workout.
+  if (step === 'how') {
+    const option = (m: Mode, icon: 'sparkle' | 'edit' | 'run', head: string, sub: string) => (
+      <Card
+        key={m}
+        onPress={() => {
+          setMode(m);
+          setFocus(null);
+          setStep('plan');
+        }}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: m === 'ai' ? c.gAi : c.inset, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name={icon} size={20} color={c.cobalt} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text weight={700}>{head}</Text>
+          <Text variant="small" color="sec">
+            {sub}
+          </Text>
+        </View>
+        <Icon name="chev" size={16} color={c.sec} />
+      </Card>
+    );
+    return (
+      <Screen title={t('Train together')} back onBack={() => setStep('people')}>
+        <Text variant="h2">{t('How do you want to build it?')}</Text>
+        <Text variant="small" color="sec" style={{ marginTop: 4, marginBottom: 12 }}>
+          {t('You can change everything before you send it.')}
+        </Text>
+        {option('ai', 'sparkle', t('Build it with AI'), t('One workout from everyone’s plans, with the right sets for each level.'))}
+        {option('own', 'edit', t('I’ll build it'), t('Pick Push, Pull, Legs or another day, then add or remove exercises.'))}
+        {option('cardio', 'run', t('Cardio together'), t('Run, bike, row or another cardio, side by side.'))}
+      </Screen>
+    );
+  }
+
   if (!plan)
     return (
-      <Screen title={t('Train together')} back onBack={() => setReady(false)}>
-        <Thinking message={t('Matching everyone’s plans…')} />
+      <Screen title={t('Train together')} back onBack={() => setStep('how')}>
+        <Thinking message={t(mode === 'ai' ? 'Matching everyone’s plans…' : 'Loading')} />
       </Screen>
     );
 
   return (
-    <Screen title={t('Train together')} back onBack={() => setReady(false)}>
+    <Screen title={t('Train together')} back onBack={() => setStep('how')}>
       <Row gap={0} style={{ justifyContent: 'center' }}>
         {all.map((p, i) => (
           <View key={i} style={{ marginStart: i ? -12 : 0 }}>
@@ -274,8 +333,18 @@ export default function Together() {
         {t('{w} with {names}', { w: title, names })}
       </Text>
       <Text variant="small" color="sec" center style={{ marginTop: 4 }}>
-        {t('{n} exercises, about {m} min. Take turns: while one person lifts, the others rest.', { n: TOG.length, m: 45 + all.length * 8 })}
+        {mode === 'cardio'
+          ? t('Side by side, about {m} min.', { m: TOG.reduce((a, x) => a + (x.min ?? 0), 0) })
+          : t('{n} exercises, about {m} min. Take turns: while one person lifts, the others rest.', { n: TOG.length, m: 45 + all.length * 8 })}
       </Text>
+      {mode !== 'cardio' ? (
+        // Change the type of day: the AI (or the ready workout) builds it again.
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginHorizontal: -20, marginTop: 14 }} contentContainerStyle={{ gap: 8, paddingHorizontal: 20 }}>
+          {FOCUS.map((f) => (
+            <Chip key={f} title={t(f)} on={(focus ?? plan.title) === f} onPress={() => setFocus(f)} />
+          ))}
+        </ScrollView>
+      ) : null}
       <Card style={{ marginTop: 16 }}>
         <Text variant="xs" weight={700} color="sec">
           {t('Turn order each set')}
@@ -317,31 +386,55 @@ export default function Together() {
           })}
         </Card>
       ) : null}
-      {TOG.map(([id, type], i) => {
-        const info = exInfo({ id }, lang);
+      {TOG.map((x, i) => {
+        const cardio = isCardio(x);
+        const info = exInfo({ id: x.id, n: x.n, ar: x.ar, m: x.m }, lang);
         return (
-          <Card key={id}>
-            <Text variant="xs" weight={700} color="sec">{`${i + 1}. ${muscleLabel(exMuscle(id, info.muscle), lang, t)}`}</Text>
-            <Text variant="h3">{info.name}</Text>
-            <View style={{ marginTop: 8 }}>
-              {all.map((p, j) => {
-                const s = scheme(p.level, type);
-                return (
-                  <Row key={j} gap={10} style={{ paddingVertical: 7, borderTopWidth: 1, borderTopColor: c.line }}>
-                    {avatar(p, j, 28)}
-                    <Text variant="small" weight={700} style={{ flex: 1 }}>
-                      {p.name}
-                    </Text>
-                    <Text variant="small" num>
-                      {s.timed ? t('{a} rounds × {b} s', { a: s.sets, b: s.reps }) : t('{a} sets × {b} reps', { a: s.sets, b: s.reps })}
-                    </Text>
-                  </Row>
-                );
-              })}
-            </View>
+          <Card key={`${x.id}-${i}`}>
+            <Row gap={8} style={{ alignItems: 'flex-start' }}>
+              <View style={{ flex: 1 }}>
+                <Text variant="xs" weight={700} color="sec">{`${i + 1}. ${cardio ? t('Cardio') : muscleLabel(exMuscle(x.id, info.muscle), lang, t)}`}</Text>
+                <Text variant="h3">{groupExName(x, lang, t)}</Text>
+              </View>
+              <Springy
+                disabled={TOG.length <= 1}
+                onPress={() => setEx(TOG.filter((_, j) => j !== i))}
+                accessibilityLabel={t('Remove {name}', { name: groupExName(x, lang, t) })}
+                style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center', opacity: TOG.length <= 1 ? 0.3 : 1 }}>
+                <Icon name="close" size={16} color={c.sec} strokeWidth={2.2} />
+              </Springy>
+            </Row>
+            {cardio ? (
+              <Row gap={8} style={{ flexWrap: 'wrap', marginTop: 10 }}>
+                {MINUTES.map((m) => (
+                  <Chip key={m} title={t('{n} min', { n: m })} on={x.min === m} onPress={() => setEx(TOG.map((y, j) => (j === i ? { ...y, min: m } : y)))} />
+                ))}
+              </Row>
+            ) : (
+              <View style={{ marginTop: 8 }}>
+                {all.map((p, j) => {
+                  const s = scheme(p.level, x.type);
+                  return (
+                    <Row key={j} gap={10} style={{ paddingVertical: 7, borderTopWidth: 1, borderTopColor: c.line }}>
+                      {avatar(p, j, 28)}
+                      <Text variant="small" weight={700} style={{ flex: 1 }}>
+                        {p.name}
+                      </Text>
+                      <Text variant="small" num>
+                        {s.timed ? t('{a} rounds × {b} s', { a: s.sets, b: s.reps }) : t('{a} sets × {b} reps', { a: s.sets, b: s.reps })}
+                      </Text>
+                    </Row>
+                  );
+                })}
+              </View>
+            )}
           </Card>
         );
       })}
+      <Row gap={8} style={{ marginBottom: 12 }}>
+        {mode !== 'cardio' ? <Button small kind="soft" icon="plus" title={t('Add exercise')} disabled={TOG.length >= 12} style={{ flex: 1 }} onPress={() => setPick(true)} /> : null}
+        <Button small kind="soft" icon="plus" title={t('Add cardio')} disabled={TOG.length >= 12} style={{ flex: 1 }} onPress={() => setCardioPick(true)} />
+      </Row>
       <Row gap={8} style={{ alignItems: 'flex-start', paddingHorizontal: 4 }}>
         <Icon name="info" size={16} color={c.sec} />
         <Text variant="small" color="sec" style={{ flex: 1 }}>
@@ -369,7 +462,37 @@ export default function Together() {
       ) : (
         <Button icon="play" title={t('Start together now')} style={{ marginTop: 16 }} onPress={startLocal} />
       )}
-      <Button kind="glass" title={t('Change people')} style={{ marginTop: 8 }} onPress={() => setReady(false)} />
+      <Button kind="glass" title={t('Change people')} style={{ marginTop: 8 }} onPress={() => setStep('people')} />
+      <ExercisePicker
+        open={pick}
+        title={t('Add an exercise')}
+        exclude={TOG.map((x) => x.id)}
+        injuries={train.plan?.injuries}
+        onClose={() => setPick(false)}
+        onPick={(e) => {
+          setPick(false);
+          const pe = toPlanEx(e);
+          setEx([...TOG, { id: pe.id, type: pe.time ? 2 : 0, ...(pe.n ? { n: pe.n, ar: pe.ar, m: pe.m } : {}) }]);
+        }}
+      />
+      <Sheet open={cardioPick} onClose={() => setCardioPick(false)}>
+        <Text variant="h2">{t('Add cardio')}</Text>
+        <Text variant="small" color="sec" style={{ marginTop: 4 }}>
+          {t('Everyone does it at the same time.')}
+        </Text>
+        <Row gap={8} style={{ flexWrap: 'wrap', marginTop: 12 }}>
+          {CARDIO_SPORTS.map((sp: SportId) => (
+            <Chip
+              key={sp}
+              title={t(sportInfo(sp).name)}
+              onPress={() => {
+                setCardioPick(false);
+                setEx([...TOG, cardioEx(sp, Math.min(60, sportInfo(sp).minutes))]);
+              }}
+            />
+          ))}
+        </Row>
+      </Sheet>
       <Sheet open={staleOpen && stale} onClose={() => setStaleOpen(false)}>
         <StaleSessionChoice onDone={() => setStaleOpen(false)} />
       </Sheet>

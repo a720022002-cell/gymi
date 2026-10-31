@@ -1,9 +1,24 @@
 import type { SessionMember } from './social';
+import { type SportId, sportInfo } from './sports';
 import { supabase } from './supabase';
 import { type Level, scheme } from './together';
+import { exInfo } from './training';
 
-/** One exercise in a group workout. n: a name for exercises outside the common list. */
-export type GroupEx = { id: string; type: number; n?: string };
+/**
+ * One exercise in a group workout. n: a name for exercises outside the common list (ar: its Arabic name).
+ * type 3 is cardio done side by side (id "cardio:<sport>", min: the minutes); 0–2 as in together.ts.
+ */
+export type GroupEx = { id: string; type: number; n?: string; ar?: string | null; m?: string; min?: number };
+
+export const isCardio = (x: Pick<GroupEx, 'type' | 'id'>) => x.type === 3 || x.id.startsWith('cardio:');
+export const cardioSportOf = (x: Pick<GroupEx, 'id'>) => x.id.slice('cardio:'.length) as SportId;
+/** A cardio item for a group workout. */
+export const cardioEx = (sport: SportId, min: number): GroupEx => ({ id: `cardio:${sport}`, type: 3, n: sportInfo(sport).name, min });
+/** An exercise's name in the reader's language (cardio by its sport). */
+export function groupExName(x: GroupEx, lang: 'en' | 'ar', t: (s: string) => string) {
+  if (isCardio(x)) return t(sportInfo(cardioSportOf(x)).name);
+  return exInfo({ id: x.id, n: x.n, ar: x.ar }, lang).name;
+}
 export type GroupSet = { w: number | null; r: number | null; done: boolean };
 /** Your sets for one exercise. reps is your target (you can change it). */
 export type MySets = { reps: number; sets: GroupSet[] };
@@ -84,6 +99,7 @@ export async function friendLevels(ids: string[]): Promise<Record<string, Level>
 export function setsOf(m: Pick<BoardMember, 'level' | 'sets'>, ex: GroupEx): MySets {
   const saved = m.sets?.[ex.id];
   if (saved?.sets?.length) return saved;
+  if (isCardio(ex)) return { reps: ex.min ?? 20, sets: [{ w: null, r: null, done: false }] };
   const sc = scheme(m.level, ex.type);
   return { reps: sc.reps, sets: Array.from({ length: sc.sets }, () => ({ w: null, r: null, done: false })) };
 }
@@ -101,7 +117,7 @@ export function groupTurn(workout: GroupEx[], board: BoardMember[]) {
   if (finished) cur = Math.max(0, workout.length - 1);
   const ex = workout[cur];
   let turn: BoardMember | null = null;
-  if (!finished && ex)
+  if (!finished && ex && !isCardio(ex))
     for (const m of ppl) {
       const s = setsOf(m, ex);
       if (allDone(s)) continue;
@@ -139,4 +155,35 @@ export function whenLabel(iso: string, t: (s: string, v?: Record<string, string 
   const loc = lang === 'ar' ? 'ar-u-nu-latn' : 'en-US';
   const day = diff === 0 ? t('Today') : diff === 1 ? t('Tomorrow') : new Intl.DateTimeFormat(loc, { weekday: 'long' }).format(d);
   return { day, time: new Intl.DateTimeFormat(loc, { hour: 'numeric', minute: '2-digit' }).format(d) };
+}
+
+/** "I'm here, starting without you": a notification to everyone who hasn't joined. 'ok', 'wait' (just sent) or 'none'. */
+export async function pingGroup(id: string) {
+  const { data, error } = await supabase.rpc('group_ping', { p_id: id });
+  return error ? 'none' : ((data as string | null) ?? 'none');
+}
+
+/**
+ * The friendly push in a group workout: how you compare with your friends on this exercise (top weight, then reps),
+ * or on the whole workout so far. Only friends who logged a set count. null when there's nothing to compare.
+ */
+export function groupNudge(ex: GroupEx, me: BoardMember | undefined, others: BoardMember[]) {
+  if (!me || isCardio(ex) || ex.type === 2) return null;
+  const top = (m: BoardMember) => {
+    const done = setsOf(m, ex).sets.filter((s) => s.done && (s.w ?? 0) > 0);
+    if (!done.length) return null;
+    const w = Math.max(...done.map((s) => s.w ?? 0));
+    return { w, r: Math.max(...done.filter((s) => s.w === w).map((s) => s.r ?? 0)) };
+  };
+  const mine = top(me);
+  const theirs = others.filter((m) => m.joined).map((m) => ({ m, x: top(m) })).filter((y): y is { m: BoardMember; x: { w: number; r: number } } => !!y.x);
+  if (mine && theirs.length) {
+    const best = theirs.sort((a, b) => b.x.w - a.x.w || b.x.r - a.x.r)[0];
+    if (best.x.w > mine.w) return { kind: 'behind' as const, who: best.m, kg: best.x.w, diff: Math.round((best.x.w - mine.w) * 10) / 10 };
+    if (best.x.w === mine.w && best.x.r > mine.r) return { kind: 'reps' as const, who: best.m, reps: best.x.r - mine.r };
+    const second = theirs[0];
+    if (mine.w > second.x.w) return { kind: 'ahead' as const, who: second.m, diff: Math.round((mine.w - second.x.w) * 10) / 10 };
+    return null;
+  }
+  return null;
 }

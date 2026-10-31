@@ -851,6 +851,12 @@ Passwords and keys are left out on purpose.
 - Done: `StoryOverlay` (the four story templates for phones: Numbers, Rings, Record, Minimal), `storyShot` (captures it as a 1080 × 1920 picture with react-native-view-shot), and share-photo now works on phones too. The summary has "See or edit sets", which opens the workout log (also in Train → Workout history), where it can be edited.
 - Note: photo sharing on phones needs the new native module, so it comes with build 18. On build 17 the button stays hidden.
 
+## 31 Oct 2026: Train together, step by step
+
+- Asked: pick who to invite first, then choose AI or build it yourself; see and change the workout (add, remove, change the day type such as Legs instead of Push) before sending; the friend sees the workout before accepting; cardio together; a friendly competitive tip in the group workout; join a workout a friend already started; an "I'm here, starting without you" reminder with a notification; no 5-second loading when coming back to a running group workout.
+- Done (app): together.tsx has steps: people (Next) → how (AI / I'll build it / Cardio together) → the workout, with Push, Pull, Legs, Upper, Lower and Full body chips, remove on each exercise, Add exercise and Add cardio (sport + minutes). New screen groupplan.tsx: the whole workout and everyone's sets, with Accept, Start or Join now, and Not this time. GroupWorkoutsCard shows workouts a friend started that you haven't joined, and has a "See workout" button. groupactive.tsx: cardio items (everyone at the same time, minutes), a tip comparing your top weight with friends', "I'm here. Start without them" (host), "Tell them I'm here", and a "Remind" button by friends who haven't joined. The last copy is kept in memory and on the phone, so the screen opens straight away.
+- Server: migration 20261206000000_group_ping.sql was applied on 31 Oct after "طبق": table group_pings and group_ping(id), at most one every 2 minutes. The push function (type group_ping) and the ai function (together follows the chosen "focus") are changed in main but not deployed: the deploy was blocked and needs approval again. Until then the reminder button says Sent but no notification arrives, and a chosen type uses the ready-made workout.
+
 ---
 
 

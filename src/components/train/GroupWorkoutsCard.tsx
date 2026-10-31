@@ -32,7 +32,8 @@ export function GroupWorkoutsCard({ title = true, members, empty }: { title?: bo
 
   const load = useCallback(async () => {
     const all = await groupSessions();
-    const shown = all.filter((g) => g.scheduled_at && g.status === 'open' && (!members || g.people.some((p) => p.id !== me && members.includes(p.id))));
+    // Planned ones, and ones a friend already started that you haven't joined (you can still join in).
+    const shown = all.filter((g) => ((g.scheduled_at && g.status === 'open') || (g.host !== me && !g.joined)) && (!members || g.people.some((p) => p.id !== me && members.includes(p.id))));
     setList(shown);
     setInfo(await groupSessionInfo(shown.map((g) => g.id)));
   }, [members, me]);
@@ -68,7 +69,8 @@ export function GroupWorkoutsCard({ title = true, members, empty }: { title?: bo
         const others = g.people.filter((p) => p.id !== me);
         const names = others.map((p) => p.name || p.username);
         const joined = names.length === 1 ? names[0] : `${names.slice(0, -1).join(t(', '))} ${t('and')} ${names[names.length - 1]}`;
-        const w = whenLabel(g.scheduled_at as string, t, lang);
+        const w = g.scheduled_at ? whenLabel(g.scheduled_at, t, lang) : null;
+        const when = w ? `${w.day}, ${w.time}. ` : g.status === 'live' ? `${t('Started already.')} ` : '';
         return (
           <Card key={g.id} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
             <Row gap={0}>
@@ -81,7 +83,7 @@ export function GroupWorkoutsCard({ title = true, members, empty }: { title?: bo
             <View style={{ flex: 1 }}>
               <Text weight={700}>{t('{w} with {names}', { w: t(info[g.id]?.title || 'Full body'), names: joined || t('friends') })}</Text>
               <Text variant="small" color="sec">
-                {`${w.day}, ${w.time}. ${g.host === me ? t('Waiting for replies.') : t('{n} invited you.', { n: g.host_name ?? '' })}`}
+                {`${when}${g.host === me ? t('Waiting for replies.') : t('{n} invited you.', { n: g.host_name ?? '' })}`}
               </Text>
               {noteText(info[g.id]?.notes?.[me], lang) ? (
                 <View style={{ marginTop: 8, backgroundColor: c.inset, borderRadius: 12, paddingVertical: 8, paddingHorizontal: 10 }}>
@@ -91,7 +93,8 @@ export function GroupWorkoutsCard({ title = true, members, empty }: { title?: bo
                   <Text variant="small">{noteText(info[g.id].notes[me], lang)}</Text>
                 </View>
               ) : null}
-              <Row gap={8} style={{ marginTop: 8 }}>
+              <Row gap={8} style={{ marginTop: 8, flexWrap: 'wrap' }}>
+                <Button small kind="glass" icon="doc" title={t('See workout')} onPress={() => router.push({ pathname: '/groupplan', params: { id: g.id } })} />
                 {g.host !== me && info[g.id]?.notes?.[me] && !train.plan?.togetherDone?.[g.id] ? (
                   <Button
                     small

@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, TextInput, View } from 'react-native';
@@ -18,20 +19,26 @@ import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import {
   type BoardMember,
+  cardioSportOf,
   getGroupWorkout,
   GROUP_ALT,
   groupBoard,
   type GroupEx,
+  groupExName,
+  groupNudge,
   type GroupSessionFull,
   groupTurn,
+  isCardio,
   joinGroupWorkout,
   type MySets,
+  pingGroup,
   saveMySets,
   setsOf,
   swapGroupExercise,
 } from '@/lib/groupWorkout';
 import { setSessionStatus } from '@/lib/social';
 import { useTrain, type WorkoutLog } from '@/lib/train';
+import { sportInfo } from '@/lib/sports';
 import { exInfo, exMuscle, muscleLabel, workoutKcal } from '@/lib/training';
 import { useExerciseWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
@@ -52,6 +59,11 @@ function sessionTime(startedAt: string | null) {
 
 type Data = { id: string; g: GroupSessionFull | null; board: BoardMember[] };
 
+// The last copy of each group workout, so coming back to it (from another screen or after leaving the app) shows it
+// right away while the fresh copy loads, instead of a loading screen.
+const cache = new Map<string, Data>();
+const cacheKey = (id: string) => `adro.group.${id}`;
+
 /** Live group workout: take turns, log your own weights, see everyone's sets (design: groupactive). */
 export default function GroupActive() {
   const { t, lang } = useT();
@@ -63,9 +75,12 @@ export default function GroupActive() {
   const train = useTrain();
   const me = session?.user.id ?? '';
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [d, setD] = useState<Data | null>(null);
+  const [d, setD] = useState<Data | null>(() => cache.get(id) ?? null);
   // My sets as I edit them (the server copy lags a few seconds behind).
-  const [mine, setMine] = useState<{ id: string; sets: Record<string, MySets> } | null>(null);
+  const [mine, setMine] = useState<{ id: string; sets: Record<string, MySets> } | null>(() => {
+    const x = cache.get(id);
+    return x ? { id, sets: x.board.find((m) => m.user_id === me)?.sets ?? {} } : null;
+  });
   // Typed but not yet finished weights and reps: "exId:set" → value.
   const [typed, setTyped] = useState<Record<string, { w?: string; r?: string }>>({});
   const [view, setView] = useState<number | null>(null);
@@ -78,9 +93,26 @@ export default function GroupActive() {
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const lastStatus = useRef<string | null>(null);
 
+  // After the app was closed: the copy saved on the phone, until the fresh one arrives.
+  useEffect(() => {
+    if (cache.has(id)) return;
+    AsyncStorage.getItem(cacheKey(id))
+      .then((v) => {
+        if (!v || cache.has(id)) return;
+        const x = JSON.parse(v) as Data;
+        setD((cur) => cur ?? x);
+        setMine((m) => m ?? { id, sets: x.board.find((b) => b.user_id === me)?.sets ?? {} });
+      })
+      .catch(() => {});
+  }, [id, me]);
+
   const load = useCallback(async () => {
     const [g, board] = await Promise.all([getGroupWorkout(id), groupBoard(id)]);
-    setD({ id, g, board });
+    const x = { id, g, board };
+    cache.set(id, x);
+    if (g && g.status !== 'done') AsyncStorage.setItem(cacheKey(id), JSON.stringify(x)).catch(() => {});
+    else AsyncStorage.removeItem(cacheKey(id)).catch(() => {});
+    setD(x);
     setMine((m) => (m && m.id === id ? m : { id, sets: board.find((x) => x.user_id === me)?.sets ?? {} }));
     if (g && lastStatus.current === 'open' && g.status === 'live') toast(t('Everyone is in. Let’s go.'), { ai: true });
     lastStatus.current = g?.status ?? null;
@@ -121,7 +153,12 @@ export default function GroupActive() {
   const meRow = board.find((m) => m.user_id === me);
   const others = board.filter((m) => m.user_id !== me);
   const nameOf = (m: BoardMember) => (m.user_id === me ? t('You') : m.name || m.username);
-  const exName = (x: GroupEx) => exInfo({ id: x.id, n: x.n }, lang).name;
+  const exName = (x: GroupEx) => groupExName(x, lang, t);
+  // "I'm here, starting without you": everyone who hasn't joined gets a notification.
+  const ping = async () => {
+    const r = await pingGroup(id);
+    toast(t(r === 'ok' ? 'Sent. They’ll get a notification.' : r === 'wait' ? 'Sent already. Give them a minute.' : 'Couldn’t send. Please try again.'), { icon: r === 'none' ? 'warn' : 'bell' });
+  };
 
   const writeMine = (sets: Record<string, MySets>) => {
     setMine({ id, sets });
@@ -138,10 +175,10 @@ export default function GroupActive() {
         <View style={{ alignItems: 'center', marginTop: 8 }}>
           <Mark size={48} color={c.cobalt} stroke={9} />
           <Text variant="h2" center style={{ marginTop: 12 }}>
-            {t('Waiting for everyone')}
+            {t(g.status === 'live' ? 'They already started' : 'Waiting for everyone')}
           </Text>
           <Text variant="small" color="sec" center style={{ marginTop: 4 }}>
-            {t('Each person taps Start on their own phone. The workout begins when everyone is in.')}
+            {t(g.status === 'live' ? 'Join now and train with them. You start from the exercise they’re on.' : 'Each person taps Start on their own phone. The workout begins when everyone is in.')}
           </Text>
         </View>
         <View style={{ marginTop: 16, backgroundColor: c.card, borderRadius: 22, overflow: 'hidden' }}>
@@ -170,7 +207,7 @@ export default function GroupActive() {
         {meRow && !meRow.joined && g.status !== 'done' ? (
           <Button
             icon="play"
-            title={t('Start')}
+            title={t(g.status === 'live' ? 'Join now' : 'Start')}
             style={{ marginTop: 12 }}
             onPress={async () => {
               await joinGroupWorkout(id);
@@ -181,13 +218,21 @@ export default function GroupActive() {
         {host && g.status === 'open' ? (
           <Button
             kind="glass"
-            title={t('Start without waiting')}
+            icon="bell"
+            title={t('I’m here. Start without them')}
             style={{ marginTop: 8 }}
             onPress={async () => {
               await setSessionStatus(id, 'live');
+              await ping();
               load();
             }}
           />
+        ) : null}
+        {meRow?.joined && !host && g.status === 'open' ? <Button kind="glass" icon="bell" title={t('Tell them I’m here')} style={{ marginTop: 8 }} onPress={ping} /> : null}
+        {host && g.status === 'open' ? (
+          <Text variant="xs" color="sec" center style={{ marginTop: 6 }}>
+            {t('They get a notification and can join any time.')}
+          </Text>
         ) : null}
         {g.status === 'done' ? <Button kind="ghost" title={t('Close')} style={{ marginTop: 8 }} onPress={() => router.replace('/friends')} /> : null}
       </Screen>
@@ -197,7 +242,9 @@ export default function GroupActive() {
   const v = Math.min(view ?? cur, g.workout.length - 1);
   const ex = g.workout[v];
   const mySets = setsOf(meRow, ex);
-  const timed = exInfo({ id: ex.id }, lang).timed || ex.type === 2;
+  const cardio = isCardio(ex);
+  const timed = cardio || exInfo({ id: ex.id }, lang).timed || ex.type === 2;
+  const nudge = groupNudge(ex, meRow, others);
   // Each exercise in its own unit (kg or lb, switched on its card), like a solo workout.
   const W = Wf(ex.id);
   // Your sets across the whole workout, for the bar at the top.
@@ -226,7 +273,7 @@ export default function GroupActive() {
     if (si < 0) return;
     const lw = (train.last[e.id] ?? [])[si]?.w ?? 0;
     const key = `${e.id}:${si}`;
-    const w = exInfo({ id: e.id }, lang).timed || e.type === 2 ? 0 : Wf(e.id).toKg(+(typed[key]?.w ?? '')) || lw;
+    const w = isCardio(e) || exInfo({ id: e.id }, lang).timed || e.type === 2 ? 0 : Wf(e.id).toKg(+(typed[key]?.w ?? '')) || lw;
     const r = +(typed[key]?.r ?? '') || s.reps;
     setMySets(e.id, { ...s, sets: s.sets.map((x, j) => (j === si ? { w, r, done: true } : x)) });
   };
@@ -264,6 +311,13 @@ export default function GroupActive() {
           .sets.filter((s) => s.done)
           .map((s) => ({ w: s.w ?? 0, r: s.r ?? 0 }));
         if (!done.length) continue;
+        if (isCardio(x)) {
+          // Cardio: saved as a timed round (its minutes in seconds).
+          const n = sportInfo(cardioSportOf(x)).name;
+          sets += done.length;
+          exercises.push({ id: x.id, n, time: true, sets: done.map((s) => ({ w: 0, r: s.r * 60 })) });
+          continue;
+        }
         const n = exInfo({ id: x.id, n: x.n }, 'en').name;
         sets += done.length;
         done.forEach((s) => (volume += s.w * s.r));
@@ -369,6 +423,7 @@ export default function GroupActive() {
           <Row style={{ justifyContent: 'space-between' }}>
             {/* Tap the name for pictures and how to do it; the workout keeps going. */}
             <Springy
+              disabled={cardio}
               onPress={() => router.push({ pathname: '/exercise', params: { id: ex.id } })}
               accessibilityRole="button"
               accessibilityLabel={t('How to do {x}', { x: exName(ex) })}
@@ -376,7 +431,7 @@ export default function GroupActive() {
               <Text variant="h3" style={{ flexShrink: 1 }}>
                 {exName(ex)}
               </Text>
-              <Icon name="info" size={16} color={c.sec} />
+              {cardio ? null : <Icon name="info" size={16} color={c.sec} />}
             </Springy>
             {host && alts.length ? (
               <Springy
@@ -390,7 +445,7 @@ export default function GroupActive() {
             ) : null}
           </Row>
           <Text variant="xs" color="sec">
-            {muscleLabel(exMuscle(ex.id, exInfo({ id: ex.id, n: ex.n }, lang).muscle), lang, t)}
+            {cardio ? t('Cardio, everyone at the same time') : muscleLabel(exMuscle(ex.id, exInfo({ id: ex.id, n: ex.n }, lang).muscle), lang, t)}
           </Text>
           <View style={{ flexDirection: 'row', marginTop: 12, marginBottom: 4 }}>
             <Text variant="xs" weight={700} color="sec" center style={{ width: 36 }}>
@@ -422,7 +477,7 @@ export default function GroupActive() {
               </View>
             )}
             <Text variant="xs" weight={700} color="sec" center style={{ flex: 1 }}>
-              {`${t(timed ? 'seconds' : 'reps')} ${mySets.reps}`}
+              {`${t(cardio ? 'minutes' : timed ? 'seconds' : 'reps')} ${mySets.reps}`}
             </Text>
             <View style={{ width: 52 }} />
           </View>
@@ -468,7 +523,7 @@ export default function GroupActive() {
               </View>
             );
           })}
-          <Row gap={8} style={{ marginTop: 10 }}>
+          <Row gap={8} style={{ marginTop: 10, display: cardio ? 'none' : 'flex' }}>
             <Springy onPress={() => editSets('add')} scaleTo={0.97} style={{ flex: 1, height: 40, borderRadius: 12, backgroundColor: c.inset, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
               <Icon name="plus" size={16} color={c.text} />
               <Text variant="small" weight={700}>
@@ -499,10 +554,19 @@ export default function GroupActive() {
                   </Text>
                   <Text variant="xs" color="sec">
                     {m.joined
-                      ? `${s.sets.length} × ${s.reps} ${timed ? t('s') : t('reps')}${t(', ')}${t('set {a} of {b}', { a: Math.min(n + 1, s.sets.length), b: s.sets.length })}`
+                      ? cardio
+                        ? t(n ? 'Done, {m} min' : 'On it, {m} min', { m: s.sets[0]?.r ?? s.reps })
+                        : `${s.sets.length} × ${s.reps} ${timed ? t('s') : t('reps')}${t(', ')}${t('set {a} of {b}', { a: Math.min(n + 1, s.sets.length), b: s.sets.length })}`
                       : t('Hasn’t joined yet')}
                   </Text>
                 </View>
+                {!m.joined ? (
+                  <Springy onPress={ping} accessibilityRole="button" style={{ height: 30, paddingHorizontal: 12, borderRadius: 15, backgroundColor: c.inset, justifyContent: 'center' }}>
+                    <Text variant="xs" weight={700}>
+                      {t('Remind')}
+                    </Text>
+                  </Springy>
+                ) : null}
                 <Row gap={3}>
                   {s.sets.map((x, k) => (
                     <View key={k} style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: x.done ? c.cobalt : c.inset }} />
@@ -512,6 +576,18 @@ export default function GroupActive() {
             );
           })}
         </Card>
+        {nudge ? (
+          <Card style={{ backgroundColor: c.gAi, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <Mark size={26} color={c.cobalt} stroke={5} />
+            <Text variant="small" weight={600} style={{ flex: 1 }}>
+              {nudge.kind === 'behind'
+                ? t('{n} did {w} on this, {d} more than you. You can add a little on your next set.', { n: nameOf(nudge.who), w: W.text(nudge.kg), d: W.text(nudge.diff) })
+                : nudge.kind === 'reps'
+                  ? t('Same weight as {n}, but {n} did {r} more reps. One more rep and you’re level.', { n: nameOf(nudge.who), r: nudge.reps })
+                  : t('You’re ahead of {n} by {d} on this one. Keep it up.', { n: nameOf(nudge.who), d: W.text(nudge.diff) })}
+            </Text>
+          </Card>
+        ) : null}
         {v < g.workout.length - 1 ? <Button title={t('Next: {x}', { x: exName(g.workout[v + 1]) })} style={{ marginBottom: 4 }} onPress={() => setView(v + 1)} /> : null}
         {/* Which exercise you're on; green ones are done. */}
         <Row gap={6} style={{ justifyContent: 'center', marginTop: 10, marginBottom: 14 }}>
@@ -529,6 +605,17 @@ export default function GroupActive() {
               {t('Workout complete')}
             </Text>
             <Button small title={t('Finish')} onPress={() => setConfirm(true)} />
+          </Glass>
+        ) : isCardio(g.workout[cur]) && !setsOf(meRow, g.workout[cur]).sets.every((x) => x.done) ? (
+          <Glass style={{ borderRadius: 32, paddingVertical: 8, paddingEnd: 8, paddingStart: 14, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Mark size={26} color={c.cobalt} stroke={5} />
+            <View style={{ flex: 1 }}>
+              <Text weight={700}>{t('Everyone together')}</Text>
+              <Text variant="small" color="sec" numberOfLines={1}>
+                {t('{x}, {m} min', { x: exName(g.workout[cur]), m: setsOf(meRow, g.workout[cur]).reps })}
+              </Text>
+            </View>
+            <Button small icon="check" title={t('Done')} onPress={doneSet} />
           </Glass>
         ) : turn?.user_id === me ? (
           <Glass style={{ borderRadius: 32, paddingVertical: 8, paddingEnd: 8, paddingStart: 14, flexDirection: 'row', alignItems: 'center', gap: 10 }}>

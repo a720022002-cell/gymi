@@ -18,6 +18,18 @@ export const TOG: [string, number][] = [
   ['cablerow', 0],
   ['plank', 2],
 ];
+/** The workout types you can pick for the group, each with a ready workout (the AI fills in the rest when it's on). */
+export const FOCUS = ['Push', 'Pull', 'Legs', 'Upper', 'Lower', 'Full body'] as const;
+export type Focus = (typeof FOCUS)[number];
+export const FOCUS_EX: Record<Focus, [string, number][]> = {
+  Push: [['bench', 1], ['shoulder', 1], ['incline', 0], ['lateral', 0], ['pushdown', 0], ['plank', 2]],
+  Pull: [['pulldown', 1], ['row', 1], ['cablerow', 0], ['facepull', 0], ['curl', 0], ['hammer', 0]],
+  Legs: [['squat', 1], ['legpress', 1], ['legcurl', 0], ['legext', 0], ['calf', 0], ['plank', 2]],
+  Upper: [['bench', 1], ['pulldown', 1], ['shoulder', 0], ['cablerow', 0], ['curl', 0], ['pushdown', 0]],
+  Lower: [['squat', 1], ['rdl', 1], ['legpress', 0], ['legcurl', 0], ['calf', 0], ['plank', 2]],
+  'Full body': TOG,
+};
+
 export function scheme(level: Level, type: number): { sets: number; reps: number; timed: boolean } {
   if (type === 2) return { sets: 3, reps: level === 'Beginner' ? 30 : level === 'Advanced' ? 60 : 45, timed: true };
   if (type === 1) return { Beginner: { sets: 3, reps: 10 }, Intermediate: { sets: 4, reps: 8 }, Advanced: { sets: 4, reps: 6 } }[level] as { sets: number; reps: number } & { timed: false };
@@ -55,15 +67,28 @@ export async function friendsDay(ids: string[], day: string): Promise<DayInfo[]>
   }));
 }
 
-/** The default when the AI can't help: the full-body workout. */
-export const fallbackPlan = (people: { key: string }[]): TogetherPlan => ({ title: 'Full body', ex: TOG, notes: Object.fromEntries(people.map((p) => [p.key, { action: 'extra' as const, text: '' }])), ai: false });
+/** Does a planned workout's name match a focus ("Push A" and Push)? */
+const sameFocus = (planned: string | null, focus: Focus) => !!planned && planned.toLowerCase().includes(focus.toLowerCase().split(' ')[0]);
+
+/** Without the AI: a ready workout for the focus (full body when none), and plain notes from each person's plan. */
+export function fallbackPlan(people: (Pick<DayInfo, 'key'> & Partial<Pick<DayInfo, 'planned'>>)[], focus: Focus = 'Full body'): TogetherPlan {
+  const notes: Record<string, TogetherNote> = {};
+  for (const p of people) {
+    const planned = p.planned ?? null;
+    notes[p.key] = sameFocus(planned, focus)
+      ? { action: 'replace', text: `This counts as your ${planned} day.`, text_ar: `هذا يُحسب يوم ${planned} حقك.` }
+      : { action: 'extra', text: planned ? `Your ${planned} day stays as it is.` : '', text_ar: planned ? `يوم ${planned} حقك يبقى مثل ما هو.` : '' };
+  }
+  return { title: focus, ex: FOCUS_EX[focus], notes, ai: false };
+}
 
 /** Ask the AI for one workout that fits everyone's plan that day, and what joining means for each person. */
-export async function buildTogether(people: DayInfo[], day: string, lang: 'en' | 'ar'): Promise<TogetherPlan> {
+export async function buildTogether(people: DayInfo[], day: string, lang: 'en' | 'ar', focus?: Focus): Promise<TogetherPlan> {
   const exercises = Object.values(EX).map((e) => ({ id: e.id, name: e.en, muscle: e.m, equipment: e.t, stress: e.stress ?? [] }));
   const { result } = await askAI<{ title: string; exercises: { id: string; type: number }[]; people: { key: string; action: string; text: string; text_ar?: string }[] }>('together', {
     lang,
     day: DAYS_LONG[new Date(`${day}T12:00:00`).getDay()],
+    ...(focus ? { focus } : {}),
     exercises,
     people: people.map((p) => ({ key: p.key, name: p.name, level: p.level, planned: p.planned ?? 'rest day', plannedExercises: p.plannedEx.map((x) => exInfo(x, 'en').name), injuries: p.injuries, recent: p.recent })),
   });
@@ -73,7 +98,9 @@ export async function buildTogether(people: DayInfo[], day: string, lang: 'en' |
   const ex = [...new Map((result?.exercises ?? []).filter((x) => EX[x.id]).map((x) => [safe(x.id), [0, 1, 2].includes(x.type) ? x.type : 0] as const)).entries()]
     .filter((x): x is [string, number] => !!x[0])
     .slice(0, 7);
-  if (!result || ex.length < 3) return fallbackPlan(people);
+  if (!result || ex.length < 3) return fallbackPlan(people, focus);
+  // The group picked the type: when the AI went its own way, use the ready workout for it.
+  if (focus && result.title && !sameFocus(result.title, focus)) return fallbackPlan(people, focus);
   const notes: Record<string, TogetherNote> = {};
   for (const p of people) {
     const n = result.people?.find((x) => x.key === p.key);

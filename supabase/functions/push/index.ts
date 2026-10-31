@@ -1,4 +1,5 @@
-// Adro push: sends a phone notification when a coach or client gets a new message.
+// Adro push: sends a phone notification when a coach or client gets a new message, or when someone in a group
+// workout says "I'm here, starting without you" (group_ping in 20261206000000_group_ping.sql).
 //
 // Called only by the database (trigger coach_messages_push in 20261124000002_social_decisions.sql) with a shared
 // secret in the x-push-secret header. The same secret is kept in the vault ("push_hook") and as the Edge Function
@@ -119,15 +120,63 @@ async function coachMessage(db: SupabaseClient, id: string) {
   return { sent: res.ok ? out.length - gone.length : 0, status: res.status };
 }
 
+/** Group workout: tell everyone who hasn't joined yet that a friend is at the gym and starting. */
+async function groupPing(db: SupabaseClient, id: string, from: string) {
+  // The database recorded this ping just now; anything older isn't sent.
+  const { data: ping } = await db.from('group_pings').select('at').eq('session_id', id).eq('user_id', from).maybeSingle();
+  if (!ping || Date.now() - new Date(ping.at).getTime() > 60_000) return { sent: 0, why: 'no_ping' };
+  const { data: s } = await db.from('group_sessions').select('status').eq('id', id).maybeSingle();
+  if (!s || s.status === 'done') return { sent: 0, why: 'done' };
+  const { data: members } = await db.from('group_session_members').select('user_id,joined').eq('session_id', id);
+  const to = ((members ?? []) as { user_id: string; joined: boolean }[]).filter((m) => !m.joined && m.user_id !== from).map((m) => m.user_id);
+  if (!to.length) return { sent: 0, why: 'everyone_in' };
+  const { data: sender } = await db.from('profiles').select('name,username').eq('id', from).maybeSingle();
+  const name = (sender?.name || sender?.username || 'Adro').slice(0, 60);
+  const out: Record<string, unknown>[] = [];
+  for (const u of to) {
+    if (await blocked(db, from, u)) continue;
+    const { data: p } = await db.from('profiles').select('language,suspended_at').eq('id', u).maybeSingle();
+    if (p?.suspended_at) continue;
+    const ar = p?.language === 'ar';
+    const { data: toks } = await db.from('push_tokens').select('token,messages,quiet,tz').eq('user_id', u);
+    for (const t of (toks ?? []) as TokenRow[]) {
+      if (!t.messages) continue;
+      const quiet = inQuiet(t.quiet, t.tz);
+      out.push({
+        to: t.token,
+        title: name,
+        body: ar ? `${name} وصل النادي وبيبدأ بدونك. ادخل وتمرن معه الحين.` : `${name} is at the gym and starting without you. Join in now.`,
+        data: { route: `/groupactive?id=${id}`, type: 'group_ping' },
+        sound: quiet ? null : 'default',
+        priority: quiet ? 'normal' : 'high',
+        channelId: 'messages',
+        collapseId: `group-${id}`,
+      });
+    }
+  }
+  if (!out.length) return { sent: 0, why: 'no_tokens' };
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
+  if (env('EXPO_ACCESS_TOKEN')) headers.Authorization = `Bearer ${env('EXPO_ACCESS_TOKEN')}`;
+  const res = await fetch(EXPO_PUSH, { method: 'POST', headers, body: JSON.stringify(out) });
+  const body = (await res.json().catch(() => null)) as { data?: { status: string; details?: { error?: string } }[] } | null;
+  const gone = (body?.data ?? []).map((r, i) => (r.status === 'error' && r.details?.error === 'DeviceNotRegistered' ? (out[i]?.to as string) : null)).filter((x): x is string => !!x);
+  if (gone.length) await db.from('push_tokens').delete().in('token', gone);
+  return { sent: res.ok ? out.length - gone.length : 0, status: res.status };
+}
+
+const UUID = /^[0-9a-f-]{36}$/i;
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'method' }, 405);
   const secret = env('PUSH_HOOK_SECRET');
   if (!secret || !sameSecret(req.headers.get('x-push-secret') ?? '', secret)) return json({ error: 'auth' }, 401);
   try {
-    const body = (await req.json().catch(() => ({}))) as { type?: string; id?: string };
-    if (body.type !== 'coach_message' || typeof body.id !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.id)) return json({ error: 'bad_request' }, 400);
+    const body = (await req.json().catch(() => ({}))) as { type?: string; id?: string; from?: string };
+    if (typeof body.id !== 'string' || !UUID.test(body.id)) return json({ error: 'bad_request' }, 400);
     const db = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'), { auth: { persistSession: false } });
-    return json(await coachMessage(db, body.id));
+    if (body.type === 'coach_message') return json(await coachMessage(db, body.id));
+    if (body.type === 'group_ping' && typeof body.from === 'string' && UUID.test(body.from)) return json(await groupPing(db, body.id, body.from));
+    return json({ error: 'bad_request' }, 400);
   } catch (e) {
     return json({ error: String(e).slice(0, 200) }, 500);
   }
