@@ -20,6 +20,7 @@ import { Text } from '../Text';
 import { useToast } from '../Toast';
 import { Button, Card, Chip, Option, Row, Springy } from '../ui';
 import { CutLine } from './ExNotes';
+import { NoPhoneSheet } from './NoPhoneSheet';
 import { useRecovery } from './RecoveryCard';
 
 /** Today's workout: home mode and short version apply. */
@@ -276,6 +277,7 @@ export function WorkoutCard() {
   const next = useNextWorkout();
   const stale = useStaleSession();
   const [skipOpen, setSkipOpen] = useState(false);
+  const [noPhone, setNoPhone] = useState(false);
   const [anotherOpen, setAnotherOpen] = useState(false);
   const cycle = useCycleToday();
   const toast = useToast();
@@ -537,13 +539,21 @@ export function WorkoutCard() {
         />
       ) : null}
       {!train.session ? (
-        <Springy onPress={() => setSkipOpen(true)} style={{ alignSelf: 'center', marginTop: 12 }}>
-          <Text variant="small" weight={700} color="link">
-            {t('Can’t train today?')}
-          </Text>
-        </Springy>
+        <Row gap={18} style={{ justifyContent: 'center', marginTop: 12, flexWrap: 'wrap' }}>
+          <Springy onPress={() => setNoPhone(true)}>
+            <Text variant="small" weight={700} color="link">
+              {t('Trained without your phone?')}
+            </Text>
+          </Springy>
+          <Springy onPress={() => setSkipOpen(true)}>
+            <Text variant="small" weight={700} color="link">
+              {t('Can’t train today?')}
+            </Text>
+          </Springy>
+        </Row>
       ) : null}
       <SkipDaySheet open={skipOpen} onClose={() => setSkipOpen(false)} />
+      <NoPhoneSheet open={noPhone} onClose={() => setNoPhone(false)} name={today.name!} ex={wo.ex} />
     </Card>
   );
 }

@@ -5484,4 +5484,12 @@ export const AR: Record<string, string> = {
   "Spread {n} kcal": "وزّع {n} سعرة",
   "Pick the days. It’s shared evenly between them, at most {m} kcal on one day.": "اختر الأيام، وتتوزع عليها بالتساوي، وأكثر شي {m} سعرة باليوم.",
   "+{n} kcal on each of {d} days": "+{n} سعرة لكل يوم من {d} أيام",
+  "Trained without your phone?": "تمرنت بدون جوالك؟",
+  "Log it, so your week, streak and progress stay right.": "سجّله، عشان أسبوعك واستمراريتك وتقدمك يبقون صح.",
+  "How long?": "كم مدته؟",
+  "Add my sets": "أضيف جولاتي",
+  "Just mark it done": "بس سجله إنه تم",
+  "Your sets": "جولاتك",
+  "From today’s plan with your last weights. Change what was different, or take off what you skipped.": "من خطة اليوم مع آخر أوزانك. غيّر اللي كان مختلف، أو احذف اللي ما سويته.",
+  "{w} saved. Nice work.": "انحفظ {w}. شغل حلو.",
 };

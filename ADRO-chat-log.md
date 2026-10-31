@@ -984,6 +984,15 @@ Passwords and keys are left out on purpose.
   - New caffeineMuted() in lib/caffeine.ts, so a muted day doesn't open it.
 - Checked on the web build. It can't be checked on an iPhone from here, so it should be checked after the OTA.
 
+## 31 Oct 2026: trained without your phone
+
+- Asked: a button on the workout itself, so someone who trained without their phone can log that they trained.
+- Done: on today's workout card, "Trained without your phone?" sits next to "Can't train today?". It opens a new NoPhoneSheet (src/components/train/NoPhoneSheet.tsx):
+  - "How long?": 30, 45, 60, 75 or 90 min.
+  - "Add my sets": today's planned exercises with your last weights (or the target) and the planned reps, in the existing EditLog editor. You change what was different, remove sets or exercises, then save.
+  - "Just mark it done": saves the workout with no sets.
+- Both save a normal workout log through train.addLog, with today's workout name (so the card shows Done and the week gets its tick), the minutes, kcal (5 METs) and the volume from the sets. No records are claimed. App only, checked on the web build in Arabic and English.
+
 ---
 
 
