@@ -899,6 +899,20 @@ Passwords and keys are left out on purpose.
 - They're written again whenever water changes or the app opens. The next days' reminders go last in the phone's limit of 64.
 - Checked with a script (0, 600, 1500 and 3000 ml at 1 pm). App only.
 
+## 31 Oct 2026: OTA sent ("حدثه")
+
+- OTA fe3dc663 (iOS update 01a19066), runtime 6e1d9a57 = build 17, local commit 7dc326d on ota17 (not pushed). It has:
+  - week start by country;
+  - the group workout's solo-style design;
+  - the "See or edit sets" button;
+  - the Train together steps (editable plan, invite preview, late join, "I'm here", competitive tip, cardio together, instant reopen);
+  - "do the same?" prompts and swaps for each person;
+  - group workouts counting in Train, and the next-day recovery note;
+  - no set or round counters in sports;
+  - vitamin reminders like Apple's;
+  - water reminders that follow what you drank.
+- Left out: the react-native-view-shot package. On ota17, storyShot returns null, so "Share on a photo" stays hidden until build 18.
+
 ---
 
 
