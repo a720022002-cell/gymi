@@ -965,7 +965,8 @@ Passwords and keys are left out on purpose.
   - Shown for gain or maintain goals. Not when cutting, with a coach, or when pregnant.
   - Only on today, only when yesterday was logged (at least 400 kcal), with at least 300 kcal left, and once a day (plan.carryDay).
   - "Yesterday's left" means yesterday's goal plus that day's moves, minus what was eaten.
-  - Buttons: "Today +N" (at most 800), "3 days +N a day" (at most 2,400 in total), "Not now". Undo is in the toast.
+  - Buttons: "Today +N" (at most 800), "Choose days", "Not now". Undo is in the toast.
+  - "Choose days" (changed the same day; it was "3 days") opens a popup with the next 7 days (Today, Tomorrow, then weekdays). The next 3 days are picked to start with, and you can pick any days. It's shared evenly, at most 800 a day, with a live "+N kcal on each of D days" line, then Add or Cancel.
   - Saved as calorie_moves with kind 'balance': minus on yesterday, plus on the chosen days, so it isn't offered twice. No database change.
 - The "+150 kcal when your weight hasn't changed" card stays as it is.
 

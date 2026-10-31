@@ -5479,7 +5479,9 @@ export const AR: Record<string, string> = {
   "To keep gaining, you can make it up. Add it to today, or spread it over the next days.": "عشان تكمّل زيادة، تقدر تعوضها. ضيفها لليوم، أو وزّعها على الأيام الجاية.",
   "If you’re hungry, you can make it up. Add it to today, or spread it over the next days.": "لو جوعان، تقدر تعوضها. ضيفها لليوم، أو وزّعها على الأيام الجاية.",
   "Today +{n}": "اليوم +{n}",
-  "3 days +{n}": "3 أيام +{n}",
   "+{n} kcal added to today": "انضافت +{n} سعرة لليوم",
-  "+{n} kcal a day for the next {d} days": "+{n} سعرة كل يوم لمدة {d} أيام",
+  "Choose days": "اختر الأيام",
+  "Spread {n} kcal": "وزّع {n} سعرة",
+  "Pick the days. It’s shared evenly between them, at most {m} kcal on one day.": "اختر الأيام، وتتوزع عليها بالتساوي، وأكثر شي {m} سعرة باليوم.",
+  "+{n} kcal on each of {d} days": "+{n} سعرة لكل يوم من {d} أيام",
 };

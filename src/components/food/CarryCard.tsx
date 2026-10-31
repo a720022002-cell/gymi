@@ -2,15 +2,17 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { useT } from '@/i18n';
+import { DAYS } from '@/lib/training';
 import { useFood } from '@/lib/food';
 import { addDays, fmt } from '@/lib/nutrition';
 import { supabase } from '@/lib/supabase';
 import { useSettings } from '@/theme/settings';
 
 import { Icon } from '../Icon';
+import { Sheet } from '../Sheet';
 import { Text } from '../Text';
 import { useToast } from '../Toast';
-import { Button, Card, Row } from '../ui';
+import { Button, Card, Chip, Row } from '../ui';
 
 /** Most a day goes up by when catching up (a much bigger day is hard to eat). */
 const DAY_MAX = 800;
@@ -28,6 +30,9 @@ export function CarryCard() {
   const yesterday = addDays(today, -1);
   const [left, setLeft] = useState<{ day: string; kcal: number } | null>(null);
   const [busy, setBusy] = useState(false);
+  // Choosing the days to spread it over (a popup with the next 7 days).
+  const [pickOpen, setPickOpen] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
   const goal = food.plan.goal;
   const ask = food.ready && food.setupDone && food.isToday && !food.coach && !food.preg && goal <= 2 && food.plan.carryDay !== today;
   const base = food.goalsFor(yesterday).kcal;
@@ -56,8 +61,10 @@ export function CarryCard() {
   const kcal = left?.day === today ? left.kcal : 0;
   if (!ask || kcal < 300) return null;
   const todayAdd = Math.min(kcal, DAY_MAX);
-  const spread = Math.min(kcal, DAY_MAX * 3);
-  const per = Math.round(spread / 3 / 10) * 10;
+  const week = Array.from({ length: 7 }, (_, i) => addDays(today, i));
+  // Spread evenly over the picked days, at most DAY_MAX on each.
+  const per = picked.length ? Math.round(Math.min(kcal, DAY_MAX * picked.length) / picked.length / 10) * 10 : 0;
+  const dayLabel = (d: string) => (d === today ? t('Today') : d === addDays(today, 1) ? t('Tomorrow') : t(DAYS[new Date(`${d}T12:00:00`).getDay()]));
 
   const apply = async (days: string[], each: number) => {
     setBusy(true);
@@ -67,7 +74,7 @@ export function CarryCard() {
     await food.updatePlan({ carryDay: today });
     setBusy(false);
     if (!added.length) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
-    toast(days.length === 1 ? t('+{n} kcal added to today', { n: fmt(each) }) : t('+{n} kcal a day for the next {d} days', { n: fmt(each), d: days.length }), {
+    toast(days.length === 1 && days[0] === today ? t('+{n} kcal added to today', { n: fmt(each) }) : t('+{n} kcal on each of {d} days', { n: fmt(each), d: days.length }), {
       ai: true,
       undo: () => food.removeMoves(added.map((a) => a.id)),
     });
@@ -86,9 +93,43 @@ export function CarryCard() {
       </Row>
       <Row gap={8} style={{ marginTop: 12, flexWrap: 'wrap' }}>
         <Button small disabled={busy} title={t('Today +{n}', { n: fmt(todayAdd) })} onPress={() => apply([today], todayAdd)} />
-        <Button small kind="glass" disabled={busy} title={t('3 days +{n}', { n: fmt(per) })} onPress={() => apply([today, addDays(today, 1), addDays(today, 2)], per)} />
+        <Button
+          small
+          kind="glass"
+          icon="cal"
+          disabled={busy}
+          title={t('Choose days')}
+          onPress={() => {
+            setPicked([today, addDays(today, 1), addDays(today, 2)]);
+            setPickOpen(true);
+          }}
+        />
         <Button small kind="ghost" disabled={busy} title={t('Not now')} onPress={() => food.updatePlan({ carryDay: today })} />
       </Row>
+      <Sheet open={pickOpen} onClose={() => setPickOpen(false)}>
+        <Text variant="h2">{t('Spread {n} kcal', { n: fmt(kcal) })}</Text>
+        <Text variant="small" color="sec" style={{ marginTop: 4 }}>
+          {t('Pick the days. It’s shared evenly between them, at most {m} kcal on one day.', { m: fmt(DAY_MAX) })}
+        </Text>
+        <Row gap={8} style={{ flexWrap: 'wrap', marginTop: 14 }}>
+          {week.map((d) => (
+            <Chip key={d} title={dayLabel(d)} on={picked.includes(d)} onPress={() => setPicked((p) => (p.includes(d) ? p.filter((x) => x !== d) : [...p, d].sort()))} />
+          ))}
+        </Row>
+        <Text weight={700} style={{ marginTop: 16 }}>
+          {picked.length ? t('+{n} kcal on each of {d} days', { n: fmt(per), d: picked.length }) : t('Pick at least one day')}
+        </Text>
+        <Button
+          title={t('Add')}
+          disabled={!picked.length || busy}
+          style={{ marginTop: 14 }}
+          onPress={async () => {
+            setPickOpen(false);
+            await apply(picked, per);
+          }}
+        />
+        <Button kind="ghost" title={t('Cancel')} style={{ marginTop: 6 }} onPress={() => setPickOpen(false)} />
+      </Sheet>
     </Card>
   );
 }
