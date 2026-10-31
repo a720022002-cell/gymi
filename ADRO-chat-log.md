@@ -970,6 +970,10 @@ Passwords and keys are left out on purpose.
   - Saved as calorie_moves with kind 'balance': minus on yesterday, plus on the chosen days, so it isn't offered twice. No database change.
 - The "+150 kcal when your weight hasn't changed" card stays as it is.
 
+## 31 Oct 2026: OTA sent ("حدثه")
+
+- OTA c8ed3f95 (iOS update 01a1929b), runtime 6e1d9a57 = build 17, local commit 5f995fd on ota17 (not pushed). It has: the time picker centred in its box, the leftover-calories card, and "Choose days" for the leftover calories. The website changes (Adro Band, Clothes, npm ci) were already live through Vercel.
+
 ---
 
 
