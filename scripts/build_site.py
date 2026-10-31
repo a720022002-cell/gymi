@@ -98,6 +98,19 @@ section{padding:72px 0}.sec-title{max-width:640px;margin-bottom:34px}
 .show .shot{display:flex;justify-content:center;background:linear-gradient(160deg,var(--soft),#fff);border-radius:32px;padding:40px 20px}
 .show .phone{width:min(270px,70vw)}
 @media(max-width:860px){.show,.show.flip{grid-template-columns:1fr;gap:28px}.show.flip .txt{order:0}}
+/* Adro Band */
+.aband{color:var(--ink)}.aband{padding:130px 0}.aband .btag{display:inline-block;background:var(--blue);color:#fff;border-radius:20px;padding:6px 14px;font-weight:700;font-size:14px}
+.aband .hero-img{width:min(620px,92vw);margin:40px auto 0;display:block;height:auto}
+.aband .boffer{display:inline-flex;align-items:center;gap:12px;background:#F5F5F7;border-radius:22px;padding:14px 22px;margin-top:28px;font-weight:700;font-size:17px;text-align:start}
+.aband .boffer b{color:var(--blue)}
+.bswatch{display:flex;gap:10px;justify-content:center;margin-top:18px;color:#6E6E73;font-weight:600;font-size:15px;align-items:center}
+.bswatch i{width:18px;height:18px;border-radius:50%;display:inline-block;border:1px solid #D2D2D7}
+.bspecs{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:56px;text-align:start}
+.bspec{background:#F5F5F7;border-radius:26px;padding:26px}.bspec h3{font-size:19px;margin:0 0 12px}
+.bspec ul{list-style:none;padding:0;margin:0;display:grid;gap:8px}.bspec li{display:block;color:#3A3A3C;font-size:15px;line-height:1.4}.bspec li b{color:#1D1D1F}
+.btracks{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:40px}
+.aband .bfine{color:#86868B;font-size:13px;max-width:640px;margin:28px auto 0}
+@media(max-width:900px){.bspecs{grid-template-columns:1fr 1fr}}@media(max-width:560px){.bspecs{grid-template-columns:1fr}}
 /* devices */
 .chips{display:flex;flex-wrap:wrap;gap:10px}.chip{background:#fff;border:1px solid var(--line);border-radius:22px;padding:10px 16px;font-weight:700;font-size:14px}
 .chip.on{border-color:var(--blue);color:var(--blue)}
@@ -169,7 +182,7 @@ def page(title_en, title_ar, desc, body, path, dark=False):
 <body{' class="dk"' if dark else ''}>
 <nav class="top{" dark" if dark else ""}"><div class="wrap nav">
 <a href="/site" aria-label="Adro">{logo(24)}</a>
-<div class="links"><a href="/site#all">{t('Features', 'المميزات')}</a><a href="/site#devices">{t('Watches', 'الساعات')}</a><a href="/site#pricing">{t('Pricing', 'الأسعار')}</a><a href="/site#faq">{t('FAQ', 'الأسئلة')}</a></div>
+<div class="links"><a href="/site#band">Adro Band</a><a href="/site#all">{t('Features', 'المميزات')}</a><a href="/site#devices">{t('Watches', 'الساعات')}</a><a href="/site#pricing">{t('Pricing', 'الأسعار')}</a><a href="/site#faq">{t('FAQ', 'الأسئلة')}</a></div>
 <button class="lang" type="button" onclick="setLang(document.documentElement.lang==='ar'?'en':'ar')" aria-label="Change language">{t('ع', 'EN')}</button>
 </div></nav>
 {body}
@@ -468,6 +481,45 @@ def home():
 <div class="phone c"><img src="/site/img/home-en.webp" data-en="/site/img/home-en.webp" data-ar="/site/img/home-ar.webp" width="585" height="1266" alt="{t('Adro home screen', 'الشاشة الرئيسية في ادرو')}"></div>
 </div>
 </div></header>
+
+
+<section id="band" class="aband center"><div class="wrap">
+<span class="btag rv">{t('New', 'جديد')}</span>
+<h2 class="big rv d1" style="margin-top:16px">Adro Band</h2>
+<p class="sub2 rv d2">{t('No screen. No distractions. It reads your body day and night, and Adro turns it into your plan.', 'بدون شاشة. بدون إزعاج. يقرأ جسمك ليل ونهار، وادرو يحوّله لخطتك.')}</p>
+<img class="hero-img rv" src="/site/img/band.webp" width="1260" height="1109" alt="Adro Band">
+<div class="bswatch rv"><i style="background:#1D1D1F"></i>{t('Black', 'أسود')}<i style="background:#EFE9DC;margin-inline-start:10px"></i>{t('Cream', 'كريمي')}</div>
+<div class="rv"><div class="boffer">{ring(28, 'var(--blue)', 20)}<span>{t('Every band comes with <b>1 year of Adro+ free</b>.', 'كل سوار معه <b>سنة Adro+ مجاناً</b>.')}</span></div></div>
+<div class="btracks rv">{''.join(f'<span class="pill">{t(a, b)}</span>' for a, b in [('Heart rate 24/7', 'النبض طول اليوم'), ('HRV', 'HRV'), ('Sleep', 'النوم'), ('Blood oxygen', 'أكسجين الدم'), ('Stress', 'التوتر'), ('Skin temperature', 'حرارة الجسم'), ('ECG', 'تخطيط القلب ECG'), ('Steps and calories', 'الخطوات والسعرات'), ('Workouts', 'التمارين'), ('Cycle tracking', 'متابعة الدورة')])}</div>
+<div class="bspecs">
+<div class="bspec rv"><h3>{t('Battery', 'البطارية')}</h3><ul>
+<li><b>{t('7–10 days', 'من 7 إلى 10 أيام')}</b> {t('of normal use', 'استخدام عادي')}</li>
+<li><b>{t('Up to 20 days', 'لين 20 يوم')}</b> {t('on standby', 'بوضع الانتظار')}</li>
+<li>{t('Full charge in under 2.5 hours, on a magnetic dock', 'شحن كامل بأقل من ساعتين ونص، على قاعدة مغناطيسية')}</li></ul></div>
+<div class="bspec rv d1"><h3>{t('Sensors', 'الحساسات')}</h3><ul>
+<li>{t('Optical heart rate sensor', 'حساس نبض ضوئي')}</li>
+<li>{t('ECG electrode', 'قطب تخطيط القلب ECG')}</li>
+<li>{t('6-axis motion sensor (accelerometer and gyroscope)', 'حساس حركة 6 محاور (تسارع وجيروسكوب)')}</li>
+<li>{t('Skin temperature sensor', 'حساس حرارة الجسم')}</li></ul></div>
+<div class="bspec rv d2"><h3>{t('Design', 'التصميم')}</h3><ul>
+<li>{t('Zinc alloy and stainless steel, soft nylon strap (20 mm)', 'سبيكة زنك وستانلس ستيل، وسير نايلون ناعم (20 مم)')}</li>
+<li>{t('Light and small: 39.9 × 22.3 × 8.2 mm', 'خفيف وصغير: 39.9 × 22.3 × 8.2 مم')}</li>
+<li>{t('Splash resistant (1 ATM). Not for swimming.', 'يتحمل رشّ الماي (1 ATM). مو للسباحة.')}</li></ul></div>
+<div class="bspec rv"><h3>{t('Works with', 'يشتغل مع')}</h3><ul>
+<li>{t('iPhone (iOS 13 or later)', 'آيفون (iOS 13 أو أحدث)')}</li>
+<li>{t('Android 8 or later', 'أندرويد 8 أو أحدث')}</li>
+<li>Bluetooth 5.3</li></ul></div>
+<div class="bspec rv d1"><h3>{t('Safety', 'الأمان')}</h3><ul>
+<li>{t('Fall alert and SOS', 'تنبيه السقوط وطلب المساعدة SOS')}</li>
+<li>{t('High heart rate and low oxygen alerts', 'تنبيه النبض العالي والأكسجين المنخفض')}</li></ul></div>
+<div class="bspec rv d2"><h3>{t('In Adro', 'في ادرو')}</h3><ul>
+<li>{t('Your morning readiness score from your own sleep, HRV and heart rate', 'درجة جاهزيتك كل صباح من نومك والـ HRV ونبضك')}</li>
+<li>{t('Workout heart rate and zones, live', 'نبض التمرين ومناطقه مباشرة')}</li>
+<li>{t('Updates over the air', 'تحديثات بدون كيبل')}</li></ul></div>
+</div>
+<p class="sub2 rv" style="margin-top:40px">{t('Price and launch date coming soon.', 'السعر وموعد الإطلاق قريباً.')}</p>
+<p class="bfine">{t('Adro Band is a wellness device, not a medical device. It doesn’t diagnose or treat any condition.', 'سوار ادرو جهاز للصحة العامة، مو جهاز طبي. ما يشخّص ولا يعالج أي حالة.')}</p>
+</div></section>
 
 <section class="ready center"><div class="wrap">
 <h2 class="big rv">{t('It knows your body.', 'يعرف جسمك.')}</h2>

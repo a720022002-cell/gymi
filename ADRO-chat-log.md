@@ -913,6 +913,18 @@ Passwords and keys are left out on purpose.
   - water reminders that follow what you drank.
 - Left out: the react-native-view-shot package. On ota17, storyShot returns null, so "Share on a photo" stays hidden until build 18.
 
+## 31 Oct 2026: Adro Band on the website
+
+- Asked: put "Adro Band" at the top of the website, our own band, with its specs and a free year of the subscription. Website only, nothing in the app.
+- Done (scripts/build_site.py → public/site):
+  - an "Adro Band" link first in the top menu;
+  - a new section after the hero, with the band picture (public/site/img/band.webp, cropped from the owner's image), black and cream colours, and "Every band comes with 1 year of Adro+ free";
+  - what it tracks: heart rate, HRV, sleep, blood oxygen, stress, skin temperature, ECG, steps and calories, workouts, cycle;
+  - six spec cards: battery (7–10 days, 20 days standby, under 2.5 h charge, magnetic dock), sensors, design (zinc alloy and steel, 20 mm nylon strap, 39.9 × 22.3 × 8.2 mm, 1 ATM, not for swimming), works with (iOS 13+, Android 8+, Bluetooth 5.3), safety (fall alert and SOS, high heart rate and low oxygen alerts) and in Adro;
+  - "Price and launch date coming soon" and a line saying it's a wellness device, not a medical device.
+- Left out of the maker's list on purpose: blood glucose, uric acid and blood components, body fat, and "ECG diagnosis". These are medical claims that need approval, and the maker's own name (VANTA, G BAND) isn't shown.
+- Checked on desktop and phone in English and Arabic.
+
 ---
 
 
