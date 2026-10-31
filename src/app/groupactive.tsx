@@ -499,7 +499,7 @@ export default function GroupActive() {
                   </Text>
                   <Text variant="xs" color="sec">
                     {m.joined
-                      ? `${s.sets.length} × ${s.reps} ${timed ? t('s') : t('reps')}, ${t('set {a} of {b}', { a: Math.min(n + 1, s.sets.length), b: s.sets.length })}`
+                      ? `${s.sets.length} × ${s.reps} ${timed ? t('s') : t('reps')}${t(', ')}${t('set {a} of {b}', { a: Math.min(n + 1, s.sets.length), b: s.sets.length })}`
                       : t('Hasn’t joined yet')}
                   </Text>
                 </View>

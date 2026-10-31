@@ -3399,7 +3399,7 @@ export const AR: Record<string, string> = {
   "scoop": "سكوب",
   "seconds": "ثواني",
   "sesame seed": "حبة سمسم",
-  "set {a} of {b}": "المجموعة {a} من {b}",
+  "set {a} of {b}": "الجولة {a} من {b}",
   "sleep": "النوم",
   "slice": "شريحة",
   "slices": "شرايح",
