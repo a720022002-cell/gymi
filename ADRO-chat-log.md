@@ -839,6 +839,12 @@ Passwords and keys are left out on purpose.
 - Charts (nutrition, sleep) and the food day bar start the week on the day the phone's country uses (from the phone's region settings), in Arabic and English. Sunday when the phone doesn't say. Before: always Sunday in Arabic.
 - Training plan weeks are unchanged (Sunday to Saturday), since saved plans count weeks that way.
 
+## Group workout looks like the solo workout (31 Oct 2026)
+
+- The live group workout screen now uses the solo workout's design: "x of y sets" with a timer and a progress bar, numbered exercise chips (white when picked, green check when your sets are done), the name with an info icon (opens how-to), a swap icon (host), kg/lb per exercise, "reps N", Add set / Remove set, "Next: …" and page dots.
+- Kept from before: "Live with N friends", friends' progress under your sets, the "Your turn / Done set" bar.
+- The workout timer moved to `components/train/Elapsed.tsx` (used by both screens).
+
 ---
 
 

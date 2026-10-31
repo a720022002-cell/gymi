@@ -11,7 +11,9 @@ import { Sheet } from '@/components/Sheet';
 import { Avatar } from '@/components/social/Avatar';
 import { fontFor, Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
-import { Button, Card, Chip, Row, Springy } from '@/components/ui';
+import { Bar } from '@/components/Ring';
+import { Elapsed } from '@/components/train/Elapsed';
+import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import {
@@ -31,7 +33,7 @@ import {
 import { setSessionStatus } from '@/lib/social';
 import { useTrain, type WorkoutLog } from '@/lib/train';
 import { exInfo, exMuscle, muscleLabel, workoutKcal } from '@/lib/training';
-import { useWeight } from '@/lib/units';
+import { useExerciseWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
 const digits = (v: string, dec: boolean) =>
@@ -53,8 +55,8 @@ type Data = { id: string; g: GroupSessionFull | null; board: BoardMember[] };
 /** Live group workout: take turns, log your own weights, see everyone's sets (design: groupactive). */
 export default function GroupActive() {
   const { t, lang } = useT();
-  const W = useWeight();
-  const { colors: c } = useSettings();
+  const Wf = useExerciseWeight();
+  const { colors: c, setExUnit } = useSettings();
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const { session, profile } = useAuth();
@@ -67,7 +69,6 @@ export default function GroupActive() {
   // Typed but not yet finished weights and reps: "exId:set" → value.
   const [typed, setTyped] = useState<Record<string, { w?: string; r?: string }>>({});
   const [view, setView] = useState<number | null>(null);
-  const [edit, setEdit] = useState(false);
   const [swap, setSwap] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
@@ -197,6 +198,13 @@ export default function GroupActive() {
   const ex = g.workout[v];
   const mySets = setsOf(meRow, ex);
   const timed = exInfo({ id: ex.id }, lang).timed || ex.type === 2;
+  // Each exercise in its own unit (kg or lb, switched on its card), like a solo workout.
+  const W = Wf(ex.id);
+  // Your sets across the whole workout, for the bar at the top.
+  const allMine = g.workout.map((x) => setsOf(meRow, x).sets);
+  const tot = allMine.reduce((a, x) => a + x.length, 0);
+  const dn = allMine.reduce((a, x) => a + x.filter((y) => y.done).length, 0);
+  const exDone = (i: number) => allMine[i].length > 0 && allMine[i].every((y) => y.done);
   const last = train.last[ex.id] ?? [];
 
   const setMySets = (exId: string, s: MySets) => writeMine({ ...my, [exId]: s });
@@ -218,19 +226,17 @@ export default function GroupActive() {
     if (si < 0) return;
     const lw = (train.last[e.id] ?? [])[si]?.w ?? 0;
     const key = `${e.id}:${si}`;
-    const w = exInfo({ id: e.id }, lang).timed || e.type === 2 ? 0 : W.toKg(+(typed[key]?.w ?? '')) || lw;
+    const w = exInfo({ id: e.id }, lang).timed || e.type === 2 ? 0 : Wf(e.id).toKg(+(typed[key]?.w ?? '')) || lw;
     const r = +(typed[key]?.r ?? '') || s.reps;
     setMySets(e.id, { ...s, sets: s.sets.map((x, j) => (j === si ? { w, r, done: true } : x)) });
   };
-  const editSets = (a: 'add' | 'del' | 'r+' | 'r-') => {
+  const editSets = (a: 'add' | 'del') => {
     const s = { ...mySets, sets: [...mySets.sets] };
     if (a === 'add' && s.sets.length < 10) s.sets.push({ w: null, r: null, done: false });
     if (a === 'del') {
       const i = s.sets.map((x) => x.done).lastIndexOf(false);
       if (s.sets.length > 1 && i >= 0) s.sets.splice(i, 1);
     }
-    if (a === 'r+') s.reps = Math.min(300, s.reps + (timed ? 5 : 1));
-    if (a === 'r-') s.reps = Math.max(1, s.reps - (timed ? 5 : 1));
     setMySets(ex.id, s);
   };
 
@@ -314,86 +320,109 @@ export default function GroupActive() {
             </Glass>
           </Springy>
         }>
-        <Row style={{ justifyContent: 'space-between' }}>
+        <Row style={{ justifyContent: 'space-between', marginBottom: 8 }}>
           <Text variant="small" weight={700} color="sec">
-            {t('Exercise {a} of {b}', { a: cur + 1, b: g.workout.length })}
+            {t('{a} of {b} sets', { a: dn, b: tot })}
           </Text>
-          <Row gap={4}>
-            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: g.status === 'live' ? c.up : c.sec }} />
-            <Text variant="xs" weight={700} color="sec">
-              {others.length === 1 ? t('Live with 1 friend') : t('Live with {n} friends', { n: others.length })}
-            </Text>
+          <Row gap={10}>
+            <Row gap={4}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: g.status === 'live' ? c.up : c.sec }} />
+              <Text variant="xs" weight={700} color="sec">
+                {others.length === 1 ? t('Live with 1 friend') : t('Live with {n} friends', { n: others.length })}
+              </Text>
+            </Row>
+            {g.started_at ? <Elapsed start={new Date(g.started_at).getTime()} /> : null}
           </Row>
         </Row>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8, marginHorizontal: -16 }} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
-          {g.workout.map((x, i) => (
-            <Chip key={`${x.id}-${i}`} title={`${i < cur || (finished && i === cur) ? '✓ ' : ''}${exName(x)}`} on={v === i} onPress={() => setView(i)} />
-          ))}
+        <Bar value={dn} max={tot} color={c.cobalt} />
+        {/* The exercises: tap one to see it. A green check once all your sets on it are done. */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginHorizontal: -20, marginTop: 14, marginBottom: 12 }} contentContainerStyle={{ gap: 8, paddingHorizontal: 20 }}>
+          {g.workout.map((x, i) => {
+            const on = v === i;
+            const done = exDone(i);
+            return (
+              <Springy
+                key={`${x.id}-${i}`}
+                onPress={() => setView(i)}
+                scaleTo={0.96}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: on }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 8, height: 40, paddingStart: 6, paddingEnd: 14, borderRadius: 20, backgroundColor: on ? c.text : c.card }}>
+                <View style={[{ width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }, done ? { backgroundColor: c.up } : { borderWidth: 2, borderColor: on ? c.cobalt : c.line }]}>
+                  {done ? (
+                    <Icon name="check" size={14} color="#FFFFFF" strokeWidth={3} />
+                  ) : (
+                    <Text num size={12} color={on ? c.cobalt : 'sec'}>
+                      {i + 1}
+                    </Text>
+                  )}
+                </View>
+                <Text weight={700} size={14} color={on ? c.bg : c.text} numberOfLines={1}>
+                  {exName(x)}
+                </Text>
+              </Springy>
+            );
+          })}
         </ScrollView>
 
-        <Card style={{ marginTop: 12 }}>
-          <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <View style={{ flex: 1 }}>
-              <Text variant="xs" weight={700} color="sec">
-                {muscleLabel(exMuscle(ex.id, exInfo({ id: ex.id, n: ex.n }, lang).muscle), lang, t)}
+        <Card>
+          <Row style={{ justifyContent: 'space-between' }}>
+            {/* Tap the name for pictures and how to do it; the workout keeps going. */}
+            <Springy
+              onPress={() => router.push({ pathname: '/exercise', params: { id: ex.id } })}
+              accessibilityRole="button"
+              accessibilityLabel={t('How to do {x}', { x: exName(ex) })}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 }}>
+              <Text variant="h3" style={{ flexShrink: 1 }}>
+                {exName(ex)}
               </Text>
-              <Text variant="h2">{exName(ex)}</Text>
-            </View>
+              <Icon name="info" size={16} color={c.sec} />
+            </Springy>
             {host && alts.length ? (
-              <Springy onPress={() => setSwap(true)}>
-                <Text variant="small" weight={700} color="link">
-                  {t('Swap')}
-                </Text>
+              <Springy
+                onPress={() => setSwap(true)}
+                scaleTo={0.9}
+                accessibilityRole="button"
+                accessibilityLabel={t('Swap {x}', { x: exName(ex) })}
+                style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name="swap" size={18} color={c.cobalt} />
               </Springy>
             ) : null}
           </Row>
-          <Row style={{ justifyContent: 'space-between', marginTop: 16 }}>
-            <Text weight={700}>{t('You')}</Text>
-            <Springy onPress={() => setEdit(!edit)}>
-              <Text variant="small" weight={700} color="link">
-                {t(edit ? 'Done' : 'Edit my sets')}
-              </Text>
-            </Springy>
-          </Row>
-          {edit ? (
-            <View style={{ marginTop: 8, backgroundColor: c.inset, borderRadius: 14, padding: 12 }}>
-              {(
-                [
-                  [t('Sets'), mySets.sets.length, 'del', 'add', t('Remove a set'), t('Add a set')],
-                  [t(timed ? 'Target seconds' : 'Target reps'), mySets.reps, 'r-', 'r+', t('Less'), t('More')],
-                ] as const
-              ).map(([label, val, minus, plus, la, lb], k) => (
-                <Row key={label} style={{ justifyContent: 'space-between', marginTop: k ? 8 : 0 }}>
-                  <Text variant="small" weight={700}>
-                    {label}
-                  </Text>
-                  <Row gap={8}>
-                    <Springy onPress={() => editSets(minus)} accessibilityLabel={la} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: c.card, alignItems: 'center', justifyContent: 'center' }}>
-                      <Icon name="minus" size={16} strokeWidth={2.2} />
-                    </Springy>
-                    <Text num style={{ minWidth: 28, textAlign: 'center' }}>
-                      {val}
-                    </Text>
-                    <Springy onPress={() => editSets(plus)} accessibilityLabel={lb} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: c.card, alignItems: 'center', justifyContent: 'center' }}>
-                      <Icon name="plus" size={16} strokeWidth={2.2} />
-                    </Springy>
-                  </Row>
-                </Row>
-              ))}
-              <Text variant="xs" color="sec" style={{ marginTop: 8 }}>
-                {t('Changes sync to everyone’s phone.')}
-              </Text>
-            </View>
-          ) : null}
-          <View style={{ flexDirection: 'row', marginTop: 10, marginBottom: 4 }}>
+          <Text variant="xs" color="sec">
+            {muscleLabel(exMuscle(ex.id, exInfo({ id: ex.id, n: ex.n }, lang).muscle), lang, t)}
+          </Text>
+          <View style={{ flexDirection: 'row', marginTop: 12, marginBottom: 4 }}>
             <Text variant="xs" weight={700} color="sec" center style={{ width: 36 }}>
               {t('Set')}
             </Text>
+            {timed ? (
+              <Text variant="xs" weight={700} color="sec" center style={{ flex: 1 }}>
+                —
+              </Text>
+            ) : (
+              // kg or lb for this exercise only: sets stay saved in kg.
+              <View style={{ flex: 1, alignItems: 'center' }}>
+                <View style={{ flexDirection: 'row', borderRadius: 10, padding: 2, backgroundColor: c.inset }}>
+                  {(['kg', 'lb'] as const).map((u) => (
+                    <Springy
+                      key={u}
+                      onPress={() => setExUnit(ex.id, u)}
+                      scaleTo={0.94}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: W.unit === u }}
+                      accessibilityLabel={t(u)}
+                      style={{ paddingHorizontal: 10, height: 22, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: W.unit === u ? c.text : 'transparent' }}>
+                      <Text variant="xs" weight={700} color={W.unit === u ? c.bg : c.sec}>
+                        {t(u)}
+                      </Text>
+                    </Springy>
+                  ))}
+                </View>
+              </View>
+            )}
             <Text variant="xs" weight={700} color="sec" center style={{ flex: 1 }}>
-              {timed ? '—' : W.label}
-            </Text>
-            <Text variant="xs" weight={700} color="sec" center style={{ flex: 1 }}>
-              {t(timed ? 'seconds' : 'reps')}
+              {`${t(timed ? 'seconds' : 'reps')} ${mySets.reps}`}
             </Text>
             <View style={{ width: 52 }} />
           </View>
@@ -439,6 +468,24 @@ export default function GroupActive() {
               </View>
             );
           })}
+          <Row gap={8} style={{ marginTop: 10 }}>
+            <Springy onPress={() => editSets('add')} scaleTo={0.97} style={{ flex: 1, height: 40, borderRadius: 12, backgroundColor: c.inset, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <Icon name="plus" size={16} color={c.text} />
+              <Text variant="small" weight={700}>
+                {t('Add set')}
+              </Text>
+            </Springy>
+            <Springy
+              disabled={mySets.sets.length <= 1}
+              onPress={() => editSets('del')}
+              scaleTo={0.97}
+              style={{ flex: 1, height: 40, borderRadius: 12, backgroundColor: c.inset, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: mySets.sets.length <= 1 ? 0.4 : 1 }}>
+              <Icon name="minus" size={16} color={c.down} />
+              <Text variant="small" weight={700}>
+                {t('Remove set')}
+              </Text>
+            </Springy>
+          </Row>
           <View style={{ height: 1, backgroundColor: c.line, marginVertical: 12 }} />
           {others.map((m) => {
             const s = setsOf(m, ex);
@@ -465,6 +512,13 @@ export default function GroupActive() {
             );
           })}
         </Card>
+        {v < g.workout.length - 1 ? <Button title={t('Next: {x}', { x: exName(g.workout[v + 1]) })} style={{ marginBottom: 4 }} onPress={() => setView(v + 1)} /> : null}
+        {/* Which exercise you're on; green ones are done. */}
+        <Row gap={6} style={{ justifyContent: 'center', marginTop: 10, marginBottom: 14 }}>
+          {g.workout.map((x, i) => (
+            <View key={i} style={{ width: i === v ? 20 : 7, height: 7, borderRadius: 4, backgroundColor: i === v ? c.text : exDone(i) ? c.up : c.line }} />
+          ))}
+        </Row>
         <View style={{ height: 100 }} />
       </Screen>
 

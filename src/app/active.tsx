@@ -10,6 +10,7 @@ import { Screen } from '@/components/Screen';
 import { afterSheet, Sheet } from '@/components/Sheet';
 import { fontFor, Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
+import { Elapsed } from '@/components/train/Elapsed';
 import { ExercisePicker } from '@/components/train/ExercisePicker';
 import { CutLine, LastNoteLine, NoteInput } from '@/components/train/ExNotes';
 import { Button, Card, Row, Springy } from '@/components/ui';
@@ -771,20 +772,6 @@ function WeightInput({ value, onChange, W, inputRef, ...rest }: { value: string;
 }
 
 /** The workout clock, ticking by itself so the screen doesn't redraw every second. */
-function Elapsed({ start }: { start: number }) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  const secs = Math.max(0, Math.floor((now - start) / 1000));
-  return (
-    <Text variant="small" weight={700} color="sec" num>
-      {`${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`}
-    </Text>
-  );
-}
-
 /** The rest countdown ring. The rest itself ends in components/WorkoutLive (beep and toast). */
 function RestRing({ rest }: { rest: Rest }) {
   const [now, setNow] = useState(() => Date.now());
