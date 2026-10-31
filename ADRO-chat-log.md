@@ -993,6 +993,15 @@ Passwords and keys are left out on purpose.
   - "Just mark it done": saves the workout with no sets.
 - Both save a normal workout log through train.addLog, with today's workout name (so the card shows Done and the week gets its tick), the minutes, kcal (5 METs) and the volume from the sets. No records are claimed. App only, checked on the web build in Arabic and English.
 
+## 31 Oct 2026: change the grams of a typed meal
+
+- Asked: food added with "Type it" should let you change the grams on Edit.
+- Cause: a typed (or photographed) meal was saved as one total, without its weight, so Edit only showed the numbers and ½/1.5×/2×.
+- Fix (no database change):
+  - meal-result.tsx now saves the total weight at the end of the name ("Belgian chocolate, 11 g"), like food logged by weight from search and barcode.
+  - logged.tsx reads that weight and works out the per-100 numbers from what was logged, so Edit shows "Amount". Changing it updates calories, protein, carbs, fat and the name (11 g → 30 g: 54 → 147 kcal).
+- Meals logged before this update have no weight in the name, so only the portion buttons apply to them. Checked on the web build.
+
 ---
 
 

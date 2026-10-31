@@ -139,7 +139,11 @@ export default function MealResult() {
   const allergic = allergyCheck([title, res?.title ?? ''].join(' | '), rows.map((x) => x.name));
   const add = async () => {
     if (!rows.length || tot.k <= 0) return;
-    const name = title.trim() || rows.map((x) => x.name).join(t(', '));
+    const base = title.trim() || rows.map((x) => x.name).join(t(', '));
+    // The total weight goes at the end of the name ("…, 320 g"), like food logged by weight, so the meal's amount can
+    // be changed later and its numbers follow.
+    const total = Math.round(rows.reduce((a, x) => a + grams(x), 0));
+    const name = total > 0 ? `${base.slice(0, 186)}, ${total} g` : base;
     const row = await logFood({ name: name.slice(0, 200), parts: rows.map((x) => x.name), kcal: tot.k, protein: tot.p, carbs: tot.c, fat: tot.f, meal, sugar_high: sugarHigh, fat_high: fatHigh }, toast, t);
     if (row) goBack();
   };

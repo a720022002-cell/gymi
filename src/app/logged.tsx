@@ -81,8 +81,17 @@ export default function LoggedScreen() {
   );
   // Per 100 g/ml, when we know the food: then you can change the amount and the numbers follow.
   const per = f ? factsOf(f, mine) : barcode && off && off.code === barcode && off.f.kcal ? withMine(off.f, mine) : null;
-  const perUnit: 'g' | 'ml' = f ? f.unit : 'g';
-  const g0 = per ? loggedG(per.kcal) : null;
+  // Typed or photographed meals keep their weight at the end of the name ("…, 320 g"): their numbers per 100 come
+  // from what was logged, so their amount can be changed too.
+  const byName = log.name.match(/, ([\d.]+) (g|ml)$/);
+  const nameG = byName ? Number(byName[1]) : 0;
+  const scaleBy: { kcal: number; protein: number; carbs: number; fat: number } | null = per
+    ? { kcal: per.kcal ?? 0, protein: per.protein ?? 0, carbs: per.carbs ?? 0, fat: per.fat ?? 0 }
+    : nameG > 0 && +log.kcal > 0
+      ? { kcal: (+log.kcal / nameG) * 100, protein: (+log.protein / nameG) * 100, carbs: (+log.carbs / nameG) * 100, fat: (+log.fat / nameG) * 100 }
+      : null;
+  const perUnit: 'g' | 'ml' = f ? f.unit : byName && !per ? (byName[2] as 'g' | 'ml') : 'g';
+  const g0 = per ? loggedG(per.kcal) : scaleBy ? Math.round(nameG) : null;
   const num = (v: string) => +v.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[,٫]/g, '.') || 0;
   const numField = (k: 'k' | 'p' | 'c' | 'f', label: string, unit: string) =>
     edit ? (
@@ -100,9 +109,9 @@ export default function LoggedScreen() {
     if (!edit) return;
     const g = v.replace(/[^\d.,٠-٩٫]/g, '').slice(0, 6);
     const n = num(g);
-    if (!per || !(n > 0)) return setEdit({ ...edit, g });
+    if (!scaleBy || !(n > 0)) return setEdit({ ...edit, g });
     const m = n / 100;
-    setEdit({ ...edit, g, name: renamed(edit.name, num(edit.g), n), k: String(Math.round((per.kcal ?? 0) * m)), p: r1((per.protein ?? 0) * m), c: r1((per.carbs ?? 0) * m), f: r1((per.fat ?? 0) * m) });
+    setEdit({ ...edit, g, name: renamed(edit.name, num(edit.g), n), k: String(Math.round(scaleBy.kcal * m)), p: r1(scaleBy.protein * m), c: r1(scaleBy.carbs * m), f: r1(scaleBy.fat * m) });
   };
   const scale = (m: number) => edit && setEdit({ ...edit, ...(num(edit.g) > 0 ? { g: String(Math.round(num(edit.g) * m)), name: renamed(edit.name, num(edit.g), num(edit.g) * m) } : null), k: String(Math.round(num(edit.k) * m)), p: r1(num(edit.p) * m), c: r1(num(edit.c) * m), f: r1(num(edit.f) * m) });
   const save = async () => {
@@ -166,7 +175,7 @@ export default function LoggedScreen() {
       {edit ? (
         <View style={{ marginTop: 4 }}>
           <Field label={t('Name')} value={edit.name} onChangeText={(v) => setEdit({ ...edit, name: v })} maxLength={200} />
-          {per ? <Field label={t('Amount')} value={edit.g} onChangeText={setGrams} inputMode="decimal" keyboardType="decimal-pad" ltr unit={t(perUnit)} /> : null}
+          {scaleBy ? <Field label={t('Amount')} value={edit.g} onChangeText={setGrams} inputMode="decimal" keyboardType="decimal-pad" ltr unit={t(perUnit)} /> : null}
           <Row gap={10}>
             {numField('k', t('Calories'), t('kcal'))}
             {numField('p', t('Protein'), t('g'))}
