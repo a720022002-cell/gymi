@@ -924,6 +924,7 @@ Passwords and keys are left out on purpose.
   - "Price and launch date coming soon" and a line saying it's a wellness device, not a medical device.
 - Left out of the maker's list on purpose: blood glucose, uric acid and blood components, body fat, and "ECG diagnosis". These are medical claims that need approval, and the maker's own name (VANTA, G BAND) isn't shown.
 - Checked on desktop and phone in English and Arabic.
+- Found while sending it: the live site hadn't updated since 24 Oct. Every Vercel build failed in `npm install`, because node_modules from the build cache already had the expo-widgets patch, so patch-package couldn't apply it again. vercel.json now uses `npm ci`, which starts from a clean node_modules.
 
 ---
 
