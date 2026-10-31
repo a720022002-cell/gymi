@@ -45,7 +45,8 @@ export type SportInfo = {
   intervals: boolean;
   /** Stop-and-go (points, plays, rounds): heart rate spikes are normal, so effort is judged on a few minutes' average. */
   intermittent: boolean;
-  /** Sets (racket sports, volleyball) or rounds (combat) to count, with a rest timer; rounds can have a set length. */
+  /** Sets (volleyball) or rounds (combat) to count, with a rest timer; rounds can have a set length. Racket sports
+   * have none: just play, the session keeps time and heart rate. */
   counter: { label: 'Set' | 'Round'; rest: number; roundSec?: number } | null;
   /** Contact or fall risk, or jumping and high impact: not in pregnancy. */
   contact?: boolean;
@@ -69,10 +70,10 @@ export const SPORTS: SportInfo[] = [
   { ...base, id: 'Stairs', name: 'Stairs', group: 'Cardio', icon: 'up', met: 8.8, kind: 'Other', intervals: true, minutes: 20 },
   { ...base, id: 'JumpRope', name: 'Jump rope', group: 'Cardio', icon: 'timer', met: 11, kind: 'Other', intervals: true, impact: true, zone: 3, minutes: 15 },
   { ...base, id: 'HIIT', name: 'HIIT', group: 'Cardio', icon: 'flame', met: 8, kind: 'Other', intervals: true, impact: true, zone: 4, minutes: 20 },
-  { ...base, id: 'Padel', name: 'Padel', group: 'Racket sports', icon: 'trophy', met: 7, kind: 'Other', intermittent: true, counter: { label: 'Set', rest: 90 }, zone: 3, minutes: 90 },
-  { ...base, id: 'Tennis', name: 'Tennis', group: 'Racket sports', icon: 'trophy', met: 7.3, kind: 'Other', intermittent: true, counter: { label: 'Set', rest: 90 }, zone: 3, minutes: 60 },
-  { ...base, id: 'Squash', name: 'Squash', group: 'Racket sports', icon: 'trophy', met: 9, kind: 'Other', intermittent: true, counter: { label: 'Set', rest: 90 }, contact: true, zone: 3, minutes: 45 },
-  { ...base, id: 'Badminton', name: 'Badminton', group: 'Racket sports', icon: 'trophy', met: 5.5, kind: 'Other', intermittent: true, counter: { label: 'Set', rest: 60 }, zone: 3, minutes: 60 },
+  { ...base, id: 'Padel', name: 'Padel', group: 'Racket sports', icon: 'trophy', met: 7, kind: 'Other', intermittent: true, zone: 3, minutes: 90 },
+  { ...base, id: 'Tennis', name: 'Tennis', group: 'Racket sports', icon: 'trophy', met: 7.3, kind: 'Other', intermittent: true, zone: 3, minutes: 60 },
+  { ...base, id: 'Squash', name: 'Squash', group: 'Racket sports', icon: 'trophy', met: 9, kind: 'Other', intermittent: true, contact: true, zone: 3, minutes: 45 },
+  { ...base, id: 'Badminton', name: 'Badminton', group: 'Racket sports', icon: 'trophy', met: 5.5, kind: 'Other', intermittent: true, zone: 3, minutes: 60 },
   { ...base, id: 'Football', name: 'Football', group: 'Team sports', icon: 'users', met: 7, kind: 'Other', intermittent: true, contact: true, impact: true, zone: 3, minutes: 90 },
   { ...base, id: 'Basketball', name: 'Basketball', group: 'Team sports', icon: 'users', met: 6.5, kind: 'Other', intermittent: true, contact: true, impact: true, zone: 3, minutes: 60 },
   { ...base, id: 'Volleyball', name: 'Volleyball', group: 'Team sports', icon: 'users', met: 4, kind: 'Other', intermittent: true, counter: { label: 'Set', rest: 120 }, impact: true, zone: 3, minutes: 60 },

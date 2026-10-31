@@ -867,6 +867,11 @@ Passwords and keys are left out on purpose.
 - Asked: after finishing a group workout, Train shows it and counts it as your workout. The next day, if your workout works the same muscles, a note says to make sure you've recovered: "you trained this yesterday with Hamdan".
 - Done: useToday (WorkoutCard.tsx) counts a Together log saved today as today's workout. The done card shows "Legs, together with Ali and Hamdan" (title and people come from togetherOf(logId) in lib/groupWorkout.ts, through the log's group_session; loaded once per log). New: useYesterdayOverlap. When today's planned workout works a big muscle group (chest, back, shoulders, legs, arms) that a workout yesterday also worked, the card shows "Make sure you've recovered. Yesterday you trained legs with Ali and Hamdan, and today's workout works them again. Still sore? Go lighter or swap the day." Without a group workout it leaves out the names. App only. Checked in Arabic on the web build with sample data.
 
+## 31 Oct 2026: racket sports without sets or score
+
+- Asked: in cardio, padel and the other racket sports should stop recording sets and points.
+- Done: Padel, Tennis, Squash and Badminton no longer have a set counter (sports.ts). The live session shows no "Set done" card, rest timer or score. It keeps time, heart rate and the coach's tips. Volleyball keeps sets and combat sports keep rounds. App only.
+
 ---
 
 
