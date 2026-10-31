@@ -20,8 +20,8 @@ export function groupExName(x: GroupEx, lang: 'en' | 'ar', t: (s: string) => str
   return exInfo({ id: x.id, n: x.n, ar: x.ar }, lang).name;
 }
 export type GroupSet = { w: number | null; r: number | null; done: boolean };
-/** Your sets for one exercise. reps is your target (you can change it). */
-export type MySets = { reps: number; sets: GroupSet[] };
+/** Your sets for one exercise. reps is your target (you can change it). alt: the exercise you do in its place. */
+export type MySets = { reps: number; sets: GroupSet[]; alt?: GroupEx };
 export type BoardMember = SessionMember & { pos: number; sets: Record<string, MySets> };
 export type Person = { id: string; name: string | null; username: string; joined: boolean };
 export type GroupSessionRow = { id: string; host: string; host_name: string | null; status: 'open' | 'live' | 'done'; created_at: string; members: number; joined: boolean; scheduled_at: string | null; people: Person[] };
@@ -104,6 +104,32 @@ export function setsOf(m: Pick<BoardMember, 'level' | 'sets'>, ex: GroupEx): MyS
   return { reps: sc.reps, sets: Array.from({ length: sc.sets }, () => ({ w: null, r: null, done: false })) };
 }
 
+/** The exercise someone actually does for a spot in the workout (their own swap, or the group's). */
+export const exOf = (m: Pick<BoardMember, 'level' | 'sets'>, ex: GroupEx): GroupEx => setsOf(m, ex).alt ?? ex;
+
+/** A change a friend made during the workout, for the others to copy or not. alt null: back to the group's exercise. */
+export type GroupChange = { key: string; who: string; exId: string; kind: 'add' | 'del' | 'swap'; alt?: GroupEx | null };
+
+/** What friends changed between two looks at the board: a set added or removed, or an exercise swapped. */
+export function groupChanges(workout: GroupEx[], before: BoardMember[], after: BoardMember[], me: string): GroupChange[] {
+  const out: GroupChange[] = [];
+  for (const m of after) {
+    const p = before.find((x) => x.user_id === m.user_id);
+    if (m.user_id === me || !m.joined || !p?.joined) continue;
+    const who = m.name || m.username;
+    for (const ex of workout) {
+      if (isCardio(ex)) continue;
+      const a = setsOf(p, ex);
+      const b = setsOf(m, ex);
+      const stamp = `${m.user_id}:${ex.id}:${m.updated_at}`;
+      if (b.sets.length > a.sets.length) out.push({ key: `${stamp}:add`, who, exId: ex.id, kind: 'add' });
+      else if (b.sets.length < a.sets.length) out.push({ key: `${stamp}:del`, who, exId: ex.id, kind: 'del' });
+      if ((a.alt?.id ?? '') !== (b.alt?.id ?? '')) out.push({ key: `${stamp}:swap`, who, exId: ex.id, kind: 'swap', alt: b.alt ?? null });
+    }
+  }
+  return out;
+}
+
 const allDone = (s: MySets) => s.sets.every((x) => x.done);
 
 /**
@@ -169,6 +195,9 @@ export async function pingGroup(id: string) {
  */
 export function groupNudge(ex: GroupEx, me: BoardMember | undefined, others: BoardMember[]) {
   if (!me || isCardio(ex) || ex.type === 2) return null;
+  // Only friends doing the same exercise as you.
+  const mineId = exOf(me, ex).id;
+  others = others.filter((m) => exOf(m, ex).id === mineId);
   const top = (m: BoardMember) => {
     const done = setsOf(m, ex).sets.filter((s) => s.done && (s.w ?? 0) > 0);
     if (!done.length) return null;

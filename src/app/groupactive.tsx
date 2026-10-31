@@ -14,15 +14,19 @@ import { fontFor, Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Bar } from '@/components/Ring';
 import { Elapsed } from '@/components/train/Elapsed';
+import { ExercisePicker } from '@/components/train/ExercisePicker';
 import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
 import {
   type BoardMember,
   cardioSportOf,
+  exOf,
   getGroupWorkout,
   GROUP_ALT,
   groupBoard,
+  type GroupChange,
+  groupChanges,
   type GroupEx,
   groupExName,
   groupNudge,
@@ -34,8 +38,8 @@ import {
   pingGroup,
   saveMySets,
   setsOf,
-  swapGroupExercise,
 } from '@/lib/groupWorkout';
+import { toPlanEx } from '@/lib/exercisesDb';
 import { setSessionStatus } from '@/lib/social';
 import { useTrain, type WorkoutLog } from '@/lib/train';
 import { sportInfo } from '@/lib/sports';
@@ -92,6 +96,10 @@ export default function GroupActive() {
   const [saving, setSaving] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const lastStatus = useRef<string | null>(null);
+  // Friends' changes (a set added or removed, an exercise swapped) waiting for your answer: do the same or not.
+  const prevBoard = useRef<BoardMember[] | null>(null);
+  const [asks, setAsks] = useState<GroupChange[]>([]);
+  const [otherPick, setOtherPick] = useState(false);
 
   // After the app was closed: the copy saved on the phone, until the fresh one arrives.
   useEffect(() => {
@@ -112,6 +120,12 @@ export default function GroupActive() {
     cache.set(id, x);
     if (g && g.status !== 'done') AsyncStorage.setItem(cacheKey(id), JSON.stringify(x)).catch(() => {});
     else AsyncStorage.removeItem(cacheKey(id)).catch(() => {});
+    const before = prevBoard.current;
+    prevBoard.current = board;
+    if (before && g?.status === 'live') {
+      const ch = groupChanges(g.workout, before, board, me);
+      if (ch.length) setAsks((a) => [...a, ...ch.filter((c) => !a.some((y) => y.key === c.key))].slice(-5));
+    }
     setD(x);
     setMine((m) => (m && m.id === id ? m : { id, sets: board.find((x) => x.user_id === me)?.sets ?? {} }));
     if (g && lastStatus.current === 'open' && g.status === 'live') toast(t('Everyone is in. Let’s go.'), { ai: true });
@@ -240,11 +254,13 @@ export default function GroupActive() {
 
   const { cur, turn, finished } = groupTurn(g.workout, board);
   const v = Math.min(view ?? cur, g.workout.length - 1);
-  const ex = g.workout[v];
-  const mySets = setsOf(meRow, ex);
+  const slot = g.workout[v];
+  // Your own exercise for this spot: the group's, or the one you swapped in.
+  const ex = exOf(meRow, slot);
+  const mySets = setsOf(meRow, slot);
   const cardio = isCardio(ex);
   const timed = cardio || exInfo({ id: ex.id }, lang).timed || ex.type === 2;
-  const nudge = groupNudge(ex, meRow, others);
+  const nudge = groupNudge(slot, meRow, others);
   // Each exercise in its own unit (kg or lb, switched on its card), like a solo workout.
   const W = Wf(ex.id);
   // Your sets across the whole workout, for the bar at the top.
@@ -257,25 +273,26 @@ export default function GroupActive() {
   const setMySets = (exId: string, s: MySets) => writeMine({ ...my, [exId]: s });
   const markSet = (si: number) => {
     const st = mySets.sets[si];
-    const key = `${ex.id}:${si}`;
-    if (st.done) return setMySets(ex.id, { ...mySets, sets: mySets.sets.map((x, j) => (j === si ? { ...x, done: false } : x)) });
+    const key = `${slot.id}:${si}`;
+    if (st.done) return setMySets(slot.id, { ...mySets, sets: mySets.sets.map((x, j) => (j === si ? { ...x, done: false } : x)) });
     const lw = last[si]?.w ?? last[last.length - 1]?.w ?? 0;
     const w = timed ? 0 : W.toKg(+(typed[key]?.w ?? '')) || st.w || lw || 0;
     const r = +(typed[key]?.r ?? '') || st.r || mySets.reps;
-    setMySets(ex.id, { ...mySets, sets: mySets.sets.map((x, j) => (j === si ? { w, r, done: true } : x)) });
+    setMySets(slot.id, { ...mySets, sets: mySets.sets.map((x, j) => (j === si ? { w, r, done: true } : x)) });
     if (v === cur) setView(null);
   };
   const doneSet = () => {
     setView(null);
-    const e = g.workout[cur];
-    const s = setsOf(meRow, e);
+    const e0 = g.workout[cur];
+    const e = exOf(meRow, e0);
+    const s = setsOf(meRow, e0);
     const si = s.sets.findIndex((x) => !x.done);
     if (si < 0) return;
     const lw = (train.last[e.id] ?? [])[si]?.w ?? 0;
-    const key = `${e.id}:${si}`;
+    const key = `${e0.id}:${si}`;
     const w = isCardio(e) || exInfo({ id: e.id }, lang).timed || e.type === 2 ? 0 : Wf(e.id).toKg(+(typed[key]?.w ?? '')) || lw;
     const r = +(typed[key]?.r ?? '') || s.reps;
-    setMySets(e.id, { ...s, sets: s.sets.map((x, j) => (j === si ? { w, r, done: true } : x)) });
+    setMySets(e0.id, { ...s, sets: s.sets.map((x, j) => (j === si ? { w, r, done: true } : x)) });
   };
   const editSets = (a: 'add' | 'del') => {
     const s = { ...mySets, sets: [...mySets.sets] };
@@ -284,7 +301,24 @@ export default function GroupActive() {
       const i = s.sets.map((x) => x.done).lastIndexOf(false);
       if (s.sets.length > 1 && i >= 0) s.sets.splice(i, 1);
     }
-    setMySets(ex.id, s);
+    setMySets(slot.id, s);
+  };
+  /** Change one exercise's sets the way a friend did (or your own swap). alt null: back to the group's exercise. */
+  const applyTo = (exId: string, kind: GroupChange['kind'], alt?: GroupEx | null) => {
+    const e = g.workout.find((x) => x.id === exId);
+    if (!e) return;
+    const s0 = setsOf(meRow, e);
+    const s = { ...s0, sets: [...s0.sets] };
+    if (kind === 'add' && s.sets.length < 10) s.sets.push({ w: null, r: null, done: false });
+    if (kind === 'del') {
+      const i = s.sets.map((x) => x.done).lastIndexOf(false);
+      if (s.sets.length > 1 && i >= 0) s.sets.splice(i, 1);
+    }
+    if (kind === 'swap') {
+      if (alt) s.alt = alt;
+      else delete s.alt;
+    }
+    setMySets(exId, s);
   };
 
   // Save my sets as a normal workout: real weights, volume and records.
@@ -306,8 +340,9 @@ export default function GroupActive() {
       const prs: WorkoutLog['prs'] = [];
       let volume = 0;
       let sets = 0;
-      for (const x of g.workout) {
-        const done = setsOf(meRow, x)
+      for (const x0 of g.workout) {
+        const x = exOf(meRow, x0);
+        const done = setsOf(meRow, x0)
           .sets.filter((s) => s.done)
           .map((s) => ({ w: s.w ?? 0, r: s.r ?? 0 }));
         if (!done.length) continue;
@@ -318,13 +353,13 @@ export default function GroupActive() {
           exercises.push({ id: x.id, n, time: true, sets: done.map((s) => ({ w: 0, r: s.r * 60 })) });
           continue;
         }
-        const n = exInfo({ id: x.id, n: x.n }, 'en').name;
+        const n = exInfo({ id: x.id, n: x.n, ar: x.ar, m: x.m }, 'en').name;
         sets += done.length;
         done.forEach((s) => (volume += s.w * s.r));
         const top = Math.max(...done.map((s) => s.w));
         const prev = train.best[x.id] ?? 0;
         if (top > prev && prev > 0) prs.push({ id: x.id, n, w: top });
-        const info = exInfo({ id: x.id, n: x.n }, 'en');
+        const info = exInfo({ id: x.id, n: x.n, m: x.m }, 'en');
         exercises.push({ id: x.id, n, ...(info.muscle !== 'Other' ? { m: info.muscle } : {}), ...(info.timed || x.type === 2 ? { time: true } : {}), sets: done });
       }
       if (sets) {
@@ -359,7 +394,17 @@ export default function GroupActive() {
     router.replace('/train');
   };
 
-  const alts = (GROUP_ALT[ex.id] ?? []).filter((a) => !g.workout.some((x) => x.id === a));
+  const alts = (GROUP_ALT[slot.id] ?? []).filter((a) => a !== ex.id && !g.workout.some((x) => x.id === a));
+  // The first change from a friend that still makes a difference to you.
+  const ask = asks.find((a) => {
+    const e = g.workout.find((x) => x.id === a.exId);
+    if (!e) return false;
+    const s0 = setsOf(meRow, e);
+    if (a.kind === 'swap') return (s0.alt?.id ?? '') !== (a.alt?.id ?? '');
+    if (a.kind === 'del') return s0.sets.length > 1 && s0.sets.some((x) => !x.done);
+    return s0.sets.length < 10;
+  });
+  const dropAsk = (k: string) => setAsks((a) => a.filter((x) => x.key !== k));
   const turnSets = turn ? setsOf(turn, g.workout[cur]) : null;
 
   return (
@@ -433,7 +478,7 @@ export default function GroupActive() {
               </Text>
               {cardio ? null : <Icon name="info" size={16} color={c.sec} />}
             </Springy>
-            {host && alts.length ? (
+            {!cardio ? (
               <Springy
                 onPress={() => setSwap(true)}
                 scaleTo={0.9}
@@ -482,7 +527,7 @@ export default function GroupActive() {
             <View style={{ width: 52 }} />
           </View>
           {mySets.sets.map((st, si) => {
-            const key = `${ex.id}:${si}`;
+            const key = `${slot.id}:${si}`;
             const lw = last[si]?.w ?? last[last.length - 1]?.w ?? 0;
             return (
               <View key={si} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, opacity: st.done ? 0.65 : 1 }}>
@@ -543,14 +588,16 @@ export default function GroupActive() {
           </Row>
           <View style={{ height: 1, backgroundColor: c.line, marginVertical: 12 }} />
           {others.map((m) => {
-            const s = setsOf(m, ex);
+            const s = setsOf(m, slot);
+            const theirs = exOf(m, slot);
             const n = s.sets.filter((x) => x.done).length;
             return (
               <Row key={m.user_id} gap={10} style={{ paddingVertical: 6 }}>
                 <Avatar id={m.user_id} name={m.name || m.username} size={30} />
                 <View style={{ flex: 1 }}>
-                  <Text variant="small" weight={700}>
+                  <Text variant="small" weight={700} numberOfLines={1}>
                     {nameOf(m)}
+                    {theirs.id !== ex.id ? <Text variant="xs" color="sec">{`  ${exName(theirs)}`}</Text> : null}
                   </Text>
                   <Text variant="xs" color="sec">
                     {m.joined
@@ -623,7 +670,7 @@ export default function GroupActive() {
             <View style={{ flex: 1 }}>
               <Text weight={700}>{t('Your turn')}</Text>
               <Text variant="small" color="sec" numberOfLines={1}>
-                {t('{x}, set {a} of {b}', { x: exName(g.workout[cur]), a: (turnSets?.sets.filter((x) => x.done).length ?? 0) + 1, b: turnSets?.sets.length ?? 0 })}
+                {t('{x}, set {a} of {b}', { x: exName(exOf(meRow, g.workout[cur])), a: (turnSets?.sets.filter((x) => x.done).length ?? 0) + 1, b: turnSets?.sets.length ?? 0 })}
               </Text>
             </View>
             <Button small icon="check" title={t('Done set')} onPress={doneSet} />
@@ -644,24 +691,88 @@ export default function GroupActive() {
       <Sheet open={swap} onClose={() => setSwap(false)}>
         <Text variant="h2">{t('Swap {x}', { x: exName(ex) })}</Text>
         <Text variant="small" color="sec" style={{ marginTop: 4 }}>
-          {t('Machine busy? Pick another exercise. It changes for everyone in the group.')}
+          {t('Machine busy? Pick another exercise. Your friends get asked if they want to change too.')}
         </Text>
+        {mySets.alt ? (
+          <Button
+            kind="glass"
+            title={t('Back to {x}', { x: exName(slot) })}
+            style={{ marginTop: 8 }}
+            onPress={() => {
+              setSwap(false);
+              applyTo(slot.id, 'swap', null);
+            }}
+          />
+        ) : null}
         {alts.map((a) => (
           <Button
             key={a}
             kind="glass"
             title={exInfo({ id: a }, lang).name}
             style={{ marginTop: 8 }}
-            onPress={async () => {
+            onPress={() => {
               setSwap(false);
-              const ok = await swapGroupExercise(id, v, { id: a, type: ex.type });
-              if (!ok) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
-              toast(t('Changed to {x} for everyone', { x: exInfo({ id: a }, lang).name }), { icon: 'users' });
-              load();
+              applyTo(slot.id, 'swap', { id: a, type: slot.type });
             }}
           />
         ))}
+        <Button
+          kind="glass"
+          icon="search"
+          title={t('Other exercise')}
+          style={{ marginTop: 8 }}
+          onPress={() => {
+            setSwap(false);
+            setOtherPick(true);
+          }}
+        />
         <Button kind="soft" title={t('Cancel')} style={{ marginTop: 8 }} onPress={() => setSwap(false)} />
+      </Sheet>
+      <ExercisePicker
+        open={otherPick}
+        replacing
+        like={(({ name, muscle }) => ({ id: ex.id, name, muscle }))(exInfo({ id: ex.id, n: ex.n, ar: ex.ar, m: ex.m }, lang))}
+        title={t('Replace {x}', { x: exName(ex) })}
+        onClose={() => setOtherPick(false)}
+        onPick={(e) => {
+          setOtherPick(false);
+          const pe = toPlanEx(e);
+          applyTo(slot.id, 'swap', { id: pe.id, type: slot.type, ...(pe.n ? { n: pe.n, ar: pe.ar, m: pe.m } : {}) });
+        }}
+      />
+
+      {/* A friend changed something: do the same? */}
+      <Sheet open={!!ask} onClose={() => ask && dropAsk(ask.key)}>
+        {ask ? (
+          <View>
+            <Text variant="h2">
+              {ask.kind === 'add'
+                ? t('{n} added a set', { n: ask.who })
+                : ask.kind === 'del'
+                  ? t('{n} removed a set', { n: ask.who })
+                  : t('{n} changed an exercise', { n: ask.who })}
+            </Text>
+            <Text color="sec" style={{ marginTop: 4 }}>
+              {(() => {
+                const e = g.workout.find((x) => x.id === ask.exId) as GroupEx;
+                const name = exName(exOf(meRow, e));
+                if (ask.kind === 'add') return t('On {x}. Add one to yours too?', { x: name });
+                if (ask.kind === 'del') return t('On {x}. Remove one from yours too?', { x: name });
+                return t('{x} to {y}. Change yours too?', { x: name, y: exName(ask.alt ?? e) });
+              })()}
+            </Text>
+            <Button
+              icon="check"
+              title={t('Yes, same for me')}
+              style={{ marginTop: 16 }}
+              onPress={() => {
+                applyTo(ask.exId, ask.kind, ask.alt);
+                dropAsk(ask.key);
+              }}
+            />
+            <Button kind="glass" title={t('No, keep mine')} style={{ marginTop: 8 }} onPress={() => dropAsk(ask.key)} />
+          </View>
+        ) : null}
       </Sheet>
 
       <Sheet open={confirm} onClose={() => setConfirm(false)}>

@@ -857,6 +857,11 @@ Passwords and keys are left out on purpose.
 - Done (app): together.tsx has steps: people (Next) → how (AI / I'll build it / Cardio together) → the workout, with Push, Pull, Legs, Upper, Lower and Full body chips, remove on each exercise, Add exercise and Add cardio (sport + minutes). New screen groupplan.tsx: the whole workout and everyone's sets, with Accept, Start or Join now, and Not this time. GroupWorkoutsCard shows workouts a friend started that you haven't joined, and has a "See workout" button. groupactive.tsx: cardio items (everyone at the same time, minutes), a tip comparing your top weight with friends', "I'm here. Start without them" (host), "Tell them I'm here", and a "Remind" button by friends who haven't joined. The last copy is kept in memory and on the phone, so the screen opens straight away.
 - Server: migration 20261206000000_group_ping.sql was applied on 31 Oct after "طبق": table group_pings and group_ping(id), at most one every 2 minutes. After the second "طبق" the push function was deployed as v13 (type group_ping; it still returns 401 without the secret) and the ai function as v107 (together follows the chosen "focus").
 
+## 31 Oct 2026: group workout, do the same as your friend?
+
+- Asked: during a group workout, when someone adds or removes a set or changes an exercise, the others get asked whether to do the same.
+- Done: groupactive.tsx compares friends' sets every 3 seconds (groupChanges in lib/groupWorkout.ts). When a friend adds or removes a set, or swaps an exercise, a sheet asks "Ali added a set. On Chest press. Add one to yours too?" with "Yes, same for me" and "No, keep mine". Swapping is now for each person, and everyone can do it: the swap button gives the usual alternatives, "Other exercise" (the full search) and "Back to …". Your swap is saved in your own sets (MySets.alt), so your workout log, weights and records use the exercise you actually did. A friend's row shows their exercise when it differs. The competitive tip only compares friends on the same exercise. App only, no database change.
+
 ---
 
 
