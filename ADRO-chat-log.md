@@ -883,7 +883,7 @@ Passwords and keys are left out on purpose.
 - New lib/vitSchedule.ts (scheduleOf, scheduleText, triggersOf, freqOf).
 - Phone notifications: weekly ones on each picked weekday, yearly ones as YEARLY triggers, and one-time or "every few days" ones as DATE triggers for the next dates. These are scheduled again whenever the app opens.
 - freq is still saved (Daily, Weekly or Monthly) for older versions. Old vitamins without a schedule get one from freq and the day picked before.
-- Database: migration 20261207000000_supplement_schedule.sql adds supplements.schedule (jsonb). It needs "طبق". Until it's applied, the rest of the vitamin still saves, but the schedule isn't kept after the app restarts.
+- Database: migration 20261207000000_supplement_schedule.sql adds supplements.schedule (jsonb). Applied on 31 Oct after "طبق" (the column is there, and running it twice is fine).
 
 ---
 
