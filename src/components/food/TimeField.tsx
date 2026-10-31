@@ -66,7 +66,9 @@ export function TimeField({ value, onChange, label, height = 46, bg }: { value: 
     <View accessibilityLabel={label} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, height, borderRadius: 12, backgroundColor: bg ?? c.inset, paddingHorizontal: 6 }}>
       {btn(-1)}
       {Platform.OS === 'ios' ? (
-        <Host matchContents colorScheme={isDark ? 'dark' : 'light'}>
+        // Its width follows the time; its height is fixed, so the time stays in the middle of the box (left to size
+        // itself, it sometimes came out taller inside sheets and the time sat on the box's top edge).
+        <Host matchContents={{ horizontal: true }} style={{ height: height - 8, alignSelf: 'center' }} colorScheme={isDark ? 'dark' : 'light'}>
           <DatePicker selection={toDate(value)} displayedComponents={['hourAndMinute']} onDateChange={(d) => onChange(toClock(d))} modifiers={[datePickerStyle('compact'), labelsHidden(), tint(c.cobalt)]} />
         </Host>
       ) : (

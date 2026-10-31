@@ -953,6 +953,11 @@ Passwords and keys are left out on purpose.
   - "Wear the work." with prices coming soon.
 - Images: public/site/img/tee-{statue,run}-{front,back}.webp, from the mockups (the statue drawing was generated in Higgsfield, the run map drawn by hand). Nothing in the app changed.
 
+## 31 Oct 2026: time box in the sleep check-in
+
+- Reported (screenshot): in "How did you sleep?" the times (5:00 AM, 9:00 AM) sat on the top edge of their boxes instead of inside them.
+- Fix: TimeField (src/components/food/TimeField.tsx). On iPhone, Apple's time picker (Host) now matches its contents' width only, and its height is fixed (the box's height minus 8) and centred. Before, it sized itself and came out taller inside sheets. This fixes every TimeField: sleep check-in, vitamins, reminders and Train together. JS only, works with build 17. It can't be checked on an iPhone from here, so it should be checked after the OTA.
+
 ---
 
 
