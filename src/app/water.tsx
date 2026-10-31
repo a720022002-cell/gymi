@@ -14,7 +14,8 @@ import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Label, NavButton, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
-import { caffeineCheck, caffeineOfDrink, caffeineToday, showCaffeineAlert } from '@/lib/caffeine';
+import { CaffeineBody } from '@/components/food/CaffeineSheet';
+import { type CaffeineAlert, caffeineCheck, caffeineMuted, caffeineOfDrink, caffeineToday, showCaffeineAlert } from '@/lib/caffeine';
 import { useFood } from '@/lib/food';
 import { fmt, fmtTime, ramadanOn, suggestWater } from '@/lib/nutrition';
 import { fastTimes } from '@/lib/prayer';
@@ -39,12 +40,21 @@ export default function WaterScreen() {
   const reminder = useReminder('water');
   const fast = ramadanOn(food.plan, food.today) ? fastTimes(food.plan.city, food.today) : null;
 
-  const add = async (ml: number, kind = 'Water') => {
+  // A big caffeine dose from Add a drink: the warning shows inside that sheet (a second sheet can fail to open on iPhone).
+  const [cafAlert, setCafAlert] = useState<CaffeineAlert | null>(null);
+  const add = async (ml: number, kind = 'Water', inSheet = false) => {
     // Coffee or tea: warn about a big caffeine dose, counting what you already had today.
-    const caf = food.isToday ? caffeineCheck(caffeineOfDrink(kind, ml), caffeineToday(food.logs.map((l) => l.name), food.waterLogs), new Date().getHours() >= 15) : null;
+    const raw = food.isToday ? caffeineCheck(caffeineOfDrink(kind, ml), caffeineToday(food.logs.map((l) => l.name), food.waterLogs), new Date().getHours() >= 15) : null;
+    const caf = raw && !caffeineMuted() ? raw : null;
+    if (inSheet && caf) setCafAlert(caf);
+    else if (inSheet) setDrink(false);
     await food.addWater(ml, kind);
     toast(t('Added {n} ml {k}', { n: ml, k: t(kind).toLowerCase() }), { icon: 'drop' });
-    if (caf) setTimeout(() => showCaffeineAlert(caf), 900);
+    if (caf && !inSheet) setTimeout(() => showCaffeineAlert(caf), 900);
+  };
+  const closeDrink = () => {
+    setDrink(false);
+    setCafAlert(null);
   };
 
   const time = (iso: string) => new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
@@ -185,7 +195,7 @@ export default function WaterScreen() {
         }
       />
 
-      <DrinkSheet open={drink} onClose={() => setDrink(false)} onAdd={(ml, k) => (setDrink(false), add(ml, k))} />
+      <DrinkSheet open={drink} onClose={closeDrink} alert={cafAlert} onAdd={(ml, k) => add(ml, k, true)} />
       <WaterGoalSheet
         open={goalOpen}
         onClose={() => setGoalOpen(false)}
@@ -201,30 +211,37 @@ export default function WaterScreen() {
   );
 }
 
-function DrinkSheet({ open, onClose, onAdd }: { open: boolean; onClose: () => void; onAdd: (ml: number, kind: string) => void }) {
+function DrinkSheet({ open, onClose, onAdd, alert }: { open: boolean; onClose: () => void; onAdd: (ml: number, kind: string) => void; alert: CaffeineAlert | null }) {
   const { t } = useT();
   const { colors: c } = useSettings();
   const [ml, setMl] = useState(300);
   const [kind, setKind] = useState(0);
   return (
     <Sheet open={open} onClose={onClose}>
-      <Text variant="h2">{t('Add a drink')}</Text>
-      <Label>{t('Amount (ml)')}</Label>
-      <TextInput
-        value={ml ? String(ml) : ''}
-        onChangeText={(v) => setMl(Math.min(5000, Number(v.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/\D/g, '')) || 0))}
-        inputMode="numeric"
-        accessibilityLabel={t('Amount (ml)')}
-        style={{ height: 56, borderRadius: 16, backgroundColor: c.card, paddingHorizontal: 16, fontSize: 24, fontFamily: 'Sora_600SemiBold', color: c.text }}
-      />
-      <Row gap={8} style={{ marginTop: 8, flexWrap: 'wrap' }}>
-        {[150, 250, 300, 500].map((v) => (
-          <Chip key={v} title={t('{n} ml', { n: v })} on={ml === v} onPress={() => setMl(v)} />
-        ))}
-      </Row>
-      <Label>{t('Drink')}</Label>
-      <Choices options={KINDS} value={kind} onChange={setKind} icons={KINDS.map((k) => KIND_ICON[k] ?? 'glass')} />
-      <Button title={t('Add {n} ml', { n: ml })} disabled={!(ml > 0)} style={{ marginTop: 16 }} onPress={() => onAdd(ml, KINDS[kind])} />
+      {/* A big caffeine dose shows its warning here, in place of the form. */}
+      {alert ? (
+        <CaffeineBody a={alert} onClose={onClose} />
+      ) : (
+        <View>
+          <Text variant="h2">{t('Add a drink')}</Text>
+          <Label>{t('Amount (ml)')}</Label>
+          <TextInput
+            value={ml ? String(ml) : ''}
+            onChangeText={(v) => setMl(Math.min(5000, Number(v.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/\D/g, '')) || 0))}
+            inputMode="numeric"
+            accessibilityLabel={t('Amount (ml)')}
+            style={{ height: 56, borderRadius: 16, backgroundColor: c.card, paddingHorizontal: 16, fontSize: 24, fontFamily: 'Sora_600SemiBold', color: c.text }}
+          />
+          <Row gap={8} style={{ marginTop: 8, flexWrap: 'wrap' }}>
+            {[150, 250, 300, 500].map((v) => (
+              <Chip key={v} title={t('{n} ml', { n: v })} on={ml === v} onPress={() => setMl(v)} />
+            ))}
+          </Row>
+          <Label>{t('Drink')}</Label>
+          <Choices options={KINDS} value={kind} onChange={setKind} icons={KINDS.map((k) => KIND_ICON[k] ?? 'glass')} />
+          <Button title={t('Add {n} ml', { n: ml })} disabled={!(ml > 0)} style={{ marginTop: 16 }} onPress={() => onAdd(ml, KINDS[kind])} />
+        </View>
+      )}
     </Sheet>
   );
 }

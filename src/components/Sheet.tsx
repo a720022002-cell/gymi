@@ -1,4 +1,4 @@
-import { type PropsWithChildren, useEffect, useState } from 'react';
+import { type PropsWithChildren, useEffect, useState, useSyncExternalStore } from 'react';
 import { Animated, Modal, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -14,6 +14,24 @@ import { Glass } from './Glass';
  * wouldn't open).
  */
 export const afterSheet = (fn: () => void) => setTimeout(fn, 320);
+
+// Sheets on screen right now (open or still closing), so a sheet that opens by itself can wait for the others.
+let onScreen = 0;
+const watchers = new Set<() => void>();
+const bump = (d: number) => {
+  onScreen += d;
+  watchers.forEach((w) => w());
+};
+/** How many sheets are on screen (counting ones still closing). */
+export const useSheetsOnScreen = () =>
+  useSyncExternalStore(
+    (w) => {
+      watchers.add(w);
+      return () => watchers.delete(w);
+    },
+    () => onScreen,
+    () => 0,
+  );
 
 /** Glass bottom sheet that springs up (design: .sheet). Tap outside to close. */
 export function Sheet({ open, onClose, children }: PropsWithChildren<{ open: boolean; onClose: () => void }>) {
@@ -36,6 +54,12 @@ export function Sheet({ open, onClose, children }: PropsWithChildren<{ open: boo
       Animated.timing(a, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => setMounted(false));
     }
   }, [open, a]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    bump(1);
+    return () => bump(-1);
+  }, [mounted]);
 
   if (!mounted) return null;
   return (

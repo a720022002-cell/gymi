@@ -98,6 +98,8 @@ export function muteCaffeineToday() {
   AsyncStorage.setItem(MUTE_KEY, mutedDay).catch(() => {});
   showCaffeineAlert(null);
 }
+/** "Don't remind me today" was tapped today. */
+export const caffeineMuted = () => mutedDay === localDay();
 export function showCaffeineAlert(a: CaffeineAlert | null) {
   if (a && mutedDay === localDay()) return;
   current = a;

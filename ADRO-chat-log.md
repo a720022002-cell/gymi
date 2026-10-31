@@ -974,6 +974,16 @@ Passwords and keys are left out on purpose.
 
 - OTA c8ed3f95 (iOS update 01a1929b), runtime 6e1d9a57 = build 17, local commit 5f995fd on ota17 (not pushed). It has: the time picker centred in its box, the leftover-calories card, and "Choose days" for the leftover calories. The website changes (Adro Band, Clothes, npm ci) were already live through Vercel.
 
+## 31 Oct 2026: caffeine warning didn't show on iPhone
+
+- Reported: adding 2 L of coffee on the Water screen gave no caffeine warning.
+- Cause: the maths was right (2 L of coffee is about 800 mg, so it should warn). On iPhone a sheet opened while another is still closing never appears (the same thing afterSheet in Sheet.tsx is for). The warning sheet opened right as "Add a drink" was closing. The web build showed it, so it's iPhone only.
+- Fix:
+  - On the Water screen, a big dose from Add a drink now shows the warning inside the same sheet (new CaffeineBody in CaffeineSheet.tsx). "Got it" or "Don't remind me today" closes it, and the drink is still saved.
+  - Sheet.tsx now counts the sheets on screen (useSheetsOnScreen). The root CaffeineSheet waits until no other sheet is on screen, so it also shows after logging coffee or an energy drink from the food log or the coach.
+  - New caffeineMuted() in lib/caffeine.ts, so a muted day doesn't open it.
+- Checked on the web build. It can't be checked on an iPhone from here, so it should be checked after the OTA.
+
 ---
 
 
