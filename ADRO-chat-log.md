@@ -926,6 +926,23 @@ Passwords and keys are left out on purpose.
 - Checked on desktop and phone in English and Arabic.
 - Found while sending it: the live site hadn't updated since 24 Oct. Every Vercel build failed in `npm install`, because node_modules from the build cache already had the expo-widgets patch, so patch-package couldn't apply it again. vercel.json now uses `npm ci`, which starts from a clean node_modules.
 
+## 31 Oct 2026: Adro Band page
+
+- Asked: give the band its own page with a great design.
+- Done: new page public/site/band.html, made by band_page() and BAND_CSS in scripts/build_site.py. It opens at adroapp.com/band (middleware.js) and /site/band. Dark, Apple-style, Arabic and English. Sections, in order:
+  - hero: "Adro Band", with the band cut out of its background (img/band-cut.webp), a blue glow, a slow float and "Comes with 1 year of Adro+ free";
+  - 10 days, 24/7 and 12 months;
+  - "Everything it reads": 9 cards;
+  - "Your band. Your coach.", with the Recovery screen;
+  - Design: a close-up (img/band-detail.webp) and the 39.9 × 22.3 × 8.2 mm size;
+  - a battery ring showing 7–10 days;
+  - the two colours;
+  - a blue Adro+ card ("Worth 299 SAR");
+  - tech specs, including what's in the box;
+  - the wellness-device line;
+  - "Coming soon".
+- The top menu's Adro Band link opens the page. The home page keeps a short teaser with "Learn more". The same medical claims are left out as before.
+
 ---
 
 

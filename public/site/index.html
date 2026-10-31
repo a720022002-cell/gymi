@@ -83,6 +83,7 @@ section{padding:72px 0}.sec-title{max-width:640px;margin-bottom:34px}
 .bspec{background:#F5F5F7;border-radius:26px;padding:26px}.bspec h3{font-size:19px;margin:0 0 12px}
 .bspec ul{list-style:none;padding:0;margin:0;display:grid;gap:8px}.bspec li{display:block;color:#3A3A3C;font-size:15px;line-height:1.4}.bspec li b{color:#1D1D1F}
 .btracks{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:40px}
+.aband .blink{color:var(--blue);font-weight:700;font-size:20px;text-decoration:none}.aband .blink:hover{text-decoration:underline}
 .aband .bfine{color:#86868B;font-size:13px;max-width:640px;margin:28px auto 0}
 @media(max-width:900px){.bspecs{grid-template-columns:1fr 1fr}}@media(max-width:560px){.bspecs{grid-template-columns:1fr}}
 /* devices */
@@ -209,7 +210,7 @@ var nv=document.querySelector('nav.top');if(nv){var f=function(){nv.classList.to
 <body class="dk">
 <nav class="top dark"><div class="wrap nav">
 <a href="/site" aria-label="Adro"><svg class="logo" style="height:24px" viewBox="30 -745 2229 775" role="img" aria-label="adro"><path d="M408 0V-161H385V-340Q385 -387 362 -410Q339 -433 291 -433Q266 -433 231 -432Q196 -431 160 -430Q125 -428 97 -426V-544Q120 -546 149 -548Q178 -550 208 -550Q239 -551 266 -551Q350 -551 406 -529Q461 -507 490 -460Q518 -413 518 -337V0ZM233 14Q174 14 130 -7Q85 -28 60 -67Q36 -106 36 -161Q36 -221 66 -259Q95 -297 148 -316Q202 -335 274 -335H400V-252H272Q224 -252 198 -228Q173 -205 173 -168Q173 -131 198 -108Q224 -85 272 -85Q301 -85 326 -96Q350 -106 366 -132Q383 -157 385 -201L419 -162Q414 -105 392 -66Q369 -27 330 -6Q290 14 233 14ZM847 18Q790 18 742 -3Q694 -24 659 -62Q624 -100 605 -150Q586 -201 586 -260V-281Q586 -339 604 -390Q623 -441 656 -479Q690 -517 738 -538Q785 -560 843 -560Q907 -560 956 -532Q1004 -505 1033 -450Q1062 -395 1065 -312L1024 -360V-730H1163V0H1053V-231H1077Q1074 -148 1043 -92Q1012 -37 962 -10Q911 18 847 18ZM878 -99Q919 -99 953 -118Q987 -136 1008 -172Q1028 -207 1028 -255V-295Q1028 -343 1007 -376Q986 -408 952 -426Q918 -443 878 -443Q833 -443 798 -422Q764 -400 744 -361Q725 -322 725 -270Q725 -218 745 -180Q765 -141 800 -120Q834 -99 878 -99ZM1276 0V-543H1386V-313H1383Q1383 -430 1433 -490Q1483 -550 1580 -550H1600V-429H1562Q1492 -429 1454 -392Q1415 -354 1415 -283V0Z" fill="currentColor"/><circle cx="1953.5" cy="-271.5" r="228.5" fill="none" stroke="var(--blue)" stroke-width="130.0" stroke-linecap="round" stroke-dasharray="1148.6 1435.7" transform="rotate(-90 1953.5 -271.5)"/></svg></a>
-<div class="links"><a href="/site#band">Adro Band</a><a href="/site#all"><span lang="en">Features</span><span lang="ar">المميزات</span></a><a href="/site#devices"><span lang="en">Watches</span><span lang="ar">الساعات</span></a><a href="/site#pricing"><span lang="en">Pricing</span><span lang="ar">الأسعار</span></a><a href="/site#faq"><span lang="en">FAQ</span><span lang="ar">الأسئلة</span></a></div>
+<div class="links"><a href="/site/band">Adro Band</a><a href="/site#all"><span lang="en">Features</span><span lang="ar">المميزات</span></a><a href="/site#devices"><span lang="en">Watches</span><span lang="ar">الساعات</span></a><a href="/site#pricing"><span lang="en">Pricing</span><span lang="ar">الأسعار</span></a><a href="/site#faq"><span lang="en">FAQ</span><span lang="ar">الأسئلة</span></a></div>
 <button class="lang" type="button" onclick="setLang(document.documentElement.lang==='ar'?'en':'ar')" aria-label="Change language"><span lang="en">ع</span><span lang="ar">EN</span></button>
 </div></nav>
 
@@ -231,38 +232,9 @@ var nv=document.querySelector('nav.top');if(nv){var f=function(){nv.classList.to
 <span class="btag rv"><span lang="en">New</span><span lang="ar">جديد</span></span>
 <h2 class="big rv d1" style="margin-top:16px">Adro Band</h2>
 <p class="sub2 rv d2"><span lang="en">No screen. No distractions. It reads your body day and night, and Adro turns it into your plan.</span><span lang="ar">بدون شاشة. بدون إزعاج. يقرأ جسمك ليل ونهار، وادرو يحوّله لخطتك.</span></p>
-<img class="hero-img rv" src="/site/img/band.webp" width="1260" height="1109" alt="Adro Band">
-<div class="bswatch rv"><i style="background:#1D1D1F"></i><span lang="en">Black</span><span lang="ar">أسود</span><i style="background:#EFE9DC;margin-inline-start:10px"></i><span lang="en">Cream</span><span lang="ar">كريمي</span></div>
+<a href="/site/band"><img class="hero-img rv" src="/site/img/band.webp" width="1260" height="1109" alt="Adro Band" loading="lazy"></a>
 <div class="rv"><div class="boffer"><svg width="28" height="28" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="40.0" fill="none" stroke="var(--blue)" stroke-width="20" stroke-linecap="round" stroke-dasharray="201.1 251.3" transform="rotate(-90 50 50)"/></svg><span><span lang="en">Every band comes with <b>1 year of Adro+ free</b>.</span><span lang="ar">كل سوار معه <b>سنة Adro+ مجاناً</b>.</span></span></div></div>
-<div class="btracks rv"><span class="pill"><span lang="en">Heart rate 24/7</span><span lang="ar">النبض طول اليوم</span></span><span class="pill"><span lang="en">HRV</span><span lang="ar">HRV</span></span><span class="pill"><span lang="en">Sleep</span><span lang="ar">النوم</span></span><span class="pill"><span lang="en">Blood oxygen</span><span lang="ar">أكسجين الدم</span></span><span class="pill"><span lang="en">Stress</span><span lang="ar">التوتر</span></span><span class="pill"><span lang="en">Skin temperature</span><span lang="ar">حرارة الجسم</span></span><span class="pill"><span lang="en">ECG</span><span lang="ar">تخطيط القلب ECG</span></span><span class="pill"><span lang="en">Steps and calories</span><span lang="ar">الخطوات والسعرات</span></span><span class="pill"><span lang="en">Workouts</span><span lang="ar">التمارين</span></span><span class="pill"><span lang="en">Cycle tracking</span><span lang="ar">متابعة الدورة</span></span></div>
-<div class="bspecs">
-<div class="bspec rv"><h3><span lang="en">Battery</span><span lang="ar">البطارية</span></h3><ul>
-<li><b><span lang="en">7–10 days</span><span lang="ar">من 7 إلى 10 أيام</span></b> <span lang="en">of normal use</span><span lang="ar">استخدام عادي</span></li>
-<li><b><span lang="en">Up to 20 days</span><span lang="ar">لين 20 يوم</span></b> <span lang="en">on standby</span><span lang="ar">بوضع الانتظار</span></li>
-<li><span lang="en">Full charge in under 2.5 hours, on a magnetic dock</span><span lang="ar">شحن كامل بأقل من ساعتين ونص، على قاعدة مغناطيسية</span></li></ul></div>
-<div class="bspec rv d1"><h3><span lang="en">Sensors</span><span lang="ar">الحساسات</span></h3><ul>
-<li><span lang="en">Optical heart rate sensor</span><span lang="ar">حساس نبض ضوئي</span></li>
-<li><span lang="en">ECG electrode</span><span lang="ar">قطب تخطيط القلب ECG</span></li>
-<li><span lang="en">6-axis motion sensor (accelerometer and gyroscope)</span><span lang="ar">حساس حركة 6 محاور (تسارع وجيروسكوب)</span></li>
-<li><span lang="en">Skin temperature sensor</span><span lang="ar">حساس حرارة الجسم</span></li></ul></div>
-<div class="bspec rv d2"><h3><span lang="en">Design</span><span lang="ar">التصميم</span></h3><ul>
-<li><span lang="en">Zinc alloy and stainless steel, soft nylon strap (20 mm)</span><span lang="ar">سبيكة زنك وستانلس ستيل، وسير نايلون ناعم (20 مم)</span></li>
-<li><span lang="en">Light and small: 39.9 × 22.3 × 8.2 mm</span><span lang="ar">خفيف وصغير: 39.9 × 22.3 × 8.2 مم</span></li>
-<li><span lang="en">Splash resistant (1 ATM). Not for swimming.</span><span lang="ar">يتحمل رشّ الماي (1 ATM). مو للسباحة.</span></li></ul></div>
-<div class="bspec rv"><h3><span lang="en">Works with</span><span lang="ar">يشتغل مع</span></h3><ul>
-<li><span lang="en">iPhone (iOS 13 or later)</span><span lang="ar">آيفون (iOS 13 أو أحدث)</span></li>
-<li><span lang="en">Android 8 or later</span><span lang="ar">أندرويد 8 أو أحدث</span></li>
-<li>Bluetooth 5.3</li></ul></div>
-<div class="bspec rv d1"><h3><span lang="en">Safety</span><span lang="ar">الأمان</span></h3><ul>
-<li><span lang="en">Fall alert and SOS</span><span lang="ar">تنبيه السقوط وطلب المساعدة SOS</span></li>
-<li><span lang="en">High heart rate and low oxygen alerts</span><span lang="ar">تنبيه النبض العالي والأكسجين المنخفض</span></li></ul></div>
-<div class="bspec rv d2"><h3><span lang="en">In Adro</span><span lang="ar">في ادرو</span></h3><ul>
-<li><span lang="en">Your morning readiness score from your own sleep, HRV and heart rate</span><span lang="ar">درجة جاهزيتك كل صباح من نومك والـ HRV ونبضك</span></li>
-<li><span lang="en">Workout heart rate and zones, live</span><span lang="ar">نبض التمرين ومناطقه مباشرة</span></li>
-<li><span lang="en">Updates over the air</span><span lang="ar">تحديثات بدون كيبل</span></li></ul></div>
-</div>
-<p class="sub2 rv" style="margin-top:40px"><span lang="en">Price and launch date coming soon.</span><span lang="ar">السعر وموعد الإطلاق قريباً.</span></p>
-<p class="bfine"><span lang="en">Adro Band is a wellness device, not a medical device. It doesn’t diagnose or treat any condition.</span><span lang="ar">سوار ادرو جهاز للصحة العامة، مو جهاز طبي. ما يشخّص ولا يعالج أي حالة.</span></p>
+<div class="rv" style="margin-top:22px"><a class="blink" href="/site/band"><span lang="en">Learn more</span><span lang="ar">اعرف أكثر</span> <span aria-hidden="true">›</span></a></div>
 </div></section>
 
 <section class="ready center"><div class="wrap">
