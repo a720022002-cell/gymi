@@ -943,6 +943,16 @@ Passwords and keys are left out on purpose.
   - "Coming soon".
 - The top menu's Adro Band link opens the page. The home page keeps a short teaser with "Learn more". The same medical claims are left out as before.
 
+## 31 Oct 2026: Adro Clothes page
+
+- Asked: a separate website page called Adro Clothes with the two chosen shirts (Built Different statue, Wadi Hanifah Loop).
+- Done: public/site/clothes.html, made by clothes_page() and CLOTHES_CSS in scripts/build_site.py. It opens at adroapp.com/clothes (middleware.js) and /site/clothes, with a "Clothes" link in the top menu after Adro Band. Dark, Arabic and English. Sections:
+  - hero with both backs;
+  - one section per shirt: a big picture that shows the back first, with a Back/Front switch, plus name, story, washed black, oversized fit, back print, sizes S–XXL and "Coming soon";
+  - "Made to last" (heavy cotton, washed finish, relaxed fit);
+  - "Wear the work." with prices coming soon.
+- Images: public/site/img/tee-{statue,run}-{front,back}.webp, from the mockups (the statue drawing was generated in Higgsfield, the run map drawn by hand). Nothing in the app changed.
+
 ---
 
 

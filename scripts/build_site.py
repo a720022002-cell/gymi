@@ -177,13 +177,13 @@ def page(title_en, title_ar, desc, body, path, dark=False):
 <link rel="icon" type="image/png" href="/icons/icon-192.png">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 {FONTS}
-<style>{CSS}{HOME_CSS if dark else ""}{BAND_CSS if path == 'band' else ""}</style>
+<style>{CSS}{HOME_CSS if dark else ""}{BAND_CSS if path == 'band' else ""}{CLOTHES_CSS if path == 'clothes' else ""}</style>
 {LANG_JS}
 </head>
 <body{' class="dk"' if dark else ''}>
 <nav class="top{" dark" if dark else ""}"><div class="wrap nav">
 <a href="/site" aria-label="Adro">{logo(24)}</a>
-<div class="links"><a href="/site/band">Adro Band</a><a href="/site#all">{t('Features', 'المميزات')}</a><a href="/site#devices">{t('Watches', 'الساعات')}</a><a href="/site#pricing">{t('Pricing', 'الأسعار')}</a><a href="/site#faq">{t('FAQ', 'الأسئلة')}</a></div>
+<div class="links"><a href="/site/band">Adro Band</a><a href="/site/clothes">{t('Clothes', 'الملابس')}</a><a href="/site#all">{t('Features', 'المميزات')}</a><a href="/site#devices">{t('Watches', 'الساعات')}</a><a href="/site#pricing">{t('Pricing', 'الأسعار')}</a><a href="/site#faq">{t('FAQ', 'الأسئلة')}</a></div>
 <button class="lang" type="button" onclick="setLang(document.documentElement.lang==='ar'?'en':'ar')" aria-label="Change language">{t('ع', 'EN')}</button>
 </div></nav>
 {body}
@@ -738,6 +738,82 @@ var o=new IntersectionObserver(function(e){{if(e[0].isIntersecting){{c.style.str
     return page('Adro Band', 'سوار ادرو', 'Adro Band: no screen, 7–10 days of battery, heart rate, HRV, sleep and more, made for the Adro coach. Comes with 1 year of Adro+.',
                 body, 'band', dark=True)
 
+
+# ---------- Adro Clothes: its own page ----------
+CLOTHES_CSS = """
+/* ---------- Adro Clothes ---------- */
+.cl-hero{padding:120px 0 70px}.cl-hero .k{color:#8FA3FF}
+.cl-strip{display:flex;gap:14px;justify-content:center;margin-top:50px;flex-wrap:wrap}
+.cl-strip img{width:min(260px,40vw);height:auto;border-radius:24px;background:#F2F2F2}
+.cl-item{display:grid;grid-template-columns:1.1fr .9fr;gap:60px;align-items:center;text-align:start}
+.cl-item.rev .cl-media{order:2}
+.cl-media{position:relative;background:#F2F2F2;border-radius:34px;overflow:hidden}
+.cl-media img{width:100%;height:auto;display:block;transition:opacity .35s}
+.cl-media img.over{position:absolute;inset:0;opacity:0}.cl-media.show-front img.over{opacity:1}
+.cl-tog{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);display:flex;background:rgba(0,0,0,.72);backdrop-filter:blur(10px);border-radius:999px;padding:4px}
+.cl-tog button{border:0;background:transparent;color:#fff;font:700 14px Manrope;padding:9px 18px;border-radius:999px;cursor:pointer}
+html[lang=ar] .cl-tog button{font-family:'IBM Plex Sans Arabic'}
+.cl-tog button.on{background:#fff;color:#000}
+.cl-name{font:700 clamp(30px,4vw,46px)/1.1 Sora;letter-spacing:-.02em;margin:10px 0 0}
+html[lang=ar] .cl-name{letter-spacing:0}
+.cl-desc{color:#6E6E73;font-size:18px;line-height:1.55;margin:16px 0 0;max-width:460px}
+.cl-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.cl-tags span{border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-weight:600;font-size:14px}
+.cl-sizes{display:flex;gap:8px;margin-top:22px}.cl-sizes span{width:46px;height:46px;border-radius:14px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
+.cl-soon{display:inline-flex;align-items:center;gap:10px;margin-top:26px;background:#000;color:#fff;border-radius:999px;padding:13px 22px;font-weight:700}
+.cl-soon i{width:9px;height:9px;border-radius:50%;background:var(--blue);box-shadow:0 0 10px var(--blue)}
+.cl-feats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:50px;text-align:start}
+.cl-feat{background:#111114;border:1px solid #1F1F24;border-radius:26px;padding:28px}.cl-feat h3{color:#F5F5F7;font-size:20px;margin:0 0 8px}.cl-feat p{color:#8E8E93;margin:0;font-size:15.5px;line-height:1.5}
+@media(max-width:860px){.cl-item{grid-template-columns:1fr;gap:28px}.cl-item.rev .cl-media{order:0}.cl-feats{grid-template-columns:1fr}}
+"""
+
+
+def clothes_page():
+    def item(key, name, k_en, k_ar, d_en, d_ar, tags, rev=False):
+        tg = ''.join(f'<span>{t(a, b)}</span>' for a, b in tags)
+        return f"""<section style="padding:90px 0"><div class="wrap"><div class="cl-item{' rev' if rev else ''}">
+<div class="cl-media rv" data-tee><img src="/site/img/tee-{key}-back.webp" width="1000" height="1000" alt="{name}" loading="lazy">
+<img class="over" src="/site/img/tee-{key}-front.webp" width="1000" height="1000" alt="" loading="lazy">
+<div class="cl-tog"><button class="on" data-side="back">{t('Back', 'ورا')}</button><button data-side="front">{t('Front', 'قدام')}</button></div></div>
+<div><div class="k rv">{t(k_en, k_ar)}</div><h2 class="cl-name rv d1">{name}</h2><p class="cl-desc rv d2">{t(d_en, d_ar)}</p>
+<div class="cl-tags rv">{tg}</div>
+<div class="cl-sizes rv">{''.join(f'<span>{z}</span>' for z in ['S', 'M', 'L', 'XL', 'XXL'])}</div>
+<span class="cl-soon rv"><i></i>{t('Coming soon', 'قريباً')}</span></div>
+</div></div></section>"""
+    body = f"""
+<main>
+<header class="cl-hero blk center"><div class="wrap">
+<div class="k rv">{t('New', 'جديد')}</div>
+<h1 class="mega rv d1" style="margin-top:12px">Adro <span class="grad">{t('Clothes', 'Clothes')}</span></h1>
+<p class="sub2 rv d2">{t('Made for the gym. Worn everywhere else. Heavy washed cotton, a relaxed fit, and designs with a story.', 'مصممة للجم. وتنلبس في كل مكان. قطن ثقيل مغسول، وقصة مريحة، وتصاميم لها قصة.')}</p>
+<div class="cl-strip rv d3"><img src="/site/img/tee-statue-back.webp" width="1000" height="1000" alt=""><img src="/site/img/tee-run-back.webp" width="1000" height="1000" alt=""></div>
+</div></header>
+{item('statue', 'Built Different', 'Tee 01', 'تيشرت 01',
+      'A Greek statue that never skipped a session, caught taking a mirror selfie. Drawn like an old engraving, on the back. The adro logo sits clean on the chest.',
+      'تمثال إغريقي ما فوّت ولا تمرين، وانمسك يصور سيلفي قدام المراية. مرسوم مثل الحفر القديم، من ورا. ولوقو ادرو نظيف على الصدر.',
+      [('Washed black', 'أسود مغسول'), ('Oversized fit', 'قصة واسعة'), ('Back print', 'طباعة ورا')])}
+{item('run', 'Wadi Hanifah Loop', 'Tee 02', 'تيشرت 02',
+      'A 5.2 km dawn loop in Riyadh, drawn as one quiet line over the contours. For the ones who run before the city wakes up.',
+      'مسار جري 5.2 كم الفجر في الرياض، مرسوم بخط واحد هادي فوق التضاريس. للي يركضون قبل لا تصحى المدينة.',
+      [('Washed black', 'أسود مغسول'), ('Oversized fit', 'قصة واسعة'), ('Back print', 'طباعة ورا')], rev=True)}
+<section class="blk center" style="padding:120px 0"><div class="wrap">
+<h2 class="big rv">{t('Made to last.', 'مصنوعة تعيش.')}</h2>
+<div class="cl-feats">
+<div class="cl-feat rv"><h3>{t('Heavy cotton', 'قطن ثقيل')}</h3><p>{t('Thick, soft cotton that holds its shape wash after wash.', 'قطن سميك وناعم، يحافظ على شكله غسلة بعد غسلة.')}</p></div>
+<div class="cl-feat rv d1"><h3>{t('Washed finish', 'لمسة مغسولة')}</h3><p>{t('A worn-in washed finish, so every piece looks a little different.', 'لمسة مغسولة كأنها ملبوسة، فكل قطعة تطلع مختلفة شوي.')}</p></div>
+<div class="cl-feat rv d2"><h3>{t('Relaxed fit', 'قصة مريحة')}</h3><p>{t('Dropped shoulders and a boxy cut, for the gym and for going out.', 'كتف نازل وقصة واسعة، للجم وللطلعات.')}</p></div>
+</div>
+</div></section>
+<section class="end blk center" style="padding-top:40px"><div class="wrap">
+{ring(64, 'var(--blue)', 20)}
+<h2 class="mega rv" style="margin-top:26px">{t('Wear the work.', 'البس تعبك.')}</h2>
+<p class="sub2 rv d1">{t('Prices and launch date coming soon.', 'الأسعار وموعد الإطلاق قريباً.')}</p>
+</div></section>
+</main>
+<script>document.querySelectorAll('[data-tee]').forEach(function(m){{m.querySelectorAll('.cl-tog button').forEach(function(b){{b.addEventListener('click',function(){{
+m.classList.toggle('show-front',b.dataset.side==='front');m.querySelectorAll('.cl-tog button').forEach(function(x){{x.classList.toggle('on',x===b)}})}})}})}});</script>"""
+    return page('Adro Clothes', 'ملابس ادرو', 'Adro Clothes: heavy washed tees made for the gym and worn everywhere else.', body, 'clothes', dark=True)
+
 # ---------- privacy and terms, from the app ----------
 legal = (ROOT / 'src/app/legal.tsx').read_text()
 ar_src = (ROOT / 'src/i18n/ar.ts').read_text()
@@ -795,5 +871,6 @@ if __name__ == '__main__':
     (OUT / 'terms.html').write_text(legal_page('TERMS', 'Terms of use', 'شروط الاستخدام'))
     (OUT / 'support.html').write_text(support())
     (OUT / 'band.html').write_text(band_page())
+    (OUT / 'clothes.html').write_text(clothes_page())
     missing = [a for n in ('PRIVACY', 'TERMS') for p in pairs(n) for a in p if a not in AR]
     print('built', sorted(p.name for p in OUT.glob('*.html')), 'missing Arabic:', missing)
