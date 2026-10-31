@@ -38,7 +38,7 @@ export async function askNotifPermission(): Promise<boolean> {
   }
 }
 
-/** Replace all scheduled reminders with these (daily, weekly with weekday, or monthly with monthDay; local on the phone). */
+/** Replace all scheduled reminders with these (daily, weekly, monthly, yearly or once on a date; local on the phone). */
 export async function scheduleReminders(list: Reminder[], ask = false): Promise<'ok' | 'denied' | 'unsupported'> {
   let perm = await Notifications.getPermissionsAsync();
   if (!perm.granted && ask) perm = await Notifications.requestPermissionsAsync({ ios: { allowAlert: true, allowBadge: false, allowSound: true } });
@@ -58,15 +58,23 @@ export async function scheduleReminders(list: Reminder[], ask = false): Promise<
   for (const r of list) {
     const [hour, minute] = r.time.split(':').map(Number);
     const channelId = r.sound === false ? 'reminders-silent' : 'reminders';
+    const T = Notifications.SchedulableTriggerInputTypes;
+    let trigger: Notifications.SchedulableNotificationTriggerInput;
+    if (r.date) {
+      // Once, on that day: skipped when the time has passed.
+      const [y, mo, d] = r.date.split('-').map(Number);
+      const at = new Date(y, mo - 1, d, hour, minute);
+      if (at.getTime() <= Date.now()) continue;
+      trigger = { type: T.DATE, date: at, channelId };
+    } else if (r.weekday) trigger = { type: T.WEEKLY, weekday: r.weekday, hour, minute, channelId };
+    else if (r.monthDay && r.month) trigger = { type: T.YEARLY, month: r.month - 1, day: r.monthDay, hour, minute, channelId };
+    else if (r.monthDay) trigger = { type: T.MONTHLY, day: r.monthDay, hour, minute, channelId };
+    else trigger = { type: T.DAILY, hour, minute, channelId };
     await Notifications.scheduleNotificationAsync({
       identifier: `${PREFIX}${i++}`,
       content: { title: r.title, body: r.body, data: { route: r.route }, sound: r.sound !== false },
-      trigger: r.weekday
-        ? { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: r.weekday, hour, minute, channelId }
-        : r.monthDay
-          ? { type: Notifications.SchedulableTriggerInputTypes.MONTHLY, day: r.monthDay, hour, minute, channelId }
-          : { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute, channelId },
-    });
+      trigger,
+    }).catch(() => {});
   }
   return 'ok';
 }

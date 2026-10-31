@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { scheduleOf, todayIso, triggersOf } from './vitSchedule';
+
 /** The 8 reminder types (design: NCAT). */
 export const NCATS = ['water', 'food', 'workout', 'checkin', 'sleep', 'vitamins', 'report', 'friends'] as const;
 export type NCat = (typeof NCATS)[number];
@@ -86,12 +88,13 @@ export const SOUND_NAMES: Record<string, string> = {
 export const FREQ: Record<WaterFreq, string> = { '1h': 'Every hour', '2h': 'Every 2 hours', '3h': 'Every 3 hours', day: 'Once a day', behind: 'Every 2 hours, a quick check' };
 export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-/** weekday: 1 = Sunday … 7 = Saturday (weekly); monthDay: 1–28 (monthly). Without either the reminder is daily. */
-export type Reminder = { title: string; body: string; time: string; route?: string; weekday?: number; monthDay?: number; sound?: boolean };
+/** weekday: 1 = Sunday … 7 = Saturday (weekly); monthDay: 1–31 (monthly, or yearly with month 1–12); date: once on
+ * that day (YYYY-MM-DD). Without any of them the reminder is daily. */
+export type Reminder = { title: string; body: string; time: string; route?: string; weekday?: number; monthDay?: number; month?: number; date?: string; sound?: boolean };
 
 /** The one day a weekly or monthly vitamin reminds: w = weekday (1 = Sunday … 7), m = day of the month (1–28). */
 export type VitDay = { w?: number; m?: number };
-export type VitReminder = { id?: string; name: string; time: string; freq?: string };
+export type VitReminder = { id?: string; name: string; time: string; freq?: string; schedule?: import('./vitSchedule').VitSchedule | null };
 const VIT_KEY = (uid: string) => `adro.vitDays.v1.${uid}`;
 const vitSubs = new Set<() => void>();
 
@@ -297,11 +300,12 @@ export function buildReminders(
   }
   if (p.vitamins.on) {
     const def = vitDayDefault();
+    const today = todayIso();
     for (const v of x.vitamins.slice(0, 8)) {
-      // Weekly ones on their one weekday, monthly ones on their one day of the month; the rest daily.
+      // As set on the vitamin: a date, a time and how it repeats (older ones: their weekday or day of the month).
       const d = (v.id && x.vitDays?.[v.id]) || {};
-      const when = v.freq === 'Weekly' ? { weekday: d.w ?? def.w } : v.freq === 'Monthly' ? { monthDay: d.m ?? def.m } : {};
-      out.push({ title: v.name, body: t('Time to take {n}.', { n: v.name }), time: v.time, route: '/vitamins', sound: snd(p.vitamins.sound), ...when });
+      const s = scheduleOf({ freq: v.freq ?? 'Daily', schedule: v.schedule }, { w: d.w ?? def.w, m: d.m ?? def.m });
+      for (const when of triggersOf(s, today).slice(0, 7)) out.push({ title: v.name, body: t('Time to take {n}.', { n: v.name }), time: v.time, route: '/vitamins', sound: snd(p.vitamins.sound), ...when });
     }
   }
   if (p.report.on) out.push({ title: t('Reports'), body: t('Your weekly report is ready.'), time: p.report.time, route: '/report', weekday: Math.max(0, WEEKDAYS.indexOf(p.report.day)) + 1, sound: snd(p.report.sound) });

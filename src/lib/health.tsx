@@ -49,7 +49,8 @@ export const MEAS_INFO: Record<(typeof MEAS)[number], [string, string, boolean, 
 
 export type Measure = { day: string; kind: MeasKind; value: number };
 export type ProgressPhoto = { id: string; day: string; path: string };
-export type Supplement = { id: string; name: string; dose: string; unit: string; freq: string; active: boolean; remind: boolean; time: string };
+/** schedule: date, time and repeat of its reminder (lib/vitSchedule.ts); missing on older rows (then from freq). */
+export type Supplement = { id: string; name: string; dose: string; unit: string; freq: string; active: boolean; remind: boolean; time: string; schedule?: import('./vitSchedule').VitSchedule | null };
 /** `src`: the range printed on the report, or a guideline range (only when the report printed none). */
 export type BloodValue = { name: string; value: number | string; unit: string; low?: number | null; high?: number | null; src?: 'report' | 'guideline'; flag: -1 | 0 | 1 };
 export type BloodTest = { id: string; day: string; title: string; values: BloodValue[]; file_path?: string | null; file_name?: string | null; file_mime?: string | null };
@@ -131,7 +132,7 @@ export function HealthProvider({ children }: PropsWithChildren) {
         supabase.from('checkins').select('day,sleep_h,sleep_q,bed,wake,energy,sore,score,sleep_parts').gte('day', from).order('day'),
         selectAll<Measure>((a, z) => supabase.from('measurements').select('day,kind,value').order('day').order('kind').range(a, z)),
         supabase.from('progress_photos').select('id,day,path').order('day'),
-        supabase.from('supplements').select('id,name,dose,unit,freq,active,remind,time').order('created_at'),
+        supabase.from('supplements').select('*').order('created_at'),
         supabase.from('blood_tests').select('id,day,title,values,file_path,file_name,file_mime').order('day', { ascending: false }),
         // One row per day (single logs would go over the database's 1000-row limit).
         supabase.rpc('my_day_totals').gte('day', from).lt('day', today),
@@ -357,11 +358,17 @@ export function HealthProvider({ children }: PropsWithChildren) {
   }, []);
 
   const saveSupplement = useCallback(async (s: Omit<Supplement, 'id'> & { id?: string }) => {
-    const { id, ...rest } = s;
+    const { id, schedule, ...rest } = s;
     const q = id ? supabase.from('supplements').update(rest).eq('id', id) : supabase.from('supplements').insert(rest);
-    const { data, error } = await q.select('id,name,dose,unit,freq,active,remind,time').single();
+    const { data, error } = await q.select('*').single();
     if (error || !data) return false;
-    setSupplements((xs) => (id ? xs.map((x) => (x.id === id ? (data as Supplement) : x)) : [...xs, data as Supplement]));
+    // The schedule on its own: a database without the column yet still saves the rest.
+    let row = data as Supplement;
+    if (schedule !== undefined) {
+      const r = await supabase.from('supplements').update({ schedule }).eq('id', row.id).select('*').single();
+      row = r.error || !r.data ? { ...row, schedule } : (r.data as Supplement);
+    }
+    setSupplements((xs) => (id ? xs.map((x) => (x.id === id ? row : x)) : [...xs, row]));
     return true;
   }, []);
 
@@ -377,7 +384,11 @@ export function HealthProvider({ children }: PropsWithChildren) {
 
   const restoreSupplement = useCallback(async (s: Supplement) => {
     const { id: _id, ...rest } = s;
-    const { data } = await supabase.from('supplements').insert(rest).select('id,name,dose,unit,freq,active,remind,time').single();
+    let { data, error } = await supabase.from('supplements').insert(rest).select('*').single();
+    if (error) {
+      const { schedule: _s, ...plain } = rest;
+      ({ data } = await supabase.from('supplements').insert(plain).select('*').single());
+    }
     if (data) setSupplements((xs) => [...xs, data as Supplement]);
   }, []);
 

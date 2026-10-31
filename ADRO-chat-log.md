@@ -872,6 +872,19 @@ Passwords and keys are left out on purpose.
 - Asked: in cardio, padel and the other racket sports should stop recording sets and points.
 - Done: Padel, Tennis, Squash and Badminton no longer have a set counter (sports.ts). The live session shows no "Set done" card, rest timer or score. It keeps time, heart rate and the coach's tips. Later the same day (owner: "remove them too") volleyball's sets and boxing and martial arts rounds were removed as well, so no sport counts sets or rounds now. App only.
 
+## 31 Oct 2026: vitamin reminders like Apple's Reminders
+
+- Asked: make the vitamin reminder like Apple's Reminders (pick the day of the week, the date and so on); it felt messy.
+- Done: the vitamin sheet's "How often" chips are gone. One card, like Apple's, has:
+  - Starts or Date, with a month calendar.
+  - Repeat: Never, Daily, Weekdays, Weekends (they follow the region, so Friday and Saturday in the Gulf), Weekly on the days you pick (more than one), Monthly (on the date's day), Yearly, and Every few days (2–60).
+  - Reminder, with its time.
+- The list shows "Every Sun, Wed", "Monthly on day 5" and so on, with Change and the time.
+- New lib/vitSchedule.ts (scheduleOf, scheduleText, triggersOf, freqOf).
+- Phone notifications: weekly ones on each picked weekday, yearly ones as YEARLY triggers, and one-time or "every few days" ones as DATE triggers for the next dates. These are scheduled again whenever the app opens.
+- freq is still saved (Daily, Weekly or Monthly) for older versions. Old vitamins without a schedule get one from freq and the day picked before.
+- Database: migration 20261207000000_supplement_schedule.sql adds supplements.schedule (jsonb). It needs "طبق". Until it's applied, the rest of the vitamin still saves, but the schedule isn't kept after the app restarts.
+
 ---
 
 

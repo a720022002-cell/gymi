@@ -31,7 +31,7 @@ export function ReminderSync() {
   const train = useTrain();
   const [rev, setRev] = useState(0);
   const meals = food.setupDone ? food.plan.meals.map((m) => `${m.n}@${m.t}`).join('|') : '';
-  const vits = JSON.stringify(health.supplements.filter((v) => v.active && v.remind).map((v): VitReminder => ({ id: v.id, name: v.name, time: v.time, freq: v.freq })));
+  const vits = JSON.stringify(health.supplements.filter((v) => v.active && v.remind).map((v): VitReminder => ({ id: v.id, name: v.name, time: v.time, freq: v.freq, schedule: v.schedule ?? null })));
   const workoutTime = food.plan.myWorkoutTime || food.plan.workoutTime || null;
   // This week's workout names, Sunday to Saturday (empty without a plan: then the reminder is daily).
   const week = train.week.map((d) => d.w ?? '').join('|');
