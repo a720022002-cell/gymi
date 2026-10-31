@@ -885,6 +885,20 @@ Passwords and keys are left out on purpose.
 - freq is still saved (Daily, Weekly or Monthly) for older versions. Old vitamins without a schedule get one from freq and the day picked before.
 - Database: migration 20261207000000_supplement_schedule.sql adds supplements.schedule (jsonb). Applied on 31 Oct after "طبق" (the column is there, and running it twice is fine).
 
+## 31 Oct 2026: water reminders that follow what you drank
+
+- Asked: the water notification always says the same thing; make it follow how much water you've had.
+- Done: buildReminders (reminders.shared.ts) gets today's water and goal from ReminderSync. Water reminders are now one-time reminders for today's remaining times and the next 1–2 days, and each one says where you are:
+  - "Good morning. Start your day with a glass of water."
+  - "No water logged yet today. Have a glass now."
+  - "1.5 of 2.8 L so far. You're on track, keep sipping."
+  - "0.6 of 2.8 L so far. About 2 glasses behind, have one now."
+  - "Still 2.2 L to go today, have a glass now."
+  - Nothing once the goal is reached. In "only when behind" mode, nothing while you're on track.
+- "On track" means close to the goal spread evenly between the first and last reminder.
+- They're written again whenever water changes or the app opens. The next days' reminders go last in the phone's limit of 64.
+- Checked with a script (0, 600, 1500 and 3000 ml at 1 pm). App only.
+
 ---
 
 

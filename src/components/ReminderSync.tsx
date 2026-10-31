@@ -35,6 +35,9 @@ export function ReminderSync() {
   const workoutTime = food.plan.myWorkoutTime || food.plan.workoutTime || null;
   // This week's workout names, Sunday to Saturday (empty without a plan: then the reminder is daily).
   const week = train.week.map((d) => d.w ?? '').join('|');
+  // Today's water and goal, so water reminders say where you are (kept while you look at another day).
+  const lastWater = useRef('');
+  const water = food.ready && food.loadedDay === food.today ? `${food.water}|${food.waterGoal}` : '';
 
   useEffect(() => listenReminderTaps((route) => router.push(route as never)), []);
   // Settings saved anywhere (Notifications, the bells on Food and Train, vitamin days) reschedule.
@@ -59,6 +62,8 @@ export function ReminderSync() {
     if (!remindersSupported || !uid) return;
     const id = setTimeout(async () => {
       const p = await loadPrefs(uid);
+      if (water) lastWater.current = water;
+      const w = water || lastWater.current;
       const vitamins = JSON.parse(vits) as VitReminder[];
       const list = buildReminders(
         p,
@@ -68,12 +73,13 @@ export function ReminderSync() {
           vitDays: await vitaminDays(uid, vitamins),
           workoutTime,
           workoutWeek: week ? week.split('|').map((w) => w || null) : null,
+          water: (w ? { ml: Number(w.split('|')[0]), goal: Number(w.split('|')[1]) } : null),
         },
         t,
       );
       await scheduleReminders(list, false);
     }, 1500);
     return () => clearTimeout(id);
-  }, [uid, meals, vits, workoutTime, week, t, rev]);
+  }, [uid, meals, vits, workoutTime, week, water, t, rev]);
   return null;
 }

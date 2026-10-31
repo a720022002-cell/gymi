@@ -249,6 +249,10 @@ export function buildReminders(
     workoutToday?: string | null;
     /** Your plan's week, Sunday to Saturday: the workout's name, or null on rest days. */
     workoutWeek?: (string | null)[] | null;
+    /** Water so far today and today's goal (ml), so each water reminder says where you are. */
+    water?: { ml: number; goal: number } | null;
+    /** Now (for tests). */
+    now?: Date;
   },
   t: (s: string, v?: Record<string, string | number>) => string,
 ): Reminder[] {
@@ -258,14 +262,46 @@ export function buildReminders(
   if (p.checkin.on) out.push({ title: t('Daily check-in'), body: t('Your 30-second daily check-in is ready.'), time: p.checkin.time, route: '/home', sound: snd(p.checkin.sound) });
   if (p.water.on) {
     const w = p.water;
-    const body = w.freq === 'behind' ? t('Check your water. Have a glass if you’re behind.') : t('Time for a glass of water.');
-    if (w.freq === 'day') out.push({ title: t('Water'), body, time: w.from, route: '/water', sound: snd(w.sound) });
+    const times: number[] = [];
+    if (w.freq === 'day') times.push(toMin(w.from));
     else {
       const step = w.freq === '1h' ? 60 : w.freq === '3h' ? 180 : 120;
       const a = toMin(w.from);
       let b = toMin(w.to);
       if (b <= a) b += 1440;
-      for (let m = a; m <= b; m += step) out.push({ title: t('Water'), body, time: hhmm(m), route: '/water', sound: snd(w.sound) });
+      for (let m = a; m <= b; m += step) times.push(m);
+    }
+    if (!x.water) {
+      // Without today's water: the same words every time.
+      const body = w.freq === 'behind' ? t('Check your water. Have a glass if you’re behind.') : t('Time for a glass of water.');
+      for (const m of times) out.push({ title: t('Water'), body, time: hhmm(m), route: '/water', sound: snd(w.sound) });
+    } else {
+      // Each reminder says where you are, from what you've drunk so far: today's from now on, and the next days' as if
+      // nothing is logged yet (they're written again each time you log water or open the app).
+      const now = x.now ?? new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const span = Math.max(60, times[times.length - 1] - times[0]);
+      const goal = Math.max(500, x.water.goal);
+      const L = (ml: number) => String(Math.round(ml / 100) / 10);
+      const glasses = (ml: number) => Math.max(1, Math.round(ml / 250));
+      const days = times.length > 10 ? 2 : 3;
+      for (let k = 0; k < days; k++) {
+        const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + k);
+        const ml = k === 0 ? x.water.ml : 0;
+        for (const m of times) {
+          if (k === 0 && m <= nowMin) continue;
+          // Where you should be by then: the goal spread evenly from the first reminder to the last.
+          const due = times.length === 1 ? goal * 0.25 : (goal * (m - times[0])) / span;
+          let body: string | null;
+          if (ml >= goal) body = null;
+          else if (ml === 0) body = m === times[0] ? t('Good morning. Start your day with a glass of water.') : t('No water logged yet today. Have a glass now.');
+          else if (ml + 150 >= due) body = w.freq === 'behind' ? null : t('{a} of {b} L so far. You’re on track, keep sipping.', { a: L(ml), b: L(goal) });
+          else if (glasses(due - ml) <= 4) body = t('{a} of {b} L so far. About {n} glasses behind, have one now.', { a: L(ml), b: L(goal), n: glasses(due - ml) });
+          else body = t('{a} of {b} L so far. Still {c} L to go today, have a glass now.', { a: L(ml), b: L(goal), c: L(goal - ml) });
+          if (body) out.push({ title: t('Water'), body, time: hhmm(m), date: iso(new Date(date.getFullYear(), date.getMonth(), date.getDate() + Math.floor(m / 1440))), route: '/water', sound: snd(w.sound) });
+        }
+      }
     }
   }
   if (p.food.on) {
@@ -310,5 +346,11 @@ export function buildReminders(
   }
   if (p.report.on) out.push({ title: t('Reports'), body: t('Your weekly report is ready.'), time: p.report.time, route: '/report', weekday: Math.max(0, WEEKDAYS.indexOf(p.report.day)) + 1, sound: snd(p.report.sound) });
   // Quiet hours win over everything except your own vitamin times.
-  return out.filter((r) => /^\d{2}:\d{2}$/.test(r.time) && (r.route === '/vitamins' || !inQuiet(p.quiet, r.time))).slice(0, 60);
+  // Phones keep at most 64: the next days' water reminders go last, so they're the ones left out.
+  const today = todayIso();
+  const later = (r: Reminder) => (r.date && r.date > today && r.route === '/water' ? 1 : 0);
+  return out
+    .filter((r) => /^\d{2}:\d{2}$/.test(r.time) && (r.route === '/vitamins' || !inQuiet(p.quiet, r.time)))
+    .sort((a, b) => later(a) - later(b))
+    .slice(0, 60);
 }

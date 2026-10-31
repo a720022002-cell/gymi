@@ -5470,4 +5470,9 @@ export const AR: Record<string, string> = {
   "Yearly": "سنوي",
   "Every few days": "كل كم يوم",
   "Starts": "يبدأ",
+  "Good morning. Start your day with a glass of water.": "صباح الخير. ابدأ يومك بكاسة ماي.",
+  "No water logged yet today. Have a glass now.": "ما سجلت ماي اليوم للحين. اشرب كاسة الحين.",
+  "{a} of {b} L so far. You’re on track, keep sipping.": "شربت {a} من {b} لتر. ماشي صح، كمّل.",
+  "{a} of {b} L so far. About {n} glasses behind, have one now.": "شربت {a} من {b} لتر. متأخر تقريبًا {n} كاسات، اشرب وحدة الحين.",
+  "{a} of {b} L so far. Still {c} L to go today, have a glass now.": "شربت {a} من {b} لتر. باقي لك {c} لتر اليوم، اشرب كاسة الحين.",
 };
