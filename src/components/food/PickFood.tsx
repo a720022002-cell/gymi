@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, TextInput, View } from 'react-native';
 
 import { Field } from '@/components/Field';
 import { Icon } from '@/components/Icon';
 import { Sheet } from '@/components/Sheet';
-import { Text } from '@/components/Text';
+import { fontFor, Text } from '@/components/Text';
 import { Button, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { aiErrorText, askAI } from '@/lib/ai';
@@ -133,7 +133,25 @@ export function PickFood({
       ) : (
         <View>
           <Text variant="h2">{t('Add an ingredient')}</Text>
-          <Field value={q} onChangeText={(v) => (setQ(v), setAiErr(null))} placeholder={t('Chicken breast, rice, laban…')} autoCorrect={false} />
+          {/* A search box that looks like one inside the sheet (a plain field takes the sheet's own colour). */}
+          <Row gap={10} style={{ height: 52, marginTop: 12, paddingHorizontal: 14, borderRadius: 16, backgroundColor: 'rgba(127,127,135,0.16)', borderWidth: 1, borderColor: 'rgba(127,127,135,0.28)' }}>
+            <Icon name="search" size={18} color={c.sec} />
+            <TextInput
+              value={q}
+              onChangeText={(v) => (setQ(v), setAiErr(null))}
+              placeholder={t('Search: chicken breast, rice, laban…')}
+              placeholderTextColor={c.sec}
+              autoCorrect={false}
+              returnKeyType="search"
+              accessibilityLabel={t('Search foods')}
+              style={{ flex: 1, height: 50, fontSize: 16, color: c.text, fontFamily: fontFor(lang === 'ar' ? 'arabic' : 'manrope', 500), textAlign: lang === 'ar' ? 'right' : 'left', outlineStyle: 'none' } as object}
+            />
+            {q ? (
+              <Springy onPress={() => (setQ(''), setAiErr(null))} hitSlop={8} accessibilityLabel={t('Clear')}>
+                <Icon name="close" size={16} color={c.sec} />
+              </Springy>
+            ) : null}
+          </Row>
           {onOwn && q.trim() ? (
             <Springy
               onPress={askAi}

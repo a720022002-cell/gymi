@@ -5492,4 +5492,6 @@ export const AR: Record<string, string> = {
   "Your sets": "جولاتك",
   "From today’s plan with your last weights. Change what was different, or take off what you skipped.": "من خطة اليوم مع آخر أوزانك. غيّر اللي كان مختلف، أو احذف اللي ما سويته.",
   "{w} saved. Nice work.": "انحفظ {w}. شغل حلو.",
+  "Search: chicken breast, rice, laban…": "ابحث: صدر دجاج، رز، لبن…",
+  "Search foods": "ابحث عن أكل",
 };

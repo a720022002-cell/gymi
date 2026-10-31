@@ -1002,6 +1002,12 @@ Passwords and keys are left out on purpose.
   - logged.tsx reads that weight and works out the per-100 numbers from what was logged, so Edit shows "Amount". Changing it updates calories, protein, carbs, fat and the name (11 g → 30 g: 54 → 147 kcal).
 - Meals logged before this update have no weight in the name, so only the portion buttons apply to them. Checked on the web build.
 
+## 31 Oct 2026: ingredient search box looked like plain text
+
+- Reported (screenshot): in "Add an ingredient" the search field didn't look like something you can tap and type in.
+- Cause: PickFood used the normal Field, whose background is the card colour, the same as the sheet, so only the placeholder showed.
+- Fix (src/components/food/PickFood.tsx): a real search box with a light grey background and border, a search icon, a ✕ to clear, the placeholder "Search: chicken breast, rice, laban…" and the search key on the keyboard. Typecheck and lint pass. The web test couldn't open this sheet, so it should be checked on the phone after the OTA.
+
 ---
 
 
