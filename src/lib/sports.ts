@@ -45,8 +45,8 @@ export type SportInfo = {
   intervals: boolean;
   /** Stop-and-go (points, plays, rounds): heart rate spikes are normal, so effort is judged on a few minutes' average. */
   intermittent: boolean;
-  /** Sets (volleyball) or rounds (combat) to count, with a rest timer; rounds can have a set length. Racket sports
-   * have none: just play, the session keeps time and heart rate. */
+  /** Sets or rounds to count, with a rest timer; rounds can have a set length. No sport uses it now (owner, 31 Oct
+   * 2026): you just play, and the session keeps time and heart rate. */
   counter: { label: 'Set' | 'Round'; rest: number; roundSec?: number } | null;
   /** Contact or fall risk, or jumping and high impact: not in pregnancy. */
   contact?: boolean;
@@ -76,9 +76,9 @@ export const SPORTS: SportInfo[] = [
   { ...base, id: 'Badminton', name: 'Badminton', group: 'Racket sports', icon: 'trophy', met: 5.5, kind: 'Other', intermittent: true, zone: 3, minutes: 60 },
   { ...base, id: 'Football', name: 'Football', group: 'Team sports', icon: 'users', met: 7, kind: 'Other', intermittent: true, contact: true, impact: true, zone: 3, minutes: 90 },
   { ...base, id: 'Basketball', name: 'Basketball', group: 'Team sports', icon: 'users', met: 6.5, kind: 'Other', intermittent: true, contact: true, impact: true, zone: 3, minutes: 60 },
-  { ...base, id: 'Volleyball', name: 'Volleyball', group: 'Team sports', icon: 'users', met: 4, kind: 'Other', intermittent: true, counter: { label: 'Set', rest: 120 }, impact: true, zone: 3, minutes: 60 },
-  { ...base, id: 'Boxing', name: 'Boxing', group: 'Combat', icon: 'bolt', met: 7.8, kind: 'Other', intermittent: true, counter: { label: 'Round', rest: 60, roundSec: 180 }, contact: true, zone: 4, minutes: 30 },
-  { ...base, id: 'MartialArts', name: 'Martial arts', group: 'Combat', icon: 'body', met: 7.5, kind: 'Other', intermittent: true, counter: { label: 'Round', rest: 60, roundSec: 180 }, contact: true, zone: 3, minutes: 45 },
+  { ...base, id: 'Volleyball', name: 'Volleyball', group: 'Team sports', icon: 'users', met: 4, kind: 'Other', intermittent: true, impact: true, zone: 3, minutes: 60 },
+  { ...base, id: 'Boxing', name: 'Boxing', group: 'Combat', icon: 'bolt', met: 7.8, kind: 'Other', intermittent: true, contact: true, zone: 4, minutes: 30 },
+  { ...base, id: 'MartialArts', name: 'Martial arts', group: 'Combat', icon: 'body', met: 7.5, kind: 'Other', intermittent: true, contact: true, zone: 3, minutes: 45 },
   { ...base, id: 'Yoga', name: 'Yoga', group: 'Mind and body', icon: 'body', met: 2.5, kind: 'Other', zone: 1, minutes: 45 },
   { ...base, id: 'Pilates', name: 'Pilates', group: 'Mind and body', icon: 'body', met: 3, kind: 'Other', zone: 1, minutes: 45 },
   { ...base, id: 'Other', name: 'Other', group: 'Other', icon: 'flame', met: 6, kind: 'Other' },

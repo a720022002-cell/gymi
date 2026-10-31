@@ -870,7 +870,7 @@ Passwords and keys are left out on purpose.
 ## 31 Oct 2026: racket sports without sets or score
 
 - Asked: in cardio, padel and the other racket sports should stop recording sets and points.
-- Done: Padel, Tennis, Squash and Badminton no longer have a set counter (sports.ts). The live session shows no "Set done" card, rest timer or score. It keeps time, heart rate and the coach's tips. Volleyball keeps sets and combat sports keep rounds. App only.
+- Done: Padel, Tennis, Squash and Badminton no longer have a set counter (sports.ts). The live session shows no "Set done" card, rest timer or score. It keeps time, heart rate and the coach's tips. Later the same day (owner: "remove them too") volleyball's sets and boxing and martial arts rounds were removed as well, so no sport counts sets or rounds now. App only.
 
 ---
 
