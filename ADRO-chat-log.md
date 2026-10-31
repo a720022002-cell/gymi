@@ -1008,6 +1008,10 @@ Passwords and keys are left out on purpose.
 - Cause: PickFood used the normal Field, whose background is the card colour, the same as the sheet, so only the placeholder showed.
 - Fix (src/components/food/PickFood.tsx): a real search box with a light grey background and border, a search icon, a ✕ to clear, the placeholder "Search: chicken breast, rice, laban…" and the search key on the keyboard. Typecheck and lint pass. The web test couldn't open this sheet, so it should be checked on the phone after the OTA.
 
+## 31 Oct 2026: OTA sent ("حدث")
+
+- OTA da098a34 (iOS update 01a193c0), runtime 6e1d9a57 = build 17, local commit 443d091 on ota17 (not pushed). It has: the caffeine warning on iPhone (inside Add a drink, and waiting for other sheets), "Trained without your phone?", grams for typed and photo meals, and the clearer ingredient search box.
+
 ---
 
 
