@@ -5475,4 +5475,11 @@ export const AR: Record<string, string> = {
   "{a} of {b} L so far. You’re on track, keep sipping.": "شربت {a} من {b} لتر. ماشي صح، كمّل.",
   "{a} of {b} L so far. About {n} glasses behind, have one now.": "شربت {a} من {b} لتر. متأخر تقريبًا {n} كاسات، اشرب وحدة الحين.",
   "{a} of {b} L so far. Still {c} L to go today, have a glass now.": "شربت {a} من {b} لتر. باقي لك {c} لتر اليوم، اشرب كاسة الحين.",
+  "You had {n} kcal left yesterday": "أمس باقي لك {n} سعرة",
+  "To keep gaining, you can make it up. Add it to today, or spread it over the next days.": "عشان تكمّل زيادة، تقدر تعوضها. ضيفها لليوم، أو وزّعها على الأيام الجاية.",
+  "If you’re hungry, you can make it up. Add it to today, or spread it over the next days.": "لو جوعان، تقدر تعوضها. ضيفها لليوم، أو وزّعها على الأيام الجاية.",
+  "Today +{n}": "اليوم +{n}",
+  "3 days +{n}": "3 أيام +{n}",
+  "+{n} kcal added to today": "انضافت +{n} سعرة لليوم",
+  "+{n} kcal a day for the next {d} days": "+{n} سعرة كل يوم لمدة {d} أيام",
 };

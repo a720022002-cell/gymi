@@ -22,6 +22,7 @@ import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { TourTarget, useTour } from '@/components/tour/Tour';
 import { Button, Card, Row, Segmented, Springy } from '@/components/ui';
+import { CarryCard } from '@/components/food/CarryCard';
 import { useT } from '@/i18n';
 import { lutealHold, useCycleToday } from '@/lib/cyclePhase';
 import { useFood, useLogFood } from '@/lib/food';
@@ -294,6 +295,7 @@ function FoodHome() {
         </Card>
       ) : null}
 
+      <CarryCard />
       <TourTarget id="food.summary">
         <Card>
           <Row gap={14}>

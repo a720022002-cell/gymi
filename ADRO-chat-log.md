@@ -958,6 +958,17 @@ Passwords and keys are left out on purpose.
 - Reported (screenshot): in "How did you sleep?" the times (5:00 AM, 9:00 AM) sat on the top edge of their boxes instead of inside them.
 - Fix: TimeField (src/components/food/TimeField.tsx). On iPhone, Apple's time picker (Host) now matches its contents' width only, and its height is fixed (the box's height minus 8) and centred. Before, it sized itself and came out taller inside sheets. This fixes every TimeField: sleep check-in, vitamins, reminders and Train together. JS only, works with build 17. It can't be checked on an iPhone from here, so it should be checked after the OTA.
 
+## 31 Oct 2026: yesterday's leftover calories
+
+- Asked: a card like "Your weight hasn't changed in 2 weeks". When yesterday ended with calories left (for example 1,500), the next day it asks whether to add them to today or over a few days.
+- Done: new src/components/food/CarryCard.tsx, on Food above the summary.
+  - Shown for gain or maintain goals. Not when cutting, with a coach, or when pregnant.
+  - Only on today, only when yesterday was logged (at least 400 kcal), with at least 300 kcal left, and once a day (plan.carryDay).
+  - "Yesterday's left" means yesterday's goal plus that day's moves, minus what was eaten.
+  - Buttons: "Today +N" (at most 800), "3 days +N a day" (at most 2,400 in total), "Not now". Undo is in the toast.
+  - Saved as calorie_moves with kind 'balance': minus on yesterday, plus on the chosen days, so it isn't offered twice. No database change.
+- The "+150 kcal when your weight hasn't changed" card stays as it is.
+
 ---
 
 

@@ -86,6 +86,8 @@ export type FoodPlan = {
   mode?: 'beginner' | 'advanced';
   /** Day the weight plateau suggestion was dismissed or applied (hidden for 2 weeks after). */
   plateauDay?: string;
+  /** Day you answered "add yesterday's leftover calories?" (asked once a day). */
+  carryDay?: string;
   /** Food allergies (keys from ALLERGENS) and any others in your own words: kept out of suggested meals. */
   allergies?: string[];
   allergyNote?: string;
