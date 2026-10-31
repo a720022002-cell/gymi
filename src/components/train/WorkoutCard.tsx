@@ -6,8 +6,10 @@ import { useT } from '@/i18n';
 import { CY_PLAN } from '@/lib/cycle';
 import { useCycleToday } from '@/lib/cyclePhase';
 import { addDays, fmt, localDay } from '@/lib/nutrition';
-import { useTrain } from '@/lib/train';
-import { applyShift, buildWorkout, DAYS_LONG, effectiveWeek, exInfo, missedDays, shiftPlan, weekdayOf, weekStart, workoutTitle } from '@/lib/training';
+import { useAuth } from '@/lib/auth';
+import { togetherOf, type TogetherInfo } from '@/lib/groupWorkout';
+import { type LoggedEx, useTrain, type WorkoutLog } from '@/lib/train';
+import { applyShift, buildWorkout, DAYS_LONG, effectiveWeek, EX, exInfo, missedDays, muscleLabel, shiftPlan, weekdayOf, weekStart, workoutTitle } from '@/lib/training';
 import { useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
@@ -30,13 +32,58 @@ export function useToday() {
   const deload = !!p && p.deload === weekStart(train.today);
   const name = train.todayName;
   const wo = p && name ? buildWorkout(p, name, { home, short, light, deload, preg: train.preg, last: train.last, top: train.top }) : null;
-  // Done when today's planned workout was saved today; another workout (like Train together) doesn't count for it.
+  // Done when today's planned workout was saved today, or a Train together workout (it counts as your workout).
   // On a rest day, any workout today shows as done.
-  const log = name ? (train.logs.find((l) => l.day === train.today && (l.name === name.slice(0, 40) || (home && l.name === 'Home'))) ?? null) : train.todayLog;
+  const log = name ? (train.logs.find((l) => l.day === train.today && (l.name === name.slice(0, 40) || l.name === 'Together' || (home && l.name === 'Home'))) ?? null) : train.todayLog;
   return { name, home, short, light, deload, wo, skipped: !!p?.skipped[train.today], done: !!log, log };
 }
 
 const HOUR = 3_600_000;
+
+/** Who you trained with and what, for a saved Train together workout (null for other workouts). */
+export function useTogetherOf(log: WorkoutLog | null | undefined) {
+  const { session } = useAuth();
+  const me = session?.user.id ?? '';
+  const id = log?.name === 'Together' ? log.id : null;
+  const [x, setX] = useState<{ id: string; info: TogetherInfo | null } | null>(null);
+  useEffect(() => {
+    if (!id) return;
+    let alive = true;
+    togetherOf(id, me)
+      .then((info) => alive && setX({ id, info }))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [id, me]);
+  return id && x?.id === id ? x.info : null;
+}
+
+/** "Ahmed and Hamdan" in the reader's language. */
+export const namesText = (names: string[], t: (s: string) => string) => (names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(t(', '))} ${t('and')} ${names[names.length - 1]}`);
+
+// The big muscle groups (core and the rest don't count as "the same muscles").
+const MAIN = new Set(['Chest', 'Back', 'Shoulders', 'Legs', 'Arms', 'Biceps', 'Triceps']);
+const groupOf = (x: { id: string; m?: string }): string | null => {
+  const m: string = EX[x.id]?.m ?? x.m ?? 'Other';
+  return MAIN.has(m) ? m : null;
+};
+
+/**
+ * Today's workout works muscles you already trained yesterday: which ones, and yesterday's workout (to name who you
+ * trained with). null when there's no overlap.
+ */
+export function useYesterdayOverlap(todayEx: { id: string; m?: string }[] | null | undefined) {
+  const train = useTrain();
+  const y = addDays(train.today, -1);
+  const logs = train.logs.filter((l) => l.day === y);
+  if (!todayEx?.length || !logs.length) return null;
+  const today = new Set(todayEx.map(groupOf).filter((m): m is string => !!m));
+  // A group workout first, so it can say who it was with.
+  const log = [...logs].sort((a, b) => Number(b.name === 'Together') - Number(a.name === 'Together'))[0];
+  const muscles = [...new Set(logs.flatMap((l) => l.exercises.map((e: LoggedEx) => groupOf(e))).filter((m): m is string => !!m && today.has(m)))];
+  return muscles.length ? { muscles, log } : null;
+}
 
 /** A workout left open (Finish never tapped): started more than 12 hours ago, or on an earlier day and over 4 hours ago
  * (so a workout that runs past midnight isn't cut off). It must be saved or thrown away before today's workout. */
@@ -233,6 +280,10 @@ export function WorkoutCard() {
   const cycle = useCycleToday();
   const toast = useToast();
   const { r: rec } = useRecovery();
+  const tog = useTogetherOf(today.done ? today.log : null);
+  // Yesterday you trained the same muscles today's workout works: make sure you've recovered.
+  const overlap = useYesterdayOverlap(!today.done && !today.skipped ? today.wo?.ex : null);
+  const yTog = useTogetherOf(overlap?.log);
   // Poor sleep, low recovery, very sore, or the watch says the body is tired: ask about a lighter workout (once a day).
   // It's only offered: the person decides.
   const watchTired = rec.body != null && rec.body < 45;
@@ -261,12 +312,13 @@ export function WorkoutCard() {
 
   if (today.done && today.log) {
     const log = today.log;
+    const doneTitle = tog ? t(tog.people.length ? '{w}, together with {names}' : '{w}, together', { w: t(tog.title || 'Train together'), names: namesText(tog.people, t) }) : workoutTitle(log.name, t);
     const others = Object.keys(train.plan?.workouts ?? {}).filter((w) => train.plan?.workouts[w]?.ex.length);
     return (
       <Card>
         <Row style={{ justifyContent: 'space-between' }}>
           <Text variant="small" weight={700} color="sec">
-            {workoutTitle(log.name, t)}
+            {doneTitle}
           </Text>
           <OkChip label={t('Done')} />
         </Row>
@@ -362,6 +414,23 @@ export function WorkoutCard() {
       <Text variant="h2" style={{ marginTop: 4 }}>
         {t('{n} exercises, {m} min', { n: wo.ex.length, m: wo.min })}
       </Text>
+      {overlap && !train.session ? (
+        <View style={{ marginTop: 12, backgroundColor: c.gAi, borderRadius: 14, padding: 12 }}>
+          <Row gap={8} style={{ alignItems: 'flex-start' }}>
+            <Mark size={18} color={c.cobalt} stroke={4} />
+            <Text variant="small" style={{ flex: 1 }}>
+              <Text variant="small" weight={700}>
+                {t('Make sure you’ve recovered.')}
+              </Text>{' '}
+              {(() => {
+                const m = namesText(overlap.muscles.map((x) => (lang === 'ar' ? muscleLabel(x, lang, t) : x.toLowerCase())), t);
+                return yTog?.people.length ? t('Yesterday you trained {m} with {names}, and today’s workout works them again.', { m, names: namesText(yTog.people, t) }) : t('Yesterday you trained {m}, and today’s workout works them again.', { m });
+              })()}{' '}
+              {t('Still sore? Go lighter or swap the day.')}
+            </Text>
+          </Row>
+        </View>
+      ) : null}
       {!today.light && !today.deload && !today.short && !train.session && train.plan?.lightAsked !== train.today && tired ? (
         <View style={{ marginTop: 12, backgroundColor: 'rgba(51,85,255,0.1)', borderRadius: 14, padding: 12 }}>
           <Row gap={8} style={{ alignItems: 'flex-start' }}>

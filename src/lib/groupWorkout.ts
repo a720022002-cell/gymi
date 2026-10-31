@@ -216,3 +216,20 @@ export function groupNudge(ex: GroupEx, me: BoardMember | undefined, others: Boa
   }
   return null;
 }
+
+/** A saved group workout: its title and who you trained with (not you). Kept once loaded. */
+export type TogetherInfo = { title: string | null; people: string[] };
+const togetherCache = new Map<string, TogetherInfo | null>();
+export async function togetherOf(logId: string, me: string): Promise<TogetherInfo | null> {
+  if (togetherCache.has(logId)) return togetherCache.get(logId) ?? null;
+  const { data } = await supabase.from('workout_logs').select('group_session').eq('id', logId).maybeSingle();
+  const sid = (data as { group_session: string | null } | null)?.group_session;
+  if (!sid) {
+    togetherCache.set(logId, null);
+    return null;
+  }
+  const [info, board] = await Promise.all([groupSessionInfo([sid]), groupBoard(sid)]);
+  const x = { title: info[sid]?.title ?? null, people: board.filter((m) => m.user_id !== me && m.joined).map((m) => m.name || m.username) };
+  togetherCache.set(logId, x);
+  return x;
+}

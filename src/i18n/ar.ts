@@ -5451,4 +5451,10 @@ export const AR: Record<string, string> = {
   "{x} to {y}. Change yours too?": "من {x} إلى {y}. تغيّر عندك بعد؟",
   "Yes, same for me": "إيه، نفسه عندي",
   "No, keep mine": "لا، خلّ حقي",
+  "{w}, together with {names}": "{w}، مع {names}",
+  "{w}, together": "{w}، تمرين جماعي",
+  "Make sure you’ve recovered.": "تأكد إنك مستشفي.",
+  "Yesterday you trained {m} with {names}, and today’s workout works them again.": "توك أمس لاعب {m} مع {names}، وتمرين اليوم يشتغل عليها مرة ثانية.",
+  "Yesterday you trained {m}, and today’s workout works them again.": "توك أمس لاعب {m}، وتمرين اليوم يشتغل عليها مرة ثانية.",
+  "Still sore? Go lighter or swap the day.": "لو لسا فيك شد، خفّف أو بدّل اليوم.",
 };
