@@ -845,6 +845,12 @@ Passwords and keys are left out on purpose.
 - Kept from before: "Live with N friends", friends' progress under your sets, the "Your turn / Done set" bar.
 - The workout timer moved to `components/train/Elapsed.tsx` (used by both screens).
 
+## 31 Oct 2026: share-on-photo on the phone, see or edit group sets
+
+- Asked: a share button after the group workout with the same photo-story templates as solo workouts; see and edit the group workout's sets later, linked to Train.
+- Done: `StoryOverlay` (the four story templates for phones: Numbers, Rings, Record, Minimal), `storyShot` (captures it as a 1080 × 1920 picture with react-native-view-shot), and share-photo now works on phones too. The summary has "See or edit sets", which opens the workout log (also in Train → Workout history), where it can be edited.
+- Note: photo sharing on phones needs the new native module, so it comes with build 18. On build 17 the button stays hidden.
+
 ---
 
 

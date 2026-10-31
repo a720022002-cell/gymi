@@ -14,6 +14,7 @@ import { EX, workoutTitle } from '@/lib/training';
 import { fmt } from '@/lib/nutrition';
 import { useTrain } from '@/lib/train';
 import { useWeight } from '@/lib/units';
+import { canShareStory } from '@/lib/storyShot';
 import { useSettings } from '@/theme/settings';
 
 /** Workout done: time, volume, records (design: summary). */
@@ -136,8 +137,10 @@ export default function Summary() {
           {t('Have your post-workout meal within 2 hours.')}
         </Text>
       </Card>
-      {/* Sharing on a photo only works on the web for now. */}
-      {Platform.OS === 'web' ? <Button icon="camera" title={t('Share on a photo')} style={{ marginTop: 8 }} onPress={() => router.push({ pathname: '/share-photo', params: { id: s.id } })} /> : null}
+      {/* Your workout on a photo for your story: the web, or phones with the capture module (build 18 on). */}
+      {Platform.OS === 'web' || canShareStory() ? <Button icon="camera" title={t('Share on a photo')} style={{ marginTop: 8 }} onPress={() => router.push({ pathname: '/share-photo', params: { id: s.id } })} /> : null}
+      {/* See every set later in Train, and fix a weight or rep. */}
+      <Button kind="glass" icon="edit" title={t('See or edit sets')} style={{ marginTop: 8 }} onPress={() => router.push({ pathname: '/workout-log', params: { id: s.id } })} />
       <Button kind="glass" icon="share" title={t('Share your workout')} style={{ marginTop: 8 }} onPress={() => setShare(true)} />
       <Button title={t('Done')} style={{ marginTop: 8 }} onPress={() => router.replace('/home')} />
       <ShareWorkoutSheet log={s} open={share} onClose={() => setShare(false)} />

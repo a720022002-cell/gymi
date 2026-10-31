@@ -1,10 +1,12 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { Platform, View } from 'react-native';
+import * as Sharing from 'expo-sharing';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Platform, useWindowDimensions, View } from 'react-native';
 
 import { Screen } from '@/components/Screen';
+import { StoryOverlay } from '@/components/share/StoryOverlay';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { useRecovery } from '@/components/train/RecoveryCard';
@@ -17,6 +19,7 @@ import { drawOverlay, OVERLAY_SIZE, type OverlayData, type OverlayStyle } from '
 import { useTrain } from '@/lib/train';
 import { EX, workoutTitle } from '@/lib/training';
 import { useWeight } from '@/lib/units';
+import { captureStory, canShareStory } from '@/lib/storyShot';
 import { useSettings } from '@/theme/settings';
 
 const STYLES: [OverlayStyle, string][] = [
@@ -44,6 +47,11 @@ export default function SharePhoto() {
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const web = Platform.OS === 'web' && typeof document !== 'undefined';
+  // On a phone: the story is drawn as views, then captured as a picture.
+  const [phonePhoto, setPhonePhoto] = useState<string | null>(null);
+  const [stickerShot, setStickerShot] = useState(false);
+  const storyRef = useRef<View>(null);
+  const { width: screenW } = useWindowDimensions();
 
   const data = useMemo<OverlayData | null>(() => {
     if (!log) return null;
@@ -152,12 +160,54 @@ export default function SharePhoto() {
         <Text color="sec">{t('No workout yet.')}</Text>
       </Screen>
     );
-  if (!web)
+  if (!web) {
+    if (!canShareStory() || !data)
+      return (
+        <Screen title={t('Share on a photo')} back>
+          <Text color="sec">{t('Update Adro from the App Store to share on a photo.')}</Text>
+        </Screen>
+      );
+    const pickPhone = async () => {
+      const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
+      const uri = res.canceled ? null : res.assets?.[0]?.uri;
+      if (uri) setPhonePhoto(uri);
+    };
+    // Draw it (as a see-through sticker if asked), take the picture, then the phone's share sheet (Instagram, save…).
+    const sharePhone = async (sticker: boolean) => {
+      setBusy(true);
+      setStickerShot(sticker);
+      await new Promise((r) => setTimeout(r, 120));
+      const uri = await captureStory(storyRef.current, sticker);
+      setStickerShot(false);
+      setBusy(false);
+      if (!uri) return toast(t('Couldn’t make the picture. Please try again.'), { icon: 'warn' });
+      if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri, { mimeType: sticker ? 'image/png' : 'image/jpeg', UTI: sticker ? 'public.png' : 'public.jpeg' }).catch(() => {});
+    };
+    const pw = Math.min(300, screenW * 0.72);
     return (
       <Screen title={t('Share on a photo')} back>
-        <Text color="sec">{t('This works in the web app for now.')}</Text>
+        <Text color="sec" style={{ marginTop: -8 }}>
+          {t('Add a gym photo and pick a style. Then share it to your story or save it.')}
+        </Text>
+        <View style={{ alignItems: 'center', marginTop: 14 }}>
+          <View style={{ borderRadius: 24, overflow: 'hidden', backgroundColor: stickerShot ? 'transparent' : '#000' }}>
+            <StoryOverlay style={style} d={data} photo={phonePhoto} sticker={stickerShot} width={pw} viewRef={storyRef} />
+          </View>
+        </View>
+        <Row gap={8} style={{ marginTop: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
+          {STYLES.map(([k, label]) => (
+            <Chip key={k} title={t(label)} on={style === k} onPress={() => setStyle(k)} />
+          ))}
+        </Row>
+        <Button kind="soft" icon="camera" color={c.text} title={phonePhoto ? t('Change photo') : t('Choose a photo')} style={{ marginTop: 16 }} onPress={pickPhone} />
+        <Button icon="share" title={t('Share picture')} style={{ marginTop: 8 }} loading={busy && !stickerShot} disabled={busy} onPress={() => sharePhone(false)} />
+        <Button kind="glass" title={t('Sticker only (see-through)')} style={{ marginTop: 8 }} disabled={busy} onPress={() => sharePhone(true)} />
+        <Text variant="xs" color="sec" center style={{ marginTop: 10 }}>
+          {t('The sticker has no background, so you can put it on any photo or video in Instagram or Snapchat. Your photo stays on your phone.')}
+        </Text>
       </Screen>
     );
+  }
 
   return (
     <Screen title={t('Share on a photo')} back>

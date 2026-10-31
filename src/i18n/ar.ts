@@ -5405,4 +5405,6 @@ export const AR: Record<string, string> = {
   "Pick two photos to compare. Tap a photo to see it big. Only you can see them.": "اختر صورتين عشان تقارن. اضغط على الصورة عشان تكبر. بس أنت تشوفها.",
   "Tap a photo to see it big. Only you can see them.": "اضغط على الصورة عشان تكبر. بس أنت تشوفها.",
   "Delete the photo from {d}?": "تحذف صورة {d}؟",
+  "Update Adro from the App Store to share on a photo.": "حدّث أدرو من آب ستور عشان تشارك على صورة.",
+  "See or edit sets": "شوف الجولات أو عدّلها",
 };
