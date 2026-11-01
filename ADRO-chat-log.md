@@ -1057,6 +1057,12 @@ Passwords and keys are left out on purpose.
 - In a meal plan, each meal has "From my meals": pick a saved meal and it fills what to eat, calories, macros and ingredients.
 - "Give this plan to": tick your active clients; they get it when you save, unticking takes it off them.
 
+### 1 Nov 2026: Shipped (حدثه وطبق)
+- Applied 20261208000000_group_invite_push.sql (trigger group_invite_push live) and deployed the push function with group_invite.
+- OTA to build 20 (runtime ebc81514): update group 559585a2, from main 1710f04.
+- OTA to build 17 (runtime 6e1d9a57): update group 151912b9, from local ota17 af0cb3c.
+- Moving Hamdan's and Ali's old late-night logs back a day: blocked by the safety check, not done.
+
 ---
 
 
