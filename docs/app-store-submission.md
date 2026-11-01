@@ -126,7 +126,7 @@ Adro is invite-only at launch. On first open, enter this code on the gate screen
 (Or join the waitlist with any email to see that flow.)
 
 Demo account (already set up with a plan and data):
-Email: <DEMO EMAIL>
+Email: a720022002+applereview@gmail.com
 Password: <DEMO PASSWORD>
 
 - Apple Health: optional, used to read steps, sleep, heart rate and weight, and to save workouts if the user turns it on.

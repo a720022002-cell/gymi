@@ -56,6 +56,9 @@ export const profileComplete = (p: Profile | null) =>
  * so this follows EMAIL_CODES and stays off until the sender is connected.
  */
 export const LOGIN_CODES = EMAIL_CODES;
+/** Apple's App Review account (owner approved, 1 Nov 2026): the reviewer can't read its inbox, so it skips the
+ * new-phone email code. Only this one account; everyone else still gets the code. */
+const NO_LOGIN_CODE = ['a720022002+applereview@gmail.com'];
 
 const TRUST_KEY = 'adro.trusted.v1';
 /** Phones where you said "Don't ask for a code on this phone again" (user ids, this device only). */
@@ -268,7 +271,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) return { ...err(error), email };
         const uid = data.user?.id ?? '';
-        if (LOGIN_CODES && uid && !(await trustedIds()).includes(uid)) {
+        if (LOGIN_CODES && uid && !NO_LOGIN_CODE.includes(email.toLowerCase()) && !(await trustedIds()).includes(uid)) {
           // Password is right. Now prove it's you with a code from your email.
           await supabase.auth.signOut({ scope: 'local' });
           const sent = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });

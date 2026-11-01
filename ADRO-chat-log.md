@@ -1086,6 +1086,11 @@ Passwords and keys are left out on purpose.
 - OTA build 20: group b429ec13 (main 8b00efd). OTA build 17: from ota17 626383b.
 - To do by the owner in Admin → Waitlist: make FRIENDS30 (max 30) and a code for Apple's reviewer.
 
+### 1 Nov 2026: App Review account
+- Reviewer gate code APPLEREVIEW (no limit) is live.
+- Owner approved: the App Review account a720022002+applereview@gmail.com skips the new-phone email code (lib/auth NO_LOGIN_CODE). Only that account; everyone else still gets it. Needs "حدث".
+- The account itself is made by the owner in the app (the sign-up email code goes to their own Gmail).
+
 ---
 
 
