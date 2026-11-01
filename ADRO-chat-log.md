@@ -1104,6 +1104,10 @@ Passwords and keys are left out on purpose.
 - Build 21 started: EAS build 8271c80c (1.0.0 (21), runtime ebc81514, same as build 20 so updates keep reaching both), TestFlight auto-submit 9a2dc907.
 - Build 21 so Apple's reviewer gets everything from the first open (a fresh build 20 runs its old code on the first open, without the gate or the review-account exemption).
 
+### 1 Nov 2026: Submitted to App Review
+- Version 1.0 with build 21, the Adro+ group and both subscriptions, in one submission. Store name "Adro: Fitness & Calorie Coach". Reviewer: gate code APPLEREVIEW + the review account.
+- While in review: only small OTA fixes; nothing that changes what the reviewer sees.
+
 ---
 
 
