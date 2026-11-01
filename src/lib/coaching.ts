@@ -5,7 +5,8 @@ import { supabase } from './supabase';
 import type { PlanEx } from './training';
 
 /** A coach package. New packages are the 4 fixed durations in PKGS (id m1/m3/m6/m12) with on, months and inc. */
-export type Package = { id: string; name: string; price: number; weeks: number; desc: string; on?: boolean; months?: number; inc?: string[] };
+/** price: what the coach asks for the whole package. absorb: how much of Adro's fees the coach pays (0-100%). */
+export type Package = { id: string; name: string; price: number; weeks: number; desc: string; on?: boolean; months?: number; inc?: string[]; absorb?: number };
 export type CoachCard = { id: string; name: string | null; username: string; bio: string; specialties: string[]; city: string; gym: string; price_month: number | null; years: number | null; clients: number; coach_type: string; packages: Package[]; spots: number; socials: Record<string, string>; hours: GymHours[]; headline?: string; about?: string; sessions?: number; listed?: boolean };
 
 /** The package durations a coach can offer (design: PKGS). */
@@ -29,15 +30,31 @@ export function normalizePackages(list: Package[] | null | undefined): Package[]
           const w = x.weeks || 4;
           return (w <= 6 ? 'm1' : w <= 18 ? 'm3' : w <= 39 ? 'm6' : 'm12') === id;
         });
-    return { id, name, months, weeks: months * 4, on: fixed ? !!hit?.on : !!hit, price: hit?.price ?? 0, desc: hit?.desc ?? '', inc: hit?.inc ?? [] };
+    return { id, name, months, weeks: months * 4, on: fixed ? !!hit?.on : !!hit, price: hit?.price ?? 0, desc: hit?.desc ?? '', inc: hit?.inc ?? [], absorb: hit?.absorb ?? 0 };
   });
 }
 /** Packages a member can pick. */
 export const activePackages = (list: Package[] | null | undefined) => normalizePackages(list).filter((x) => x.on);
-/** Lowest price a month over the packages that are on. */
+/** Adro's share of a coaching package: 5% of the coach's price. */
+export const ADRO_CUT = 0.05;
+/** Adro+ comes with every package, for as many months as it lasts: 29 SAR a month, 20 SAR a month for 3 months or more. */
+export const plusFee = (months: number) => (months >= 3 ? 20 : 29);
+/**
+ * What a package costs: the coach's price, plus Adro's 5% and Adro+ for its months, less the part of those fees the
+ * coach chose to pay. client: what the member pays. coach: what the coach gets.
+ */
+export function pkgPricing(p: Pick<Package, 'price' | 'months' | 'absorb'>) {
+  const months = p.months || 1;
+  const cut = Math.round(p.price * ADRO_CUT);
+  const plus = plusFee(months) * months;
+  const fees = cut + plus;
+  const absorb = Math.round((fees * Math.min(100, Math.max(0, p.absorb ?? 0))) / 100);
+  return { months, cut, plus, fees, absorb, client: p.price + fees - absorb, coach: p.price - absorb };
+}
+/** Lowest price a month (what members pay) over the packages that are on. */
 export function fromPrice(list: Package[] | null | undefined) {
   const on = activePackages(list).filter((x) => x.price > 0);
-  return on.length ? Math.min(...on.map((x) => Math.round(x.price / (x.months || 1)))) : null;
+  return on.length ? Math.min(...on.map((x) => Math.round(pkgPricing(x).client / (x.months || 1)))) : null;
 }
 /** Spots left before a coach is full. */
 export const spotsLeft = (k: Pick<CoachCard, 'spots' | 'clients'>) => Math.max(0, k.spots - k.clients);

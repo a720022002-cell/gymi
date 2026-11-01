@@ -14,7 +14,7 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Row } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
-import { activePackages, type CoachCard, coachCard, myCoach, type MyCoach, requestCoach, requestCoachPackage, spotsLeft } from '@/lib/coaching';
+import { activePackages, type CoachCard, coachCard, myCoach, type MyCoach, requestCoach, requestCoachPackage, pkgPricing, spotsLeft } from '@/lib/coaching';
 import { fmt } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
 
@@ -175,13 +175,20 @@ export default function CoachPage() {
               <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Text weight={700}>{t(x.name)}</Text>
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text num size={20}>{`${fmt(x.price)} ${t('SAR')}`}</Text>
+                  {/* What you pay: the coach's price with Adro's fees and Adro+ in it. */}
+                  <Text num size={20}>{`${fmt(pkgPricing(x).client)} ${t('SAR')}`}</Text>
                   {(x.months ?? 1) > 1 ? (
                     <Text variant="xs" color="sec">
-                      {t('{n} SAR a month', { n: fmt(Math.round(x.price / (x.months ?? 1))) })}
+                      {t('{n} SAR a month', { n: fmt(Math.round(pkgPricing(x).client / (x.months ?? 1))) })}
                     </Text>
                   ) : null}
                 </View>
+              </Row>
+              <Row gap={8} style={{ marginTop: 4 }}>
+                <Icon name="crown" size={14} color={c.cobalt} />
+                <Text variant="small" weight={700}>
+                  {t('Adro+ for {n}', { n: t((x.months ?? 1) === 1 ? '1 month' : '{n} months', { n: x.months ?? 1 }) })}
+                </Text>
               </Row>
               {(x.inc ?? []).map((i) => (
                 <Row key={i} gap={8} style={{ marginTop: 4 }}>

@@ -12,7 +12,8 @@ import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Label, Row, Toggle } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/lib/auth';
-import { type CoachProfile, coachList, EMPTY_COACH, fromPrice, getCoachProfile, INCLUDES, normalizePackages, type Package, saveCoachProfile } from '@/lib/coaching';
+import { type CoachProfile, coachList, EMPTY_COACH, fromPrice, getCoachProfile, INCLUDES, normalizePackages, type Package, pkgPricing, plusFee, saveCoachProfile } from '@/lib/coaching';
+import { PercentBar } from '@/components/PercentBar';
 import { fmt } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
 import { goBack } from '@/lib/nav';
@@ -141,21 +142,56 @@ export default function CoachOffer() {
           </Row>
           {x.on ? (
             <>
-              <Row gap={8} style={{ marginTop: 8 }}>
+              <Text variant="xs" weight={700} color="sec" style={{ marginTop: 10, marginBottom: 6 }}>
+                {t('Your price for the whole package')}
+              </Text>
+              <Row gap={8}>
                 <TextInput value={x.price ? String(x.price) : ''} onChangeText={(s) => setPkg(x.id, { price: Math.min(100000, num(s)) })} inputMode="numeric" placeholder="0" placeholderTextColor={c.sec} style={[field, { flex: 1 }]} />
                 <Text weight={700} color="sec">
                   {t('SAR')}
                 </Text>
               </Row>
-              {(x.months ?? 1) > 1 && x.price ? (
-                <Text variant="xs" color="sec" style={{ marginTop: 4 }}>
-                  {t('{n} SAR a month', { n: fmt(Math.round(x.price / (x.months ?? 1))) })}
-                </Text>
+              {x.price ? (
+                (() => {
+                  const pr = pkgPricing(x);
+                  const line = (a: string, b: string, strong = false, color?: string) => (
+                    <Row style={{ justifyContent: 'space-between', marginTop: 4 }}>
+                      <Text variant="small" weight={strong ? 700 : 500} color={strong ? undefined : 'sec'} style={{ flex: 1 }}>
+                        {a}
+                      </Text>
+                      <Text variant="small" weight={strong ? 800 : 600} num color={color}>
+                        {b}
+                      </Text>
+                    </Row>
+                  );
+                  const sar = (n: number) => `${fmt(n)} ${t('SAR')}`;
+                  return (
+                    <View style={{ marginTop: 10, backgroundColor: c.inset, borderRadius: 14, padding: 12 }}>
+                      {line(t('Your price'), sar(x.price))}
+                      {line(t('Adro fee (5%)'), `+ ${sar(pr.cut)}`)}
+                      {line(t('Adro+ for the member, {m} × {f} SAR', { m: pr.months, f: plusFee(pr.months) }), `+ ${sar(pr.plus)}`)}
+                      {pr.absorb ? line(t('You pay {n}% of the fees', { n: x.absorb ?? 0 }), `− ${sar(pr.absorb)}`, false, c.up) : null}
+                      <View style={{ height: 1, backgroundColor: c.line, marginVertical: 8 }} />
+                      {line(t('Members pay'), sar(pr.client), true)}
+                      {pr.months > 1 ? line(t('That’s a month'), sar(Math.round(pr.client / pr.months))) : null}
+                      {line(t('You get'), sar(pr.coach), true, c.up)}
+                      <Text variant="xs" weight={700} color="sec" style={{ marginTop: 14 }}>
+                        {t('Pay part of the fees yourself: {n}%', { n: x.absorb ?? 0 })}
+                      </Text>
+                      <PercentBar value={x.absorb ?? 0} onChange={(n) => setPkg(x.id, { absorb: n })} label={t('Part of the fees you pay')} />
+                      <Text variant="xs" color="sec">
+                        {t('A lower price for members. It comes off what you get.')}
+                      </Text>
+                    </View>
+                  );
+                })()
               ) : null}
               <Text variant="xs" weight={700} color="sec" style={{ marginTop: 12, marginBottom: 6 }}>
                 {t('Includes')}
               </Text>
               <Row gap={6} style={{ flexWrap: 'wrap' }}>
+                {/* Every package comes with Adro+ for as long as it lasts. */}
+                <Chip title={`✓ ${t('Adro+ for {n}', { n: t((x.months ?? 1) === 1 ? '1 month' : '{n} months', { n: x.months ?? 1 }) })}`} on onPress={() => toast(t('Adro+ comes with every package.'), { icon: 'crown' })} />
                 {INCLUDES.map((i) => {
                   const on = !!x.inc?.includes(i);
                   return <Chip key={i} title={`${on ? '✓ ' : ''}${t(i)}`} on={on} onPress={() => setPkg(x.id, { inc: on ? (x.inc ?? []).filter((z) => z !== i) : [...(x.inc ?? []), i] })} />;

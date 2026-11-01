@@ -1040,6 +1040,14 @@ Passwords and keys are left out on purpose.
 ### 1 Nov 2026: Coach packages, own features
 - Listing and packages: under the preset "Includes", a box to write your own (up to 8 per package, 60 letters each). They show as ticked chips (tap to remove) and on the coach page like the presets. Presets stay optional.
 
+### 1 Nov 2026: Coach package pricing with Adro's fees
+- The coach sets the price they want for the whole package. Adro adds 5% of it and Adro+ for the member for the package's months (29 SAR a month; 20 SAR a month for 3 months or more).
+- Breakdown under the price: your price, Adro fee, Adro+, what members pay (and a month), what you get.
+- A bar to pay part of the fees yourself (0-100%): members pay less, it comes off what you get.
+- "Adro+ for N months" is a fixed feature on every package, in the editor and on the coach page.
+- Members see the full price (coach page, Find a coach "from" price). lib/coaching pkgPricing does the maths.
+- Not yet: charging for it, and turning on Adro+ for the member when they subscribe (the payment step).
+
 ---
 
 
