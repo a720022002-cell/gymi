@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { TextInput, View } from 'react-native';
 
@@ -10,14 +10,16 @@ import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { fontFor, Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
-import { Button, Card, Row, Springy } from '@/components/ui';
+import { Button, Card, Chip, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
 import { aiErrorText, askAI } from '@/lib/ai';
 import { WarnChip } from '@/components/food/Chips';
 import { allergensIn, ALLERGENS, noteHit } from '@/lib/allergies';
-import { assignOne, clientSummary, coachList, deleteMealPlan, listMealPlans, type MealPlan, type PlanIng, type PlanMeal, saveMealPlan } from '@/lib/coaching';
+import { assignOne, type ClientLink, clientSummary, coachList, deleteMealPlan, listMealPlans, type MealPlan, type PlanIng, type PlanMeal, saveMealPlan } from '@/lib/coaching';
 import { foodName } from '@/lib/foodsDb';
+import { type SavedMeal, useFood } from '@/lib/food';
 import { fmt } from '@/lib/nutrition';
+import { Sheet } from '@/components/Sheet';
 import { useSettings } from '@/theme/settings';
 import { goBack } from '@/lib/nav';
 
@@ -41,6 +43,26 @@ export default function MealEdit() {
   const [busy, setBusy] = useState(false);
   const [ai, setAi] = useState<number | null>(null);
   const [build, setBuild] = useState<number | null>(null);
+  const food = useFood();
+  // Which meal is picking from your saved meals.
+  const [fromMine, setFromMine] = useState<number | null>(null);
+  // Your active clients, and who gets this plan (ticked).
+  const [links, setLinks] = useState<ClientLink[]>([]);
+  const [to, setTo] = useState<string[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    coachList()
+      .catch(() => [] as ClientLink[])
+      .then((l) => {
+        if (!alive) return;
+        const act = l.filter((x) => x.status === 'active' && x.client_id);
+        setLinks(act);
+        setTo(act.filter((x) => x.id === assign || (!!id && x.meal_plan_id === id)).map((x) => x.id));
+      });
+    return () => {
+      alive = false;
+    };
+  }, [id, assign]);
   // The allergies of the clients this plan is for (the one you're making it for, or everyone who has it).
   const [allergy, setAllergy] = useState<{ name: string; keys: string[]; note: string }[]>([]);
   useEffect(() => {
@@ -102,6 +124,15 @@ export default function MealEdit() {
     });
   };
 
+  /** Put one of your saved meals in this spot: what's in it, calories and macros, and its ingredients. */
+  const pickSaved = (i: number, m: SavedMeal) => {
+    const ing = (m.ingredients ?? []).map((x, j) => ({ id: x.id ?? `own-${j}`, n: x.n, g: x.g, k: x.k, p: x.p, c: x.c, f: x.f }));
+    const d = (m.items ?? '').trim() || ing.map((x) => `${x.g} g ${x.n}`).join(t(', '));
+    setMeal(i, { d: `${m.name}${d ? `: ${d}` : ''}`.slice(0, 300), k: Math.round(m.kcal), p: Math.round(m.protein), c: Math.round(m.carbs), f: Math.round(m.fat), ing: ing.length ? ing : undefined });
+    setFromMine(null);
+    toast(t('{n} updated', { n: p.meals[i].n }), { icon: 'check' });
+  };
+
   const estimate = async (i: number) => {
     const m = p.meals[i];
     if (!m.d.trim()) return toast(t('Write what to eat first.'), { icon: 'info' });
@@ -153,6 +184,7 @@ export default function MealEdit() {
             <Button small kind="soft" icon="search" title={t('Ingredients')} style={{ flex: 1 }} onPress={() => setBuild(i)} />
             <Button small kind="glass" icon="sparkle" title={t('Ask AI')} loading={ai === i} style={{ flex: 1 }} onPress={() => estimate(i)} />
           </Row>
+          <Button small kind="soft" icon="bookmark" title={t('From my meals')} style={{ marginTop: 8 }} onPress={() => setFromMine(i)} />
           <Row gap={8} style={{ marginTop: 8 }}>
             <View style={{ flex: 1 }}>
               <Text variant="xs" weight={700} color="sec">
@@ -170,6 +202,31 @@ export default function MealEdit() {
         </Card>
       ))}
       {p.meals.length < 8 ? <Button kind="soft" icon="plus" title={t('Add a meal')} onPress={() => setP({ ...p, meals: [...p.meals, { n: t('Snack'), t: '16:00', k: 250, p: 20, d: '' }] })} /> : null}
+      {links.length ? (
+        <>
+          <Text variant="small" weight={700} color="sec" style={{ marginHorizontal: 4, marginTop: 16, marginBottom: 6 }}>
+            {t('Give this plan to')}
+          </Text>
+          <Card>
+            <Row gap={6} style={{ flexWrap: 'wrap' }}>
+              {links.map((l) => {
+                const on = !!to?.includes(l.id);
+                return (
+                  <Chip
+                    key={l.id}
+                    title={`${on ? '✓ ' : ''}${l.name || l.username || t('Client')}`}
+                    on={on}
+                    onPress={() => setTo(on ? (to ?? []).filter((x) => x !== l.id) : [...(to ?? []), l.id])}
+                  />
+                );
+              })}
+            </Row>
+            <Text variant="xs" color="sec" style={{ marginTop: 8 }}>
+              {t('They get it when you save. Taking someone off removes it from them.')}
+            </Text>
+          </Card>
+        </>
+      ) : null}
       <Button
         title={t('Save')}
         loading={busy}
@@ -180,8 +237,15 @@ export default function MealEdit() {
           const r = await saveMealPlan({ ...p, id: p.id || undefined });
           setBusy(false);
           if (!r) return toast(t('Couldn’t save. Please try again.'), { icon: 'warn' });
-          // Made from a client's page or an invite: give it to them right away.
-          if (assign && !p.id) await assignOne(assign, 'meal', r.id);
+          // Give it to the clients you ticked; take it off the ones you unticked.
+          if (to) {
+            for (const l of links) {
+              const has = l.meal_plan_id === r.id;
+              const want = to.includes(l.id);
+              if (want && !has) await assignOne(l.id, 'meal', r.id);
+              if (!want && has) await assignOne(l.id, 'meal', null);
+            }
+          } else if (assign && !p.id) await assignOne(assign, 'meal', r.id);
           toast(t('Meal plan saved. Clients on it see the changes.'), { icon: 'check' });
           goBack();
         }}
@@ -200,6 +264,37 @@ export default function MealEdit() {
           }}
         />
       ) : null}
+      <Sheet open={fromMine != null} onClose={() => setFromMine(null)}>
+        <Text variant="h2">{t('From my meals')}</Text>
+        {food.saved.length ? (
+          <View style={{ marginTop: 8, maxHeight: 420 }}>
+            {food.saved.slice(0, 30).map((m) => (
+              <Springy key={m.id} onPress={() => fromMine != null && pickSaved(fromMine, m)} style={{ paddingVertical: 10, borderTopWidth: 1, borderTopColor: c.line }}>
+                <Text weight={700} numberOfLines={1}>
+                  {m.name}
+                </Text>
+                <Text variant="xs" color="sec">
+                  {t('{k} kcal, {p} g protein', { k: fmt(m.kcal), p: Math.round(m.protein) })}
+                </Text>
+              </Springy>
+            ))}
+          </View>
+        ) : (
+          <Text color="sec" style={{ marginTop: 8 }}>
+            {t('No meals yet. Build one with ingredients, a barcode or a recipe, then use it in any plan.')}
+          </Text>
+        )}
+        <Button
+          kind="soft"
+          icon="plus"
+          title={t('Build a meal')}
+          style={{ marginTop: 12 }}
+          onPress={() => {
+            setFromMine(null);
+            router.push('/saved-meals');
+          }}
+        />
+      </Sheet>
     </Screen>
   );
 }

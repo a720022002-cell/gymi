@@ -1052,6 +1052,11 @@ Passwords and keys are left out on purpose.
 - Me → Your coaching → Earnings (/cearn): next payout (1st of next month) with this month's amount, active clients and new this month, paid to you, total earned, what members paid, by package (clients, price, earned), by month (last 6, paid or to be paid), and every subscriber (package, start, end, what you get).
 - Worked out from active clients' packages at today's prices (lib/coaching earningsOf). Start date is when the link was made. Real figures come once payments are connected.
 
+### 1 Nov 2026: Coach meals in meal plans
+- Programs → Meal plans: "My meals (N)" opens the same meal builder members have (ingredients, barcode, recipes).
+- In a meal plan, each meal has "From my meals": pick a saved meal and it fills what to eat, calories, macros and ingredients.
+- "Give this plan to": tick your active clients; they get it when you save, unticking takes it off them.
+
 ---
 
 

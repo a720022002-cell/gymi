@@ -4,6 +4,7 @@ import { View } from 'react-native';
 
 import { useT } from '@/i18n';
 import { type ClientLink, coachList, listMealPlans, listPrograms, type MealPlan, type Program } from '@/lib/coaching';
+import { useFood } from '@/lib/food';
 import { fmt } from '@/lib/nutrition';
 import { useSettings } from '@/theme/settings';
 
@@ -17,6 +18,7 @@ import { Button, Card, NavButton, Row, Segmented } from '../ui';
 export function ProgramsView() {
   const { t } = useT();
   const { colors: c } = useSettings();
+  const food = useFood();
   const [tab, setTab] = useState<'w' | 'm'>('w');
   const [d, setD] = useState<{ p: Program[]; m: MealPlan[]; l: ClientLink[] } | null>(null);
   useFocusEffect(
@@ -89,6 +91,8 @@ export function ProgramsView() {
         </Card>
       )}
       <Button kind="glass" icon="plus" title={t(tab === 'w' ? 'New workout program' : 'New meal plan')} onPress={add} />
+      {/* Your own meals, built like any member's (ingredients, barcode, recipes). Use them in any meal plan. */}
+      {tab !== 'w' ? <Button kind="soft" icon="food" title={t('My meals ({n})', { n: food.saved.length })} style={{ marginTop: 8 }} onPress={() => router.push('/saved-meals')} /> : null}
     </Screen>
   );
 }

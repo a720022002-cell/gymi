@@ -5543,4 +5543,10 @@ export const AR: Record<string, string> = {
   "1 client": "متدرب واحد",
   "1 subscription": "اشتراك واحد",
   "From 1 subscription this month. Paid at the start of every month.": "من اشتراك واحد هذا الشهر. التحويل بداية كل شهر.",
+  "My meals ({n})": "وجباتي ({n})",
+  "From my meals": "من وجباتي",
+  "Give this plan to": "أعط الخطة لـ",
+  "They get it when you save. Taking someone off removes it from them.": "توصلهم لما تحفظ. إذا شلت أحد تنشال منه.",
+  "No meals yet. Build one with ingredients, a barcode or a recipe, then use it in any plan.": "ما عندك وجبات للحين. سوّ وحدة بالمكونات أو الباركود أو وصفة، واستخدمها في أي خطة.",
+  "Build a meal": "سوّ وجبة",
 };
