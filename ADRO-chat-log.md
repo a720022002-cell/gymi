@@ -1081,6 +1081,11 @@ Passwords and keys are left out on purpose.
 - Database: 20261209000000_waitlist_gate.sql (app_gate, gate_codes, waitlist + gate_on, gate_try, waitlist_join, waitlist_friends, admin_*). Needs "طبق", plus deploying the gate function.
 - App Store questions answered: description, keywords, screenshots, support link, category and age rating can change later with a new version; promotional text any time.
 
+### 1 Nov 2026: Gate shipped (طبق حدث)
+- Applied 20261209000000_waitlist_gate.sql (gate is ON; checked as a signed-out user: gate_on true, a wrong code false). Deployed the gate function (with sign-in checks).
+- OTA build 20: group b429ec13 (main 8b00efd). OTA build 17: from ota17 626383b.
+- To do by the owner in Admin → Waitlist: make FRIENDS30 (max 30) and a code for Apple's reviewer.
+
 ---
 
 
