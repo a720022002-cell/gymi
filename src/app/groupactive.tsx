@@ -49,6 +49,7 @@ import { setSessionStatus } from '@/lib/social';
 import { useTrain, type WorkoutLog } from '@/lib/train';
 import { sportInfo } from '@/lib/sports';
 import { exInfo, exMuscle, muscleLabel, workoutKcal } from '@/lib/training';
+import { histFor, ltrNums, setAdvice } from '@/lib/activeWorkout';
 import { useExerciseWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 
@@ -275,6 +276,17 @@ export default function GroupActive() {
   const nudge = groupNudge(slot, meRow, others);
   // Each exercise in its own unit (kg or lb, switched on its card), like a solo workout.
   const W = Wf(ex.id);
+  // The coach's tip on your own sets, the same as in a solo workout (next to how you compare with your friends).
+  const adv = cardio
+    ? null
+    : setAdvice(
+        { id: ex.id, n: ex.n, ar: ex.ar, m: ex.m, reps: String(mySets.reps), tip: false, sets: mySets.sets.map((x) => ({ w: String(x.w ?? ''), r: String(x.r ?? ''), done: x.done, lw: 0, lr: 0 })) },
+        timed,
+        exInfo({ id: ex.id, n: ex.n }, lang).type === 'Bodyweight',
+        histFor(train.logs, train.plan, ex.id),
+        t,
+        W,
+      );
   // Your sets across the whole workout, for the bar at the top.
   const allMine = g.workout.map((x) => setsOf(meRow, x).sets);
   const tot = allMine.reduce((a, x) => a + x.length, 0);
@@ -649,6 +661,21 @@ export default function GroupActive() {
                         : `${s.sets.length} × ${s.reps} ${timed ? t('s') : t('reps')}${t(', ')}${t('set {a} of {b}', { a: Math.min(n + 1, s.sets.length), b: s.sets.length })}`
                       : t('Hasn’t joined yet')}
                   </Text>
+                  {(() => {
+                    // Their last set: the weight they lifted and how many reps (or seconds).
+                    const lastSet = [...s.sets].reverse().find((x) => x.done);
+                    if (!m.joined || cardio || !lastSet) return null;
+                    const W2 = Wf(theirs.id);
+                    return (
+                      <Text variant="xs" weight={700} num>
+                        {timed
+                          ? t('Last set: {r} s', { r: lastSet.r ?? 0 })
+                          : (lastSet.w ?? 0) > 0
+                            ? t('Last set: {w} × {r}', { w: W2.text(lastSet.w ?? 0), r: lastSet.r ?? 0 })
+                            : t('Last set: {r} reps', { r: lastSet.r ?? 0 })}
+                      </Text>
+                    );
+                  })()}
                 </View>
                 {!m.joined ? (
                   <Springy onPress={ping} accessibilityRole="button" style={{ height: 30, paddingHorizontal: 12, borderRadius: 15, backgroundColor: c.inset, justifyContent: 'center' }}>
@@ -666,6 +693,20 @@ export default function GroupActive() {
             );
           })}
         </Card>
+        {adv ? (
+          <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderStartWidth: 3, borderStartColor: adv.tone === 'up' ? c.up : adv.tone === 'down' ? '#F59E0B' : c.cobalt }}>
+            {adv.tone === 'up' ? (
+              <Icon name="up" size={20} color={c.up} strokeWidth={2.6} />
+            ) : adv.tone === 'down' ? (
+              <Icon name="down" size={20} color="#F59E0B" strokeWidth={2.6} />
+            ) : (
+              <Mark size={22} color={c.cobalt} stroke={4} />
+            )}
+            <Text variant="small" weight={700} style={{ flex: 1 }}>
+              {ltrNums(adv.text)}
+            </Text>
+          </Card>
+        ) : null}
         {nudge ? (
           <Card style={{ backgroundColor: c.gAi, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <Mark size={26} color={c.cobalt} stroke={5} />

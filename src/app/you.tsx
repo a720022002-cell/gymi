@@ -6,7 +6,7 @@ import { Platform, Pressable, View } from 'react-native';
 import { Icon, type IconName } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
-import { Avatar } from '@/components/social/Avatar';
+import { CommitAvatar } from '@/components/social/CommitAvatar';
 import { Text } from '@/components/Text';
 import { replayTours } from '@/components/tour/Tour';
 import { Button, Label, Segmented, Toggle } from '@/components/ui';
@@ -56,7 +56,7 @@ export default function You() {
   return (
     <Screen title={t('You')} back>
       <View style={{ alignItems: 'center', marginBottom: 8 }}>
-        <Avatar id={uid ?? ''} name={name} size={80} url={profile?.avatar_url ?? null} />
+        <CommitAvatar id={uid ?? ''} name={name} size={80} url={profile?.avatar_url ?? null} />
         <Text variant="h2" style={{ marginTop: 12 }}>
           {name}
         </Text>

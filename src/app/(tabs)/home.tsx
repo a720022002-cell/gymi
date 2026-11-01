@@ -2,7 +2,6 @@ import { Redirect, router, useFocusEffect, useLocalSearchParams } from 'expo-rou
 import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 
-import { Glass } from '@/components/Glass';
 import { Icon } from '@/components/Icon';
 import { FreeMonthAlert } from '@/components/FreeMonthAlert';
 import { RecapGate } from '@/components/RecapGate';
@@ -16,7 +15,7 @@ import { DiscoverMore } from '@/components/home/DiscoverMore';
 import { MainCard } from '@/components/home/MainCard';
 import { GroupResumeCard } from '@/components/train/GroupResumeCard';
 import { Screen } from '@/components/Screen';
-import { Avatar } from '@/components/social/Avatar';
+import { CommitAvatar } from '@/components/social/CommitAvatar';
 import { Text } from '@/components/Text';
 import { TourTarget, useTour } from '@/components/tour/Tour';
 import { MissedCard, WorkoutCard } from '@/components/train/WorkoutCard';
@@ -143,15 +142,8 @@ export default function Home() {
       right={
         <TourTarget id="home.you">
         <Springy onPress={() => router.push('/you')} scaleTo={1.08} accessibilityLabel={t('Profile and settings')}>
-          {profile?.avatar_url ? (
-            <Avatar id={uid ?? ''} name={name} size={44} url={profile.avatar_url} />
-          ) : (
-            <Glass style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}>
-              <Text variant="h3" size={16}>
-                {(name[0] ?? '?').toUpperCase()}
-              </Text>
-            </Glass>
-          )}
+          {/* Your photo in the logo's ring, filled with this week's commitment. */}
+          <CommitAvatar id={uid ?? ''} name={name} size={36} url={profile?.avatar_url ?? null} />
         </Springy>
         </TourTarget>
       }>

@@ -5498,4 +5498,7 @@ export const AR: Record<string, string> = {
   "Your friends finished": "أخوياك خلصوا",
   "Away": "مو موجود",
   "Change sets for {name}": "غيّر جولات {name}",
+  "Last set: {w} × {r}": "آخر جولة: {w} × {r}",
+  "Last set: {r} s": "آخر جولة: {r} ث",
+  "Last set: {r} reps": "آخر جولة: {r} عدّات",
 };
