@@ -1074,6 +1074,13 @@ Passwords and keys are left out on purpose.
 - In it: time box fix (fixed size, centred by SwiftUI) and Train together without "Friend not on Adro?".
 - Adro+ redesign: shown as a picture only, not applied (owner said don't apply).
 
+### 1 Nov 2026: Invite-only gate and waitlist (idea C, no place in line shown)
+- Before signing up, new people see the gate (/gate): open Adro with a code, or join the waitlist with their email. They get their own code to share; every friend who joins with it moves them up. Only "N friends joined with your code" is shown, never a place in line.
+- Signed-in people never see it; "Already have an account? Sign in" stays open. If the server can't be reached, the app opens. Once a code works, this phone stays open.
+- Admin → Waitlist (/admin-waitlist): gate on/off for everyone, numbers (list, today, week, from a friend, let in, opened Adro), shared codes (e.g. FRIENDS30 with max uses, one for Apple's reviewer), "Let in the top N" by priority (friends brought, then who joined first) and per person. Each person let in gets a personal 8-letter code by email (function gate, through Resend).
+- Database: 20261209000000_waitlist_gate.sql (app_gate, gate_codes, waitlist + gate_on, gate_try, waitlist_join, waitlist_friends, admin_*). Needs "طبق", plus deploying the gate function.
+- App Store questions answered: description, keywords, screenshots, support link, category and age rating can change later with a new version; promotional text any time.
+
 ---
 
 

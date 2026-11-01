@@ -91,6 +91,7 @@ function Overview({ go }: { go: (t: Tab) => void }) {
             ['pulse', 'Server', '/admin-server'],
             ['sparkle', 'AI costs', '/admin-ai'],
             ['warn', 'User reports', '/admin-reports'],
+            ['users', 'Waitlist', '/admin-waitlist'],
             ['star', 'Free codes', '/admin-codes'],
             ['heart', 'Gift Adro+', '/admin-gifts'],
           ] as const

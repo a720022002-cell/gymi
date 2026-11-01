@@ -46,6 +46,7 @@ import { UpdateBanner } from '@/components/UpdateBanner';
 import { WorkoutLive } from '@/components/WorkoutLive';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { FoodProvider } from '@/lib/food';
+import { useGate } from '@/lib/gate';
 import { HealthProvider } from '@/lib/health';
 import { whenAiNeedsSubscription } from '@/lib/ai';
 import { refreshAccess } from '@/lib/access';
@@ -105,7 +106,9 @@ export default function RootLayout() {
 }
 
 /** Screens you can open without being logged in (i = an invite link). Everything else sends you to Welcome. */
-const PUBLIC = ['welcome', 'login', 'signup', 'language', 'account-type', 'reset-password', 'legal', '+not-found', 'i'];
+const PUBLIC = ['welcome', 'login', 'signup', 'language', 'account-type', 'reset-password', 'legal', '+not-found', 'i', 'gate'];
+/** Behind the invite gate (while it's on and this phone hasn't got in): making an account. Signing in stays open. */
+const GATED = ['welcome', 'signup', 'account-type', 'i'];
 
 function AppStack({ ready }: { ready: boolean }) {
   const { colors, isDark, ready: settingsReady, langChosen, setLang } = useSettings();
@@ -144,6 +147,13 @@ function AppStack({ ready }: { ready: boolean }) {
     if (router.canDismiss()) router.dismissAll();
     router.replace('/welcome');
   }, [navReady, configured, loading, session, first]);
+
+  // Invite-only launch: new people see the gate first (signed-in people never do).
+  const gate = useGate();
+  useEffect(() => {
+    if (!navReady || !configured || loading || session || gate !== 'closed' || !first || !GATED.includes(first)) return;
+    router.replace('/gate');
+  }, [navReady, configured, loading, session, gate, first]);
 
   // Back from the restart Arabic needs: reopen the screen you were on (sign-up's language step).
   // Waits until a first screen is showing (Start's own redirect to Welcome must not replace it).
@@ -197,6 +207,7 @@ function AppStack({ ready }: { ready: boolean }) {
         }}>
         <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
         <Stack.Screen name="welcome" options={{ animation: 'fade' }} />
+        <Stack.Screen name="gate" options={{ animation: 'fade', gestureEnabled: false }} />
       </Stack>
       <AiConsentSheet />
       <LogSheet />
