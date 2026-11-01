@@ -1,7 +1,7 @@
 /** Train together: one workout built from everyone's plan, and the right sets and reps for each level. */
 import { askAI } from './ai';
 import { supabase } from './supabase';
-import { DAYS_LONG, EX, type PlanEx, type TrainPlan, effectiveWeek, exInfo, setWeekMoves, weekStart } from './training';
+import { DAYS_LONG, EX, type PlanEx, type TrainPlan, effectiveWeek, exInfo, orderWorkout, setWeekMoves, weekStart } from './training';
 import { addDays } from './nutrition';
 
 export type Level = 'Beginner' | 'Intermediate' | 'Advanced';
@@ -99,6 +99,8 @@ export async function buildTogether(people: DayInfo[], day: string, lang: 'en' |
     .filter((x): x is [string, number] => !!x[0])
     .slice(0, 7);
   if (!result || ex.length < 3) return fallbackPlan(people, focus);
+  // One muscle at a time, big lifts first, arms then timed core last (whatever order the AI used).
+  const sorted = orderWorkout(ex.map(([id, type]) => ({ id, type })), (x) => x.type === 2).map((x) => [x.id, x.type] as [string, number]);
   // The group picked the type: when the AI went its own way, use the ready workout for it.
   if (focus && result.title && !sameFocus(result.title, focus)) return fallbackPlan(people, focus);
   const notes: Record<string, TogetherNote> = {};
@@ -107,7 +109,7 @@ export async function buildTogether(people: DayInfo[], day: string, lang: 'en' |
     const action = (['replace', 'move', 'extra'].includes(n?.action ?? '') ? n?.action : p.planned ? 'replace' : 'extra') as TogetherAction;
     notes[p.key] = { action, text: String(n?.text ?? '').slice(0, 200), text_ar: String(n?.text_ar ?? '').slice(0, 200) };
   }
-  return { title: String(result.title || 'Full body').slice(0, 40), ex, notes, ai: true };
+  return { title: String(result.title || 'Full body').slice(0, 40), ex: sorted, notes, ai: true };
 }
 
 /** Accepting an invite: "move" puts that day's planned workout on the next rest day of that week (this week only). */

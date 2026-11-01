@@ -152,14 +152,47 @@ export const DAYS_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'
 type Tpl = { ex: [string, number, string][]; min: number; focus: string };
 /** Starting workouts (design: WK). */
 export const WK: Record<string, Tpl> = {
-  Push: { ex: [['bench', 4, '8–10'], ['incline', 3, '8–10'], ['shoulder', 3, '10–12'], ['lateral', 3, '12–15'], ['fly', 3, '12'], ['pushdown', 3, '10–12']], min: 55, focus: 'Chest, shoulders, triceps' },
+  Push: { ex: [['bench', 4, '8–10'], ['incline', 3, '8–10'], ['fly', 3, '12'], ['shoulder', 3, '10–12'], ['lateral', 3, '12–15'], ['pushdown', 3, '10–12']], min: 55, focus: 'Chest, shoulders, triceps' },
   Pull: { ex: [['pulldown', 3, '8–10'], ['row', 3, '8'], ['cablerow', 3, '10–12'], ['facepull', 2, '15'], ['curl', 2, '8–10'], ['hammer', 2, '12']], min: 50, focus: 'Back, rear shoulders, biceps' },
   Legs: { ex: [['squat', 4, '6–8'], ['rdl', 3, '8'], ['legpress', 3, '10–12'], ['legcurl', 2, '12'], ['calf', 2, '15'], ['plank', 2, '60']], min: 60, focus: 'Quads, hamstrings, glutes, core' },
-  Upper: { ex: [['bench', 3, '8'], ['row', 3, '8'], ['shoulder', 3, '10'], ['pulldown', 3, '10'], ['curl', 2, '10'], ['pushdown', 2, '12']], min: 55, focus: 'Chest, back, shoulders, arms' },
+  Upper: { ex: [['bench', 3, '8'], ['row', 3, '8'], ['pulldown', 3, '10'], ['shoulder', 3, '10'], ['curl', 2, '10'], ['pushdown', 2, '12']], min: 55, focus: 'Chest, back, shoulders, arms' },
   Lower: { ex: [['squat', 4, '6–8'], ['rdl', 3, '8'], ['legpress', 3, '12'], ['legcurl', 3, '12'], ['calf', 3, '15']], min: 50, focus: 'Quads, hamstrings, glutes' },
-  'Full body': { ex: [['squat', 3, '8'], ['bench', 3, '8'], ['pulldown', 3, '10'], ['rdl', 2, '10'], ['lateral', 2, '15'], ['plank', 2, '45']], min: 55, focus: 'Whole body' },
-  Home: { ex: [['pushup', 4, '12–15'], ['bwsquat', 4, '20'], ['lunge', 3, '12'], ['pike', 3, '8–10'], ['bridge', 3, '15'], ['plank', 3, '45']], min: 35, focus: 'No equipment' },
+  'Full body': { ex: [['squat', 3, '8'], ['rdl', 2, '10'], ['bench', 3, '8'], ['pulldown', 3, '10'], ['lateral', 2, '15'], ['plank', 2, '45']], min: 55, focus: 'Whole body' },
+  Home: { ex: [['pushup', 4, '12–15'], ['bwsquat', 4, '20'], ['lunge', 3, '12'], ['bridge', 3, '15'], ['pike', 3, '8–10'], ['plank', 3, '45']], min: 35, focus: 'No equipment' },
 };
+
+/** Isolation moves (one joint), told apart by name: they come after the big lifts for the same muscle. */
+const ISOLATION = /fly|flye|crossover|pec ?deck|raise|lateral|curl|pushdown|push-down|extension|kickback|skull|calf|calves|face ?pull|shrug|reverse fly|adduct|abduct/i;
+/**
+ * Sensible order for a workout: finish one muscle before the next (big compound lifts first, then its isolation work),
+ * big muscles before arms, core and timed moves last. Muscles keep the order they first appear in, so an AI or coach's
+ * main lift still opens the session. The same exercises and sets, only reordered.
+ */
+export function orderWorkout<T extends { id: string; n?: string; m?: string; t?: string; time?: boolean }>(list: T[], timedOf?: (x: T) => boolean): T[] {
+  const part = (x: T) => {
+    const info = exInfo(x, 'en');
+    const m = exMuscle(x.id, info.muscle, x.m ? [x.m] : null);
+    return m === 'Other' ? 'Other' : m;
+  };
+  const rank = (m: string) => (m === 'Core' || m === 'Other' ? 3 : m === 'Biceps' || m === 'Triceps' || m === 'Forearms' || m === 'Arms' ? 2 : 1);
+  const timed = (x: T) => (timedOf ? timedOf(x) : exInfo(x, 'en').timed || !!x.time);
+  const first = new Map<string, number>();
+  list.forEach((x, i) => {
+    const m = timed(x) ? '~timed' : part(x);
+    if (!first.has(m)) first.set(m, i);
+  });
+  const iso = (x: T) => ISOLATION.test(`${x.id} ${exInfo(x, 'en').name}`);
+  return list
+    .map((x, i) => ({ x, i, m: timed(x) ? '~timed' : part(x) }))
+    .sort((a, b) => {
+      const ra = a.m === '~timed' ? 4 : rank(a.m), rb = b.m === '~timed' ? 4 : rank(b.m);
+      if (ra !== rb) return ra - rb;
+      if (a.m !== b.m) return (first.get(a.m) ?? 0) - (first.get(b.m) ?? 0);
+      const ia = iso(a.x) ? 1 : 0, ib = iso(b.x) ? 1 : 0;
+      return ia - ib || a.i - b.i;
+    })
+    .map((y) => y.x);
+}
 
 /** Splits that fit each number of days (design: SPLITS), and which weekdays they go on (SPREAD, 0 = Sunday). */
 export const SPLITS: Record<number, [string, string[]][]> = {

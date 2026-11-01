@@ -1108,6 +1108,13 @@ Passwords and keys are left out on purpose.
 - Version 1.0 with build 21, the Adro+ group and both subscriptions, in one submission. Store name "Adro: Fitness & Calorie Coach". Reviewer: gate code APPLEREVIEW + the review account.
 - While in review: only small OTA fixes; nothing that changes what the reviewer sees.
 
+### 1 Nov 2026: Exercise order (one muscle at a time)
+- An AI Push day came out flat chest → shoulder press → incline → triceps ×2 → fly. Fixed both ways:
+  - AI prompts (plan and Train together): finish one muscle before the next, compound then isolation, big muscles → shoulders → arms → core. Deployed (ai function).
+  - App: lib/training orderWorkout reorders every AI plan and AI group workout the same way (isolation told apart by name). Needs "حدثه".
+- Ready-made workouts checked: Push had the fly after shoulders (now bench → incline → fly → shoulder → lateral → pushdown); Upper now keeps row + pulldown together; Full body keeps squat + RDL together; Home keeps bridge with the legs. Pull, Legs, Lower were already right.
+- Plans people already have keep their order (new plans get the fix).
+
 ---
 
 

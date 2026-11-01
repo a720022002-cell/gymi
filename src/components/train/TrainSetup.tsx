@@ -10,7 +10,7 @@ import { ageFromIso } from '@/lib/nutrition';
 import { useTrain } from '@/lib/train';
 import { aiErrorText, askAI } from '@/lib/ai';
 import { type CardioInput, makeCardioPlan } from '@/lib/cardioPlan';
-import { aiSplit, armGap, DAYS, type Day, EX, INJURIES, LEVEL_DESC, type Level, oneArmPlan, onceNote, planFromSplit, planOwn, SPLITS, SPREAD, type TrainPlan, twoArmCount, workoutMinutes } from '@/lib/training';
+import { aiSplit, armGap, DAYS, type Day, EX, INJURIES, LEVEL_DESC, type Level, oneArmPlan, onceNote, orderWorkout, planFromSplit, planOwn, SPLITS, SPREAD, type TrainPlan, twoArmCount, workoutMinutes } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
 
 import { Thinking } from '../food/Thinking';
@@ -63,7 +63,9 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
       const ex = (w.ex ?? [])
         .filter((x) => EX[x.id] && !(EX[x.id].stress ?? []).some((s) => injuries.includes(s)) && !seen.has(x.id) && !!seen.add(x.id))
         .map((x) => ({ id: x.id, sets: Math.min(8, Math.max(1, Math.round(+x.sets || 3))), reps: String(x.reps || '8–12').slice(0, 7) }));
-      if (name && ex.length) workouts[name] = { ex, focus: String(w.focus ?? '').slice(0, 60), min: workoutMinutes(ex) };
+      // Whatever order the AI used: one muscle at a time, big lifts first, arms and core last.
+      const ordered = orderWorkout(ex);
+      if (name && ordered.length) workouts[name] = { ex: ordered, focus: String(w.focus ?? '').slice(0, 60), min: workoutMinutes(ordered) };
     }
     // The days are set here too: one workout per training day, spread with rest days, the same every time.
     const week: Day[] = DAYS.map(() => ({ w: null, lock: false }));
