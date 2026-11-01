@@ -1,0 +1,86 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600&display=swap" rel="stylesheet" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: #0a0a0b; }
+  #shot { position: absolute; inset: 0; width: 1080px; height: 1920px; object-fit: cover; }
+  #black { position: absolute; inset: 0; background: #0a0a0b; opacity: 0; }
+  #fx { position: absolute; inset: 0; }
+  .line { position: absolute; left: 0; right: 0; text-align: center; opacity: 0; font-family: Sora; font-weight: 600; font-size: 40px; letter-spacing: 12px; color: #6f86ff; }
+</style>
+</head>
+<body>
+  <img id="shot" />
+  <div id="black"></div>
+  <svg id="fx" width="1080" height="1920">
+    <defs><radialGradient id="g"><stop offset="0" stop-color="#7d95ff" stop-opacity="1" /><stop offset="0.35" stop-color="#3355ff" stop-opacity=".6" /><stop offset="1" stop-color="#3355ff" stop-opacity="0" /></radialGradient></defs>
+    <path id="trail" fill="none" stroke="#3355FF" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 18px rgba(51,85,255,.95))" />
+    <circle id="glow" fill="url(#g)" r="0" />
+    <g id="letters" opacity="0"></g>
+    <circle id="ring" fill="none" stroke="#3355FF" stroke-linecap="round" style="filter:drop-shadow(0 0 22px rgba(51,85,255,.8))" />
+  </svg>
+  <div class="line" id="l1" style="top:1010px">COMING SOON</div>
+<script src="letters.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const ease = (x) => { x = clamp(x); return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+const lerp = (a, b, k) => a + (b - a) * k;
+const WM = { x0: 30, y0: -745, w: 2229, h: 775, ring: { cx: 1953.5, cy: -271.5, r: 228.5, stroke: 130 } };
+const S = 760 / WM.w, L = (1080 - WM.w * S) / 2, T = 900 - WM.h * S;
+$('letters').innerHTML = `<path transform="translate(${L - WM.x0 * S} ${T - WM.y0 * S}) scale(${S})" fill="#ffffff" d="${window.LETTERS}"/>`;
+const end = { x: L + (WM.ring.cx - WM.x0) * S, y: T + (WM.ring.cy - WM.y0) * S, r: WM.ring.r * S, sw: WM.ring.stroke * S };
+const mid = { x: 540, y: 900, r: 230, sw: 70 };
+const SCREEN = { x: 460, y: 980 };   // treadmill display in the last shot
+
+function stadium(tr, p) {
+  const r = tr.w / 2, Ls = tr.h - tr.w, P = 2 * Ls + 2 * Math.PI * r;
+  let s = (((p % 1) + 1) % 1) * P;
+  const top = tr.cy - Ls / 2, bot = tr.cy + Ls / 2, q = Math.PI * r / 2;
+  const arc = (cy, a) => [tr.cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  if (s < q) return arc(top, -Math.PI / 2 + s / r); s -= q;
+  if (s < Ls) return [tr.cx + r, top + s]; s -= Ls;
+  if (s < Math.PI * r) return arc(bot, s / r); s -= Math.PI * r;
+  if (s < Ls) return [tr.cx - r, bot - s]; s -= Ls;
+  return arc(top, Math.PI + s / r);
+}
+
+window.render = (t, frame) => {
+  $('shot').src = frame || ''; $('shot').style.opacity = frame ? 1 : 0;
+
+  // 1.3–2.2: blue line traces the middle lane of the track, stopping open like the logo.
+  const tr = $('trail');
+  if (t >= 1.3 && t < 2.25) {
+    const k = clamp((t - 1.25) / 1.0), drift = clamp((t - 1.25) / 1.0);
+    const trk = { cx: lerp(548, 552, drift), cy: 930, w: 854, h: 1212 };
+    const len = 0.8 * ease((t - 1.3) / 0.75), N = 200; let d = '';
+    for (let i = 0; i <= N; i++) { const a = stadium(trk, (i / N) * len); d += (i ? 'L' : 'M') + a[0].toFixed(1) + ' ' + a[1].toFixed(1); }
+    tr.setAttribute('d', d); tr.setAttribute('stroke-width', 18);
+    tr.style.opacity = 1 - clamp((t - 2.15) / 0.1);
+  } else tr.setAttribute('d', '');
+
+  // Last shot: the treadmill screen lights blue (16.2), the room goes dark (17.0–17.8),
+  // the light becomes the open ring in the centre, then slides into the o of adro.
+  const glow = $('glow');
+  const gk = clamp((t - 15.9) / 0.9);
+  const go = ease((t - 17.3) / 0.6);
+  glow.setAttribute('cx', lerp(SCREEN.x, mid.x, go)); glow.setAttribute('cy', lerp(SCREEN.y, mid.y, go));
+  glow.setAttribute('r', (95 + 12 * Math.sin(t * 7)) * gk * (1 - clamp((t - 17.9) / 0.3)));
+  $('black').style.opacity = t < 17.0 ? 0 : clamp((t - 17.0) / 0.8);
+
+  const draw = ease((t - 17.8) / 0.8), slide = ease((t - 18.8) / 0.7);
+  const x = lerp(mid.x, end.x, slide), y = lerp(mid.y, end.y, slide), r = lerp(mid.r, end.r, slide), sw = lerp(mid.sw, end.sw, slide);
+  const C = 2 * Math.PI * r, ring = $('ring');
+  ring.setAttribute('cx', x); ring.setAttribute('cy', y); ring.setAttribute('r', r); ring.setAttribute('stroke-width', sw);
+  ring.setAttribute('transform', `rotate(-90 ${x} ${y})`);
+  ring.style.strokeDasharray = `${C * 0.8 * draw} ${C}`;
+  ring.style.opacity = t >= 17.8 ? 1 : 0;
+  $('letters').setAttribute('opacity', clamp((t - 19.2) / 0.45));
+  $('l1').style.opacity = clamp((t - 19.7) / 0.4);
+};
+</script>
+</body>
+</html>
