@@ -5501,4 +5501,6 @@ export const AR: Record<string, string> = {
   "Last set: {w} × {r}": "آخر جولة: {w} × {r}",
   "Last set: {r} s": "آخر جولة: {r} ث",
   "Last set: {r} reps": "آخر جولة: {r} عدّات",
+  "Add warm-up set": "أضف جولة إحماء",
+  "Remove warm-up set": "احذف جولة الإحماء",
 };

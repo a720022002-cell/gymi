@@ -20,7 +20,10 @@ export function groupExName(x: GroupEx, lang: 'en' | 'ar', t: (s: string) => str
   if (isCardio(x)) return t(sportInfo(cardioSportOf(x)).name);
   return exInfo({ id: x.id, n: x.n, ar: x.ar }, lang).name;
 }
-export type GroupSet = { w: number | null; r: number | null; done: boolean };
+/** warm: a warm-up set. Only for you: it doesn't count for the turns, your friends, volume or records. */
+export type GroupSet = { w: number | null; r: number | null; done: boolean; warm?: boolean };
+/** Working sets only (no warm-ups). */
+export const workOf = (s: { sets: GroupSet[] }) => s.sets.filter((x) => !x.warm);
 /** Your sets for one exercise. reps is your target (you can change it). alt: the exercise you do in its place. */
 export type MySets = { reps: number; sets: GroupSet[]; alt?: GroupEx };
 export type BoardMember = SessionMember & { pos: number; sets: Record<string, MySets> };
@@ -84,7 +87,7 @@ export async function swapGroupExercise(id: string, index: number, ex: GroupEx) 
 
 /** Save your sets (and the old per-exercise count, which older screens read). */
 export async function saveMySets(id: string, uid: string, sets: Record<string, MySets>, finished = false) {
-  const done: Record<string, number> = Object.fromEntries(Object.entries(sets).map(([k, v]) => [k, v.sets.filter((s) => s.done).length]));
+  const done: Record<string, number> = Object.fromEntries(Object.entries(sets).map(([k, v]) => [k, workOf(v).filter((s) => s.done).length]));
   // Finished and left: the others stop waiting for you (older app versions only read the counts).
   if (finished) done[FINISHED] = 1;
   const { error } = await supabase.from('group_session_members').update({ sets, done, updated_at: new Date().toISOString() }).eq('session_id', id).eq('user_id', uid);
@@ -137,15 +140,15 @@ export function groupChanges(workout: GroupEx[], before: BoardMember[], after: B
       const a = setsOf(p, ex);
       const b = setsOf(m, ex);
       const stamp = `${m.user_id}:${ex.id}:${m.updated_at}`;
-      if (b.sets.length > a.sets.length) out.push({ key: `${stamp}:add`, who, exId: ex.id, kind: 'add' });
-      else if (b.sets.length < a.sets.length) out.push({ key: `${stamp}:del`, who, exId: ex.id, kind: 'del' });
+      if (workOf(b).length > workOf(a).length) out.push({ key: `${stamp}:add`, who, exId: ex.id, kind: 'add' });
+      else if (workOf(b).length < workOf(a).length) out.push({ key: `${stamp}:del`, who, exId: ex.id, kind: 'del' });
       if ((a.alt?.id ?? '') !== (b.alt?.id ?? '')) out.push({ key: `${stamp}:swap`, who, exId: ex.id, kind: 'swap', alt: b.alt ?? null });
     }
   }
   return out;
 }
 
-const allDone = (s: MySets) => s.sets.every((x) => x.done);
+const allDone = (s: MySets) => workOf(s).every((x) => x.done);
 
 /**
  * Where the group is: the first exercise someone still has sets on, and whose turn it is
@@ -164,7 +167,7 @@ export function groupTurn(workout: GroupEx[], board: BoardMember[]) {
     for (const m of ppl) {
       const s = setsOf(m, ex);
       if (allDone(s)) continue;
-      if (!turn || s.sets.filter((x) => x.done).length < setsOf(turn, ex).sets.filter((x) => x.done).length) turn = m;
+      if (!turn || workOf(s).filter((x) => x.done).length < workOf(setsOf(turn, ex)).filter((x) => x.done).length) turn = m;
     }
   return { cur, turn, finished };
 }
@@ -216,7 +219,7 @@ export function groupNudge(ex: GroupEx, me: BoardMember | undefined, others: Boa
   const mineId = exOf(me, ex).id;
   others = others.filter((m) => exOf(m, ex).id === mineId);
   const top = (m: BoardMember) => {
-    const done = setsOf(m, ex).sets.filter((s) => s.done && (s.w ?? 0) > 0);
+    const done = workOf(setsOf(m, ex)).filter((s) => s.done && (s.w ?? 0) > 0);
     if (!done.length) return null;
     const w = Math.max(...done.map((s) => s.w ?? 0));
     return { w, r: Math.max(...done.filter((s) => s.w === w).map((s) => s.r ?? 0)) };

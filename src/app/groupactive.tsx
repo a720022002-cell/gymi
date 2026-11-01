@@ -40,6 +40,8 @@ import {
   pingGroup,
   saveMySets,
   setsOf,
+  workOf,
+  type GroupSet,
   activeOf,
   awayOf,
   finishedOf,
@@ -280,7 +282,7 @@ export default function GroupActive() {
   const adv = cardio
     ? null
     : setAdvice(
-        { id: ex.id, n: ex.n, ar: ex.ar, m: ex.m, reps: String(mySets.reps), tip: false, sets: mySets.sets.map((x) => ({ w: String(x.w ?? ''), r: String(x.r ?? ''), done: x.done, lw: 0, lr: 0 })) },
+        { id: ex.id, n: ex.n, ar: ex.ar, m: ex.m, reps: String(mySets.reps), tip: false, sets: mySets.sets.map((x) => ({ w: String(x.w ?? ''), r: String(x.r ?? ''), done: x.done, lw: 0, lr: 0, warm: x.warm })) },
         timed,
         exInfo({ id: ex.id, n: ex.n }, lang).type === 'Bodyweight',
         histFor(train.logs, train.plan, ex.id),
@@ -288,7 +290,7 @@ export default function GroupActive() {
         W,
       );
   // Your sets across the whole workout, for the bar at the top.
-  const allMine = g.workout.map((x) => setsOf(meRow, x).sets);
+  const allMine = g.workout.map((x) => workOf(setsOf(meRow, x)));
   const tot = allMine.reduce((a, x) => a + x.length, 0);
   const dn = allMine.reduce((a, x) => a + x.filter((y) => y.done).length, 0);
   const exDone = (i: number) => allMine[i].length > 0 && allMine[i].every((y) => y.done);
@@ -299,10 +301,10 @@ export default function GroupActive() {
     const st = mySets.sets[si];
     const key = `${slot.id}:${si}`;
     if (st.done) return setMySets(slot.id, { ...mySets, sets: mySets.sets.map((x, j) => (j === si ? { ...x, done: false } : x)) });
-    const lw = last[si]?.w ?? last[last.length - 1]?.w ?? 0;
+    const lw = lastW(mySets.sets, si);
     const w = timed ? 0 : W.toKg(+(typed[key]?.w ?? '')) || st.w || lw || 0;
-    const r = +(typed[key]?.r ?? '') || st.r || mySets.reps;
-    setMySets(slot.id, { ...mySets, sets: mySets.sets.map((x, j) => (j === si ? { w, r, done: true } : x)) });
+    const r = +(typed[key]?.r ?? '') || st.r || (st.warm ? Math.max(12, mySets.reps) : mySets.reps);
+    setMySets(slot.id, { ...mySets, sets: mySets.sets.map((x, j) => (j === si ? { ...x, w, r, done: true } : x)) });
     if (v === cur) setView(null);
   };
   const doneSet = () => {
@@ -316,16 +318,27 @@ export default function GroupActive() {
     const key = `${e0.id}:${si}`;
     const w = isCardio(e) || exInfo({ id: e.id }, lang).timed || e.type === 2 ? 0 : Wf(e.id).toKg(+(typed[key]?.w ?? '')) || lw;
     const r = +(typed[key]?.r ?? '') || s.reps;
-    setMySets(e0.id, { ...s, sets: s.sets.map((x, j) => (j === si ? { w, r, done: true } : x)) });
+    setMySets(e0.id, { ...s, sets: s.sets.map((x, j) => (j === si ? { ...x, w, r, done: true } : x)) });
   };
-  const editSets = (a: 'add' | 'del') => {
+  const editSets = (a: 'add' | 'del' | 'warm') => {
     const s = { ...mySets, sets: [...mySets.sets] };
-    if (a === 'add' && s.sets.length < 10) s.sets.push({ w: null, r: null, done: false });
+    if (a === 'add' && s.sets.length < 12) s.sets.push({ w: null, r: null, done: false });
+    // A warm-up goes before your working sets (after any other warm-ups).
+    if (a === 'warm' && s.sets.filter((x) => x.warm).length < 3) s.sets.splice(s.sets.filter((x) => x.warm).length, 0, { w: null, r: null, done: false, warm: true });
     if (a === 'del') {
-      const i = s.sets.map((x) => x.done).lastIndexOf(false);
-      if (s.sets.length > 1 && i >= 0) s.sets.splice(i, 1);
+      const i = s.sets.map((x) => x.done || !!x.warm).lastIndexOf(false);
+      if (workOf(s).length > 1 && i >= 0) s.sets.splice(i, 1);
     }
     setMySets(slot.id, s);
+  };
+  /** Take a warm-up set out (tap its W). */
+  const dropWarm = (si: number) => setMySets(slot.id, { ...mySets, sets: mySets.sets.filter((_, j) => j !== si) });
+  /** Last time's weight for a set: working sets match by their number; a warm-up is half your first working weight. */
+  const lastW = (sets: GroupSet[], si: number) => {
+    const first = last[0]?.w ?? 0;
+    if (sets[si]?.warm) return first ? Math.round(first * 0.5 * 2) / 2 : 0;
+    const k = sets.slice(0, si).filter((x) => !x.warm).length;
+    return last[k]?.w ?? last[last.length - 1]?.w ?? 0;
   };
   /** Change one exercise's sets the way a friend did (or your own swap). alt null: back to the group's exercise. */
   const applyTo = (exId: string, kind: GroupChange['kind'], alt?: GroupEx | null) => {
@@ -333,10 +346,10 @@ export default function GroupActive() {
     if (!e) return;
     const s0 = setsOf(meRow, e);
     const s = { ...s0, sets: [...s0.sets] };
-    if (kind === 'add' && s.sets.length < 10) s.sets.push({ w: null, r: null, done: false });
+    if (kind === 'add' && s.sets.length < 12) s.sets.push({ w: null, r: null, done: false });
     if (kind === 'del') {
-      const i = s.sets.map((x) => x.done).lastIndexOf(false);
-      if (s.sets.length > 1 && i >= 0) s.sets.splice(i, 1);
+      const i = s.sets.map((x) => x.done || !!x.warm).lastIndexOf(false);
+      if (workOf(s).length > 1 && i >= 0) s.sets.splice(i, 1);
     }
     if (kind === 'swap') {
       if (alt) s.alt = alt;
@@ -369,8 +382,8 @@ export default function GroupActive() {
       let sets = 0;
       for (const x0 of g.workout) {
         const x = exOf(meRow, x0);
-        const done = setsOf(meRow, x0)
-          .sets.filter((s) => s.done)
+        const done = workOf(setsOf(meRow, x0))
+          .filter((s) => s.done)
           .map((s) => ({ w: s.w ?? 0, r: s.r ?? 0 }));
         if (!done.length) continue;
         if (isCardio(x)) {
@@ -430,8 +443,8 @@ export default function GroupActive() {
     if (!e) return false;
     const s0 = setsOf(meRow, e);
     if (a.kind === 'swap') return (s0.alt?.id ?? '') !== (a.alt?.id ?? '');
-    if (a.kind === 'del') return s0.sets.length > 1 && s0.sets.some((x) => !x.done);
-    return s0.sets.length < 10;
+    if (a.kind === 'del') return workOf(s0).length > 1 && workOf(s0).some((x) => !x.done);
+    return s0.sets.length < 12;
   });
   const dropAsk = (k: string) => setAsks((a) => a.filter((x) => x.key !== k));
   if (ask && !askOpen && sheets === 0) {
@@ -579,12 +592,25 @@ export default function GroupActive() {
           </View>
           {mySets.sets.map((st, si) => {
             const key = `${slot.id}:${si}`;
-            const lw = last[si]?.w ?? last[last.length - 1]?.w ?? 0;
+            const lw = lastW(mySets.sets, si);
+            const nWork = mySets.sets.slice(0, si + 1).filter((x) => !x.warm).length;
             return (
               <View key={si} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, opacity: st.done ? 0.65 : 1 }}>
-                <Text num center style={{ width: 28 }}>
-                  {si + 1}
-                </Text>
+                {st.warm ? (
+                  <Springy
+                    onPress={() => dropWarm(si)}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('Remove warm-up set')}
+                    style={{ width: 28, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(245,158,11,0.18)' }}>
+                    <Text weight={800} color="#F59E0B">
+                      {t('W')}
+                    </Text>
+                  </Springy>
+                ) : (
+                  <Text num center style={{ width: 28 }}>
+                    {nWork}
+                  </Text>
+                )}
                 <TextInput
                   value={st.done ? (timed || st.w == null ? '' : W.show(+st.w)) : (typed[key]?.w ?? '')}
                   editable={!timed && !st.done}
@@ -600,7 +626,7 @@ export default function GroupActive() {
                   value={st.done ? String(st.r ?? '') : (typed[key]?.r ?? '')}
                   editable={!st.done}
                   onChangeText={(x) => setTyped({ ...typed, [key]: { ...typed[key], r: digits(x, false) } })}
-                  placeholder={String(mySets.reps)}
+                  placeholder={String(st.warm ? Math.max(12, mySets.reps) : mySets.reps)}
                   placeholderTextColor={c.sec}
                   inputMode="numeric"
                   keyboardType="number-pad"
@@ -627,10 +653,21 @@ export default function GroupActive() {
               </Text>
             </Springy>
             <Springy
-              disabled={mySets.sets.length <= 1}
+              disabled={!timed && mySets.sets.filter((x) => x.warm).length >= 3}
+              onPress={() => editSets('warm')}
+              scaleTo={0.97}
+              accessibilityLabel={t('Add warm-up set')}
+              style={{ flex: 1, height: 40, borderRadius: 12, backgroundColor: c.inset, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, display: timed ? 'none' : 'flex' }}>
+              <Icon name="flame" size={16} color="#F59E0B" />
+              <Text variant="small" weight={700}>
+                {t('Warm-up')}
+              </Text>
+            </Springy>
+            <Springy
+              disabled={workOf(mySets).length <= 1}
               onPress={() => editSets('del')}
               scaleTo={0.97}
-              style={{ flex: 1, height: 40, borderRadius: 12, backgroundColor: c.inset, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: mySets.sets.length <= 1 ? 0.4 : 1 }}>
+              style={{ flex: 1, height: 40, borderRadius: 12, backgroundColor: c.inset, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: workOf(mySets).length <= 1 ? 0.4 : 1 }}>
               <Icon name="minus" size={16} color={c.down} />
               <Text variant="small" weight={700}>
                 {t('Remove set')}
@@ -639,7 +676,9 @@ export default function GroupActive() {
           </Row>
           <View style={{ height: 1, backgroundColor: c.line, marginVertical: 12 }} />
           {others.map((m) => {
-            const s = setsOf(m, slot);
+            // Their working sets (their warm-ups are their own business).
+            const s0 = setsOf(m, slot);
+            const s = { ...s0, sets: workOf(s0) };
             const theirs = exOf(m, slot);
             const n = s.sets.filter((x) => x.done).length;
             return (
@@ -754,7 +793,7 @@ export default function GroupActive() {
             <View style={{ flex: 1 }}>
               <Text weight={700}>{t('Your turn')}</Text>
               <Text variant="small" color="sec" numberOfLines={1}>
-                {t('{x}, set {a} of {b}', { x: exName(exOf(meRow, g.workout[cur])), a: (turnSets?.sets.filter((x) => x.done).length ?? 0) + 1, b: turnSets?.sets.length ?? 0 })}
+                {t('{x}, set {a} of {b}', { x: exName(exOf(meRow, g.workout[cur])), a: (turnSets ? workOf(turnSets).filter((x) => x.done).length : 0) + 1, b: turnSets ? workOf(turnSets).length : 0 })}
               </Text>
             </View>
             <Button small icon="check" title={t('Done set')} onPress={doneSet} />

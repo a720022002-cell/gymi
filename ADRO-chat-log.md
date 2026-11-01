@@ -1028,6 +1028,15 @@ Passwords and keys are left out on purpose.
 - "Other exercise" in Swap opened nothing on iPhone: now opens after the swap sheet closes.
 - "Friend changed an exercise" prompt: waits until no other sheet is open, keeps its text while you answer, closes right away.
 
+### 1 Nov 2026: Gym Bros round 2
+- Friend rows show their last set (weight × reps).
+- Coach tip on your own sets in the group workout (same as a normal workout), above the friendly comparison.
+- Warm-up sets in the group workout: "W" before the working sets, tap W to remove. Only yours: they don't count for turns, friends' prompts, volume or records.
+- Invite notification: when you're added to a group workout, a phone notification (trigger 20261208000000_group_invite_push.sql + push function group_invite). Needs "طبق" to go live.
+- iPhone time picker: its box takes its own size and is centred (the fixed height put the time on the top edge).
+- Profile photo inside the logo's cut ring, which fills with this week's commitment (Home and You).
+- Multi-line fields (coach application certificates, About you) grow inside their box instead of spilling above it.
+
 ---
 
 

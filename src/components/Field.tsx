@@ -35,6 +35,8 @@ export const Field = forwardRef<TextInput, Props>(function Field(
   const [focus, setFocus] = useState(false);
   const [show, setShow] = useState(false);
   const secret = !!secureTextEntry && !show;
+  // Several lines: the box grows with the text, which starts at its top (a one-line box let it spill out above).
+  const multi = !!rest.multiline;
 
   return (
     <View>
@@ -42,11 +44,11 @@ export const Field = forwardRef<TextInput, Props>(function Field(
       <View
         style={{
           flexDirection: 'row',
-          alignItems: 'center',
+          alignItems: multi ? 'flex-start' : 'center',
           gap: 6,
           backgroundColor: c.card,
           borderRadius: radius.field,
-          height: size.field,
+          ...(multi ? { minHeight: size.field, paddingVertical: 10 } : { height: size.field }),
           paddingStart: 16,
           paddingEnd: secureTextEntry ? 4 : 16,
           borderWidth: 1.5,
@@ -73,7 +75,7 @@ export const Field = forwardRef<TextInput, Props>(function Field(
             {
               flex: 1,
               minWidth: 0,
-              height: 48,
+              ...(multi ? { paddingTop: 4, paddingBottom: 4 } : { height: 48 }),
               fontSize: 16,
               color: c.text,
               fontFamily: fontFor(isRTL && !ltr ? 'arabic' : 'manrope', 500),
