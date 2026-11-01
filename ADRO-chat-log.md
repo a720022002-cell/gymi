@@ -1101,6 +1101,7 @@ Passwords and keys are left out on purpose.
 
 ### 1 Nov 2026: Gate locked from the first moment + build 21 (صدر النسخة)
 - New people start at the gate from the first screen (no Welcome flash). If the server can't be reached it stays locked; it opens only when the team switches it off or the phone got in with a code.
+- Build 21 started: EAS build 8271c80c (1.0.0 (21), runtime ebc81514, same as build 20 so updates keep reaching both), TestFlight auto-submit 9a2dc907.
 - Build 21 so Apple's reviewer gets everything from the first open (a fresh build 20 runs its old code on the first open, without the gate or the review-account exemption).
 
 ---
