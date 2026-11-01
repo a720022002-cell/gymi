@@ -14,6 +14,7 @@ import { DayRecap } from '@/components/home/DayRecap';
 import { CycleCard, ReadingsCard, StreaksCard, TipCard, WaterCard } from '@/components/home/InfoCards';
 import { DiscoverMore } from '@/components/home/DiscoverMore';
 import { MainCard } from '@/components/home/MainCard';
+import { GroupResumeCard } from '@/components/train/GroupResumeCard';
 import { Screen } from '@/components/Screen';
 import { Avatar } from '@/components/social/Avatar';
 import { Text } from '@/components/Text';
@@ -160,6 +161,8 @@ export default function Home() {
       {past ? null : (
         <>
           {/* Until today's check-in is done (only a sleep logged from the chat has no score yet). */}
+          {/* A group workout you left halfway: back to it in one tap. */}
+          <GroupResumeCard />
           {needCheckin ? <CheckinCard onStart={() => health.setCheckinOpen(true)} /> : null}
           <CoachAppCard app={app} />
           {/* Your coach as one row (the full card with plans and gym hours is under More). */}

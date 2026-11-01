@@ -14,6 +14,7 @@ import { CoachBanner } from '@/components/train/CoachBanner';
 import { CoachOfferCard } from '@/components/train/CoachOfferCard';
 import { GroupWorkoutsCard } from '@/components/train/GroupWorkoutsCard';
 import { IllnessCard } from '@/components/health/IllnessCard';
+import { GroupResumeCard } from '@/components/train/GroupResumeCard';
 import { DeloadCard, RecoveryCard } from '@/components/train/RecoveryCard';
 import { TrainSetup } from '@/components/train/TrainSetup';
 import { MissedCard, WorkoutCard } from '@/components/train/WorkoutCard';
@@ -98,6 +99,7 @@ export default function Train() {
       </TourTarget>
       <PlanReviewCard />
       <IllnessCard />
+      <GroupResumeCard />
       <RecoveryCard />
       <MissedCard />
       <TourTarget id="train.workout">

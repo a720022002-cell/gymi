@@ -14,6 +14,7 @@ import { CrewBox, GroupBox } from '@/components/social/BroBox';
 import { SocialInvites } from '@/components/social/SocialInvites';
 import { Text } from '@/components/Text';
 import { TourTarget, useTour } from '@/components/tour/Tour';
+import { GroupResumeCard } from '@/components/train/GroupResumeCard';
 import { GroupWorkoutsCard } from '@/components/train/GroupWorkoutsCard';
 import { useToast } from '@/components/Toast';
 import { Button, Card, NavButton, Row, Segmented, Springy } from '@/components/ui';
@@ -111,7 +112,8 @@ export default function Friends() {
           <Button small kind="soft" title={t('Try again')} style={{ marginTop: 12, alignSelf: 'center' }} onPress={load} />
         </Card>
       ) : null}
-      {live.map((x) => (
+      <GroupResumeCard />
+      {live.filter((x) => !x.joined).map((x) => (
         <Card key={x.id} onPress={() => router.push({ pathname: '/groupactive', params: { id: x.id } })} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: c.gAi }}>
           <Icon name="users" size={22} color={c.cobalt} />
           <View style={{ flex: 1 }}>

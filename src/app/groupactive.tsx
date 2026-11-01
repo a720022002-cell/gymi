@@ -8,7 +8,9 @@ import { Thinking } from '@/components/food/Thinking';
 import { Glass } from '@/components/Glass';
 import { Icon, Mark } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
-import { Sheet } from '@/components/Sheet';
+import { afterSheet, Sheet, useSheetsOnScreen } from '@/components/Sheet';
+import { WaterButton } from '@/components/train/WaterButton';
+import { localDay } from '@/lib/nutrition';
 import { Avatar } from '@/components/social/Avatar';
 import { fontFor, Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
@@ -38,6 +40,9 @@ import {
   pingGroup,
   saveMySets,
   setsOf,
+  activeOf,
+  awayOf,
+  finishedOf,
 } from '@/lib/groupWorkout';
 import { toPlanEx } from '@/lib/exercisesDb';
 import { setSessionStatus } from '@/lib/social';
@@ -99,6 +104,11 @@ export default function GroupActive() {
   // Friends' changes (a set added or removed, an exercise swapped) waiting for your answer: do the same or not.
   const prevBoard = useRef<BoardMember[] | null>(null);
   const [asks, setAsks] = useState<GroupChange[]>([]);
+  // The friend's change on screen right now. Kept as it was shown, so answering doesn't swap the text under your
+  // finger, and it only opens when no other sheet is on screen or closing (on iPhone it would get stuck).
+  const [askOpen, setAskOpen] = useState(false);
+  const [shown, setShown] = useState<{ a: GroupChange; title: string; body: string } | null>(null);
+  const sheets = useSheetsOnScreen();
   const [otherPick, setOtherPick] = useState(false);
 
   // After the app was closed: the copy saved on the phone, until the fresh one arrives.
@@ -166,6 +176,8 @@ export default function GroupActive() {
   const board = data.board.map((m) => (m.user_id === me ? { ...m, sets: my } : m));
   const meRow = board.find((m) => m.user_id === me);
   const others = board.filter((m) => m.user_id !== me);
+  // Friends still training (not finished, not away), for "Live with N friends".
+  const activeOthers = others.filter((m) => activeOf(m));
   const nameOf = (m: BoardMember) => (m.user_id === me ? t('You') : m.name || m.username);
   const exName = (x: GroupEx) => groupExName(x, lang, t);
   // "I'm here, starting without you": everyone who hasn't joined gets a notification.
@@ -335,6 +347,9 @@ export default function GroupActive() {
     }
   };
   const saveGroup = async () => {
+    // You're done: the others stop waiting for your turn.
+    clearTimeout(saveTimer.current);
+    await saveMySets(id, me, my, true).catch(() => {});
     if (!saved) {
       const exercises: WorkoutLog['exercises'] = [];
       const prs: WorkoutLog['prs'] = [];
@@ -367,7 +382,9 @@ export default function GroupActive() {
         // Same calories as a normal workout: realistic minutes and 80 kg when your weight isn't set.
         const kcalMin = Math.min(minutes, 180, Math.max(30, sets * 6));
         const res = await train.addLog({
-          day: train.today,
+          // The day the group started (a late night session before 4 am still counts for the evening before),
+          // so finishing after midnight doesn't move it to the next day.
+          day: localDay(new Date(new Date(start).getTime() - 4 * 3600_000)),
           name: 'Together',
           started_at: start,
           minutes,
@@ -405,6 +422,27 @@ export default function GroupActive() {
     return s0.sets.length < 10;
   });
   const dropAsk = (k: string) => setAsks((a) => a.filter((x) => x.key !== k));
+  if (ask && !askOpen && sheets === 0) {
+    const e = g.workout.find((x) => x.id === ask.exId) as GroupEx;
+    const name = exName(exOf(meRow, e));
+    setShown({
+      a: ask,
+      title: ask.kind === 'add' ? t('{n} added a set', { n: ask.who }) : ask.kind === 'del' ? t('{n} removed a set', { n: ask.who }) : t('{n} changed an exercise', { n: ask.who }),
+      body:
+        ask.kind === 'add'
+          ? t('On {x}. Add one to yours too?', { x: name })
+          : ask.kind === 'del'
+            ? t('On {x}. Remove one from yours too?', { x: name })
+            : t('{x} to {y}. Change yours too?', { x: name, y: exName(ask.alt ?? e) }),
+    });
+    setAskOpen(true);
+  }
+  const answer = (yes: boolean) => {
+    if (!askOpen || !shown) return;
+    setAskOpen(false);
+    if (yes) applyTo(shown.a.exId, shown.a.kind, shown.a.alt);
+    dropAsk(shown.a.key);
+  };
   const turnSets = turn ? setsOf(turn, g.workout[cur]) : null;
 
   return (
@@ -427,7 +465,7 @@ export default function GroupActive() {
             <Row gap={4}>
               <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: g.status === 'live' ? c.up : c.sec }} />
               <Text variant="xs" weight={700} color="sec">
-                {others.length === 1 ? t('Live with 1 friend') : t('Live with {n} friends', { n: others.length })}
+                {activeOthers.length === 0 ? t('Your friends finished') : activeOthers.length === 1 ? t('Live with 1 friend') : t('Live with {n} friends', { n: activeOthers.length })}
               </Text>
             </Row>
             {g.started_at ? <Elapsed start={new Date(g.started_at).getTime()} /> : null}
@@ -488,6 +526,7 @@ export default function GroupActive() {
                 <Icon name="swap" size={18} color={c.cobalt} />
               </Springy>
             ) : null}
+            <WaterButton size={36} />
           </Row>
           <Text variant="xs" color="sec">
             {cardio ? t('Cardio, everyone at the same time') : muscleLabel(exMuscle(ex.id, exInfo({ id: ex.id, n: ex.n }, lang).muscle), lang, t)}
@@ -600,7 +639,11 @@ export default function GroupActive() {
                     {theirs.id !== ex.id ? <Text variant="xs" color="sec">{`  ${exName(theirs)}`}</Text> : null}
                   </Text>
                   <Text variant="xs" color="sec">
-                    {m.joined
+                    {finishedOf(m)
+                      ? t('Finished')
+                      : m.joined && awayOf(m)
+                        ? t('Away')
+                        : m.joined
                       ? cardio
                         ? t(n ? 'Done, {m} min' : 'On it, {m} min', { m: s.sets[0]?.r ?? s.reps })
                         : `${s.sets.length} × ${s.reps} ${timed ? t('s') : t('reps')}${t(', ')}${t('set {a} of {b}', { a: Math.min(n + 1, s.sets.length), b: s.sets.length })}`
@@ -681,7 +724,7 @@ export default function GroupActive() {
             <View style={{ flex: 1 }}>
               <Text weight={700}>{t('{n} is lifting', { n: turn.name || turn.username })}</Text>
               <Text variant="small" color="sec">
-                {others.length > 1 ? t('Rest up. You’re next soon.') : t('Rest up. You’re next.')}
+                {activeOthers.length > 1 ? t('Rest up. You’re next soon.') : t('Rest up. You’re next.')}
               </Text>
             </View>
           </Glass>
@@ -723,7 +766,8 @@ export default function GroupActive() {
           style={{ marginTop: 8 }}
           onPress={() => {
             setSwap(false);
-            setOtherPick(true);
+            // After the swap sheet has closed: on iPhone a sheet opened while another one closes never shows.
+            afterSheet(() => setOtherPick(true));
           }}
         />
         <Button kind="soft" title={t('Cancel')} style={{ marginTop: 8 }} onPress={() => setSwap(false)} />
@@ -742,35 +786,15 @@ export default function GroupActive() {
       />
 
       {/* A friend changed something: do the same? */}
-      <Sheet open={!!ask} onClose={() => ask && dropAsk(ask.key)}>
-        {ask ? (
+      <Sheet open={askOpen} onClose={() => answer(false)}>
+        {shown ? (
           <View>
-            <Text variant="h2">
-              {ask.kind === 'add'
-                ? t('{n} added a set', { n: ask.who })
-                : ask.kind === 'del'
-                  ? t('{n} removed a set', { n: ask.who })
-                  : t('{n} changed an exercise', { n: ask.who })}
-            </Text>
+            <Text variant="h2">{shown.title}</Text>
             <Text color="sec" style={{ marginTop: 4 }}>
-              {(() => {
-                const e = g.workout.find((x) => x.id === ask.exId) as GroupEx;
-                const name = exName(exOf(meRow, e));
-                if (ask.kind === 'add') return t('On {x}. Add one to yours too?', { x: name });
-                if (ask.kind === 'del') return t('On {x}. Remove one from yours too?', { x: name });
-                return t('{x} to {y}. Change yours too?', { x: name, y: exName(ask.alt ?? e) });
-              })()}
+              {shown.body}
             </Text>
-            <Button
-              icon="check"
-              title={t('Yes, same for me')}
-              style={{ marginTop: 16 }}
-              onPress={() => {
-                applyTo(ask.exId, ask.kind, ask.alt);
-                dropAsk(ask.key);
-              }}
-            />
-            <Button kind="glass" title={t('No, keep mine')} style={{ marginTop: 8 }} onPress={() => dropAsk(ask.key)} />
+            <Button icon="check" title={t('Yes, same for me')} style={{ marginTop: 16 }} onPress={() => answer(true)} />
+            <Button kind="glass" title={t('No, keep mine')} style={{ marginTop: 8 }} onPress={() => answer(false)} />
           </View>
         ) : null}
       </Sheet>

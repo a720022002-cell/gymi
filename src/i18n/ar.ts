@@ -5494,4 +5494,8 @@ export const AR: Record<string, string> = {
   "{w} saved. Nice work.": "انحفظ {w}. شغل حلو.",
   "Search: chicken breast, rice, laban…": "ابحث: صدر دجاج، رز، لبن…",
   "Search foods": "ابحث عن أكل",
+  "{n} people. Go back and finish it.": "{n} أشخاص. ارجع وكمّله.",
+  "Your friends finished": "أخوياك خلصوا",
+  "Away": "مو موجود",
+  "Change sets for {name}": "غيّر جولات {name}",
 };

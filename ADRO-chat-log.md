@@ -1019,6 +1019,15 @@ Passwords and keys are left out on purpose.
 - Runtime (fingerprint) ebc81514d3af6c02e2f85dcfd6f911be0c1f39a2, the same as main. OTAs for this build go straight from main. Phones still on build 17 (runtime 6e1d9a57) only get updates from the ota17 branch, until everyone moves to the new build.
 - New in this build compared to build 17: payments (RevenueCat; the paywall stays off until PAYWALL=on) and share on a photo (react-native-view-shot, story templates).
 
+### 1 Nov 2026: Gym Bros fixes
+- Group workout you left halfway: a "Continue" card on Home, Train and Gym Bros.
+- Friends who finished show "Finished" (or "Away" after 15 min with no sets) and no longer hold the turn.
+- A group workout counts for the day it started (before 4 am counts for the night before), so it shows in the week and the recap.
+- Train together plan: tap anyone's row to change their sets and reps (also for AI plans). Carried into the live workout.
+- Water button inside the group workout (same as a normal workout).
+- "Other exercise" in Swap opened nothing on iPhone: now opens after the swap sheet closes.
+- "Friend changed an exercise" prompt: waits until no other sheet is open, keeps its text while you answer, closes right away.
+
 ---
 
 

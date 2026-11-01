@@ -8,7 +8,8 @@ import { exInfo } from './training';
  * One exercise in a group workout. n: a name for exercises outside the common list (ar: its Arabic name).
  * type 3 is cardio done side by side (id "cardio:<sport>", min: the minutes); 0–2 as in together.ts.
  */
-export type GroupEx = { id: string; type: number; n?: string; ar?: string | null; m?: string; min?: number };
+/** per: sets and reps someone was given when the plan was made (by user id), instead of the ones for their level. */
+export type GroupEx = { id: string; type: number; n?: string; ar?: string | null; m?: string; min?: number; per?: Record<string, { sets: number; reps: number }> };
 
 export const isCardio = (x: Pick<GroupEx, 'type' | 'id'>) => x.type === 3 || x.id.startsWith('cardio:');
 export const cardioSportOf = (x: Pick<GroupEx, 'id'>) => x.id.slice('cardio:'.length) as SportId;
@@ -82,11 +83,25 @@ export async function swapGroupExercise(id: string, index: number, ex: GroupEx) 
 }
 
 /** Save your sets (and the old per-exercise count, which older screens read). */
-export async function saveMySets(id: string, uid: string, sets: Record<string, MySets>) {
-  const done = Object.fromEntries(Object.entries(sets).map(([k, v]) => [k, v.sets.filter((s) => s.done).length]));
+export async function saveMySets(id: string, uid: string, sets: Record<string, MySets>, finished = false) {
+  const done: Record<string, number> = Object.fromEntries(Object.entries(sets).map(([k, v]) => [k, v.sets.filter((s) => s.done).length]));
+  // Finished and left: the others stop waiting for you (older app versions only read the counts).
+  if (finished) done[FINISHED] = 1;
   const { error } = await supabase.from('group_session_members').update({ sets, done, updated_at: new Date().toISOString() }).eq('session_id', id).eq('user_id', uid);
   return !error;
 }
+
+/** Marks a member who tapped Finish (kept in their per-exercise counts). */
+const FINISHED = '__finished';
+/** No set saved for this long while the workout is live: away (closed the app without finishing). */
+const AWAY_MS = 15 * 60_000;
+/** Tapped Finish and left. */
+export const finishedOf = (m: Pick<BoardMember, 'done'>) => !!(m.done as Record<string, number> | undefined)?.[FINISHED];
+/** Hasn't saved a set in 15 minutes (only once they've started, so a slow first set isn't "away"). */
+export const awayOf = (m: Pick<BoardMember, 'updated_at' | 'sets'>, now = Date.now()) =>
+  Object.values(m.sets ?? {}).some((x) => x.sets?.some((y) => y.done)) && now - new Date(m.updated_at).getTime() > AWAY_MS;
+/** Still training with you: joined, not finished, not away. */
+export const activeOf = (m: BoardMember, now = Date.now()) => m.joined && !finishedOf(m) && !awayOf(m, now);
 
 /** Friends' training level (what they picked, or a guess from their history). Missing = unknown. */
 export async function friendLevels(ids: string[]): Promise<Record<string, Level>> {
@@ -96,16 +111,16 @@ export async function friendLevels(ids: string[]): Promise<Record<string, Level>
 }
 
 /** Someone's sets for an exercise: what they saved, or the plan for their level. */
-export function setsOf(m: Pick<BoardMember, 'level' | 'sets'>, ex: GroupEx): MySets {
+export function setsOf(m: Pick<BoardMember, 'level' | 'sets'> & { user_id?: string }, ex: GroupEx): MySets {
   const saved = m.sets?.[ex.id];
   if (saved?.sets?.length) return saved;
   if (isCardio(ex)) return { reps: ex.min ?? 20, sets: [{ w: null, r: null, done: false }] };
-  const sc = scheme(m.level, ex.type);
+  const sc = (m.user_id && ex.per?.[m.user_id]) || scheme(m.level, ex.type);
   return { reps: sc.reps, sets: Array.from({ length: sc.sets }, () => ({ w: null, r: null, done: false })) };
 }
 
 /** The exercise someone actually does for a spot in the workout (their own swap, or the group's). */
-export const exOf = (m: Pick<BoardMember, 'level' | 'sets'>, ex: GroupEx): GroupEx => setsOf(m, ex).alt ?? ex;
+export const exOf = (m: Pick<BoardMember, 'level' | 'sets'> & { user_id?: string }, ex: GroupEx): GroupEx => setsOf(m, ex).alt ?? ex;
 
 /** A change a friend made during the workout, for the others to copy or not. alt null: back to the group's exercise. */
 export type GroupChange = { key: string; who: string; exId: string; kind: 'add' | 'del' | 'swap'; alt?: GroupEx | null };
@@ -137,7 +152,9 @@ const allDone = (s: MySets) => s.sets.every((x) => x.done);
  * (the person with the fewest sets done on it; ties go in turn order).
  */
 export function groupTurn(workout: GroupEx[], board: BoardMember[]) {
-  const ppl = board.filter((m) => m.joined).sort((a, b) => a.pos - b.pos);
+  // Whoever finished or went away doesn't hold up the turns.
+  const now = Date.now();
+  const ppl = board.filter((m) => activeOf(m, now)).sort((a, b) => a.pos - b.pos);
   let cur = workout.findIndex((ex) => ppl.some((m) => !allDone(setsOf(m, ex))));
   const finished = cur < 0;
   if (finished) cur = Math.max(0, workout.length - 1);

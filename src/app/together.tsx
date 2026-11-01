@@ -7,6 +7,7 @@ import { Thinking } from '@/components/food/Thinking';
 import { TimeField } from '@/components/food/TimeField';
 import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
+import { Stepper } from '@/components/food/Stepper';
 import { Sheet } from '@/components/Sheet';
 import { Avatar } from '@/components/social/Avatar';
 import { Text } from '@/components/Text';
@@ -59,6 +60,8 @@ export default function Together() {
   const [focus, setFocus] = useState<Focus | null>(null);
   const [pick, setPick] = useState(false);
   const [cardioPick, setCardioPick] = useState(false);
+  // One person's sets and reps for one exercise, being changed by hand.
+  const [edit, setEdit] = useState<{ i: number; key: string; name: string } | null>(null);
   const [friends, setFriends] = useState<FriendRow[]>([]);
   const [levels, setLevels] = useState<Record<string, Level>>({});
   const [day, setDay] = useState(0);
@@ -149,14 +152,25 @@ export default function Together() {
     setPeople([...people, { name: displayName(f), username: f.username, id: f.id, level: levels[f.id] ?? 'Beginner', known: true }]);
   };
 
-  const workout = TOG;
+  /** Someone's sets and reps for an exercise: what you set by hand, or the ones for their level. */
+  const planFor = (x: GroupEx, key: string, lvl: Level) => {
+    const sc = scheme(lvl, x.type);
+    const own = x.per?.[key];
+    return own ? { ...sc, sets: own.sets, reps: own.reps } : sc;
+  };
+  const setPer = (i: number, key: string, v: { sets: number; reps: number }) => setEx(TOG.map((y, j) => (j === i ? { ...y, per: { ...y.per, [key]: v } } : y)));
+  // Saved with everyone's account id (you are "me" here); people without the app aren't in the live workout.
+  const workout: GroupEx[] = TOG.map(({ per, ...x }) => {
+    const out = Object.entries(per ?? {}).flatMap(([k, v]) => (k === 'me' ? (session?.user.id ? [[session.user.id, v]] : []) : k.startsWith('local-') ? [] : [[k, v]]));
+    return out.length ? { ...x, per: Object.fromEntries(out) } : x;
+  });
   const startLocal = () => {
     if (stale) return setStaleOpen(true);
     if (train.session) return router.replace('/active');
     const ex: PlanEx[] = TOG.map((x) => {
       // Cardio on your phone: one timed round of its minutes.
       if (isCardio(x)) return { id: x.id, n: sportInfo(cardioSportOf(x)).name, sets: 1, reps: String((x.min ?? 20) * 60), time: true, m: 'Other' };
-      const s = scheme(myLevel, x.type);
+      const s = planFor(x, 'me', myLevel);
       return { id: x.id, sets: s.sets, reps: String(s.reps), ...(x.n ? { n: x.n, ar: x.ar, m: x.m } : {}) };
     });
     train.startWorkout('Together', false, false, { ex });
@@ -413,9 +427,15 @@ export default function Together() {
             ) : (
               <View style={{ marginTop: 8 }}>
                 {all.map((p, j) => {
-                  const s = scheme(p.level, x.type);
+                  const s = planFor(x, keyOf(p, j), p.level);
                   return (
-                    <Row key={j} gap={10} style={{ paddingVertical: 7, borderTopWidth: 1, borderTopColor: c.line }}>
+                    <Springy
+                      key={j}
+                      scaleTo={0.98}
+                      onPress={() => setEdit({ i, key: keyOf(p, j), name: p.name })}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('Change sets for {name}', { name: p.name })}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7, borderTopWidth: 1, borderTopColor: c.line }}>
                       {avatar(p, j, 28)}
                       <Text variant="small" weight={700} style={{ flex: 1 }}>
                         {p.name}
@@ -423,7 +443,8 @@ export default function Together() {
                       <Text variant="small" num>
                         {s.timed ? t('{a} rounds × {b} s', { a: s.sets, b: s.reps }) : t('{a} sets × {b} reps', { a: s.sets, b: s.reps })}
                       </Text>
-                    </Row>
+                      <Icon name="edit" size={14} color={c.sec} />
+                    </Springy>
                   );
                 })}
               </View>
@@ -475,6 +496,43 @@ export default function Together() {
           setEx([...TOG, { id: pe.id, type: pe.time ? 2 : 0, ...(pe.n ? { n: pe.n, ar: pe.ar, m: pe.m } : {}) }]);
         }}
       />
+      <Sheet open={!!edit} onClose={() => setEdit(null)}>
+        {edit && TOG[edit.i]
+          ? (() => {
+              const x = TOG[edit.i];
+              const p = all.find((q, j) => keyOf(q, j) === edit.key);
+              const s = planFor(x, edit.key, p?.level ?? myLevel);
+              const step = s.timed ? 15 : 1;
+              const [lo, hi] = s.timed ? [15, 300] : [1, 30];
+              const put = (v: { sets: number; reps: number }) => setPer(edit.i, edit.key, v);
+              return (
+                <View>
+                  <Text variant="h2">{groupExName(x, lang, t)}</Text>
+                  <Text variant="small" color="sec" style={{ marginTop: 4 }}>
+                    {edit.name}
+                  </Text>
+                  <Text variant="small" weight={700} color="sec" style={{ marginTop: 16, marginBottom: 6 }}>
+                    {s.timed ? t('Rounds') : t('Sets')}
+                  </Text>
+                  <Stepper minusDisabled={s.sets <= 1} onMinus={() => put({ sets: s.sets - 1, reps: s.reps })} onPlus={() => put({ sets: Math.min(8, s.sets + 1), reps: s.reps })}>
+                    <Text variant="h2" num>
+                      {s.sets}
+                    </Text>
+                  </Stepper>
+                  <Text variant="small" weight={700} color="sec" style={{ marginTop: 16, marginBottom: 6 }}>
+                    {s.timed ? t('Seconds') : t('Reps')}
+                  </Text>
+                  <Stepper minusDisabled={s.reps <= lo} onMinus={() => put({ sets: s.sets, reps: Math.max(lo, s.reps - step) })} onPlus={() => put({ sets: s.sets, reps: Math.min(hi, s.reps + step) })}>
+                    <Text variant="h2" num>
+                      {s.reps}
+                    </Text>
+                  </Stepper>
+                  <Button title={t('Done')} style={{ marginTop: 20 }} onPress={() => setEdit(null)} />
+                </View>
+              );
+            })()
+          : null}
+      </Sheet>
       <Sheet open={cardioPick} onClose={() => setCardioPick(false)}>
         <Text variant="h2">{t('Add cardio')}</Text>
         <Text variant="small" color="sec" style={{ marginTop: 4 }}>

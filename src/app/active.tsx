@@ -18,7 +18,7 @@ import { useT } from '@/i18n';
 import { histFor, logSet, ltrNums, REST, setAdvice } from '@/lib/activeWorkout';
 import { toPlanEx } from '@/lib/exercisesDb';
 import { type Rest, type Session, type SessionEx, useTrain, vsLastTime } from '@/lib/train';
-import { useFood } from '@/lib/food';
+import { WaterButton } from '@/components/train/WaterButton';
 import { useHealth } from '@/lib/health';
 import { armGap, exInfo, isOneArm, type PlanEx, topReps } from '@/lib/training';
 import { useExerciseWeight, type useWeight } from '@/lib/units';
@@ -68,8 +68,6 @@ export default function Active() {
   const [swapped, setSwapped] = useState<{ oldId: string; ex: PlanEx; name: string } | null>(null);
   // The exercise whose trash button was tapped: remove it today, or from your plan too.
   const [removeFor, setRemoveFor] = useState<number | null>(null);
-  const food = useFood();
-  const [waterOpen, setWaterOpen] = useState(false);
   // The note being written: an exercise ("2") or one of its sets ("2:1").
   const [noteAt, setNoteAt] = useState<string | null>(null);
 
@@ -116,12 +114,6 @@ export default function Active() {
 
   const update = (fn: (x: Session) => Session) => train.setSession(fn(s));
   // Change the order mid-workout: move an exercise up or down (its sets go with it).
-  // Water you drink while training goes to today's water.
-  const drink = async (ml: number) => {
-    setWaterOpen(false);
-    await food.addWater(ml, 'Water', food.today);
-    toast(t('+{n} ml water', { n: ml }), { icon: 'drop' });
-  };
   const setField = (ei: number, si: number, k: 'w' | 'r', v: string) =>
     update((x) => ({ ...x, ex: x.ex.map((e, i) => (i !== ei ? e : { ...e, sets: e.sets.map((st, j) => (j === si ? { ...st, [k]: v } : st)) })) }));
 
@@ -565,34 +557,11 @@ export default function Active() {
                 {t('Tap ✓ after each set')}
               </Text>
             </View>
-            <Springy onPress={() => setWaterOpen(true)} accessibilityRole="button" accessibilityLabel={t('Log water')} style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(56,189,248,0.16)' }}>
-              <Icon name="drop" size={20} color="#38BDF8" />
-            </Springy>
+            <WaterButton />
             <Button small kind="glass" icon="timer" title={t('Rest')} onPress={() => setRest({ end: Date.now() + REST * 1000, total: REST })} />
           </Glass>
         )}
       </View>
-
-      <Sheet open={waterOpen} onClose={() => setWaterOpen(false)}>
-        <Text variant="h2" center>
-          {t('How much did you drink?')}
-        </Text>
-        {food.isToday ? (
-          <Text color="sec" center style={{ marginTop: 4 }}>
-            {t('{n} ml so far today', { n: food.water })}
-          </Text>
-        ) : null}
-        <Row gap={8} style={{ marginTop: 16 }}>
-          {[150, 250, 500, 750].map((ml) => (
-            <View key={ml} style={{ flex: 1 }}>
-              <Button kind="soft" title={`${ml}`} style={{ alignSelf: 'stretch' }} onPress={() => drink(ml)} />
-            </View>
-          ))}
-        </Row>
-        <Text variant="xs" color="sec" center style={{ marginTop: 8 }}>
-          {t('ml')}
-        </Text>
-      </Sheet>
 
       <Sheet open={!!setMenu} onClose={() => setSetMenu(null)}>
         {setMenu && s.ex[setMenu.ei]?.sets[setMenu.si] ? (
