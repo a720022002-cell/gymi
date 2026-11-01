@@ -1115,6 +1115,10 @@ Passwords and keys are left out on purpose.
 - Ready-made workouts checked: Push had the fly after shoulders (now bench → incline → fly → shoulder → lateral → pushdown); Upper now keeps row + pulldown together; Full body keeps squat + RDL together; Home keeps bridge with the legs. Pull, Legs, Lower were already right.
 - Plans people already have keep their order (new plans get the fix).
 
+### 1 Nov 2026: OTA (حدثه) for build 21 only
+- Update group dc1f6dfc (main 9ffc0cc, runtime ebc81514): workout order fix. Builds 20 and 21 share this runtime, so 20 gets it too.
+- Owner: from now on update only the latest build (21). Build 17 is no longer updated (ota17 has the commits locally but nothing was published).
+
 ---
 
 
