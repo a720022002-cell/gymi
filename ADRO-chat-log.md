@@ -1066,6 +1066,9 @@ Passwords and keys are left out on purpose.
 ### 1 Nov 2026: Train together, no "Friend not on Adro?"
 - Removed the box to add a friend who isn't on Adro (name + level). You pick friends from your Adro friends only.
 
+### 1 Nov 2026: Time box, third try
+- The time sat on the top edge until the screen redrew (a screenshot fixed it): the picker measured itself wrong on its first draw. Now its box has a fixed size (108 wide, at least 34 high) from the start and SwiftUI centres the time inside (frame alignment center).
+
 ---
 
 

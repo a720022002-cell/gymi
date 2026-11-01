@@ -1,5 +1,5 @@
 import { DatePicker, Host } from '@expo/ui/swift-ui';
-import { datePickerStyle, labelsHidden, tint } from '@expo/ui/swift-ui/modifiers';
+import { datePickerStyle, frame, labelsHidden, tint } from '@expo/ui/swift-ui/modifiers';
 import { useEffect, useRef } from 'react';
 import { Platform, Pressable, View } from 'react-native';
 
@@ -16,6 +16,8 @@ const toDate = (v: string) => {
   d.setHours(h || 0, m || 0, 0, 0);
   return d;
 };
+/** Room for the time on iPhone ("12:45 PM" or "١٢:٤٥ م"), centred. */
+const PICK_W = 108;
 const toClock = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
 /**
@@ -66,11 +68,16 @@ export function TimeField({ value, onChange, label, height = 46, bg }: { value: 
     <View accessibilityLabel={label} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, height, borderRadius: 12, backgroundColor: bg ?? c.inset, paddingHorizontal: 6 }}>
       {btn(-1)}
       {Platform.OS === 'ios' ? (
-        // The picker's box is exactly its own size (width and height), and a plain box of the field's height centres
-        // it. A fixed height on the picker's box put the time on its top edge.
+        // A fixed size from the first frame, with the time centred inside it by SwiftUI itself. Letting the picker
+        // size itself got the height wrong on the first draw (the time sat on the top edge until the screen redrew).
         <View style={{ height: height - 8, justifyContent: 'center', alignItems: 'center' }}>
-          <Host matchContents colorScheme={isDark ? 'dark' : 'light'}>
-            <DatePicker selection={toDate(value)} displayedComponents={['hourAndMinute']} onDateChange={(d) => onChange(toClock(d))} modifiers={[datePickerStyle('compact'), labelsHidden(), tint(c.cobalt)]} />
+          <Host style={{ width: PICK_W, height: Math.max(34, height - 8) }} colorScheme={isDark ? 'dark' : 'light'}>
+            <DatePicker
+              selection={toDate(value)}
+              displayedComponents={['hourAndMinute']}
+              onDateChange={(d) => onChange(toClock(d))}
+              modifiers={[datePickerStyle('compact'), labelsHidden(), tint(c.cobalt), frame({ width: PICK_W, height: Math.max(34, height - 8), alignment: 'center' })]}
+            />
           </Host>
         </View>
       ) : (
