@@ -1094,6 +1094,11 @@ Passwords and keys are left out on purpose.
 ### 1 Nov 2026: OTA (حدث) with the App Review exemption
 - Build 20: update group 37976614 (main f1d6d6c). Build 17: from ota17 8a211b0.
 
+### 1 Nov 2026: App Review account created
+- Made through the app's normal sign-up (owner gave the email code): a720022002+applereview@gmail.com, username applereview, member. Password given to the owner in chat only (not stored here).
+- Filled as the account itself: profile (male, 178 cm, 80 kg), food plan (2,500 kcal), Push/Pull/Legs training plan, 5 meals, water, 2 workouts. Kept on purpose (not a test user).
+- Its free AI week starts today; if review runs past it, gift it Adro+ from Admin → Gift Adro+.
+
 ---
 
 
