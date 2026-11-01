@@ -106,6 +106,7 @@ export function CoachMeView() {
       <List>
         {item('edit', t('Coach profile'), t('Photo, bio, gym and specialties'), () => router.push('/cprofile'), true)}
         {item('cart', t('Listing and packages'), p ? `${t('{a} of {b} spots', { a: used, b: p.max_clients })}${p.listed && used < p.max_clients ? t(', listed') : t(', hidden')}` : null, () => router.push('/coffer'))}
+        {item('progress', t('Earnings'), t('{n} active clients, next payout {d}', { n: l.filter((x) => x.status === 'active').length, d: new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { day: 'numeric', month: 'short' }).format(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)) }), () => router.push('/cearn'))}
         {item('key', t('Invite codes'), t('{n} waiting to join', { n: l.filter((x) => x.status === 'invited').length }), () => router.push('/cclients'))}
         {item('bell', t('Notifications'), notifSummary, () => router.push('/cnotif'))}
       </List>

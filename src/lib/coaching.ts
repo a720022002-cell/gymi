@@ -368,3 +368,23 @@ export async function copyText(text: string) {
     return false;
   }
 }
+
+/** One subscription to a coach: who, which package, when it started and ends, and the money in it. */
+export type Earning = { link: ClientLink; pkg: Package; start: Date; end: Date; client: number; coach: number; payout: Date };
+/** Adro pays coaches at the start of each month, for the subscriptions of the month before. */
+export const payoutDate = (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 1);
+/** A coach's subscriptions with what each one pays them (the package's price as it is now). */
+export function earningsOf(list: ClientLink[], packages: Package[] | null | undefined): Earning[] {
+  const pk = normalizePackages(packages);
+  return list
+    .filter((l) => l.status === 'active' && l.package)
+    .flatMap((l) => {
+      const pkg = pk.find((x) => x.id === l.package);
+      if (!pkg || !pkg.price) return [];
+      const start = new Date(l.created_at);
+      const end = new Date(start.getFullYear(), start.getMonth() + (pkg.months ?? 1), start.getDate());
+      const pr = pkgPricing(pkg);
+      return [{ link: l, pkg, start, end, client: pr.client, coach: pr.coach, payout: payoutDate(start) }];
+    })
+    .sort((a, b) => b.start.getTime() - a.start.getTime());
+}

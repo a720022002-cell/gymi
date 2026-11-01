@@ -1048,6 +1048,10 @@ Passwords and keys are left out on purpose.
 - Members see the full price (coach page, Find a coach "from" price). lib/coaching pkgPricing does the maths.
 - Not yet: charging for it, and turning on Adro+ for the member when they subscribe (the payment step).
 
+### 1 Nov 2026: Coach earnings page
+- Me → Your coaching → Earnings (/cearn): next payout (1st of next month) with this month's amount, active clients and new this month, paid to you, total earned, what members paid, by package (clients, price, earned), by month (last 6, paid or to be paid), and every subscriber (package, start, end, what you get).
+- Worked out from active clients' packages at today's prices (lib/coaching earningsOf). Start date is when the link was made. Real figures come once payments are connected.
+
 ---
 
 
