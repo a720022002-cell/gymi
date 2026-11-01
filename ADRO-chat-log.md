@@ -1091,6 +1091,9 @@ Passwords and keys are left out on purpose.
 - Owner approved: the App Review account a720022002+applereview@gmail.com skips the new-phone email code (lib/auth NO_LOGIN_CODE). Only that account; everyone else still gets it. Needs "حدث".
 - The account itself is made by the owner in the app (the sign-up email code goes to their own Gmail).
 
+### 1 Nov 2026: OTA (حدث) with the App Review exemption
+- Build 20: update group 37976614 (main f1d6d6c). Build 17: from ota17 8a211b0.
+
 ---
 
 
