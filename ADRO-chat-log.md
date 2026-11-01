@@ -1069,6 +1069,11 @@ Passwords and keys are left out on purpose.
 ### 1 Nov 2026: Time box, third try
 - The time sat on the top edge until the screen redrew (a screenshot fixed it): the picker measured itself wrong on its first draw. Now its box has a fixed size (108 wide, at least 34 high) from the start and SwiftUI centres the time inside (frame alignment center).
 
+### 1 Nov 2026: OTA (حدث)
+- Build 20: update group 2ca0992c (main cc02d2b). Build 17: update group c5536c7a (ota17 de6f268).
+- In it: time box fix (fixed size, centred by SwiftUI) and Train together without "Friend not on Adro?".
+- Adro+ redesign: shown as a picture only, not applied (owner said don't apply).
+
 ---
 
 
