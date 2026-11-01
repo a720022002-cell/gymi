@@ -151,7 +151,8 @@ function AppStack({ ready }: { ready: boolean }) {
   // Invite-only launch: new people see the gate first (signed-in people never do).
   const gate = useGate();
   useEffect(() => {
-    if (!navReady || !configured || loading || session || gate !== 'closed' || !first || !GATED.includes(first)) return;
+    // Locked from the first moment: until the server says the gate is off, new people see it.
+    if (!navReady || !configured || loading || session || gate === 'open' || !first || !GATED.includes(first)) return;
     router.replace('/gate');
   }, [navReady, configured, loading, session, gate, first]);
 

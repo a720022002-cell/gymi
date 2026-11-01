@@ -9,7 +9,7 @@ import { fontFor, Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Row, Springy } from '@/components/ui';
 import { useT } from '@/i18n';
-import { friendsJoined, joinWaitlist, myWaiting, tryCode, type Waiting } from '@/lib/gate';
+import { friendsJoined, joinWaitlist, myWaiting, tryCode, useGate, type Waiting } from '@/lib/gate';
 import { useSettings } from '@/theme/settings';
 
 /**
@@ -20,6 +20,11 @@ export default function Gate() {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
   const toast = useToast();
+  // The team switched the gate off (or this phone already got in): straight on.
+  const state = useGate();
+  useEffect(() => {
+    if (state === 'open') router.replace('/welcome');
+  }, [state]);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState<'code' | 'join' | null>(null);
   const [email, setEmail] = useState('');

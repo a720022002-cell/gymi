@@ -7,6 +7,7 @@ import { Text } from '@/components/Text';
 import { Button } from '@/components/ui';
 import { useT } from '@/i18n';
 import { profileComplete, useAuth } from '@/lib/auth';
+import { useGate } from '@/lib/gate';
 import { useSettings } from '@/theme/settings';
 
 /** Decides where to start: Welcome, finish sign-up, or Home. */
@@ -15,6 +16,7 @@ export default function Start() {
   const { colors } = useSettings();
   const { t } = useT();
   const [trying, setTrying] = useState(false);
+  const gate = useGate();
 
   if (!configured) return <NotConfigured />;
   // Signed in, but your profile couldn't load (no connection) and isn't on this phone yet.
@@ -43,7 +45,8 @@ export default function Start() {
   if (loading || !profileReady) {
     return <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' }}><Mark size={44} /></View>;
   }
-  if (!session) return <Redirect href="/welcome" />;
+  // New people start at the invite gate unless it's off (or this phone already got in).
+  if (!session) return <Redirect href={gate === 'open' ? '/welcome' : '/gate'} />;
   if (!profileComplete(profile)) return <Redirect href={{ pathname: '/signup', params: { step: 'about' } }} />;
   return <Redirect href="/home" />;
 }

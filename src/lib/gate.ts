@@ -14,12 +14,12 @@ export type Waiting = { email: string; ref: string };
 let opened: boolean | null = null;
 const subs = new Set<() => void>();
 
-/** 'open' (go on to the app) or 'closed' (show the gate). If the server can't be reached, it lets you through. */
+/** 'open' (go on to the app) or 'closed' (show the gate). Locked unless the server says the gate is off (or this phone got in). */
 export async function gateState(): Promise<'open' | 'closed'> {
   if (opened == null) opened = (await AsyncStorage.getItem(OPEN).catch(() => null)) === '1';
   if (opened) return 'open';
   const { data, error } = await supabase.rpc('gate_on');
-  if (error) return 'open';
+  if (error) return 'closed';
   return data === true ? 'closed' : 'open';
 }
 export function useGate() {

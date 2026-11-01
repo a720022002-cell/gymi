@@ -1099,6 +1099,10 @@ Passwords and keys are left out on purpose.
 - Filled as the account itself: profile (male, 178 cm, 80 kg), food plan (2,500 kcal), Push/Pull/Legs training plan, 5 meals, water, 2 workouts. Kept on purpose (not a test user).
 - Its free AI week starts today; if review runs past it, gift it Adro+ from Admin → Gift Adro+.
 
+### 1 Nov 2026: Gate locked from the first moment + build 21 (صدر النسخة)
+- New people start at the gate from the first screen (no Welcome flash). If the server can't be reached it stays locked; it opens only when the team switches it off or the phone got in with a code.
+- Build 21 so Apple's reviewer gets everything from the first open (a fresh build 20 runs its old code on the first open, without the gate or the review-account exemption).
+
 ---
 
 
