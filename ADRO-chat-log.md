@@ -1126,6 +1126,7 @@ Passwords and keys are left out on purpose.
 - Group workout fallback Push/Upper put in the right order.
 - AI plan prompt: concrete A (4–8 reps, heavy) / B (8–15, isolation 12–20, other priority) / C rules, angles, long-length moves, ≤8–10 sets per muscle per workout. PLAN_RULES_VERSION 4 so old cached plans aren't reused. Deployed.
 - Rest timer already varies (big lifts 150 s, others 90 s): left as is.
+- Shipped: ai function deployed; OTA 486412a1 for build 21 (main 04f7ebb).
 
 ---
 
