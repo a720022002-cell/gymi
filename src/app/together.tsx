@@ -2,7 +2,6 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
-import { Field } from '@/components/Field';
 import { Thinking } from '@/components/food/Thinking';
 import { TimeField } from '@/components/food/TimeField';
 import { Icon } from '@/components/Icon';
@@ -22,7 +21,7 @@ import { cardioEx, cardioSportOf, friendLevels, type GroupEx, groupExName, isCar
 import { SPORTS, type SportId, sportInfo } from '@/lib/sports';
 import { addDays, fmtTime } from '@/lib/nutrition';
 import { displayName, type FriendRow, myFriends } from '@/lib/social';
-import { applyTogether, buildTogether, COLORS, type DayInfo, fallbackPlan, FOCUS, type Focus, friendsDay, LEVELS, type Level, myDayInfo, noteText, type Person, scheme, type TogetherNote } from '@/lib/together';
+import { applyTogether, buildTogether, COLORS, type DayInfo, fallbackPlan, FOCUS, type Focus, friendsDay, type Level, myDayInfo, noteText, type Person, scheme, type TogetherNote } from '@/lib/together';
 import { useTrain } from '@/lib/train';
 import { DAYS, DAYS_LONG, exInfo, exMuscle, muscleLabel, type PlanEx } from '@/lib/training';
 import { useSettings } from '@/theme/settings';
@@ -52,8 +51,6 @@ export default function Together() {
   const recent = train.logs.length;
   const myLevel: Level = train.plan?.level ?? (recent >= 60 ? 'Advanced' : recent >= 12 ? 'Intermediate' : 'Beginner');
   const [people, setPeople] = useState<P[]>([]);
-  const [name, setName] = useState('');
-  const [level, setLevel] = useState<Level>('Intermediate');
   // The steps: who's coming, how to make the workout, then the workout itself (to change before sending).
   const [step, setStep] = useState<'people' | 'how' | 'plan'>('people');
   const [mode, setMode] = useState<Mode>('ai');
@@ -139,13 +136,6 @@ export default function Together() {
     if (train.plan && when === date) train.updatePlan(applyTogether(train.plan, sid, plan.notes.me?.action, when));
   };
 
-  const addPerson = () => {
-    const n = name.trim().slice(0, 20);
-    if (!n) return;
-    if (people.length >= 4) return toast(t('Up to 4 friends at a time'), { icon: 'info' });
-    setPeople([...people, { name: n, level }]);
-    setName('');
-  };
   const togglePick = (f: FriendRow) => {
     if (people.some((p) => p.id === f.id)) return setPeople(people.filter((p) => p.id !== f.id));
     if (people.length >= 4) return toast(t('Up to 4 friends at a time'), { icon: 'info' });
@@ -275,15 +265,6 @@ export default function Together() {
               ))}
           </View>
         ) : null}
-        <Card style={{ marginTop: 16 }}>
-          <Field label={t('Friend not on Adro?')} value={name} onChangeText={setName} onSubmitEditing={addPerson} placeholder={t('Ahmed')} maxLength={20} />
-          <Row gap={8} style={{ flexWrap: 'wrap', marginTop: 10 }}>
-            {LEVELS.map((l) => (
-              <Chip key={l} title={t(l)} on={level === l} onPress={() => setLevel(l)} />
-            ))}
-          </Row>
-          <Button small kind="soft" icon="plus" title={t('Add friend')} disabled={!name.trim()} style={{ marginTop: 12, alignSelf: 'stretch' }} onPress={addPerson} />
-        </Card>
         <Text variant="small" weight={700} color="sec" center style={{ marginTop: 8 }}>
           {people.length ? t('{n} people, including you', { n: people.length + 1 }) : t('Choose at least one friend')}
         </Text>

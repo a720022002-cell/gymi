@@ -1063,6 +1063,9 @@ Passwords and keys are left out on purpose.
 - OTA to build 17 (runtime 6e1d9a57): update group 151912b9, from local ota17 af0cb3c.
 - Moving Hamdan's and Ali's old late-night logs back a day: blocked by the safety check, not done.
 
+### 1 Nov 2026: Train together, no "Friend not on Adro?"
+- Removed the box to add a friend who isn't on Adro (name + level). You pick friends from your Adro friends only.
+
 ---
 
 
