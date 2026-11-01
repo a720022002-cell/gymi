@@ -100,7 +100,7 @@ export function TrainSetup({ inTab, onDone, onCancel }: { inTab?: boolean; onDon
     const best = { 2: 1, 3: 0, 4: 0, 5: 0, 6: 0 }[days] ?? 0;
     if (!plan) {
       const k = pick === 'ai' ? best : pick;
-      plan = k === 'own' ? { ...planOwn(days, injuries), level: level ?? undefined } : planFromSplit(days, injuries, SPLITS[days][k as number][0], SPLITS[days][k as number][1], level ?? undefined);
+      plan = k === 'own' ? { ...planOwn(days, injuries), level: level ?? undefined } : planFromSplit(days, injuries, SPLITS[days][k as number][0], SPLITS[days][k as number][1], level ?? undefined, goalWord(food.plan.goal));
     }
     // One arm clearly smaller (from your measurements): arm exercises one arm at a time, so the smaller arm catches up.
     const gap = armGap(health.measures);

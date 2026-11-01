@@ -22,10 +22,10 @@ export const TOG: [string, number][] = [
 export const FOCUS = ['Push', 'Pull', 'Legs', 'Upper', 'Lower', 'Full body'] as const;
 export type Focus = (typeof FOCUS)[number];
 export const FOCUS_EX: Record<Focus, [string, number][]> = {
-  Push: [['bench', 1], ['shoulder', 1], ['incline', 0], ['lateral', 0], ['pushdown', 0], ['plank', 2]],
+  Push: [['bench', 1], ['incline', 0], ['shoulder', 1], ['lateral', 0], ['pushdown', 0], ['plank', 2]],
   Pull: [['pulldown', 1], ['row', 1], ['cablerow', 0], ['facepull', 0], ['curl', 0], ['hammer', 0]],
   Legs: [['squat', 1], ['legpress', 1], ['legcurl', 0], ['legext', 0], ['calf', 0], ['plank', 2]],
-  Upper: [['bench', 1], ['pulldown', 1], ['shoulder', 0], ['cablerow', 0], ['curl', 0], ['pushdown', 0]],
+  Upper: [['bench', 1], ['pulldown', 1], ['cablerow', 0], ['shoulder', 0], ['curl', 0], ['pushdown', 0]],
   Lower: [['squat', 1], ['rdl', 1], ['legpress', 0], ['legcurl', 0], ['calf', 0], ['plank', 2]],
   'Full body': TOG,
 };

@@ -466,7 +466,7 @@ const RECIPE_SCHEMA = {
 
 /** Fingerprint of the plan answers (and the whole exercise list, injury info included, and rules version), so the same answers find the same plan.
  * A changed exercise list gives a different key, so it can never reach other people's plans. */
-const PLAN_RULES_VERSION = 3;
+const PLAN_RULES_VERSION = 4;
 type PlanEx = { id: string; name?: string; muscle?: string; equipment?: string; avoidFor?: string[] };
 async function planCacheKey(b: Record<string, unknown>) {
   const ages = Number(b.age) ? Math.floor(Number(b.age) / 10) * 10 : null;
@@ -835,7 +835,12 @@ Names, ingredients and steps in the reply language.`;
     case 'plan': {
       const system = `You are an experienced strength coach. Build a weekly gym plan as JSON. Use ONLY exercise ids from the list given.
 Rules:
-- Build exactly the workouts named in "workouts", with exactly those names, one each. Days of the same kind ("Push A" and "Push B", "Full body A/B/C") use different exercises or variations, so each day is different; A days lean on heavier compound lifts, B days on more volume and variations, C days on other variations and single-arm or single-leg work.
+- Build exactly the workouts named in "workouts", with exactly those names, one each. Days of the same kind ("Push A" and "Push B", "Full body A/B/C") train the same muscles with DIFFERENT exercises, so each day is different:
+  - A days = heavy: 1 or 2 big free-weight compound lifts first at 4 to 8 reps (3 to 4 sets), then accessories.
+  - B days = volume: other exercises for the same muscles (dumbbell, cable, machine, other angles) at 8 to 15 reps, isolation 12 to 20. Lead with a different priority than A (Push B starts with shoulders, Pull B with a vertical pull, Legs B with a quad machine or single-leg move).
+  - C days = more variations and single-arm or single-leg work.
+  - Cover each muscle from different angles across the week: flat and incline pressing, vertical and horizontal pulling, knee-dominant and hip-dominant legs. Each week include long-muscle-length moves: overhead triceps extension, standing calf raise, Romanian deadlift or leg curl.
+- Per muscle: about 10 to 20 hard sets a week split across its days, and no more than about 8 to 10 hard sets for one muscle in one workout.
 - Every main muscle (chest, back, shoulders, legs/glutes, arms) is trained at least once a week, and twice a week when there are 4 or more days. Aim for about 10 to 16 hard sets per muscle per week (beginners 8 to 12). Keep pushing and pulling balanced.
 - Each workout: 4 to 7 exercises, big compound lifts first, isolation last, about 45 to 70 minutes. No exercise twice in the same workout.
 - Order inside each workout: finish one muscle before the next (its big compound lifts first, then its isolation moves), so all chest work comes before shoulders, and all back work before biceps. Big muscles (legs, chest, back) first, then shoulders, then arms (triceps, biceps), core or timed moves last. Never put a shoulder press between two chest presses, or a chest fly after triceps.

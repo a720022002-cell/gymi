@@ -150,14 +150,33 @@ export const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const DAYS_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 type Tpl = { ex: [string, number, string][]; min: number; focus: string };
-/** Starting workouts (design: WK). */
+// Ready-made workouts, built from the research on muscle growth: each muscle twice a week, about 10–20 hard sets a
+// week, finished one muscle at a time. "A" days are heavier (big lifts, fewer reps, for strength); "B" and "C" days
+// use other exercises for the same muscles at higher reps (more volume, other angles, long-muscle-length moves like
+// overhead triceps and standing calves). They stay the same week to week so progress can be tracked.
+const PUSH_A: Tpl = { ex: [['bench', 4, '6–8'], ['incline', 3, '8–10'], ['ohp', 3, '6–8'], ['lateral', 3, '12–15'], ['overhead', 3, '10–12']], min: 55, focus: 'Chest, shoulders, triceps (heavy)' };
+const PUSH_B: Tpl = { ex: [['dbshoulder', 3, '8–12'], ['lateral', 4, '12–20'], ['chestpress', 3, '10–12'], ['fly', 3, '12–15'], ['pushdown', 3, '12–15']], min: 50, focus: 'Shoulders, chest, triceps (volume)' };
+const PULL_A: Tpl = { ex: [['row', 4, '6–8'], ['pullup', 3, '6–10'], ['facepull', 3, '12–15'], ['curl', 3, '8–10'], ['hammer', 2, '10–12']], min: 50, focus: 'Back, rear shoulders, biceps (heavy)' };
+const PULL_B: Tpl = { ex: [['pulldown', 3, '10–12'], ['dbrow', 3, '10–12'], ['cablerow', 3, '10–12'], ['rdelt', 3, '12–20'], ['cablecurl', 3, '12–15']], min: 50, focus: 'Lats, back, rear shoulders, biceps (volume)' };
+const LEGS_A: Tpl = { ex: [['squat', 4, '6–8'], ['rdl', 3, '6–10'], ['legpress', 3, '10–12'], ['legcurl', 3, '10–12'], ['calf', 4, '8–12']], min: 60, focus: 'Quads, hamstrings, glutes, calves (heavy)' };
+const LEGS_B: Tpl = { ex: [['hacksquat', 3, '8–12'], ['bulgarian', 3, '10–12'], ['hipthrust', 3, '10–12'], ['legext', 3, '12–15'], ['legcurl', 3, '12–15'], ['calf', 3, '12–20'], ['crunch', 3, '10–15']], min: 60, focus: 'Quads, glutes, hamstrings, core (volume)' };
+const UPPER_A: Tpl = { ex: [['bench', 4, '6–8'], ['row', 4, '6–8'], ['pulldown', 3, '8–10'], ['ohp', 3, '6–8'], ['curl', 2, '8–10'], ['overhead', 2, '10–12']], min: 60, focus: 'Chest, back, shoulders, arms (heavy)' };
+const UPPER_B: Tpl = { ex: [['incline', 3, '8–12'], ['dbrow', 3, '10–12'], ['pulldown', 3, '10–12'], ['lateral', 3, '12–20'], ['dbcurl', 2, '10–12'], ['pushdown', 2, '12–15']], min: 55, focus: 'Upper chest, back, shoulders, arms (volume)' };
+const UPPER_C: Tpl = { ex: [['dbpress', 3, '8–12'], ['cablerow', 3, '10–12'], ['chinup', 3, '6–10'], ['dbshoulder', 3, '10–12'], ['hammer', 2, '10–12'], ['skull', 2, '10–12']], min: 55, focus: 'Chest, back, shoulders, arms' };
+const LOWER_A: Tpl = { ex: [['squat', 4, '6–8'], ['rdl', 3, '6–10'], ['legpress', 3, '10–12'], ['legcurl', 3, '10–12'], ['calf', 3, '8–12']], min: 55, focus: 'Quads, hamstrings, glutes (heavy)' };
+const LOWER_B: Tpl = { ex: [['hipthrust', 3, '8–12'], ['bulgarian', 3, '10–12'], ['legext', 3, '12–15'], ['legcurl', 3, '12–15'], ['calf', 3, '12–20']], min: 50, focus: 'Glutes, quads, hamstrings (volume)' };
+const LOWER_C: Tpl = { ex: [['frontsquat', 3, '6–10'], ['dbrdl', 3, '8–12'], ['dblunge', 3, '10–12'], ['legcurl', 3, '12–15'], ['calf', 3, '12–20']], min: 50, focus: 'Quads, hamstrings, glutes' };
+const FULL_A: Tpl = { ex: [['squat', 3, '6–8'], ['rdl', 2, '8–10'], ['bench', 3, '6–8'], ['pulldown', 3, '8–10'], ['lateral', 2, '12–15'], ['plank', 2, '45']], min: 55, focus: 'Whole body (heavy)' };
+const FULL_B: Tpl = { ex: [['legpress', 3, '10–12'], ['legcurl', 2, '12–15'], ['incline', 3, '8–12'], ['row', 3, '8–10'], ['overhead', 2, '10–12'], ['crunch', 2, '12–15']], min: 55, focus: 'Whole body (volume)' };
+const FULL_C: Tpl = { ex: [['bulgarian', 3, '10–12'], ['hipthrust', 2, '10–12'], ['chestpress', 2, '10–12'], ['cablerow', 3, '10–12'], ['dbshoulder', 3, '8–12'], ['legraise', 2, '10–15']], min: 55, focus: 'Whole body' };
+/** Starting workouts (design: WK). The plain names ("Push") are the A days, kept for plans made before A/B days. */
 export const WK: Record<string, Tpl> = {
-  Push: { ex: [['bench', 4, '8–10'], ['incline', 3, '8–10'], ['fly', 3, '12'], ['shoulder', 3, '10–12'], ['lateral', 3, '12–15'], ['pushdown', 3, '10–12']], min: 55, focus: 'Chest, shoulders, triceps' },
-  Pull: { ex: [['pulldown', 3, '8–10'], ['row', 3, '8'], ['cablerow', 3, '10–12'], ['facepull', 2, '15'], ['curl', 2, '8–10'], ['hammer', 2, '12']], min: 50, focus: 'Back, rear shoulders, biceps' },
-  Legs: { ex: [['squat', 4, '6–8'], ['rdl', 3, '8'], ['legpress', 3, '10–12'], ['legcurl', 2, '12'], ['calf', 2, '15'], ['plank', 2, '60']], min: 60, focus: 'Quads, hamstrings, glutes, core' },
-  Upper: { ex: [['bench', 3, '8'], ['row', 3, '8'], ['pulldown', 3, '10'], ['shoulder', 3, '10'], ['curl', 2, '10'], ['pushdown', 2, '12']], min: 55, focus: 'Chest, back, shoulders, arms' },
-  Lower: { ex: [['squat', 4, '6–8'], ['rdl', 3, '8'], ['legpress', 3, '12'], ['legcurl', 3, '12'], ['calf', 3, '15']], min: 50, focus: 'Quads, hamstrings, glutes' },
-  'Full body': { ex: [['squat', 3, '8'], ['rdl', 2, '10'], ['bench', 3, '8'], ['pulldown', 3, '10'], ['lateral', 2, '15'], ['plank', 2, '45']], min: 55, focus: 'Whole body' },
+  Push: PUSH_A, 'Push A': PUSH_A, 'Push B': PUSH_B,
+  Pull: PULL_A, 'Pull A': PULL_A, 'Pull B': PULL_B,
+  Legs: LEGS_A, 'Legs A': LEGS_A, 'Legs B': LEGS_B,
+  Upper: UPPER_A, 'Upper A': UPPER_A, 'Upper B': UPPER_B, 'Upper C': UPPER_C,
+  Lower: LOWER_A, 'Lower A': LOWER_A, 'Lower B': LOWER_B, 'Lower C': LOWER_C,
+  'Full body': FULL_A, 'Full body A': FULL_A, 'Full body B': FULL_B, 'Full body C': FULL_C,
   Home: { ex: [['pushup', 4, '12–15'], ['bwsquat', 4, '20'], ['lunge', 3, '12'], ['bridge', 3, '15'], ['pike', 3, '8–10'], ['plank', 3, '45']], min: 35, focus: 'No equipment' },
 };
 
@@ -196,11 +215,11 @@ export function orderWorkout<T extends { id: string; n?: string; m?: string; t?:
 
 /** Splits that fit each number of days (design: SPLITS), and which weekdays they go on (SPREAD, 0 = Sunday). */
 export const SPLITS: Record<number, [string, string[]][]> = {
-  2: [['Upper / Lower', ['Upper', 'Lower']], ['Full body / Full body', ['Full body', 'Full body']]],
-  3: [['Push / Pull / Legs', ['Push', 'Pull', 'Legs']], ['Upper / Lower / Full body', ['Upper', 'Lower', 'Full body']], ['Full body × 3', ['Full body', 'Full body', 'Full body']]],
-  4: [['Upper / Lower × 2', ['Upper', 'Lower', 'Upper', 'Lower']], ['Push / Pull / Legs / Full body', ['Push', 'Pull', 'Legs', 'Full body']]],
-  5: [['Push / Pull / Legs / Upper / Lower', ['Push', 'Pull', 'Legs', 'Upper', 'Lower']], ['Upper / Lower × 2 + Full body', ['Upper', 'Lower', 'Upper', 'Lower', 'Full body']]],
-  6: [['Push / Pull / Legs × 2', ['Push', 'Pull', 'Legs', 'Push', 'Pull', 'Legs']], ['Upper / Lower × 3', ['Upper', 'Lower', 'Upper', 'Lower', 'Upper', 'Lower']]],
+  2: [['Upper / Lower', ['Upper', 'Lower']], ['Full body / Full body', ['Full body A', 'Full body B']]],
+  3: [['Push / Pull / Legs', ['Push', 'Pull', 'Legs']], ['Upper / Lower / Full body', ['Upper', 'Lower', 'Full body']], ['Full body × 3', ['Full body A', 'Full body B', 'Full body C']]],
+  4: [['Upper / Lower × 2', ['Upper A', 'Lower A', 'Upper B', 'Lower B']], ['Push / Pull / Legs / Full body', ['Push', 'Pull', 'Legs', 'Full body']]],
+  5: [['Push / Pull / Legs / Upper / Lower', ['Push', 'Pull', 'Legs', 'Upper', 'Lower']], ['Upper / Lower × 2 + Full body', ['Upper A', 'Lower A', 'Upper B', 'Lower B', 'Full body']]],
+  6: [['Push / Pull / Legs × 2', ['Push A', 'Pull A', 'Legs A', 'Push B', 'Pull B', 'Legs B']], ['Upper / Lower × 3', ['Upper A', 'Lower A', 'Upper B', 'Lower B', 'Upper C', 'Lower C']]],
 };
 /** The split the AI plan uses, decided here so the same answers always give the same split; the AI only picks the exercises.
  * It depends on days, level, goal and age, and says why. A, B and C days of the same kind use different exercises. */
@@ -262,6 +281,11 @@ const BEGINNER_SWAP: Record<string, string[]> = {
   ohp: ['shoulder', 'dbshoulder'],
   curl: ['dbcurl', 'hammer'],
   deadlift: ['cablerow', 'dbrow'],
+  pullup: ['pulldown'],
+  chinup: ['pulldown'],
+  hacksquat: ['legpress', 'goblet'],
+  bulgarian: ['dblunge', 'stepup'],
+  skull: ['pushdown'],
 };
 
 /** Shape a workout for your level. Beginners: easier exercises, fewer of them, 3 sets of 10–12.
@@ -283,13 +307,23 @@ export function exForLevel(ex: PlanEx[], level: Level | undefined): PlanEx[] {
   return ex;
 }
 
-/** A new plan from a split (fixed days, starting workouts). */
-export function planFromSplit(days: number, injuries: string[], label: string, seq: string[], level?: Level): TrainPlan {
+/** Shape a ready workout for your goal: bulking adds a set to the isolation moves (more volume); cutting keeps the
+ * heavy lifts and takes a set off the isolation moves (keep muscle on less recovery). Maintaining: as it is. */
+export function exForGoal(ex: PlanEx[], goal?: string): PlanEx[] {
+  if (goal !== 'bulk' && goal !== 'cut') return ex;
+  return ex.map((x) => {
+    if (EX[x.id]?.time || !ISOLATION.test(`${x.id} ${exInfo(x, 'en').name}`)) return x;
+    return { ...x, sets: goal === 'bulk' ? Math.min(5, x.sets + 1) : Math.max(2, x.sets - 1) };
+  });
+}
+
+/** A new plan from a split (fixed days, starting workouts), shaped for your level and goal. */
+export function planFromSplit(days: number, injuries: string[], label: string, seq: string[], level?: Level, goal?: string): TrainPlan {
   const week: Day[] = DAYS.map(() => ({ w: null, lock: false }));
   SPREAD[days].forEach((d, i) => (week[d].w = seq[i]));
   const workouts: Record<string, Workout> = {};
   seq.forEach((w) => {
-    const ex = exForLevel(tplEx(WK[w].ex), level);
+    const ex = exForGoal(exForLevel(tplEx(WK[w].ex), level), goal);
     workouts[w] = { ex, focus: WK[w].focus, min: level === 'Beginner' ? Math.min(WK[w].min, workoutMinutes(ex)) : level === 'Advanced' ? Math.max(WK[w].min, workoutMinutes(ex)) : WK[w].min };
   });
   return { days, injuries, split: label, week, workouts, machines: {}, homeMode: false, skipped: {}, dismiss: {}, level };

@@ -1119,6 +1119,14 @@ Passwords and keys are left out on purpose.
 - Update group dc1f6dfc (main 9ffc0cc, runtime ebc81514): workout order fix. Builds 20 and 21 share this runtime, so 20 gets it too.
 - Owner: from now on update only the latest build (21). Build 17 is no longer updated (ota17 has the commits locally but nothing was published).
 
+### 1 Nov 2026: Research-based A/B training days
+- Research summary (volume 10–20 sets/muscle/week, ≤8–10 per session; heavy vs light similar for growth, heavy better for strength; systematic not random variation; long-muscle-length moves; order = priority first; 1–3 RIR; rest ≥60–90 s).
+- Ready-made: real Push/Pull/Legs A/B, Upper/Lower A/B/C, Full body A/B/C (A heavy, B/C other exercises, higher reps). Splits use A then B (then C). Plain "Push" etc stay as the A day for older plans.
+- Ready plans now follow the goal too (bulk +1 set on isolation, cut −1 set on isolation, heavy lifts kept). New beginner swaps: pull-up/chin-up → pulldown, hack squat → leg press, split squat → lunge, skull crusher → pushdown.
+- Group workout fallback Push/Upper put in the right order.
+- AI plan prompt: concrete A (4–8 reps, heavy) / B (8–15, isolation 12–20, other priority) / C rules, angles, long-length moves, ≤8–10 sets per muscle per workout. PLAN_RULES_VERSION 4 so old cached plans aren't reused. Deployed.
+- Rest timer already varies (big lifts 150 s, others 90 s): left as is.
+
 ---
 
 
