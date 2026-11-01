@@ -5503,4 +5503,5 @@ export const AR: Record<string, string> = {
   "Last set: {r} reps": "آخر جولة: {r} عدّات",
   "Add warm-up set": "أضف جولة إحماء",
   "Remove warm-up set": "احذف جولة الإحماء",
+  "Add your own, e.g. Supplement guide": "أضف من عندك، مثلاً دليل المكملات",
 };

@@ -20,13 +20,15 @@ import { goBack } from '@/lib/nav';
 /** Listing, spots and packages: what members see and pick in Find a coach (design: coffer). */
 export default function CoachOffer() {
   const { t } = useT();
-  const { colors: c } = useSettings();
+  const { colors: c, isRTL } = useSettings();
   const toast = useToast();
   const { session } = useAuth();
   const uid = session?.user.id;
   const [p, setP] = useState<CoachProfile | null>(null);
   const [used, setUsed] = useState(0);
   const [busy, setBusy] = useState(false);
+  // Something the coach writes in themselves, per package, before it's added.
+  const [own, setOwn] = useState<Record<string, string>>({});
   useEffect(() => {
     if (!uid) return;
     let alive = true;
@@ -158,7 +160,37 @@ export default function CoachOffer() {
                   const on = !!x.inc?.includes(i);
                   return <Chip key={i} title={`${on ? '✓ ' : ''}${t(i)}`} on={on} onPress={() => setPkg(x.id, { inc: on ? (x.inc ?? []).filter((z) => z !== i) : [...(x.inc ?? []), i] })} />;
                 })}
+                {/* Your own extras: tap one to take it off. */}
+                {(x.inc ?? [])
+                  .filter((i) => !INCLUDES.includes(i))
+                  .map((i) => (
+                    <Chip key={`own-${i}`} title={`✓ ${i}`} on onPress={() => setPkg(x.id, { inc: (x.inc ?? []).filter((z) => z !== i) })} />
+                  ))}
               </Row>
+              {(() => {
+                const text = (own[x.id] ?? '').trim();
+                const mine = (x.inc ?? []).filter((i) => !INCLUDES.includes(i));
+                const add = () => {
+                  if (!text || mine.length >= 8) return;
+                  if (!(x.inc ?? []).some((z) => z.toLowerCase() === text.toLowerCase())) setPkg(x.id, { inc: [...(x.inc ?? []), text] });
+                  setOwn({ ...own, [x.id]: '' });
+                };
+                return mine.length < 8 ? (
+                  <Row gap={8} style={{ marginTop: 10 }}>
+                    <TextInput
+                      value={own[x.id] ?? ''}
+                      onChangeText={(z) => setOwn({ ...own, [x.id]: z.slice(0, 60) })}
+                      onSubmitEditing={add}
+                      returnKeyType="done"
+                      placeholder={t('Add your own, e.g. Supplement guide')}
+                      placeholderTextColor={c.sec}
+                      accessibilityLabel={t('Add your own')}
+                      style={{ flex: 1, minWidth: 0, height: 44, borderRadius: 12, backgroundColor: c.inset, paddingHorizontal: 14, fontSize: 15, color: c.text, textAlign: isRTL ? 'right' : 'left' }}
+                    />
+                    <Button small kind="soft" icon="plus" title={t('Add')} disabled={!text} onPress={add} />
+                  </Row>
+                ) : null;
+              })()}
             </>
           ) : null}
         </Card>

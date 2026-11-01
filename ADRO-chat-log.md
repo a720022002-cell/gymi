@@ -1037,6 +1037,9 @@ Passwords and keys are left out on purpose.
 - Profile photo inside the logo's cut ring, which fills with this week's commitment (Home and You).
 - Multi-line fields (coach application certificates, About you) grow inside their box instead of spilling above it.
 
+### 1 Nov 2026: Coach packages, own features
+- Listing and packages: under the preset "Includes", a box to write your own (up to 8 per package, 60 letters each). They show as ticked chips (tap to remove) and on the coach page like the presets. Presets stay optional.
+
 ---
 
 
