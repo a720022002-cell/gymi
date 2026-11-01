@@ -1,0 +1,101 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600&family=IBM+Plex+Sans+Arabic:wght@600&display=swap" rel="stylesheet" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: #0a0a0b; }
+  #shot { position: absolute; inset: 0; width: 1080px; height: 1920px; object-fit: cover; filter: saturate(0.82) contrast(1.12) brightness(0.95); }
+  #warm { position: absolute; inset: 0; background: rgba(255, 170, 80, 0.08); mix-blend-mode: soft-light; }
+  #grain { position: absolute; inset: 0; opacity: 0.12; mix-blend-mode: overlay; }
+  #vig { position: absolute; inset: 0; background: radial-gradient(75% 60% at 50% 45%, transparent 45%, rgba(0,0,0,.6) 100%); }
+  #black { position: absolute; inset: 0; background: #0a0a0b; opacity: 0; z-index: 1; }
+  .cap { z-index: 3; position: absolute; left: 0; right: 0; top: 1500px; text-align: center; color: #fff; font-family: Sora, sans-serif; font-weight: 400; font-size: 46px; letter-spacing: 10px; text-transform: uppercase; opacity: 0; text-shadow: 0 2px 20px rgba(0,0,0,.6); }
+  #fx { position: absolute; inset: 0; z-index: 4; }
+  .line { z-index: 4; position: absolute; left: 0; right: 0; text-align: center; color: #fff; opacity: 0; }
+</style>
+</head>
+<body>
+  <img id="shot" />
+  <div id="warm"></div>
+  <svg id="grain" width="1080" height="1920"><filter id="n"><feTurbulence id="turb" type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="1" /><feColorMatrix type="saturate" values="0" /></filter><rect width="1080" height="1920" filter="url(#n)" /></svg>
+  <div id="vig"></div>
+  <div class="cap" id="cap1">On your marks</div>
+  <div class="cap" id="cap2">Set</div>
+  <div id="black"></div>
+  <svg id="fx" width="1080" height="1920">
+    <g id="letters" opacity="0"></g>
+    <path id="trail" fill="none" stroke="#3355FF" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 18px rgba(51,85,255,.9))" />
+  </svg>
+  <div class="line" id="l1" style="top:1010px;font-family:Sora;font-weight:600;font-size:40px;letter-spacing:12px;color:#6f86ff">COMING SOON</div>
+  <div class="line" id="l2" dir="rtl" style="top:1130px;font-family:'IBM Plex Sans Arabic';font-weight:600;font-size:64px">جاهز؟</div>
+<script src="letters.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const ease = (x) => { x = clamp(x); return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+const lerp = (a, b, k) => a + (b - a) * k;
+
+// adro wordmark (src/components/wordmark.ts), ring = the o.
+const WM = { x0: 30, y0: -745, w: 2229, h: 775, ring: { cx: 1953.5, cy: -271.5, r: 228.5, stroke: 130 } };
+const S = 760 / WM.w;
+const L = (1080 - WM.w * S) / 2, T = 900 - WM.h * S;
+$('letters').innerHTML = `<path transform="translate(${L - WM.x0 * S} ${T - WM.y0 * S}) scale(${S})" fill="#ffffff" d="${window.LETTERS}"/>`;
+const end = { x: L + (WM.ring.cx - WM.x0) * S, y: T + (WM.ring.cy - WM.y0) * S, r: WM.ring.r * S, sw: WM.ring.stroke * S };
+const mid = { x: 540, y: 900, r: 230, sw: 70 };
+
+// Middle lane of the drone track (1080x1920 space), drifting slightly as the camera moves.
+const trackAt = (t) => { const k = clamp((t - 12.5) / 2.5); return { cx: lerp(558, 556, k), cy: lerp(930, 950, k), w: lerp(804, 784, k), h: lerp(1612, 1580, k) }; };
+// Point at fraction p of a stadium, clockwise from top centre.
+function stadium(tr, p) {
+  const r = tr.w / 2, Ls = tr.h - tr.w, P = 2 * Ls + 2 * Math.PI * r;
+  let s = (((p % 1) + 1) % 1) * P;
+  const top = tr.cy - Ls / 2, bot = tr.cy + Ls / 2;
+  const q = Math.PI * r / 2;
+  const arc = (cy, a) => [tr.cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  if (s < q) return arc(top, -Math.PI / 2 + s / r); s -= q;
+  if (s < Ls) return [tr.cx + r, top + s]; s -= Ls;
+  if (s < Math.PI * r) return arc(bot, s / r); s -= Math.PI * r;
+  if (s < Ls) return [tr.cx - r, bot - s]; s -= Ls;
+  return arc(top, Math.PI + s / r);
+}
+const circle = (c, p) => [c.x + c.r * Math.cos(-Math.PI / 2 + p * 2 * Math.PI), c.y + c.r * Math.sin(-Math.PI / 2 + p * 2 * Math.PI)];
+
+window.render = (t, frame) => {
+  if (frame) $('shot').src = frame;
+  $('turb').setAttribute('seed', String(Math.floor(t * 24) % 97));
+  // Black: the silence (11.5–12.5), then the drone fades out under the ring (13.7–14.4).
+  let b = 0;
+  if (t >= 11.5 && t < 12.5) b = 1; else if (t >= 12.5) b = Math.max(1 - clamp((t - 12.5) / 0.35), clamp((t - 13.7) / 0.7));
+  $('black').style.opacity = b;
+  $('shot').style.opacity = frame ? 1 : 0;
+  $('cap1').style.opacity = Math.min(clamp((t - 2.5) / 0.4), clamp((4.0 - t) / 0.15));
+  $('cap2').style.opacity = Math.min(clamp((t - 8.2) / 0.3), clamp((10.0 - t) / 0.1));
+
+  // Blue line: traces the track (12.7–13.6), morphs to the open ring (13.6–14.3), shrinks into the o (14.3–15.0).
+  const tr = $('trail');
+  if (t < 12.7) { tr.setAttribute('d', ''); }
+  else {
+    const draw = ease((t - 12.7) / 0.9);
+    const morph = ease((t - 13.6) / 0.7);
+    const slide = ease((t - 14.3) / 0.7);
+    const c = { x: lerp(mid.x, end.x, slide), y: lerp(mid.y, end.y, slide), r: lerp(mid.r, end.r, slide) };
+    const sw = lerp(lerp(16, mid.sw, morph), end.sw, slide);
+    const trk = trackAt(t), N = 220, len = 0.8 * draw;
+    let d = '';
+    for (let i = 0; i <= N; i++) {
+      const p = (i / N) * len;
+      const a = stadium(trk, p), o = circle(c, p);
+      const x = lerp(a[0], o[0], morph), y = lerp(a[1], o[1], morph);
+      d += (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1);
+    }
+    tr.setAttribute('d', d); tr.setAttribute('stroke-width', sw);
+  }
+  $('letters').setAttribute('opacity', clamp((t - 14.75) / 0.45));
+  $('l1').style.opacity = clamp((t - 15.3) / 0.4);
+  $('l2').style.opacity = clamp((t - 15.8) / 0.45);
+};
+</script>
+</body>
+</html>

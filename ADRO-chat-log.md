@@ -1128,6 +1128,11 @@ Passwords and keys are left out on purpose.
 - Rest timer already varies (big lifts 150 s, others 90 s): left as is.
 - Shipped: ai function deployed; OTA 486412a1 for build 21 (main 04f7ebb).
 
+### On your marks teaser (1 Nov 2026)
+- 17 s, 9:16: the 5:00 alarm (user's clip), four faceless characters getting ready at once (sprinter, woman at dawn, big lifter, beginner), cuts speed up with "On your marks… Set…", silence instead of the gun, a blue line traces the dark track and becomes the adro ring.
+- 11 Kling 3.0 shots + starter voice (Higgsfield). Sound and ending made in code (web-build/teaser/oym/).
+- File: docs/marketing/adro-teaser-on-your-marks.mp4
+
 ---
 
 
