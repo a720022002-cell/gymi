@@ -1012,6 +1012,13 @@ Passwords and keys are left out on purpose.
 
 - OTA da098a34 (iOS update 01a193c0), runtime 6e1d9a57 = build 17, local commit 443d091 on ota17 (not pushed). It has: the caffeine warning on iPhone (inside Add a drink, and waiting for other sheets), "Trained without your phone?", grams for typed and photo meals, and the clearer ingredient search box.
 
+## 1 Nov 2026: build 18 released ("صدر النسخة")
+
+- First try on 31 Oct was refused (the free Expo plan's iOS builds for October were used up). A scheduled task started it after the reset.
+- EAS build 81042b4b, iOS build number 20 (it counts up by itself), version 1.0.0, commit dcc334c on main. Finished at 00:23 UTC, about 9 minutes. Sent to App Store Connect automatically (submission 4e62ee4c) for TestFlight.
+- Runtime (fingerprint) ebc81514d3af6c02e2f85dcfd6f911be0c1f39a2, the same as main. OTAs for this build go straight from main. Phones still on build 17 (runtime 6e1d9a57) only get updates from the ota17 branch, until everyone moves to the new build.
+- New in this build compared to build 17: payments (RevenueCat; the paywall stays off until PAYWALL=on) and share on a photo (react-native-view-shot, story templates).
+
 ---
 
 
