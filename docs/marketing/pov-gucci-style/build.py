@@ -158,6 +158,50 @@ END = [
 ("33.0–35.0","Title","Gucci-style spaced words: Your &nbsp;&nbsp; whole &nbsp;&nbsp; day. &nbsp;&nbsp; Coached. · then COMING SOON · then the Arabic line (IBM Plex Sans Arabic) <span class='arin'>يشوف يومك كله… ويدرّبك عليه.</span>"),
 ]
 
+
+# ---- v4 edits: drop 8,9,10 · shorter office · drop 26,27,32,33 · shorter evening · add missed rep ----
+DROP = {8,9,10, 17,19,24, 26,27,32,33, 37,39,40}
+STALL = (99,"","The missed rep","POV",
+ "First-person view lying on a flat bench under a loaded barbell, he presses it up, halfway up the bar stalls and shakes, his chalked arms tremble at the bottom of the frame, the bar slowly sinks back down toward the camera, a friend's hands in soft focus reach in from above to grab the bar, warm pendant lights flicker behind, tense slow motion",
+ "Tension — the lift fails","Hard cut as the bar touches down")
+REST = (34,"","Breathe","POV",
+ "First-person view sitting on the bench breathing hard, looking down at a smartphone in his hand, sweat drops fall on the screen edge, warm gym lights blur behind. "+GREEN,
+ "APP · Rest timer 2:00 · “Breathe. One more try.”","Cut as the timer hits zero")
+LIFT = (30,"","Second try","POV",
+ "First-person view lying on the bench, the loaded barbell presses up past the sticking point and locks out toward the ceiling lights in slow motion, arms extend from the bottom of the frame, chalk particles float, the friend's hands hover above without touching, triumphant",
+ "The payoff","Cut on lockout")
+def dur(t):
+    a,b = t.split('–'); return round(float(b)-float(a),2)
+DUR = {n:dur(t) for _,sh in SH for (n,t,*_) in sh}
+DUR.update({99:1.3, 34:1.0, 30:0.9, 36:0.9, 38:0.7})
+NEW = []
+for title, sh in SH:
+    out = []
+    for row in sh:
+        n = row[0]
+        if n in DROP: continue
+        if n == 29:
+            out += [row, STALL, REST, LIFT]; continue
+        if n in (30, 34): continue
+        out.append(row)
+    NEW.append((title, out))
+t = 0.0; k = 1; SH = []
+for title, sh in NEW:
+    t0 = t; rows = []
+    for row in sh:
+        d = DUR[row[0]]
+        rows.append((k, f"{t:.1f}–{t+d:.1f}") + tuple(row[2:]))
+        t = round(t + d, 2); k += 1
+    name, rest = title.split(' · ',1)
+    pace = rest.split(' · ',1)[1] if ' · ' in rest else ''
+    SH.append((f"{name} · {t0:.1f}–{t:.1f} s" + (f" · {pace}" if pace else ''), rows))
+T_END = t
+e = [0.8, 1.0, 0.7, 2.0]; END2 = []; x = T_END
+for (_, b, c), d in zip(END, e):
+    END2.append((f"{x:.1f}–{x+d:.1f}", b, c)); x = round(x + d, 2)
+END = END2; TOTAL = round(x)
+NSHOTS = sum(len(r) for _, r in SH); NGEN = NSHOTS - 1
+
 def esc(s): return s.replace('&','&amp;').replace('<','&lt;')
 rows=[]
 for title, shots in SH:
@@ -199,52 +243,51 @@ td{{border-bottom:1px solid #e6e8f0;padding:3px 6px;vertical-align:top}}
 </style></head><body>
 <header><svg width="36" height="36" viewBox="0 0 40 40"><circle cx="20" cy="20" r="15" fill="none" stroke="#3355ff" stroke-width="8" stroke-linecap="round" stroke-dasharray="75.4 94.2" transform="rotate(-90 20 20)"/></svg>
 <div><h1>ADRO — “Your whole day” <span>(Gucci × Oura style)</span></h1>
-<p>9:16 vertical · 35 s · 43 shots · mostly eye-level POV, hands only sometimes · one busy Riyadh day · real Adro screens composited in edit</p></div></header>
+<p>9:16 vertical · {TOTAL} s · {NSHOTS} shots · mostly eye-level POV, hands only sometimes · one busy Riyadh day · real Adro screens composited in edit</p></div></header>
 
-<div class="box ar"><b>الفكرة:</b> يوم كامل لشاب سعودي، مزحوم وحي ومليان ناس: البيت، والحمام، والدولاب، والسيارة، والدوام، والجيم مع أصحابه، والعشا مع أهله، والنوم. القطع سريع جداً مثل Gucci، وكل لقطة تقريباً نص ثانية. وAdro موجود بشكل طبيعي على جواله طول اليوم. و<b>أول شي يسويه لما يقعد من النوم: يفتح الجوال</b>.
+<div class="box ar"><b>الفكرة:</b> يوم كامل لشاب سعودي، مزحوم وحي: البيت، والحمام، والسيارة، والدوام، والجيم، والعشا مع أهله، والنوم. وفي الجيم <b>يفشل في العدّة الأولى</b>، ويرتاح، ويرجع يرفعها. القطع سريع جداً مثل Gucci، وكل لقطة تقريباً نص ثانية. وAdro موجود بشكل طبيعي على جواله طول اليوم. و<b>أول شي يسويه لما يقعد من النوم: يفتح الجوال</b>.
 <ul>
 <li><b>الكاميرا:</b> أغلبها من عيونه. يدينه تطلع أحياناً، مو طول الوقت. ووجهه ما يبين أبداً.</li>
 <li><b>الانتقالات:</b> نفس طريقة Gucci: قطع على الحركة، والباب يفتح على مكان جديد، وقطع مع لفة الكاميرا السريعة، وتسريع وتبطيء، وترجيع VHS مرة وحدة.</li>
 <li><b>الحمام مثلهم:</b> مغسلة دايرية رخام، وحنفية نحاس، وضوء ذهبي، وتصوير من فوق، والماي يجي على العدسة.</li>
-<li><b>الدولاب مثلهم:</b> يقلّب الثياب البيض بسرعة ويختار واحد، والشماغ ينطوي على السرير.</li>
-<li><b>جديد:</b> سواقة في الرياض مع درايف ثرو، ودوام مزحوم فيه اجتماع، وعشا كبسة مع الأهل.</li>
-<li><b>شاشات Adro حقيقية:</b> الصفحة الرئيسية، والوزن، وتصوير الأكل، والمدرب الذكي، والتمرين مع صديق، والتمرين المباشر، ووقت الراحة، وملخص اليوم.</li>
+<li><b>القصة في الجيم:</b> العدّة الأولى توقف في النص، والبار يرجع ينزل، وصاحبه يمسكه، وقطع. بعدها وقت الراحة في Adro يقول: "تنفّس. جرّب مرة ثانية." وفي المحاولة الثانية يرفعها.</li><li><b>مختصر:</b> الدوام صار دخول، ولقطات زحمة، وقصة الدونات بس. والمسا صار الكبسة وتصويرها بس.</li>
+<li><b>شاشات Adro حقيقية:</b> الصفحة الرئيسية، والوزن، وتصوير الأكل، والمدرب الذكي، ووقت الراحة، وملخص اليوم.</li>
 <li><b>لمسة إبداعية:</b> الدواير. كل اليوم فيه أشياء دايرية: المغسلة، وغطا القهوة، وزر السيارة، والدونات، وصحن الطباشير، والأوزان، وصحن الكبسة. في الآخر كلها تومض ورا بعض، وتتجمع في نقطة زرقاء، وتصير دائرة شعار Adro.</li>
 </ul></div>
 
 <h2>GLOBAL STYLE — paste at the start of every prompt</h2>
 <div class="mono">{esc(G)}</div>
-<div class="box" style="margin-top:5px"><b>Wardrobe continuity:</b> Morning = grey cotton t-shirt · Day = crisp white thobe (shemagh at the office) · Gym = black t-shirt, grey-hoodie friend “Ali” · Evening = white thobe, no shemagh · <b>same plain black watch on the left wrist all day.</b><br>
+<div class="box" style="margin-top:5px"><b>Wardrobe continuity:</b> Morning = grey cotton t-shirt · Day = crisp white thobe (shemagh at the office) · Gym = black t-shirt, a spotter friend in a grey hoodie · Evening = white thobe, no shemagh · <b>same plain black watch on the left wrist all day.</b><br>
 <b>Phone shots:</b> every shot marked APP uses a flat chroma-green screen, and a <b>real Adro screen recording</b> is tracked onto it in edit. Never let the AI draw the app.</div>
 {''.join(rows)}
 
-<h2>ENDING · 30.5–35 s — built in edit</h2>
+<h2>ENDING · {T_END:.1f}–{TOTAL} s — built in edit</h2>
 <table><tr><th style="width:62px">Time</th><th style="width:92px">Beat</th><th>What happens</th></tr>{endrows}</table>
 
 <div class="two">
 <div><h2>TRANSITION GRAMMAR (from Gucci × Oura)</h2><ul>
 <li><b>Match on action:</b> a move starts in one shot and finishes in the next.</li>
 <li><b>Door cuts:</b> every door he pushes opens a new place (bathroom, gym).</li>
-<li><b>Whip pans</b> bridge places (scale → wardrobe, highway → drive-thru).</li>
-<li><b>Speed ramps</b> on the wardrobe, the bar and the gym door.</li>
+<li><b>Whip pans</b> bridge places (scale → car, highway → drive-thru).</li>
+<li><b>Speed ramps</b> on the gym door and the second lift.</li>
 <li><b>Graphic match</b> of circles from top-down shots.</li>
 <li><b>One VHS rewind</b> at the donut box: the day rewinds and he chooses again.</li>
 <li><b>Micro-cut bursts</b> (0.2 s) for the office rush.</li>
 <li><b>Echo shots:</b> sink morning/night, nightstand morning/night.</li></ul></div>
 <div><h2>SOUND</h2><ul>
 <li>A warm, groovy beat that speeds up from morning to the gym and calms down at night. Every cut lands on the beat.</li>
-<li>Foley in every shot: alarm, tap, water, hangers, buckle click, engine, ice, pen, donut box, chalk, plates, friends cheering, coffee pour, child laughing.</li>
-<li>A tape-rewind sound on the VHS moment.</li>
+<li>Foley in every shot: alarm, tap, water, engine, ice, pen, donut box, chalk, the bar shaking and dropping back, plates, family laughter.</li>
+<li>A tape-rewind sound on the VHS moment. On the missed rep the music drops out and only his breathing and the shaking bar are heard, then it comes back on the second try.</li>
 <li>Total silence when the lamp goes out, then a soft chime on the ring.</li></ul>
 <h2>PRODUCTION & COST</h2><ul>
-<li>~38 generations (shot 21 and the ending are built in edit). 3–4 s each; only the best ~0.5–1 s is used.</li>
+<li>~{NGEN} generations (the rewind and the ending are built in edit). 3–4 s each; only the best ~0.5–1.3 s is used.</li>
 <li>Start with one reference image (hand + watch + thobe cuff), used in every shot.</li></ul>
 <table style="margin-top:4px"><tr><th>Option</th><th>Credits</th></tr>
-<tr><td>Kling 3.0 (all shots)</td><td>~230</td></tr>
-<tr><td>Kling 3.0 + Cinema Studio 4.0 for 5 hero shots (sink, wardrobe, lift, kabsa, lights out)</td><td>~340</td></tr>
-<tr><td>Kling 4.0 (all shots)</td><td>~495</td></tr>
-<tr><td>Cinema Studio 4.0 (all shots)</td><td>~1,060</td></tr></table></div></div>
+<tr><td>Kling 3.0 (all shots)</td><td>~{NGEN*6}</td></tr>
+<tr><td>Kling 3.0 + Cinema Studio 4.0 for 5 hero shots (sink, missed rep, second try, kabsa, lights out)</td><td>~{(NGEN-5)*6+5*28}</td></tr>
+<tr><td>Kling 4.0 (all shots)</td><td>~{NGEN*13}</td></tr>
+<tr><td>Cinema Studio 4.0 (all shots)</td><td>~{NGEN*28}</td></tr></table></div></div>
 <div class="foot">Adro · “Your whole day” · Gucci × Oura style · November 2026</div>
 </body></html>'''
 open('script.html','w').write(html)
-print('ok', sum(len(s) for _,s in SH))
+print('ok', NSHOTS, TOTAL, NGEN)
