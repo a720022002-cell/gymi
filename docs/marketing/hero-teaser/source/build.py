@@ -1,8 +1,8 @@
 import cv2,numpy as np,subprocess,os
 FPS=30;W,H=1080,1920
 # (source, in_sec, dur)  — source 'clock' uses clockf frames at 30fps
-SEG=[('s1',0.3,2.0),('s2',0.7,2.4),('s3',0.5,2.0),('s4',0.6,1.5),('clock',0.6,2.0),
-     ('s6',1.0,2.2),('s7',1.0,2.0),('hold7',0,0.5),('s8',1.2,2.6),('s9',0.2,3.0),
+SEG=[('s1',1.75,2.0),('s2',1.35,2.4),('s3b',0.5,2.0),('s4',0.6,1.5),('clock',0.6,2.0),
+     ('s6',1.8,2.2),('s7',1.0,2.0),('hold7',0,0.5),('s8',2.85,2.0),('s9',1.6,3.6),
      ('s10',1.7,0.4),('s11',0.9,0.4),('s12',1.4,0.4),('s13',1.6,0.45),
      ('s14',0.0,4.0),('fade',0,0.7),('logo',0,4.0),('hold',0,1.0)]
 t=0;MK={}
@@ -14,7 +14,9 @@ def clipframe(s,sec):
   fi=min(int(sec*24),96)
   st=cache.setdefault(s,{})
   if fi not in st:
-    c.set(1,fi);ok,f=c.read();st.clear();st[fi]=f
+    c.set(1,fi);ok,f=c.read()
+    if len(st)>3: st.clear()
+    st[fi]=f
   f=st[fi]
   if f.shape[:2]!=(H,W): f=cv2.resize(f,(W,H))
   return f
@@ -45,7 +47,13 @@ for n in range(N):
     L=logo[min(int(lt*30),119)] if s=='logo' else logo[-1]
     a=L[...,3:4].astype(np.float32)/255;f=(L[...,:3]*a).astype(np.uint8)
   else:
-    f=grade(clipframe(s,i+lt))
+    SP={'s8':0.575,'s9':0.667}
+    if s in SP:   # slow motion with frame blending
+      st=(i+lt*SP[s])*24;a0=int(st);w=st-a0
+      f=grade(cv2.addWeighted(clipframe(s,a0/24),1-w,clipframe(s,min(a0+1,96)/24),w,0))
+    else: f=grade(clipframe(s,i+lt))
+    if s=='s6': f=(f.astype(np.float32)*0.68).astype(np.uint8)   # darker, end of the night
+    if s=='s4': f=cv2.flip(f,1)   # mirrored: the zipper runs left to right
     if s in('s10','s11','s12','s13'):
       z=1.06-0.06*lt/d;M=cv2.getRotationMatrix2D((W/2,H/2),0,z);f=cv2.warpAffine(f,M,(W,H))
       if lt<2/FPS: f=cv2.addWeighted(f,0.55,np.full_like(f,255),0.45,0)

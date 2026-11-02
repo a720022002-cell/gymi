@@ -43,9 +43,9 @@ gate[int(21.85*SR):]=0;gate[int(13.55*SR):int(14.6*SR)]=0
 music*=gate;music=np.tanh(music*1.3)*.6
 L+=music;R+=music
 # ---------- sfx ----------
-add(bp(noise(.6),300,3000)*env(int(.6*SR),.15,.3)*.10,0.45)          # phone into pocket, fabric
+# (no phone sound: the hand is already in the pocket)
 add(bp(noise(1.1),200,1800)*np.hanning(int(1.1*SR))*.12,1.2)          # breath
-for k,s in enumerate(np.arange(2.35,4.4,.33)):                        # footsteps on the track
+for k,s in enumerate(np.arange(2.05,4.4,.26)):                        # footsteps on the track
   add(lp(noise(.12),900)*np.exp(-np.arange(int(.12*SR))/SR*40)*.35,s,pan=(-.2 if k%2 else .2))
 cr=bp(noise(2.3),250,2500)*.12+bp(noise(2.3),120,500)*.1               # gym crowd
 cr*=env(len(cr),.05,.9);add(verb(cr),4.4)
@@ -62,10 +62,10 @@ for s in np.arange(10.0,12.1,.27):                                    # people w
 mm=bp(noise(2.2),200,1200)*.05*env(int(2.2*SR),.1,1.5);add(mm,9.9)
 cre=np.arange(int(1.3*SR))/SR;cr2=sg.sawtooth(2*np.pi*(180+40*np.sin(cre*3))*cre)*.02;add(bp(cr2,300,2000)*env(len(cr2),.2,.3),12.2) # hinge
 sl=lp(noise(1.6),250)*np.exp(-np.arange(int(1.6*SR))/SR*6)*.9+np.r_[kick(40,1.2,.7),np.zeros(int(.4*SR))];add(verb(sl,2.2,.6),13.55)   # slam
-add(verb(clank(.05),1.5,.4)*np.exp(-np.arange(int(.9*SR))/SR*3),15.1)  # hand on handle
-lc=hp(noise(.08),1500)*np.exp(-np.arange(int(.08*SR))/SR*60)*.5;add(lc,15.75);add(lc*.7,15.83)   # latch
-add(bp(noise(1.0),100,800)*np.hanning(int(1.0*SR))*.2,16.2)          # door opening air
-for k,s in enumerate(np.arange(17.5,20.2,.5)):                       # his footsteps, empty gym echo
+lc=hp(noise(.08),1500)*np.exp(-np.arange(int(.08*SR))/SR*60)*.5;add(lc,14.62);add(lc*.7,14.7)   # latch
+add(bp(noise(1.6),100,800)*np.hanning(int(1.6*SR))*.2,14.8)          # door opening air
+lt_=lp(noise(.5),180)*np.exp(-np.arange(int(.5*SR))/SR*9)*.5+hp(noise(.03),3000)[:int(.5*SR)].sum()*0;add(verb(lt_,2.5,.7),16.6)   # lights switching on (low thunk)
+for k,s in enumerate(np.arange(16.9,20.2,.66)):                       # his footsteps (slow motion), empty gym echo
   add(verb(lp(noise(.12),700)*np.exp(-np.arange(int(.12*SR))/SR*38)*.4,2.5,.6),s,pan=(-.15 if k%2 else .15))
 for s in [20.2,20.6,21,21.4]:                                      # heavy reps
   add(verb(clank(.22),1.6,.4),s+.03);add(kick(38,.7,.6),s+.03)
