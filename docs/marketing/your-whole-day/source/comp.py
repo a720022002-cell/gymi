@@ -30,13 +30,29 @@ for k in range(n_out):
     f = frames[min(len(frames) - 1, int(round(t * fps)))].copy()
     f = cv2.resize(f, (1080, 1920), interpolation=cv2.INTER_LANCZOS4)
     hsv = cv2.cvtColor(f, cv2.COLOR_BGR2HSV)
-    g = cv2.inRange(hsv, (35, 70, 50), (90, 255, 255))
+    # chroma screen green is bright and very saturated; scenery greens (velvet, tiles, marble) are darker or duller
+    g = cv2.inRange(hsv, (40, 110, 110), (85, 255, 255))
     g = cv2.morphologyEx(g, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
     cs, _ = cv2.findContours(g, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    best = None
+    for x in cs:
+        ar = cv2.contourArea(x)
+        if ar < 3000: continue
+        (cx, cy), (w_, h_), _ = cv2.minAreaRect(x)
+        rect = max(w_ * h_, 1); asp = max(w_, h_) / max(1, min(w_, h_))
+        hull_a = cv2.contourArea(cv2.convexHull(x))
+        score = ar * (hull_a / rect) * (1 if 1.3 < asp < 2.6 else 0.25)
+        if hull_a / rect > 0.6 and (best is None or score > best[0]): best = (score, x)
+    cs = []
+    if best is not None:
+        main = best[1]; box = cv2.boxPoints(cv2.minAreaRect(main)).astype(np.int32)
+        zone = np.zeros(g.shape, np.uint8); cv2.fillConvexPoly(zone, box, 255); zone = cv2.dilate(zone, np.ones((61, 61), np.uint8))
+        parts = [x for x in cv2.findContours(g & zone, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0] if cv2.contourArea(x) > 150]
+        cs = parts or [main]
     if cs:
         big = max(cs, key=cv2.contourArea)
-        c = np.vstack([x for x in cs if cv2.contourArea(x) > 150])  # a thumb can split the screen in two
-        if cv2.contourArea(big) > 4000:
+        c = np.vstack(cs)  # a thumb can split the screen in two
+        if cv2.contourArea(big) > 2500:
             hull = cv2.convexHull(c)
             ap = cv2.approxPolyDP(hull, 0.03 * cv2.arcLength(hull, True), True)
             if len(ap) != 4: ap = cv2.boxPoints(cv2.minAreaRect(hull)).reshape(4, 1, 2)
