@@ -1,0 +1,143 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&family=IBM+Plex+Sans+Arabic:wght@600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#06070b;font-family:Sora,sans-serif;color:#fff}
+.abs{position:absolute}
+#g1,#g2,#g3{position:absolute;border-radius:50%;filter:blur(120px)}
+#g1{width:900px;height:900px;background:#3355ff;opacity:.38}
+#g2{width:700px;height:700px;background:#1d2fb8;opacity:.45}
+#g3{width:600px;height:600px;background:#6f86ff;opacity:.18}
+#grain{position:absolute;inset:0;opacity:.07;mix-blend-mode:overlay}
+.line{position:absolute;left:60px;right:60px;text-align:center;font-weight:600;font-size:88px;letter-spacing:-2px;line-height:1.1}
+.line span{display:inline-block;margin:0 .13em;will-change:transform,filter,opacity}
+.hl{color:#6f86ff;text-shadow:0 0 40px rgba(111,134,255,.6)}
+.card{position:absolute;border-radius:34px;overflow:hidden;box-shadow:0 40px 90px rgba(0,0,0,.55),0 0 0 2px rgba(255,255,255,.07);will-change:transform,opacity,filter}
+.card img{display:block;width:100%}
+#phone{position:absolute;left:280px;top:430px;width:520px;height:1126px;border-radius:84px;background:#0b0b0e;border:14px solid #1d1d24;box-shadow:0 60px 160px rgba(51,85,255,.35),inset 0 0 0 2px #2a2a33;overflow:hidden;transform-style:preserve-3d}
+#phone img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#isl{position:absolute;left:50%;top:18px;width:150px;height:42px;margin-left:-75px;background:#000;border-radius:24px;z-index:3}
+#stage{position:absolute;inset:0;perspective:1600px}
+#swipe{position:absolute;inset:0;pointer-events:none}
+#blue{position:absolute;inset:0;background:#3355ff;opacity:0}
+.bl{position:absolute;left:0;right:0;text-align:center;font-weight:700;font-size:104px;letter-spacing:-3px}
+#logo{position:absolute;inset:0}
+#meet{position:absolute;font-weight:600;font-size:118px;letter-spacing:-3px;top:820px}
+.endl{position:absolute;left:0;right:0;text-align:center;opacity:0}
+#chip{position:absolute;padding:18px 34px;border-radius:40px;background:#3355ff;font-weight:600;font-size:40px;box-shadow:0 20px 60px rgba(51,85,255,.5);opacity:0}
+#hlring{position:absolute;width:118px;height:118px;border-radius:50%;border:6px solid #6f86ff;box-shadow:0 0 30px rgba(111,134,255,.9);opacity:0}
+</style></head><body>
+<div id="g1"></div><div id="g2"></div><div id="g3"></div>
+<div class="line" id="L1" style="top:840px"></div>
+<div class="line" id="L2" style="top:840px"></div>
+<div id="stage">
+  <div class="card" id="c-kcal" style="width:900px"><img src="ui/c-kcal.png"></div>
+  <div class="card" id="c-rec2" style="width:440px"><img src="ui/c-rec2.png"></div>
+  <div class="card" id="c-weight" style="width:440px"><img src="ui/c-weight.png"></div>
+  <div class="card" id="c-streak" style="width:440px"><img src="ui/c-streak.png"></div>
+  <div class="card" id="c-checkin" style="width:900px"><img src="ui/c-checkin.png"></div>
+  <div id="phone"><div id="isl"></div><img id="scr" src="ui/raw-en-home.png"></div>
+  <div class="card" id="c-ask" style="width:760px"><img src="ui/c-ask.png"></div>
+  <div class="card" id="c-answer" style="width:760px"><img src="ui/c-answer.png"></div>
+  <div class="card" id="c-kcal2" style="width:900px"><img src="ui/c-kcal.png"></div>
+  <div id="chip">＋ 38 g protein</div>
+  <div class="card" id="c-week" style="width:960px"><img src="ui/c-week.png"></div>
+  <div id="hlring"></div>
+  <div class="card" id="c-board" style="width:860px"><img src="ui/c-board.png"></div>
+  <div class="card" id="c-tip" style="width:860px"><img src="ui/c-tip.png"></div>
+</div>
+<svg id="swipe" width="1080" height="1920"><path id="brush" fill="none" stroke="#3355ff" stroke-linecap="round" stroke-width="900"/></svg>
+<div id="blue"></div>
+<div class="bl" id="B1" style="top:830px">Trains you.</div>
+<div class="bl" id="B2" style="top:830px">Feeds you.</div>
+<div class="bl" id="B3" style="top:780px">Knows when<br>to push.</div>
+<div class="bl" id="B4" style="top:780px;font-weight:400;font-size:96px">And when<br>to rest.</div>
+<div id="brand" style="position:absolute;inset:0;transform-origin:540px 960px"><svg id="logo" width="1080" height="1920"><g id="letters"></g><circle id="ring" fill="none" stroke="#3355FF" stroke-linecap="round" style="filter:drop-shadow(0 0 26px rgba(51,85,255,.8))"/></svg>
+<div id="meet">Meet</div></div>
+<div class="endl" id="E1" style="top:1060px;font-weight:300;font-size:56px;letter-spacing:1px">Your AI gym coach</div>
+<div class="endl" id="E2" style="top:1160px;font-weight:600;font-size:38px;letter-spacing:14px;color:#6f86ff">COMING SOON</div>
+<div class="endl" id="E3" dir="rtl" style="top:1250px;font-family:'IBM Plex Sans Arabic';font-weight:700;font-size:64px">جاهز؟</div>
+<svg id="grain" width="1080" height="1920"><filter id="n"><feTurbulence id="turb" type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="1"/><feColorMatrix type="saturate" values="0"/></filter><rect width="1080" height="1920" filter="url(#n)"/></svg>
+<script src="letters.js"></script>
+<script>
+const $=i=>document.getElementById(i),cl=(x,a=0,b=1)=>Math.min(b,Math.max(a,x)),lerp=(a,b,k)=>a+(b-a)*k;
+const eo=x=>{x=cl(x);return 1-Math.pow(1-x,3)}, eio=x=>{x=cl(x);return x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2};
+const back=x=>{x=cl(x);const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)};
+// kinetic lines
+function setWords(id,words){$(id).innerHTML=words.map(([w,h])=>`<span class="${h?'hl':''}">${w}</span>`).join(' ')}
+setWords('L1',[['Your'],['day'],["doesn’t"],['stop.',1]]);
+setWords('L2',[['So'],['why'],['should'],['your'],['plan?',1]]);
+function words(id,t,a,z){const sp=[...$(id).children];sp.forEach((s,i)=>{const k=eo((t-a-i*.11)/.35),o=cl((z-t)/.25);
+  s.style.opacity=Math.min(k,o);s.style.transform=`translateY(${(1-k)*50-(1-o)*30}px)`;s.style.filter=`blur(${(1-k)*14+(1-o)*16}px)`});}
+function card(id,o){const e=$(id);e.style.left=o.x+'px';e.style.top=o.y+'px';e.style.opacity=o.op??1;
+  e.style.transform=`translate(-50%,-50%) scale(${o.s??1}) rotate(${o.r??0}deg)`;e.style.filter=`blur(${o.b??0}px)`;}
+function pop(t,a){return back((t-a)/.38)}
+// wordmark geometry (src/components/wordmark.ts)
+const WM={x0:30,y0:-745,w:2229,h:775,ring:{cx:1953.5,cy:-271.5,r:228.5,stroke:130}};
+const S=520/WM.w,LX=420,TY=960-WM.h*S/2-40;
+$('letters').innerHTML=`<path transform="translate(${LX-WM.x0*S} ${TY-WM.y0*S}) scale(${S})" fill="#fff" d="${window.LETTERS}"/>`;
+const RG={x:LX+(WM.ring.cx-WM.x0)*S,y:TY+(WM.ring.cy-WM.y0)*S,r:WM.ring.r*S,sw:WM.ring.stroke*S};
+window.render=t=>{
+  $('turb').setAttribute('seed',String(Math.floor(t*24)%97));
+  // background glow drifts
+  $('g1').style.left=(90+180*Math.sin(t*.5))+'px';$('g1').style.top=(380+140*Math.cos(t*.4))+'px';
+  $('g2').style.left=(-160+120*Math.cos(t*.35))+'px';$('g2').style.top=(1100+160*Math.sin(t*.45))+'px';
+  $('g3').style.left=(560+90*Math.sin(t*.6))+'px';$('g3').style.top=(1250+120*Math.cos(t*.5))+'px';
+  // 1) kinetic text
+  words('L1',t,.25,2.15);words('L2',t,2.3,3.55);
+  // 2) real cards pop in on the beat (3.6–5.0) then fly into the phone (5.0–5.6)
+  const fly=eio((t-5.0)/.55), P={x:540,y:990};
+  const C=[['c-kcal',3.6,{x:540,y:660,r:-2}],['c-rec2',3.8,{x:300,y:1130,r:-5}],['c-streak',4.0,{x:780,y:1150,r:4}],['c-weight',4.2,{x:330,y:1420,r:3}],['c-checkin',4.4,{x:560,y:1700,r:-3}]];
+  C.forEach(([id,a,p])=>{const k=pop(t,a),f=Math.sin(t*2+a)*6;
+    card(id,{x:lerp(p.x,P.x,fly),y:lerp(p.y+f,P.y,fly),r:lerp(p.r,0,fly),s:lerp(k,0.15,fly),op:t<a?0:cl((5.55-t)/.15)*cl((t-a)/.08)})});
+  // 3) phone spins in (5.1–6.0)
+  const ph=$('phone'),pk=eo((t-5.1)/.9),vis=t>=5.1&&t<9.15;
+  ph.style.opacity=vis?cl((t-5.1)/.15):0;
+  let ry=lerp(70,0,pk),rz=lerp(-14,-4,pk),sc=lerp(.7,1,pk),ty=lerp(160,0,pk);
+  // during features the phone sits slightly back and tilts on each beat
+  const fz=eio((t-6.1)/.4); sc*=lerp(1,.86,fz); ty+=lerp(0,70,fz);
+  const beat=[6.2,6.9,7.6,8.3].reduce((a,b)=>t>=b?b:a,0); const kick=beat?Math.exp(-(t-beat)*9):0;
+  rz+=kick*3*(Math.round(beat*10)%2?1:-1);
+  ph.style.transform=`translateY(${ty}px) rotateY(${ry}deg) rotateZ(${rz}deg) scale(${sc*(1+kick*.03)})`;
+  ph.style.filter=`brightness(${t>6.1?.55:1}) blur(${t>6.1?2:0}px)`;
+  const scr=t<6.9?'home':t<7.6?'food':t<8.3?'train':'group'; const want=`ui/raw-en-${t<6.2?'home':t<6.9?'coach':scr}.png`;
+  if(!$('scr').src.endsWith(want))$('scr').src=want;
+  // 4) features, one per beat
+  const seg=(a,z)=>({in:pop(t,a),out:cl((z-t)/.12),on:t>=a&&t<z});
+  let s=seg(6.2,6.9); card('c-ask',{x:600,y:760,s:s.in,op:s.on?s.out:0});
+  { const k=eo((t-6.42)/.35); card('c-answer',{x:480,y:1120+(1-k)*60,s:1,op:s.on&&t>6.42?Math.min(k,s.out):0}); }
+  s=seg(6.9,7.6); card('c-kcal2',{x:540,y:940,s:s.in,op:s.on?s.out:0});
+  { const k=pop(t,7.12),c=$('chip'); c.style.left='560px';c.style.top='1180px';c.style.opacity=s.on&&t>7.12?s.out:0;c.style.transform=`translate(-50%,-50%) scale(${k})`; }
+  s=seg(7.6,8.3); card('c-week',{x:540,y:950,s:s.in,op:s.on?s.out:0});
+  { const r=$('hlring'),i=Math.min(6,Math.floor(cl((t-7.75)/.5)*7)); const x0=540-960/2, cw=960/7;
+    r.style.left=(x0+cw*(i+.5)-59)+'px';r.style.top=(950+62-59-20)+'px';r.style.opacity=s.on&&t>7.75?s.out:0; }
+  s=seg(8.3,9.05); card('c-board',{x:540,y:900+(1-eo((t-8.3)/.3))*120,s:1,op:s.on?Math.min(cl((t-8.3)/.12),s.out):0});
+  { const k=pop(t,8.55); card('c-tip',{x:540,y:1480,s:k,op:s.on&&t>8.55?s.out:0}); }
+  // 5) blue brush swipe (9.0–9.6) -> full blue
+  const sw=eio((t-9.0)/.55),br=$('brush');
+  br.setAttribute('d',`M -700 2400 C 200 1500, 700 700, 1900 -500`);
+  const len=4200; br.style.strokeDasharray=`${len*sw} ${len}`; br.style.opacity=t>=9.0&&t<12.5?1:0;
+  $('blue').style.opacity=t>=9.5&&t<12.45?1:t>=12.45?cl(1-(t-12.45)/.3):0;
+  // 6) lines on blue, one per beat
+  const B=[['B1',9.95,10.55],['B2',10.55,11.15],['B3',11.15,11.85],['B4',11.95,12.45]];
+  B.forEach(([id,a,z])=>{const k=eo((t-a)/.18),o=cl((z-t)/.1);const e=$(id);e.style.opacity=t>=a&&t<z?Math.min(k,o):0;
+    e.style.transform=`translateY(${(1-k)*40}px) scale(${1+(1-k)*.06})`;e.style.filter=`blur(${(1-k)*10}px)`});
+  // 7) Meet + ring + adro (12.5–14.4) with a zoom-blur push
+  const m=$('meet'),mk=eo((t-12.55)/.3);m.style.left=(lerp(150,95,eio((t-13.3)/.4)))+'px';
+  m.style.opacity=t>=12.55&&t<14.55?mk:0;
+  const draw=eio((t-12.85)/.55),R=$('ring'),C2=2*Math.PI*RG.r;
+  const push=eio((t-13.95)/.55), zs=1+push*.35, zb=push*18;
+  $('brand').style.transform=`scale(${zs})`;$('brand').style.filter=`blur(${zb}px)`;
+  R.setAttribute('cx',RG.x);R.setAttribute('cy',RG.y);R.setAttribute('r',RG.r);R.setAttribute('stroke-width',RG.sw);
+  R.setAttribute('transform',`rotate(-90 ${RG.x} ${RG.y})`);R.style.strokeDasharray=`${C2*.8*draw} ${C2}`;
+  const lk=eo((t-13.25)/.4);$('letters').setAttribute('opacity',t<14.55?lk:0);$('letters').setAttribute('transform',`translate(${(1-lk)*-60} 0)`);
+  R.style.opacity=t>=12.85&&t<14.55?1:0;
+  // 8) end: ring alone pulses, lines
+  if(t>=14.55){ const k=eo((t-14.55)/.5), pulse=1+.035*Math.sin((t-14.55)*5.5);
+    const r2=150*k*pulse; R.style.opacity=1;R.setAttribute('cx',540);R.setAttribute('cy',820);R.setAttribute('r',r2);R.setAttribute('stroke-width',46);
+    R.setAttribute('transform',`rotate(-90 540 820)`);R.style.strokeDasharray=`${2*Math.PI*r2*.8} ${2*Math.PI*r2}`;
+    $('brand').style.transform='none';$('brand').style.filter='none'; }
+  $('E1').style.opacity=cl((t-14.95)/.35);$('E2').style.opacity=cl((t-15.3)/.35);$('E3').style.opacity=cl((t-15.7)/.35);
+  ['E1','E2','E3'].forEach((id,i)=>$(id).style.transform=`translateY(${(1-eo((t-14.95-i*.37)/.4))*24}px)`);
+};
+</script></body></html>

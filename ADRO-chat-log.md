@@ -1138,6 +1138,10 @@ Passwords and keys are left out on purpose.
 - Real Adro screens on the phones (lock-screen note, Home, Progress, Food, AI coach). Score and edit in code.
 - File: docs/marketing/adro-your-whole-day.mp4
 
+### "Meet adro" launch motion video (2 Nov 2026)
+- 16.6 s, 1080x1920 (Instagram Reels), motion graphics in the style of the inDrive / Gojek / health app launch references: kinetic text, real Adro cards on the beat, phone spin-in, AI coach / food / week / Gym Bros, blue swipe, "Meet adro" logo build, Coming soon + جاهز؟.
+- Built fully in code from real app screens, 0 credits. File: docs/marketing/adro-meet-adro-launch.mp4
+
 ---
 
 
