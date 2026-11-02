@@ -1,0 +1,30 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;600&family=IBM+Plex+Sans+Arabic:wght@600&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0}html,body{width:1080px;height:1920px;overflow:hidden;background:transparent}
+#fx{position:absolute;inset:0}.l{position:absolute;left:0;right:0;text-align:center;opacity:0;color:#fff}
+</style></head><body>
+<svg id="fx" width="1080" height="1920"><defs><radialGradient id="g"><stop offset="0" stop-color="#9fb0ff"/><stop offset=".3" stop-color="#3355ff" stop-opacity=".8"/><stop offset="1" stop-color="#3355ff" stop-opacity="0"/></radialGradient></defs>
+<circle id="glow" fill="url(#g)" r="0" cx="540" cy="900"/><g id="letters" opacity="0"></g>
+<circle id="ring" fill="none" stroke="#3355FF" stroke-linecap="round" style="filter:drop-shadow(0 0 26px rgba(51,85,255,.85))"/></svg>
+<div class="l" id="t1" style="top:1010px;font-family:Sora;font-weight:300;font-size:46px;letter-spacing:4px"></div>
+<div class="l" id="t2" style="top:1110px;font-family:Sora;font-weight:600;font-size:36px;letter-spacing:12px;color:#6f86ff">COMING SOON</div>
+<div class="l" id="t3" dir="rtl" style="top:1200px;font-family:'IBM Plex Sans Arabic';font-weight:600;font-size:46px;color:rgba(255,255,255,.9)">يشوف يومك كله… ويدرّبك عليه.</div>
+<script src="letters.js"></script><script>
+const $=i=>document.getElementById(i),cl=(x,a=0,b=1)=>Math.min(b,Math.max(a,x)),ease=x=>{x=cl(x);return x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2},lerp=(a,b,k)=>a+(b-a)*k;
+const WM={x0:30,y0:-745,w:2229,h:775,ring:{cx:1953.5,cy:-271.5,r:228.5,stroke:130}};
+const S=760/WM.w,L=(1080-WM.w*S)/2,T=900-WM.h*S+60;
+$('letters').innerHTML=`<path transform="translate(${L-WM.x0*S} ${T-WM.y0*S}) scale(${S})" fill="#fff" d="${window.LETTERS}"/>`;
+const end={x:L+(WM.ring.cx-WM.x0)*S,y:T+(WM.ring.cy-WM.y0)*S,r:WM.ring.r*S,sw:WM.ring.stroke*S},mid={x:540,y:900,r:240,sw:74};
+// words appear one by one, widely spaced (fashion-film title)
+const W=['Your','whole','day.','Coached.'];
+window.render=t=>{
+  const g=$('glow'); g.setAttribute('r',(40+30*cl(t/.3))*(1-cl((t-.35)/.3)));
+  const draw=ease((t-.15)/.8),slide=ease((t-1.2)/.75);
+  const x=lerp(mid.x,end.x,slide),y=lerp(mid.y,end.y,slide),r=lerp(mid.r,end.r,slide),sw=lerp(mid.sw,end.sw,slide),C=2*Math.PI*r,R=$('ring');
+  R.setAttribute('cx',x);R.setAttribute('cy',y);R.setAttribute('r',r);R.setAttribute('stroke-width',sw);R.setAttribute('transform',`rotate(-90 ${x} ${y})`);
+  R.style.strokeDasharray=`${C*.8*draw} ${C}`;R.style.opacity=t>=.15?1:0;
+  $('letters').setAttribute('opacity',cl((t-1.65)/.4));
+  $('t1').innerHTML=W.map((w,i)=>`<span style="opacity:${cl((t-2.1-i*.22)/.2)}">${w}</span>`).join('&nbsp;&nbsp;&nbsp;');$('t1').style.opacity=1;
+  $('t2').style.opacity=cl((t-3.1)/.35);$('t3').style.opacity=cl((t-3.5)/.4);
+};
+</script></body></html>

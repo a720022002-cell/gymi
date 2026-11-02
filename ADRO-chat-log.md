@@ -1133,6 +1133,11 @@ Passwords and keys are left out on purpose.
 - 11 Kling 3.0 shots + starter voice (Higgsfield). Sound and ending made in code (web-build/teaser/oym/).
 - File: docs/marketing/adro-teaser-on-your-marks.mp4
 
+### "Your whole day" library cut (2 Nov 2026)
+- 29 s, 9:16, made only from clips already in the Higgsfield library (no new credits): a Gucci-style Riyadh day (bed, golden sink, coffee, door, car, office), the gym at night, a beat of silence, a chain of circles from the day that lands on a blue dot, then the open ring -> adro.
+- Real Adro screens on the phones (lock-screen note, Home, Progress, Food, AI coach). Score and edit in code.
+- File: docs/marketing/adro-your-whole-day.mp4
+
 ---
 
 
