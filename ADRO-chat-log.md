@@ -1142,6 +1142,8 @@ Passwords and keys are left out on purpose.
 - 16.6 s, 1080x1920 (Instagram Reels), motion graphics in the style of the inDrive / Gojek / health app launch references: kinetic text, real Adro cards on the beat, phone spin-in, AI coach / food / week / Gym Bros, blue swipe, "Meet adro" logo build, Coming soon + جاهز؟.
 - Built fully in code from real app screens, 0 credits. File: docs/marketing/adro-meet-adro-launch.mp4
 
+- **Hero teaser (2 Nov 2026):** 31 s, 9:16, 13 Kling 4.0 shots, the clock drawn in code (exactly 12:00), the sound made in code (music speeds up, then the door slam brings silence; the exercises, then silence and a deep breath), ending with the ring forming **adro**. File: docs/marketing/hero-teaser/adro-hero-teaser.mp4, source in hero-teaser/source/.
+
 ---
 
 

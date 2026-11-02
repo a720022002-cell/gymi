@@ -1,0 +1,23 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;600&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0}html,body{width:1080px;height:1920px;overflow:hidden;background:transparent}#fx{position:absolute;inset:0}</style></head><body>
+<svg id="fx" width="1080" height="1920"><defs><clipPath id="cp"><rect id="cr" x="0" y="0" width="0" height="1920"/></clipPath></defs>
+<g id="letters" clip-path="url(#cp)"></g>
+<circle id="ring" fill="none" stroke="#3355FF" stroke-linecap="round" style="filter:drop-shadow(0 0 24px rgba(51,85,255,.8))"/></svg>
+<script src="letters.js"></script><script>
+const $=i=>document.getElementById(i),cl=(x,a=0,b=1)=>Math.min(b,Math.max(a,x)),ease=x=>{x=cl(x);return x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2},lerp=(a,b,k)=>a+(b-a)*k;
+const WM={x0:30,y0:-745,w:2229,h:775,ring:{cx:1953.5,cy:-271.5,r:228.5,stroke:130}};
+const S=760/WM.w,L=(1080-WM.w*S)/2,T=960-WM.h*S/2;
+$('letters').innerHTML=`<path transform="translate(${L-WM.x0*S} ${T-WM.y0*S}) scale(${S})" fill="#fff" d="${window.LETTERS}"/>`;
+const end={x:L+(WM.ring.cx-WM.x0)*S,y:T+(WM.ring.cy-WM.y0)*S,r:WM.ring.r*S,sw:WM.ring.stroke*S},mid={x:540,y:960,r:250,sw:78};
+window.render=t=>{
+  // 0–1.3 the ring draws, slowing as it nears the gap; hold; 1.7–2.5 it shrinks and slides into the o; adr reveals behind it
+  const d=1-Math.pow(1-cl(t/1.3),3);
+  const s=ease((t-1.7)/0.8);
+  const x=lerp(mid.x,end.x,s),y=lerp(mid.y,end.y,s),r=lerp(mid.r,end.r,s),sw=lerp(mid.sw,end.sw,s),C=2*Math.PI*r,R=$('ring');
+  R.setAttribute('cx',x);R.setAttribute('cy',y);R.setAttribute('r',r);R.setAttribute('stroke-width',sw);R.setAttribute('transform',`rotate(-90 ${x} ${y})`);
+  R.style.strokeDasharray=`${C*.8*d} ${C}`;
+  // letters wipe in from the ring towards the left, as if the ring pulls them out
+  const w=ease((t-1.95)/0.7); $('cr').setAttribute('x',lerp(end.x-end.r,L-20,w)); $('cr').setAttribute('width',(end.x-end.r)-lerp(end.x-end.r,L-20,w)+4);
+};
+</script></body></html>
