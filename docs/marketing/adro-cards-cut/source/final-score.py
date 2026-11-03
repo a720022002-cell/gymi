@@ -77,6 +77,66 @@ for c in [11.43,12.03,12.63,13.23,13.84,14.44,15.04,15.64]:     # heavy lifts
     put(fx, clank(.42), c+.08); put(fx, kick(), c+.08, .5)
 put(fx, norm(f(nz(1.0),[80,600],'band')*np.sin(np.pi*t_(1.0)),.3), 16.24)   # door air
 put(fx, boom(.5), 16.95)
+
+# ================= dense layer (busy sound design) =================
+amb=np.zeros_like(fx); tr=np.zeros_like(fx)
+def lfo(d,rate,depth=.5): tt=t_(d); return 1-depth+depth*(.5+.5*np.sin(2*np.pi*rate*tt+rng.uniform(0,6)))
+def bed(d,lo,hi,l,rate=.7): x=f(nz(d),[lo,hi],'band')*lfo(d,rate,.6); x*=np.minimum(1,t_(d)/.08)*np.minimum(1,(d-t_(d))/.08); return norm(x,l)
+def chirp(f0,f1,d=.07,l=.2): tt=t_(d); return norm(np.sin(2*np.pi*np.cumsum(np.linspace(f0,f1,len(tt)))/SR)*np.sin(np.pi*tt/d),l)
+def babble(d,l=.25):
+    x=np.zeros(int(SR*d))
+    for v in range(7):
+        b=f(nz(d),[rng.uniform(250,500),rng.uniform(1200,2600)],'band')
+        m=(np.sin(2*np.pi*rng.uniform(3,6)*t_(d)+rng.uniform(0,6))>.2).astype(float)
+        x+=b*np.convolve(m,np.ones(400)/400,'same')
+    return norm(x*np.minimum(1,t_(d)/.05)*np.minimum(1,(d-t_(d))/.05),l)
+def swish(d=.22,l=.35,up=True):
+    tt=t_(d); e=(tt/d)**2 if up else (1-tt/d)**2
+    return norm(f(nz(d),[1200,10000],'band')*e,l)
+def thump(l=.5): tt=t_(.25); return norm(np.sin(2*np.pi*np.cumsum(60+80*np.exp(-tt*30))/SR)*np.exp(-tt*14),l)
+def stutter(at,n=4,gap=.035,l=.18):
+    for k in range(n): put(tr, tick(l), at+k*gap)
+def revswell(d=.6,l=.3): tt=t_(d); return norm(f(nz(d),[300,7000],'band')*(tt/d)**4,l)
+def heartbeat(at,l=.45):
+    for o,g in [(0,1),(.16,.7)]: tt=t_(.12); put(amb, norm(np.sin(2*np.pi*48*tt)*np.exp(-tt*30),l*g), at+o)
+def breath(at,d=.35,l=.2,inhale=True): put(amb, bed(d,500,3500,l,3)*(np.linspace(.2,1,int(SR*d)) if inhale else np.linspace(1,.2,int(SR*d))), at)
+
+# transitions on every cut: swish into the cut, a thump and a tick on it, a little tail after
+ALL=[1.3,2.3,2.9,3.91,4.51,5.11,5.71,6.31,7.31,8.03,8.63,9.23,9.83,10.43,11.43,12.03,12.63,13.23,13.84,14.44,15.04,15.64,16.24,17.16]
+for i,c in enumerate(ALL):
+    put(tr, swish(.22,.32 if i%2 else .26), c-.22)
+    put(tr, thump(.42), c); put(tr, tick(.28), c+.005)
+    put(tr, swish(.18,.12,False), c+.02)
+    if i%3==2: stutter(c+.12,3,.04,.12)
+# risers into each blue screen + reverse swell
+for b in BLUE: put(tr, revswell(.7,.32), b-.7); stutter(b+.3,5,.03,.14)
+# scene ambiences
+put(amb, bed(1.3,200,1500,.10,.3), 0.0)                                   # morning wind
+for k in range(6): put(amb, chirp(rng.uniform(2600,3600),rng.uniform(3800,5200),.06,.10), .15+k*.19+rng.uniform(0,.05))
+put(amb, bed(1.0,300,4000,.12,.5), 1.3)                                   # open stadium air
+put(amb, bed(.6,600,5000,.16,6), 2.3); put(fx, tick(.2), 2.5); put(fx, tick(.2), 2.66)   # sheets rustle + taps
+put(amb, norm(f(nz(.6),300,'low'),.25), 3.91)                             # underwater
+for k in range(9): put(amb, chirp(rng.uniform(400,700),rng.uniform(1200,2200),.04,.12), 3.95+k*.06)  # bubbles
+put(amb, bed(1.8,300,5000,.12,.4), 4.51)                                  # track wind
+for k in range(6): breath(4.55+k*.2,.18,.14,k%2==0)                       # running breaths
+for k in range(5): put(amb, norm(f(nz(.06),[150,1400],'band')*np.exp(-t_(.06)*50),.22), 5.13+k*.115)
+put(amb, bed(.6,2500,9000,.2,8), 5.71)                                    # sizzle crackle
+for k in range(10): put(amb, tick(.12), 5.73+rng.uniform(0,.55))
+put(amb, babble(.72,.2), 7.31)                                            # locker room chatter
+put(amb, babble(2.4,.28), 8.03)                                           # busy gym crowd
+for k in range(12): put(amb, clank(.12+rng.uniform(0,.08)), 8.05+rng.uniform(0,2.35))
+put(amb, bed(.6,1500,8000,.2,4), 8.63)                                    # chalk dust
+for c in [11.43,12.03,12.63,13.23,13.84,14.44,15.04,15.64]:               # grunts of effort + bar rattle
+    breath(c+.1,.25,.2,False); put(amb, norm(f(nz(.2),[2000,7000],'band')*np.exp(-t_(.2)*18),.15), c+.25)
+hb=11.43                                                                  # heartbeat that speeds up
+while hb<16.2: heartbeat(hb,.35+.2*(hb-11.43)/5); hb+=max(.42,.75-(hb-11.43)*.07)
+heartbeat(16.35,.5)                                                       # one beat in the door silence
+put(amb, bed(.9,80,500,.18,.3), 16.24)                                    # empty room tone
+# ending: busier motion layer under the words and the logo
+for at in [17.95,18.45,18.95,19.45,19.95]: put(tr, swish(.18,.2), at-.18); stutter(at+.05,3,.03,.12)
+put(tr, revswell(.8,.3), 20.5); put(tr, thump(.5), 21.3)
+mus*=.8
+fx+=amb*.9+tr
 out=(mus+fx)[:int(SR*LEN)]
 out[-int(SR*.5):]*=np.linspace(1,0,int(SR*.5))
 out=norm(np.tanh(out*1.3),.8)
