@@ -1,0 +1,127 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1920px;overflow:hidden;background:transparent;font-family:Sora,sans-serif;color:#fff}
+.card{position:absolute;left:0;top:0;border-radius:34px;overflow:hidden;opacity:0;
+  box-shadow:0 40px 90px rgba(0,0,0,.6),0 0 0 2px rgba(255,255,255,.08);will-change:transform,opacity,filter}
+.card img{display:block;width:100%}
+.dark{background:rgba(22,22,26,.94);backdrop-filter:blur(20px)}
+.lab{font-size:30px;color:#9a9aa6;font-weight:400}
+.big{font-size:64px;font-weight:700;letter-spacing:-1px}
+.row{display:flex;align-items:center;gap:22px}
+.dot{width:16px;height:16px;border-radius:50%;background:#3355ff;box-shadow:0 0 18px #3355ff}
+.zone{height:14px;border-radius:7px;background:#2a2a33;overflow:hidden;margin-top:22px}
+.zone i{display:block;height:100%;width:62%;background:linear-gradient(90deg,#3355ff,#6f86ff);border-radius:7px}
+.chk{width:62px;height:62px;border-radius:50%;background:#3355ff;display:flex;align-items:center;justify-content:center;box-shadow:0 0 30px rgba(51,85,255,.7)}
+#shade{position:absolute;left:0;right:0;bottom:0;height:900px;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.55));opacity:0}
+#shadeT{position:absolute;left:0;right:0;top:0;height:700px;background:linear-gradient(0deg,rgba(0,0,0,0),rgba(0,0,0,.45));opacity:0}
+</style></head><body>
+<div id="shade"></div><div id="shadeT"></div>
+<!-- real app cards -->
+<div class="card" id="recovery" style="width:900px"><img src="ui/c-recovery.png"></div>
+<div class="card" id="checkin" style="width:900px"><img src="ui/c-checkin.png"></div>
+<div class="card" id="week" style="width:940px"><img src="ui/c-week.png"></div>
+<div class="card" id="tip" style="width:940px"><img src="ui/c-tip.png"></div>
+<div class="card" id="exer" style="width:620px;border-radius:70px"><img src="ui/c-exer.png"></div>
+<div class="card" id="streak" style="width:470px"><img src="ui/c-streak.png"></div>
+<div class="card" id="rec2" style="width:470px"><img src="ui/c-rec2.png"></div>
+<!-- live run card, same style as the app -->
+<div class="card dark" id="swim" style="width:900px;padding:38px 44px">
+  <div class="row" style="justify-content:space-between"><div class="row"><div class="dot"></div><span class="lab">Swim · live</span></div><span class="lab">Zone 2</span></div>
+  <div class="row" style="margin-top:18px;gap:70px">
+    <div><div class="big" id="space">1:48</div><div class="lab">min / 100 m</div></div>
+    <div><div class="big"><span id="sbpm">128</span> <span style="font-size:40px;color:#ff4d6d">♥</span></div><div class="lab">bpm</div></div>
+    <div><div class="big" id="sm">650</div><div class="lab">m</div></div>
+  </div>
+  <div class="zone"><i id="szbar"></i></div>
+</div>
+<!-- live run card, same style as the app -->
+<div class="card dark" id="run" style="width:900px;padding:38px 44px">
+  <div class="row" style="justify-content:space-between"><div class="row"><div class="dot"></div><span class="lab">Easy run · live</span></div><span class="lab">Zone 2</span></div>
+  <div class="row" style="margin-top:18px;gap:70px">
+    <div><div class="big" id="pace">4:52</div><div class="lab">min / km</div></div>
+    <div><div class="big"><span id="bpm">142</span> <span style="font-size:40px;color:#ff4d6d">♥</span></div><div class="lab">bpm</div></div>
+    <div><div class="big" id="km">2.4</div><div class="lab">km</div></div>
+  </div>
+  <div class="zone"><i id="zbar"></i></div>
+</div>
+<!-- logged set -->
+<div class="card dark" id="set" style="width:900px;padding:36px 44px">
+  <div class="row" style="justify-content:space-between">
+    <div><div class="lab">Leg press · set 3 of 4</div><div class="big" style="margin-top:6px">180 kg × 8</div></div>
+    <div class="chk" id="chk"><svg width="34" height="34" viewBox="0 0 24 24"><path id="tick" d="M4 12.5l5 5L20 6.5" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="26" stroke-dashoffset="26"/></svg></div>
+  </div>
+</div>
+<!-- logged set -->
+<div class="card dark" id="set2" style="width:900px;padding:36px 44px">
+  <div class="row" style="justify-content:space-between">
+    <div><div class="lab">Squat · set 4 of 4</div><div class="big" style="margin-top:6px">140 kg × 5</div></div>
+    <div class="chk" id="chk2"><svg width="34" height="34" viewBox="0 0 24 24"><path id="tick2" d="M4 12.5l5 5L20 6.5" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="26" stroke-dashoffset="26"/></svg></div>
+  </div>
+</div>
+<!-- new best -->
+<div class="card dark" id="pr" style="width:900px;padding:36px 44px">
+  <div class="row"><div style="font-size:54px">🏆</div><div><div class="lab" style="color:#6f86ff;font-weight:600;letter-spacing:4px;font-size:26px">NEW BEST</div><div style="font-size:50px;font-weight:700;margin-top:4px">T-bar row · 70 kg × 8</div></div></div>
+</div>
+<!-- workout done -->
+<div class="card dark" id="done" style="width:900px;padding:38px 44px">
+  <div class="lab">Workout done</div>
+  <div class="row" style="margin-top:14px;gap:60px">
+    <div><div class="big">58<span style="font-size:36px"> min</span></div><div class="lab">time</div></div>
+    <div><div class="big">16</div><div class="lab">sets</div></div>
+    <div><div class="big">+2.5<span style="font-size:36px"> kg</span></div><div class="lab">bench</div></div>
+  </div>
+</div>
+<script>
+const $=i=>document.getElementById(i),cl=(x,a=0,b=1)=>Math.min(b,Math.max(a,x)),lerp=(a,b,k)=>a+(b-a)*k;
+const eo=x=>{x=cl(x);return 1-Math.pow(1-x,3)};
+const back=x=>{x=cl(x);const c1=1.6,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)};
+// [id, in, out, x, y, from-direction]
+const SH=[
+ // id, in, out, in-style, hard out (next card cuts in at the same spot)
+ ['recovery',1.32,2.30,'up',1],
+ ['checkin', 2.30,2.90,'cut',1],
+ ['swim',    2.90,3.50,'cut',1],
+ ['run',     3.50,4.70,'cut',0],
+ ['week',    4.72,5.42,'up',0],
+ ['exer',    5.44,6.02,'pop',0],
+ ['rec2',    6.04,7.22,'left',0],
+ ['streak',  6.64,7.22,'right',0],
+ ['tip',     7.84,9.02,'up',0],
+ ['set',     9.62,10.22,'up',1],
+ ['pr',     10.22,10.82,'cut',1],
+ ['set2',   10.82,11.42,'cut',0],
+ ['done',   12.64,13.53,'up',0],
+];
+const POS={recovery:[540,1480],checkin:[540,1480],swim:[540,1480],run:[540,1480],week:[540,1480],exer:[540,470],rec2:[300,1500],streak:[780,1500],tip:[540,1480],set:[540,1480],pr:[540,1480],set2:[540,1480],done:[540,1480]};
+window.render=t=>{
+  let anyB=0,anyT=0;
+  for(let [id,a,z,dir,hard] of SH){
+    const e=$(id),[x,y]=POS[id];
+    if(t<a-.001||t>=(hard?z:z+.25)){e.style.opacity=0;continue}
+    const k=dir=='cut'?1:back((t-a)/.32),ki=dir=='cut'?1:eo((t-a)/.22),o=hard?1:cl((z+.2-t)/.2);
+    if(dir=='cut')dir='pop';
+    let dx=0,dy=0,s=1;
+    if(dir=='up')dy=(1-k)*140; if(dir=='left')dx=-(1-k)*160; if(dir=='right')dx=(1-k)*160; if(dir=='pop')s=.75+.25*k; if(ki==1&&k==1&&(t-a)<.12)s*=1+.04*(1-(t-a)/.12);
+    s*= (1+0.015*cl((t-a)/(z-a)));            // slow push-in while on screen
+    e.style.opacity=Math.min(ki,o);
+    e.style.filter=`blur(${(1-ki)*14+(1-o)*12}px)`;
+    e.style.transform=`translate(${x+dx}px,${y+dy-(1-o)*40}px) translate(-50%,-50%) scale(${s})`;
+    if(y>900)anyB=Math.max(anyB,Math.min(ki,o)); else anyT=Math.max(anyT,Math.min(ki,o));
+  }
+  $('shade').style.opacity=anyB; $('shadeT').style.opacity=anyT;
+  // live numbers
+  const q=cl((t-2.9)/.6);
+  $('space').textContent='1:'+String(48-Math.round(q*2)).padStart(2,'0');$('sbpm').textContent=128+Math.round(q*4);$('sm').textContent=650+Math.round(q*25);$('szbar').style.width=(48+q*6)+'%';
+  const r=cl((t-3.5)/1.2);
+  $('pace').textContent='4:'+String(52-Math.round(r*4)).padStart(2,'0');
+  $('bpm').textContent=142+Math.round(r*9);
+  $('km').textContent=(2.4+r*0.3).toFixed(1);
+  $('zbar').style.width=(55+r*15)+'%';
+  $('tick').style.strokeDashoffset=26*(1-eo((t-9.8)/.3));
+  $('chk').style.transform=`scale(${1+0.25*Math.sin(cl((t-9.8)/.3)*Math.PI)})`;
+  $('tick2').style.strokeDashoffset=26*(1-eo((t-10.98)/.3));
+  $('chk2').style.transform=`scale(${1+0.25*Math.sin(cl((t-10.98)/.3)*Math.PI)})`;
+};
+</script></body></html>

@@ -1144,6 +1144,8 @@ Passwords and keys are left out on purpose.
 
 - **Hero teaser (2 Nov 2026):** 31 s, 9:16, 13 Kling 4.0 shots, the clock drawn in code (exactly 12:00), the sound made in code (music speeds up, then the door slam brings silence; the exercises, then silence and a deep breath), ending with the ring forming **adro**. File: docs/marketing/hero-teaser/adro-hero-teaser.mp4, source in hero-teaser/source/.
 
+- **Cards cut (3 Nov 2026):** the owner's 21 s edit with real app cards popping up in sync with each shot (readiness, check-in, live swim/run, week plan, set logged, new best, workout done). The ending is left as it was. File: docs/marketing/adro-cards-cut/adro-cards-cut.mp4, overlay source in source/overlay.html.
+
 ---
 
 
