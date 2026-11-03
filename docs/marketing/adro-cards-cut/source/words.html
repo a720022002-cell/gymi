@@ -1,0 +1,47 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0}html,body{width:1080px;height:1920px;overflow:hidden;background:#2A4AFD;font-family:Sora,sans-serif;color:#fff}
+.w{position:absolute;top:960px;font-weight:700;font-size:104px;letter-spacing:-3px;white-space:nowrap;line-height:1;will-change:transform,opacity,filter}
+.c{position:absolute;left:0;right:0;text-align:center;font-weight:700;font-size:96px;letter-spacing:-3px;line-height:1.1;white-space:nowrap}
+.c span{display:inline-block;margin:0 .12em}
+#meas{position:absolute;visibility:hidden}
+</style></head><body>
+<div class="w" id="every">Every</div><div class="w" id="counts">counts</div>
+<div class="w mid" id="m0">rep</div><div class="w mid" id="m1">meal</div><div class="w mid" id="m2">night</div>
+<div class="c" id="L1" style="top:850px"></div>
+<div class="c" id="L2" style="top:900px"></div>
+<span class="w" id="meas"></span>
+<script>
+const $=i=>document.getElementById(i),cl=(x,a=0,b=1)=>Math.min(b,Math.max(a,x)),lerp=(a,b,k)=>a+(b-a)*k;
+const eo=x=>{x=cl(x);return 1-Math.pow(1-x,3)},eio=x=>{x=cl(x);return x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2};
+const W=id=>$(id).getBoundingClientRect().width, SP=34;
+const words=['m0','m1','m2'];
+$('L1').innerHTML='What if it all<br>connected?'.split(/(<br>)/).map(s=>s=='<br>'?s:s.split(' ').map(w=>`<span>${w}</span>`).join(' ')).join('');
+$('L2').innerHTML='Always with you'.split(' ').map(w=>`<span>${w}</span>`).join(' ');
+function line(id,t,a,z){[...$(id).querySelectorAll('span')].forEach((s,i)=>{const k=eo((t-a-i*.07)/.3),o=cl((z-t)/.18);
+  s.style.opacity=Math.min(k,o);s.style.transform=`translateY(${(1-k)*50-(1-o)*30}px)`;s.style.filter=`blur(${(1-k)*14+(1-o)*16}px)`})}
+// timeline (seconds from the start of this blue section, which begins at 0.75 in the clip)
+// beats at 0.05 (=0.8), 0.55, 1.05, 1.55, 2.05, 2.55, 3.05, 3.55
+const SW=[0.05,0.55,1.05];          // rep, meal, night arrive on the beats
+const OUT=1.38;                     // whole "Every … counts" leaves just before the beat at 1.55
+window.render=t=>{
+  const ws=words.map(W),we=W('every'),wc=W('counts');
+  // which middle word, and blend of widths while swapping
+  let idx=0;for(let i=0;i<3;i++)if(t>=SW[i])idx=i;
+  const sw=idx>0?eio((t-SW[idx])/.22):1, mw=idx>0?lerp(ws[idx-1],ws[idx],sw):ws[0];
+  const total=we+SP+mw+SP+wc, x0=540-total/2;
+  const inK=eo((t-SW[0])/.3), out=cl((OUT+.18-t)/.18);
+  const base=(el,x,k,o,dy=0)=>{el.style.left=x+'px';el.style.opacity=Math.min(k,o);el.style.transform=`translateY(calc(-50% + ${(1-k)*50-(1-o)*30+dy}px))`;el.style.filter=`blur(${(1-k)*14+(1-o)*16}px)`};
+  base($('every'),x0,inK,out);
+  base($('counts'),x0+we+SP+mw+SP,eo((t-SW[0]-.14)/.3),out);
+  words.forEach((id,i)=>{
+    const e=$(id),xm=x0+we+SP+mw/2-ws[i]/2;
+    if(i==idx){const k=i==0?eo((t-SW[0]-.07)/.3):eo((t-SW[i]-.08)/.2);base(e,xm,k,out,i==0?0:(1-k)*30)}
+    else if(i==idx-1&&t-SW[idx]<.12){const k=1-cl((t-SW[idx])/.12);e.style.left=xm+'px';e.style.opacity=k;e.style.transform=`translateY(calc(-50% - ${(1-k)*60}px))`;e.style.filter=`blur(${(1-k)*16}px)`}
+    else e.style.opacity=0;
+  });
+  line("L1",t,1.57,2.47);
+  line('L2',t,2.55,3.62);
+};
+</script></body></html>
