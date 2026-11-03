@@ -18,17 +18,20 @@ Checked on 3 Nov 2026. ✅ = verified from here. ⬜ = owner. 🔒 = needs acces
 4. Sandbox purchase test: buy monthly → check `subscriptions` → cancel → restore (with Claude).
 5. Upgrades:
    - Supabase Pro (daily backups, no pausing, bigger limits).
-   - Gemini paid tier (health data not used for training, higher limits).
+   - OpenRouter (all AI goes through it): enough credit with auto top-up, and in its privacy settings allow only providers that don't train on data.
    - Resend Pro (free = 100 emails a day; each sign-up sends 2).
    - Expo Starter (free = OTA updates for 1,000 users a month, few builds).
    - Vercel Pro (Hobby is non-commercial only).
 6. Supabase → Auth → rate limits: raise emails per hour (now 50) to 200+. Needs "طبق" or the owner.
 
-## Needs access 🔒
-A Supabase access token added to this environment (environment settings → Edit, variable `SUPABASE_ACCESS_TOKEN`; never in the chat). Then Claude checks:
-- Test data in production (test accounts, fake coaches, demo posts, leaderboards).
-- Function secrets present: PAYWALL (off until launch), REVENUECAT_*, ASC_*, RESEND_API_KEY, Gemini key.
-- Scheduled jobs (WHOOP/Oura/Polar sync, morning readiness) running.
+## Database check (3 Nov 2026, read only) ✅
+- Supabase plan: **free** (upgrade to Pro before launch).
+- PAYWALL secret not set, so the paywall is off until launch day. RevenueCat, App Store Connect and Resend secrets are present.
+- Functions live: ai, account, wearables, push, welcome, revenuecat, offer-codes, gate.
+- Scheduled wearables sync (every 3 hours) ran successfully today.
+- Auth: emails through Resend, 50 emails an hour (raise it).
+- Gate is ON. Two codes exist (one shared code and APPLEREVIEW). FRIENDS30 not made yet.
+- 10 accounts, no subscriptions yet. Owner to decide on: the old-name admin account (gymi.admin, still an admin), the old empty review account (appreview), two empty accounts (ahmed1, ahmed11), and whether the only listed coach (ahmed) stays public.
 
 ## Launch day
 1. Press **Release** (live within hours, up to 24).
