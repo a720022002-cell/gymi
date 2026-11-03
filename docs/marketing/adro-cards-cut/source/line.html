@@ -1,0 +1,13 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@700&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0}html,body{width:1080px;height:1920px;overflow:hidden;background:#2A4AFD;font-family:Sora,sans-serif;color:#fff}
+#L{position:absolute;left:0;right:0;top:960px;transform:translateY(-50%);text-align:center;font-weight:700;letter-spacing:-3px;line-height:1.1}
+#L span{display:inline-block;margin:0 .12em}</style></head><body><div id="L"></div>
+<script>
+const q=new URLSearchParams(location.search),txt=q.get('t'),size=q.get('s')||104;
+const $=document.getElementById('L');$.style.fontSize=size+'px';
+$.innerHTML=txt.split('|').map(l=>l.split(' ').map(w=>`<span>${w}</span>`).join(' ')).join('<br>');
+const cl=(x,a=0,b=1)=>Math.min(b,Math.max(a,x)),eo=x=>{x=cl(x);return 1-Math.pow(1-x,3)};
+window.render=t=>{[...$.querySelectorAll('span')].forEach((s,i)=>{const k=eo((t-.04-i*.07)/.3);
+  s.style.opacity=k;s.style.transform=`translateY(${(1-k)*50}px)`;s.style.filter=`blur(${(1-k)*14}px)`})};
+</script></body></html>
