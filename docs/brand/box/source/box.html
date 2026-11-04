@@ -187,7 +187,7 @@ if(V==='d'){ h='';
     // meals
     [[7.7,3],[13.2,3.4],[16.5,2.2],[20.3,3.2]].forEach(([t,rr])=>{const [x,y]=pol(cx,cy,R-8,t);o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rr}" fill="#fff"/>`;});
     // steps: little bars inside, taller when you moved more
-    for(let i=0;i<48;i++){const t=i/2;const st=(t>=7&&t<9?.7:t>=12&&t<14?.6:t>=17&&t<20?1:t>=9&&t<23?.25:0.04);const [a,b]=pol(cx,cy,R-17,t),[c2,d2]=pol(cx,cy,R-17-2-st*10,t);
+    for(let i=0;i<48;i++){const t=i/2;const st=(t>=7&&t<9?.7:t>=12&&t<14?.6:t>=17&&t<20?1:t>=9&&t<23?.25:0.04);const [a,b]=pol(cx,cy,R-17,t),[c2,d2]=pol(cx,cy,R-17-2-st*6,t);
       o+=`<line x1="${a.toFixed(1)}" y1="${b.toFixed(1)}" x2="${c2.toFixed(1)}" y2="${d2.toFixed(1)}" stroke="${BLUE}" stroke-opacity="${(.35+st*.55).toFixed(2)}" stroke-width="1.1" stroke-linecap="round"/>`;}
     // now: the ring's gap, like the logo
     return o;};
@@ -199,7 +199,11 @@ if(V==='d'){ h='';
     h+=`<rect x="0" y="0" width="1260" height="905" fill="${INK}"/>`;
     for(const L of LIDS){const cy=mid(L.y0,L.y1);
       const rx=L.x1-100;
-      h+=dayRing(rx,cy,62);
+      // the band itself sits in the middle of the day ring, lifted off the black by a soft blue light
+      h+=`<defs><radialGradient id="bg${L.x0}"><stop offset="0" stop-color="${BLUE}" stop-opacity=".45"/><stop offset=".6" stop-color="${BLUE}" stop-opacity=".12"/><stop offset="1" stop-color="${BLUE}" stop-opacity="0"/></radialGradient></defs>`;
+      h+=`<circle cx="${rx}" cy="${cy}" r="58" fill="url(#bg${L.x0})"/>`;
+      h+=dayRing(rx,cy,66);
+      h+=`<image href="band_black.png" x="${rx-46}" y="${cy-46}" width="92" height="92"/>`;
       h+=logo(L.x0+70,L.y0+44,104);
       h+=text(L.x0+22,L.y0+82,'One day.',{size:10.5,w:700,anchor:'start'});
       h+=text(L.x0+22,L.y0+96,'Everything connected.',{size:10.5,w:300,fill:'#c9cdd8',anchor:'start'});
@@ -233,6 +237,57 @@ if(V==='d'){ h='';
       ['Open the Adro app.','Go to Devices and connect your band.','Wear it tonight. Tomorrow you see your whole day.'].forEach((tx,i)=>{const y=B.y0+72+i*24;
         h+=`<circle cx="${cx-118}" cy="${y}" r="7.5" fill="#fff"/>`+text(cx-118,y+.5,String(i+1),{size:8,w:700,fill:BLUE})+text(cx-104,y,tx,{size:8.5,anchor:'start'})});
       h+=ringIcon(cx,B.y1-20,6,0,'#fff',2.4);
+    }
+  }
+}
+
+// Design E, "The band": a product box. The band itself on the lid under a soft blue light, the wordmark beside it,
+// nothing else competing with it. Inside, the two lines.
+if(V==='e'){ h='';
+  const SOFT='#9aa0ad';
+  if(SIDE==='out'){
+    h+=`<rect x="0" y="0" width="1260" height="905" fill="${INK}"/>`;
+    for(const L of LIDS){const cx=mid(L.x0,L.x1),cy=mid(L.y0,L.y1),pw=L.x1-L.x0,ph=L.y1-L.y0,id='e'+L.x0;
+      const bx=L.x0+pw*0.66;
+      h+=`<defs>
+        <radialGradient id="sp${id}" cx="50%" cy="58%" r="55%"><stop offset="0" stop-color="${BLUE}" stop-opacity=".55"/><stop offset=".45" stop-color="${BLUE}" stop-opacity=".16"/><stop offset="1" stop-color="${BLUE}" stop-opacity="0"/></radialGradient>
+        <radialGradient id="fl${id}" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#000" stop-opacity=".7"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+        <clipPath id="c${id}"><rect x="${L.x0}" y="${L.y0}" width="${pw}" height="${ph}"/></clipPath></defs>
+        <g clip-path="url(#c${id})">
+          <ellipse cx="${bx}" cy="${cy+6}" rx="${pw*0.42}" ry="${ph*0.62}" fill="url(#sp${id})"/>
+          <ellipse cx="${bx}" cy="${L.y1-22}" rx="58" ry="7" fill="url(#fl${id})"/>
+        </g>`;
+      h+=`<image href="band_black.png" x="${bx-88}" y="${cy-92}" width="176" height="176"/>`;
+      h+=logo(L.x0+74,cy-10,112);
+      h+=text(L.x0+22,cy+22,'B A N D',{size:7.5,w:600,fill:'#c9cdd8',anchor:'start',ls:3});
+      h+=text(L.x0+22,L.y1-20,'Beyond what you see.',{size:7.5,w:300,fill:SOFT,anchor:'start'});
+      h+=text(cx,mid(L.y1,L.wb),'adro band',{size:9,w:600,ls:2.5,fill:'#e8eaf0'});
+      h+=text(cx,mid(L.wt,L.y0),'Sleep  ·  Heart rate  ·  Steps  ·  Recovery',{size:7,w:400,ls:1,fill:SOFT,rot:180});
+      h+=ringIcon(mid(L.wl,L.x0),cy,11,90)+ringIcon(mid(L.x1,L.wr),cy,11,-90);
+    }
+    for(const B of BASES){const cx=mid(B.x0,B.x1)+(B.marks==='r'?-14:14);
+      h+=logo(cx,B.y0+40,92);
+      h+=text(cx,B.y0+68,'Smart fitness band',{size:8,w:600,fill:'#e8eaf0',ls:.5});
+      h+=text(cx,B.y0+84,'Sleep  ·  Heart rate  ·  Steps  ·  Recovery',{size:6.4,fill:SOFT});
+      h+=text(cx,B.y0+106,'Works with the Adro app.',{size:6.4,fill:'#c9cdd8'});
+      h+=text(cx,B.y0+118,'Not a medical device.',{size:5.6,fill:'#7d8391'});
+      h+=`<line x1="${cx-70}" x2="${cx+70}" y1="${B.y0+134}" y2="${B.y0+134}" stroke="#2a2d36" stroke-width=".8"/>`;
+      h+=text(cx,B.y0+148,'Designed in Saudi, By adro',{size:5.6,fill:SOFT,ls:.3});
+      h+=text(cx,B.y0+160,'adroapp.com',{size:6,fill:BLUE,w:600,ls:.8});
+      h+=B.marks==='r'?`<image href="marks_tr.png" x="1082" y="225" width="33" height="105"/>`:`<image href="marks_bl.png" x="148" y="588" width="32" height="107"/>`;
+    }
+  }else{
+    h+=`<rect x="0" y="0" width="1260" height="905" fill="${BLUE}"/>`;
+    for(const L of LIDS){const cx=mid(L.x0,L.x1),cy=mid(L.y0,L.y1);
+      h+=text(cx,cy-12,'Beyond what you see.',{size:17,w:300,ls:-.3});
+      h+=text(cx,cy+12,'Closer to what you feel.',{size:17,w:700,ls:-.4});
+      h+=ringIcon(cx,cy+48,6,0,'#fff',2.4);
+    }
+    for(const B of BASES){const cx=mid(B.x0,B.x1)+(B.marks==='r'?-10:10);
+      h+=text(cx,B.y0+36,'Welcome to adro.',{size:16,w:700,ls:-.4});
+      ['Open the Adro app.','Go to Devices and connect your band.','Wear it tonight. We will do the rest.'].forEach((tx,i)=>{const y=B.y0+72+i*24;
+        h+=`<circle cx="${cx-118}" cy="${y}" r="7.5" fill="#fff"/>`+text(cx-118,y+.5,String(i+1),{size:8,w:700,fill:BLUE})+text(cx-104,y,tx,{size:8.5,anchor:'start'})});
+      h+=text(cx,B.y1-18,'Always with you.',{size:8,w:300,fill:'#dfe5ff'});
     }
   }
 }
