@@ -36,7 +36,8 @@ if(SIDE==='out'){
     h+=text(cx,cy+34,'Always with you.',{size:9,fill:'#c9cdd8',w:300,ls:.3});
     // front wall (below the top): name; back wall (above, upside down): site
     h+=text(cx,mid(L.y1,L.wb),'adro band',{size:9,w:600,ls:2.5,fill:'#e8eaf0'});
-    h+=text(cx,mid(L.wt,L.y0),'adroapp.com',{size:7.5,w:400,ls:1.5,fill:'#9aa0ad',rot:180});
+    // back wall: the two lines (upside down on the flat sheet, upright once folded)
+    { const wy=mid(L.wt,L.y0); h+=`<g transform="rotate(180 ${cx} ${wy})">`+text(cx,wy-6,'Beyond what you see',{size:7.5,w:300,ls:.6,fill:'#c9cdd8'})+text(cx,wy+6,'Closer to what you feel',{size:7.5,w:600,ls:.6,fill:'#e8eaf0'})+'</g>'; }
     // end walls: the ring
     h+=ringIcon(mid(L.wl,L.x0),cy,12,90)+ringIcon(mid(L.x1,L.wr),cy,12,-90);
   }
