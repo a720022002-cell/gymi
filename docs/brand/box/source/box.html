@@ -2,6 +2,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>*{margin:0;padding:0}html,body{width:5040px;height:3620px;overflow:hidden;background:#fff}svg{display:block}</style></head>
 <body><svg id="s" width="5040" height="3620" viewBox="0 0 1260 905"></svg>
+<script>if(new URLSearchParams(location.search).get('print')){document.documentElement.style.cssText='width:1260px;height:905px';document.body.style.cssText='width:1260px;height:905px';const s=document.getElementById('s');s.setAttribute('width','1260');s.setAttribute('height','905');}</script>
 <script src="letters.js"></script>
 <script>
 // Sheet coordinates follow the supplier's dieline (1260 x 905 per sheet, traced from their file). Rendered x4.
@@ -46,7 +47,7 @@ if(SIDE==='out'){
     h+=text(cx,B.y0+106,'Works with the Adro app.',{size:6.4,fill:'#c9cdd8'});
     h+=text(cx,B.y0+118,'Not a medical device.',{size:5.6,fill:'#7d8391'});
     h+=`<line x1="${cx-70}" x2="${cx+70}" y1="${B.y0+134}" y2="${B.y0+134}" stroke="#2a2d36" stroke-width=".8"/>`;
-    h+=text(cx,B.y0+148,'Designed by Adro  ·  Made in China',{size:5.6,fill:'#7d8391'});
+    h+=text(cx,B.y0+148,'Designed in Saudi, By adro',{size:5.6,fill:'#9aa0ad',ls:.3});
     h+=text(cx,B.y0+160,'adroapp.com',{size:6,fill:BLUE,w:600,ls:.8});
     // supplier compliance marks kept where they were
     h+=B.marks==='r'?`<image href="marks_tr.png" x="1082" y="225" width="33" height="105"/>`:`<image href="marks_bl.png" x="148" y="588" width="32" height="107"/>`;
