@@ -56,10 +56,9 @@ if(SIDE==='out'){
   // inside: brand blue everywhere
   h+=`<rect x="0" y="0" width="1260" height="905" fill="${BLUE}"/>`;
   for(const L of LIDS){const cx=mid(L.x0,L.x1),cy=mid(L.y0,L.y1);
-    const lines=['Every rep counts.','Every meal counts.','Every night counts.'];
-    lines.forEach((t,i)=>h+=text(cx,cy-42+i*24,t,{size:17,w:700,ls:-.5}));
-    h+=text(cx,cy+42,'What if it all connected?',{size:10,w:400,fill:'#dfe5ff'});
-    h+=ringIcon(cx,cy+68,7,0,'#fff',2.6);
+    h+=text(cx,cy-16,'Beyond what you see',{size:19,w:700,ls:-.5});
+    h+=text(cx,cy+12,'Closer to what you feel',{size:19,w:700,ls:-.5});
+    h+=ringIcon(cx,cy+52,7,0,'#fff',2.6);
   }
   for(const B of BASES){const cx=mid(B.x0,B.x1)+(B.marks==='r'?-10:10),cy=mid(B.y0,B.y1);
     h+=text(cx,B.y0+36,'Welcome to adro.',{size:16,w:700,ls:-.4});
