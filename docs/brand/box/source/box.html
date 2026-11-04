@@ -162,6 +162,80 @@ if(V==='c'){ h='';
     }
   }
 }
+
+// Design D, "One day": the lid is one day of your life as a 24-hour ring (the adro ring is a day). Sleep, meals,
+// the workout, steps and heart rate all on one circle: everything Adro connects. Midnight at the top.
+if(V==='d'){ h='';
+  const NAVY='#1f37b8', SOFT='#9aa0ad';
+  const pol=(cx,cy,r,hr)=>{const a=(hr/24)*Math.PI*2-Math.PI/2;return [cx+Math.cos(a)*r,cy+Math.sin(a)*r];};
+  const arc=(cx,cy,r,h0,h1,col,w,op=1)=>{const [x0,y0]=pol(cx,cy,r,h0),[x1,y1]=pol(cx,cy,r,h1);const large=((h1-h0+24)%24)>12?1:0;
+    return `<path d="M${x0.toFixed(2)} ${y0.toFixed(2)} A${r} ${r} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round" stroke-opacity="${op}"/>`;};
+  // A made-up but believable day: heart rate through 24 hours.
+  const hrAt=t=>{let v=58;if(t>=23||t<6.5)v=52+3*Math.sin(t*2.1);else v=70+8*Math.sin(t*1.7)+5*Math.sin(t*3.9);
+    if(t>=18.5&&t<19.6)v=128+18*Math.sin((t-18.5)*9);if(t>=7.6&&t<8)v=96;return v;};
+  const dayRing=(cx,cy,R)=>{let o='';
+    // hour ticks and four labels
+    for(let i=0;i<24;i++){const [a,b]=pol(cx,cy,R+12,i),[c2,d2]=pol(cx,cy,R+(i%6?15:18),i);o+=`<line x1="${a.toFixed(1)}" y1="${b.toFixed(1)}" x2="${c2.toFixed(1)}" y2="${d2.toFixed(1)}" stroke="#5a6070" stroke-width="${i%6?.5:.9}"/>`;}
+    [[0,'00'],[6,'06'],[12,'12'],[18,'18']].forEach(([hh,l])=>{const [x,y]=pol(cx,cy,R+26,hh);o+=text(x,y,l,{size:5.5,fill:SOFT,w:600});});
+    // heart rate as a line around the outside
+    let d='';for(let i=0;i<=480;i++){const t=i/20;const r=R+2+(hrAt(t)-50)*0.11;const [x,y]=pol(cx,cy,r,t);d+=(i?'L':'M')+x.toFixed(2)+' '+y.toFixed(2);}
+    o+=`<path d="${d}" fill="none" stroke="#ffffff" stroke-opacity=".55" stroke-width=".7"/>`;
+    // the day track, sleep and the workout
+    o+=`<circle cx="${cx}" cy="${cy}" r="${R-8}" fill="none" stroke="#1c1f28" stroke-width="7"/>`;
+    o+=arc(cx,cy,R-8,23,6.5,NAVY,7);
+    o+=arc(cx,cy,R-8,18.5,19.6,BLUE,7);
+    // meals
+    [[7.7,3],[13.2,3.4],[16.5,2.2],[20.3,3.2]].forEach(([t,rr])=>{const [x,y]=pol(cx,cy,R-8,t);o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rr}" fill="#fff"/>`;});
+    // steps: little bars inside, taller when you moved more
+    for(let i=0;i<48;i++){const t=i/2;const st=(t>=7&&t<9?.7:t>=12&&t<14?.6:t>=17&&t<20?1:t>=9&&t<23?.25:0.04);const [a,b]=pol(cx,cy,R-17,t),[c2,d2]=pol(cx,cy,R-17-2-st*10,t);
+      o+=`<line x1="${a.toFixed(1)}" y1="${b.toFixed(1)}" x2="${c2.toFixed(1)}" y2="${d2.toFixed(1)}" stroke="${BLUE}" stroke-opacity="${(.35+st*.55).toFixed(2)}" stroke-width="1.1" stroke-linecap="round"/>`;}
+    // now: the ring's gap, like the logo
+    return o;};
+  const legend=(x,y)=>{const items=[['Sleep',NAVY,'bar'],['Food','#fff','dot'],['Training',BLUE,'bar'],['Steps',BLUE,'tick'],['Heart','#fff','line']];let o='';
+    items.forEach(([l,col,k],i)=>{const yy=y+i*11;o+=k==='dot'?`<circle cx="${x+4}" cy="${yy}" r="2.2" fill="${col}"/>`:k==='line'?`<path d="M${x} ${yy} l2 -2 l2 4 l2 -3 l2 1" fill="none" stroke="${col}" stroke-opacity=".7" stroke-width=".7"/>`:k==='tick'?`<line x1="${x+4}" y1="${yy-3}" x2="${x+4}" y2="${yy+3}" stroke="${col}" stroke-width="1.2" stroke-linecap="round"/>`:`<line x1="${x}" y1="${yy}" x2="${x+8}" y2="${yy}" stroke="${col}" stroke-width="3.2" stroke-linecap="round"/>`;
+      o+=text(x+14,yy,t(l),{size:6,fill:SOFT,anchor:'start'});});return o;};
+  const t=x=>x;
+  if(SIDE==='out'){
+    h+=`<rect x="0" y="0" width="1260" height="905" fill="${INK}"/>`;
+    for(const L of LIDS){const cy=mid(L.y0,L.y1);
+      const rx=L.x1-100;
+      h+=dayRing(rx,cy,62);
+      h+=logo(L.x0+70,L.y0+44,104);
+      h+=text(L.x0+22,L.y0+82,'One day.',{size:10.5,w:700,anchor:'start'});
+      h+=text(L.x0+22,L.y0+96,'Everything connected.',{size:10.5,w:300,fill:'#c9cdd8',anchor:'start'});
+      h+=legend(L.x0+24,L.y0+128);
+      h+=text(mid(L.x0,L.x1),mid(L.y1,L.wb),'adro band',{size:9,w:600,ls:2.5,fill:'#e8eaf0'});
+      h+=text(mid(L.x0,L.x1),mid(L.wt,L.y0),'adroapp.com',{size:7.5,w:400,ls:1.5,fill:SOFT,rot:180});
+      h+=text(mid(L.wl,L.x0),cy,'00:00',{size:7,w:600,fill:SOFT,rot:90,ls:1});
+      h+=text(mid(L.x1,L.wr),cy,'24:00',{size:7,w:600,fill:SOFT,rot:-90,ls:1});
+    }
+    for(const B of BASES){const cx=mid(B.x0,B.x1)+(B.marks==='r'?-14:14);
+      h+=logo(cx,B.y0+40,92);
+      h+=text(cx,B.y0+68,'Smart fitness band',{size:8,w:600,fill:'#e8eaf0',ls:.5});
+      h+=text(cx,B.y0+84,'Sleep  ·  Heart rate  ·  Steps  ·  Recovery',{size:6.4,fill:SOFT});
+      h+=text(cx,B.y0+106,'Works with the Adro app.',{size:6.4,fill:'#c9cdd8'});
+      h+=text(cx,B.y0+118,'Not a medical device.',{size:5.6,fill:'#7d8391'});
+      h+=`<line x1="${cx-70}" x2="${cx+70}" y1="${B.y0+134}" y2="${B.y0+134}" stroke="#2a2d36" stroke-width=".8"/>`;
+      h+=text(cx,B.y0+148,'Designed in Saudi, By adro',{size:5.6,fill:SOFT,ls:.3});
+      h+=text(cx,B.y0+160,'adroapp.com',{size:6,fill:BLUE,w:600,ls:.8});
+      h+=B.marks==='r'?`<image href="marks_tr.png" x="1082" y="225" width="33" height="105"/>`:`<image href="marks_bl.png" x="148" y="588" width="32" height="107"/>`;
+    }
+  }else{
+    h+=`<rect x="0" y="0" width="1260" height="905" fill="${BLUE}"/>`;
+    for(const L of LIDS){const cx=mid(L.x0,L.x1),cy=mid(L.y0,L.y1);
+      // the same day ring, very faint, behind the words
+      h+=`<g opacity=".18">${dayRing(cx,cy,74).replace(/#1c1f28/g,'#ffffff').replace(new RegExp(BLUE,'g'),'#ffffff').replace(new RegExp(NAVY,'g'),'#ffffff')}</g>`;
+      h+=text(cx,cy-10,'Beyond what you see.',{size:15,w:300,ls:-.3});
+      h+=text(cx,cy+12,'Closer to what you feel.',{size:15,w:700,ls:-.4});
+    }
+    for(const B of BASES){const cx=mid(B.x0,B.x1)+(B.marks==='r'?-10:10);
+      h+=text(cx,B.y0+36,'Welcome to adro.',{size:16,w:700,ls:-.4});
+      ['Open the Adro app.','Go to Devices and connect your band.','Wear it tonight. Tomorrow you see your whole day.'].forEach((tx,i)=>{const y=B.y0+72+i*24;
+        h+=`<circle cx="${cx-118}" cy="${y}" r="7.5" fill="#fff"/>`+text(cx-118,y+.5,String(i+1),{size:8,w:700,fill:BLUE})+text(cx-104,y,tx,{size:8.5,anchor:'start'})});
+      h+=ringIcon(cx,B.y1-20,6,0,'#fff',2.4);
+    }
+  }
+}
 if(DIE) h+=`<image href="die_${SIDE}.png" x="0" y="0" width="1260" height="905"/>`;
 S.innerHTML=h;
 </script></body></html>
