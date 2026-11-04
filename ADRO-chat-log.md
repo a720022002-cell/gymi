@@ -1163,6 +1163,9 @@ Passwords and keys are left out on purpose.
 
 - **Arabic digits in every field (4 Nov 2026):** one app text box (src/components/TextInput.tsx) used by every screen (45 files): numbers typed on an Arabic keyboard (٠–٩, ۰–۹) become 0–9 as you type, in every field. In number fields the Arabic decimal mark ٫ and a comma become "." and ٬ goes (٢٢٫٥ → 22.5). Needs "حدثه".
 
+### 4 Nov 2026: OTA (حدثه) for build 21
+- Update group c6ecc136 (main b78cfa9, runtime ebc81514): Live Activity follows the open exercise, Add exercise, green Finish, health alerts, Arabic digits to 0-9.
+
 ---
 
 
