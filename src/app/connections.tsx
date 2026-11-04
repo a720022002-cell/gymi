@@ -279,7 +279,7 @@ export default function Connections() {
             {(
               [
                 ['morning', 'Morning readiness note', 'After you wake up: how ready you are today, from last night.'],
-                ['illness', 'Illness warning', 'When your temperature, breathing or oxygen and your heart show signs of getting sick.'],
+                ['illness', 'Health alerts', 'Signs of getting sick, a raised or very high heart rate, low HRV or oxygen, faster breathing and short sleep. Compared with your usual.'],
               ] as const
             ).map(([k, title, sub], i) => (
               <Row key={k} style={{ alignItems: 'center', marginTop: i ? 14 : 0 }}>

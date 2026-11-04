@@ -8,7 +8,7 @@ import * as TaskManager from 'expo-task-manager';
 import { translate } from '@/i18n';
 
 import { loadCycleToday } from './cyclePhase';
-import { type DeviceDay, deviceBrief, illnessCheck, syncInBackground } from './devices';
+import { type DeviceDay, deviceBrief, healthAlerts, syncInBackground } from './devices';
 import { localDay } from './nutrition';
 import { loadPrefs } from './reminders.shared';
 import { supabase } from './supabase';
@@ -74,10 +74,11 @@ async function morningNote(uid: string, days: DeviceDay[]) {
   // The luteal phase raises temperature by itself: the checks allow for it.
   const luteal = (await loadCycleToday(uid))?.phase === 'Luteal';
   const brief = deviceBrief(days, today, { luteal });
-  const sick = illnessCheck(days, today, { luteal });
+  // The most important health alert, when it's one to act on (see a doctor if it goes on).
+  const alert = healthAlerts(days, today, { luteal }).find((a) => a.level === 'high');
   const sleep = night.sleep_h != null ? t('You slept {h} h.', { h: Math.round(night.sleep_h * 10) / 10 }) : '';
-  const [title, body] = sick
-    ? [t('Your body may be fighting something'), t('Rest, drink water and sleep early. Open Adro to see why.')]
+  const [title, body] = alert
+    ? [t(alert.title), t('Rest, drink water and sleep early. Open Adro to see why.')]
     : brief?.readiness === 'low'
       ? [t('Take it easier today'), `${sleep} ${t('Your watch says you haven’t fully recovered. Open Adro to make today’s workout lighter.')}`.trim()]
       : brief?.readiness === 'good'

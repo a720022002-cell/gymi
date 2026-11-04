@@ -1152,6 +1152,13 @@ Passwords and keys are left out on purpose.
 
 - **Green Finish (4 Nov 2026):** when every set of the workout is done, the Finish button at the top turns green with a check. Needs "حدثه".
 
+- **Health alerts (4 Nov 2026):** the illness card is now a health card with sensible alerts, most important first (lib/devices healthAlerts), each against your own usual and mostly needing a few nights:
+  - high: signs of getting sick (as before); temperature +1 °C or more; blood oxygen under 92% two nights in a row; resting heart rate 100+ on two of the last three nights.
+  - warn: resting heart rate 5+ over your usual for 3 days; HRV 15%+ under your usual for 3 days; breathing 2+ faster two nights; under 6 h of sleep a night over the last 3 nights.
+  - info: bedtime moving by 1.5 h+ from night to night.
+  - Oxygen: the night's middle value (median) of 3+ readings with fixed limits, not an average; one low night no longer warns (a loose watch). Very low oxygen alone needs two nights.
+  - Connections toggle renamed "Health alerts"; the morning notification uses the top serious alert. Needs "حدثه".
+
 ---
 
 
