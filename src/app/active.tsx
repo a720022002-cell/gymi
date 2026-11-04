@@ -258,9 +258,19 @@ export default function Active() {
         back
         right={
           <Springy onPress={() => finish()} disabled={saving} scaleTo={1.08}>
-            <Glass style={{ height: 44, borderRadius: 22, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' }}>
-              <Text weight={700}>{t(saving ? 'Saving…' : 'Finish')}</Text>
-            </Glass>
+            {tot > 0 && dn === tot ? (
+              // Every set is done: Finish turns green so it's the obvious next tap.
+              <View style={{ height: 44, borderRadius: 22, paddingHorizontal: 16, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: c.up }}>
+                <Icon name="check" size={16} color="#FFFFFF" strokeWidth={2.6} />
+                <Text weight={700} color="#FFFFFF">
+                  {t(saving ? 'Saving…' : 'Finish')}
+                </Text>
+              </View>
+            ) : (
+              <Glass style={{ height: 44, borderRadius: 22, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' }}>
+                <Text weight={700}>{t(saving ? 'Saving…' : 'Finish')}</Text>
+              </Glass>
+            )}
           </Springy>
         }>
         <Row style={{ justifyContent: 'space-between', marginBottom: 8 }}>
