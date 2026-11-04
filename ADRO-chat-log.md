@@ -1168,6 +1168,8 @@ Passwords and keys are left out on purpose.
 
 - **Meal photo waits for Analyze (4 Nov 2026):** after taking a meal photo (or choosing one), it shows the photo with the "Describe the dish" box still there, plus "Analyze meal" and "Retake photo". Nothing goes to the AI until Analyze. Label photos and photos picked for another screen still go straight on. Needs "حدثه".
 
+- **Adro QR code (4 Nov 2026):** docs/brand/qr: branded QR (round dots, the adro ring in the middle, error correction H) in white, white with "Get adro", dark and blue, SVG + PNG; all checked to scan. It opens adroapp.com/get (new page public/site/get.html + middleware route): the website before launch; on launch day set LIVE = true there and iPhones go to the App Store (id6826500429). Apple's App Clip codes need an App Clip in the app and are made by Apple, so this uses a normal QR.
+
 ---
 
 

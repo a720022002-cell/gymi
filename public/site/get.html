@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Get Adro</title>
+<meta name="robots" content="noindex">
+<style>html,body{margin:0;height:100%;background:#0d0e12;color:#fff;font-family:-apple-system,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;text-align:center}a{color:#6f86ff}</style>
+<script>
+// The QR code on the box and in print opens adroapp.com/get. It never changes; this page decides where it goes.
+// LIVE: true once Adro is on the App Store (flip it on launch day). Until then everyone lands on the website.
+var LIVE = false;
+var IOS = 'https://apps.apple.com/app/id6826500429';
+var SITE = 'https://adroapp.com/';
+var ua = navigator.userAgent || '';
+var apple = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && 'ontouchend' in document);
+location.replace(LIVE && apple ? IOS : SITE);
+</script></head>
+<body><p>Opening Adro… <a href="https://adroapp.com/">adroapp.com</a></p></body></html>
