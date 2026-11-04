@@ -59,11 +59,14 @@ if(SIDE==='out'){
     h+=text(cx,cy+12,'Closer to what you feel',{size:19,w:700,ls:-.5});
     h+=ringIcon(cx,cy+52,7,0,'#fff',2.6);
   }
-  for(const B of BASES){const cx=mid(B.x0,B.x1)+(B.marks==='r'?-10:10),cy=mid(B.y0,B.y1);
-    h+=text(cx,B.y0+36,'Welcome to adro.',{size:16,w:700,ls:-.4});
+  for(const B of BASES){const lx=B.x0+26,qx=B.x1-74,qy=B.y0+84,qs=104;
+    h+=text(lx,B.y0+36,'Welcome to adro.',{size:16,w:700,ls:-.4,anchor:'start'});
     const st=['Open the Adro app.','Go to Devices and connect your band.','Wear it tonight. We will do the rest.'];
-    st.forEach((t,i)=>{const y=B.y0+72+i*24;h+=`<circle cx="${cx-118}" cy="${y}" r="7.5" fill="#fff"/>`+text(cx-118,y+.5,String(i+1),{size:8,w:700,fill:BLUE})+text(cx-104,y,t,{size:8.5,w:400,anchor:'start'})});
-    h+=text(cx,B.y1-18,'Always with you.',{size:8,w:300,fill:'#dfe5ff'});
+    st.forEach((t,i)=>{const y=B.y0+72+i*24;h+=`<circle cx="${lx+7.5}" cy="${y}" r="7.5" fill="#fff"/>`+text(lx+7.5,y+.5,String(i+1),{size:8,w:700,fill:BLUE})+text(lx+22,y,t,{size:8.5,w:400,anchor:'start'})});
+    h+=text(lx,B.y1-18,'Always with you.',{size:8,w:300,fill:'#dfe5ff',anchor:'start'});
+    // the QR code: opens adroapp.com/get (the website now, the App Store from launch day)
+    h+=`<image href="qr_blue.svg" x="${qx-qs/2}" y="${qy-qs/2}" width="${qs}" height="${qs}"/>`;
+    h+=text(qx,qy+qs/2+10,'Scan to download the app',{size:6.6,w:600,ls:.2});
   }
 }
 
