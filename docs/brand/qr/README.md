@@ -8,6 +8,7 @@ All versions open **https://adroapp.com/get** (checked: they scan at small sizes
 | adro-qr-plain.svg / .png | White, no text |
 | adro-qr-dark.svg / .png | On black (the black box, dark slides) |
 | adro-qr-blue.svg / .png | On Adro blue |
+| adro-qr-round*.svg / .png | Round version: the code inside a blue circle, round eyes, light dots filling the rest (white, white with "Get adro", dark, blue) |
 
 The SVG files are for print (sharp at any size). Keep the code at least 2 cm wide, with a small quiet border around it.
 
