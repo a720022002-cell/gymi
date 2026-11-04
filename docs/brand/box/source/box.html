@@ -1,0 +1,72 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0}html,body{width:5040px;height:3620px;overflow:hidden;background:#fff}svg{display:block}</style></head>
+<body><svg id="s" width="5040" height="3620" viewBox="0 0 1260 905"></svg>
+<script src="letters.js"></script>
+<script>
+// Sheet coordinates follow the supplier's dieline (1260 x 905 per sheet, traced from their file). Rendered x4.
+const q=new URLSearchParams(location.search), SIDE=q.get('s')||'out', DIE=q.get('die')!=='0';
+const BLUE='#3355FF', INK='#0d0e12';
+const S=document.getElementById('s'); let h='';
+const WM={x0:30,y0:-745,w:2229,h:775,ring:{cx:1953.5,cy:-271.5,r:228.5,stroke:130}};
+// adro wordmark: centred at (cx,cy), width w, rotation deg, letter colour
+function logo(cx,cy,w,rot=0,col='#fff',ring=BLUE){const k=w/WM.w;
+  return `<g transform="translate(${cx} ${cy}) rotate(${rot}) scale(${k}) translate(${-WM.x0-WM.w/2} ${-WM.y0-WM.h/2})">
+  <path fill="${col}" d="${window.LETTERS}"/>
+  <circle cx="${WM.ring.cx}" cy="${WM.ring.cy}" r="${WM.ring.r}" fill="none" stroke="${ring}" stroke-width="${WM.ring.stroke}" stroke-linecap="round"
+   stroke-dasharray="${2*Math.PI*WM.ring.r*.8} 9999" transform="rotate(-90 ${WM.ring.cx} ${WM.ring.cy})"/></g>`;}
+function ringIcon(cx,cy,r,rot=0,col=BLUE,sw){sw=sw||r*.42;const C=2*Math.PI*r;
+  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${col}" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${C*.8} 9999" transform="rotate(${rot-90} ${cx} ${cy})"/>`;}
+function text(x,y,str,o={}){const a=o.anchor||'middle';return `<text x="${x}" y="${y}" text-anchor="${a}" dominant-baseline="middle" font-family="Sora" font-weight="${o.w||400}" font-size="${o.size||8}" fill="${o.fill||'#fff'}" letter-spacing="${o.ls||0}" opacity="${o.op??1}" ${o.rot!=null?`transform="rotate(${o.rot} ${x} ${y})"`:''}>${str}</text>`;}
+const mid=(a,b)=>(a+b)/2;
+// geometry from the dieline (centre panel and its four walls)
+const LIDS=[{x0:146,x1:524,y0:157,y1:355,wt:70,wb:440,wl:62,wr:609},{x0:734,x1:1112,y0:565,y1:764,wt:480,wb:850,wl:648,wr:1196}];
+const BASES=[{x0:750,x1:1116,y0:151,y1:339,wt:70,wb:420,wl:670,wr:1196,marks:'r'},{x0:142,x1:508,y0:581,y1:769,wt:500,wb:850,wl:62,wr:588,marks:'l'}];
+
+if(SIDE==='out'){
+  h+=`<rect x="0" y="0" width="1260" height="905" fill="${INK}"/>`;
+  for(const L of LIDS){const cx=mid(L.x0,L.x1),cy=mid(L.y0,L.y1),pw=L.x1-L.x0;
+    // lid top: wordmark + line, a soft blue glow and a large faint ring
+    h+=`<defs><radialGradient id="g${cx}" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="${BLUE}" stop-opacity=".22"/><stop offset="1" stop-color="${BLUE}" stop-opacity="0"/></radialGradient>
+      <clipPath id="c${cx}"><rect x="${L.x0}" y="${L.y0}" width="${pw}" height="${L.y1-L.y0}"/></clipPath></defs>
+      <g clip-path="url(#c${cx})"><rect x="${L.x0}" y="${L.y0}" width="${pw}" height="${L.y1-L.y0}" fill="url(#g${cx})"/>
+      </g>`;
+    h+=logo(cx,cy-8,pw*.46);
+    h+=text(cx,cy+34,'Always with you.',{size:9,fill:'#c9cdd8',w:300,ls:.3});
+    // front wall (below the top): name; back wall (above, upside down): site
+    h+=text(cx,mid(L.y1,L.wb),'adro band',{size:9,w:600,ls:2.5,fill:'#e8eaf0'});
+    h+=text(cx,mid(L.wt,L.y0),'adroapp.com',{size:7.5,w:400,ls:1.5,fill:'#9aa0ad',rot:180});
+    // end walls: the ring
+    h+=ringIcon(mid(L.wl,L.x0),cy,12,90)+ringIcon(mid(L.x1,L.wr),cy,12,-90);
+  }
+  for(const B of BASES){const cx=mid(B.x0,B.x1)+(B.marks==='r'?-14:14),cy=mid(B.y0,B.y1);
+    h+=logo(cx,B.y0+40,92);
+    h+=text(cx,B.y0+68,'Smart fitness band',{size:8,w:600,fill:'#e8eaf0',ls:.5});
+    h+=text(cx,B.y0+84,'Sleep  ·  Heart rate  ·  Steps  ·  Recovery',{size:6.4,fill:'#9aa0ad'});
+    h+=text(cx,B.y0+106,'Works with the Adro app.',{size:6.4,fill:'#c9cdd8'});
+    h+=text(cx,B.y0+118,'Not a medical device.',{size:5.6,fill:'#7d8391'});
+    h+=`<line x1="${cx-70}" x2="${cx+70}" y1="${B.y0+134}" y2="${B.y0+134}" stroke="#2a2d36" stroke-width=".8"/>`;
+    h+=text(cx,B.y0+148,'Designed by Adro  ·  Made in China',{size:5.6,fill:'#7d8391'});
+    h+=text(cx,B.y0+160,'adroapp.com',{size:6,fill:BLUE,w:600,ls:.8});
+    // supplier compliance marks kept where they were
+    h+=B.marks==='r'?`<image href="marks_tr.png" x="1082" y="225" width="33" height="105"/>`:`<image href="marks_bl.png" x="148" y="588" width="32" height="107"/>`;
+  }
+}else{
+  // inside: brand blue everywhere
+  h+=`<rect x="0" y="0" width="1260" height="905" fill="${BLUE}"/>`;
+  for(const L of LIDS){const cx=mid(L.x0,L.x1),cy=mid(L.y0,L.y1);
+    const lines=['Every rep counts.','Every meal counts.','Every night counts.'];
+    lines.forEach((t,i)=>h+=text(cx,cy-42+i*24,t,{size:17,w:700,ls:-.5}));
+    h+=text(cx,cy+42,'What if it all connected?',{size:10,w:400,fill:'#dfe5ff'});
+    h+=ringIcon(cx,cy+68,7,0,'#fff',2.6);
+  }
+  for(const B of BASES){const cx=mid(B.x0,B.x1)+(B.marks==='r'?-10:10),cy=mid(B.y0,B.y1);
+    h+=text(cx,B.y0+36,'Welcome to adro.',{size:16,w:700,ls:-.4});
+    const st=['Open the Adro app.','Go to Devices and connect your band.','Wear it tonight. We will do the rest.'];
+    st.forEach((t,i)=>{const y=B.y0+72+i*24;h+=`<circle cx="${cx-118}" cy="${y}" r="7.5" fill="#fff"/>`+text(cx-118,y+.5,String(i+1),{size:8,w:700,fill:BLUE})+text(cx-104,y,t,{size:8.5,w:400,anchor:'start'})});
+    h+=text(cx,B.y1-18,'Always with you.',{size:8,w:300,fill:'#dfe5ff'});
+  }
+}
+if(DIE) h+=`<image href="die_${SIDE}.png" x="0" y="0" width="1260" height="905"/>`;
+S.innerHTML=h;
+</script></body></html>
