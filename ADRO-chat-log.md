@@ -1146,6 +1146,8 @@ Passwords and keys are left out on purpose.
 
 - **Cards cut (3 Nov 2026):** the owner's 21 s edit with real app cards popping up in sync with each shot (readiness, check-in, live swim/run, week plan, set logged, new best, workout done). The ending is left as it was. File: docs/marketing/adro-cards-cut/adro-cards-cut.mp4, overlay source in source/overlay.html.
 
+- **Live Activity follows the open exercise (4 Nov 2026):** tapping an exercise in the top bar of the workout now updates the Lock Screen / Dynamic Island right away, before any set is logged (train focus + currentSet(s, focus)); its buttons act on that exercise too. Removing an exercise resets it to the first one with sets left. Needs "حدثه".
+
 ---
 
 

@@ -104,11 +104,13 @@ export default function Active() {
 
   const exDone = (x: SessionEx) => x.sets.length > 0 && x.sets.every((y) => y.done);
   const firstOpen = Math.max(0, s.ex.findIndex((x) => !exDone(x)));
-  const page = Math.min(s.ex.length - 1, Math.max(0, pageSel ?? firstOpen));
+  const page = Math.min(s.ex.length - 1, Math.max(0, pageSel ?? train.focus ?? firstOpen));
   const goPage = (i: number) => {
     if (i < 0 || i >= s.ex.length) return;
     setNoteAt(null);
     setPageSel(i);
+    // The Live Activity follows the exercise you open, even before a set is logged.
+    train.setFocus(i);
     tabsRef.current?.scrollTo({ x: Math.max(0, (tabX.current[i] ?? 0) - 20), animated: true });
   };
 
@@ -182,6 +184,9 @@ export default function Active() {
     setNoteAt(null);
     if (!old) return;
     update((x) => ({ ...x, ex: x.ex.filter((_, i) => i !== ei) }));
+    // The places after it move up by one: the Live Activity goes back to the first exercise with sets left.
+    train.setFocus(null);
+    setPageSel(null);
     const p = train.plan;
     const w = p?.workouts[s.name];
     if (fromPlan && p && w) train.updatePlan({ workouts: { ...p.workouts, [s.name]: { ...w, ex: w.ex.filter((y) => y.id !== old.id) } } });

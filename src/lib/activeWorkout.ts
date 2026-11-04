@@ -65,7 +65,10 @@ function adviceKg(x: SessionEx, timed: boolean, bodyweight: boolean, hist: SetIn
 }
 
 /** The set you're on: the first one not done, or null when all are done. */
-export function currentSet(s: Session): { ei: number; si: number } | null {
+export function currentSet(s: Session, focus?: number | null): { ei: number; si: number } | null {
+  // The exercise open on the workout screen, while it still has sets to do.
+  const f = focus != null ? s.ex[focus] : undefined;
+  if (f && f.sets.some((y) => !y.done)) return { ei: focus!, si: f.sets.findIndex((y) => !y.done) };
   const ei = s.ex.findIndex((x) => x.sets.some((y) => !y.done));
   return ei < 0 ? null : { ei, si: s.ex[ei].sets.findIndex((y) => !y.done) };
 }

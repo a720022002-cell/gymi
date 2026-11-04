@@ -102,7 +102,7 @@ function LiveActivity() {
     if (!s) return;
     // Turned off in You → Widgets.
     if (!liveActivity) return syncWorkoutActivity(null);
-    const cur = currentSet(s);
+    const cur = currentSet(s, train.focus);
     const x = cur ? s.ex[cur.ei] : null;
     const st = x && cur ? x.sets[cur.si] : null;
     const w = st ? +(st.w || st.lw) || 0 : 0;
@@ -134,7 +134,7 @@ function LiveActivity() {
       total: s.ex.reduce((a, e) => a + e.sets.length, 0),
       L: { rest: t('Rest'), next: t('Next'), sets: t('sets'), done: t('Done'), skip: t('Skip') },
     });
-  }, [s, rest, lang, t, Wf, train.logs, train.plan, food.day, food.today, food.water, liveActivity]);
+  }, [s, rest, lang, t, Wf, train.logs, train.plan, train.focus, food.day, food.today, food.water, liveActivity]);
 
   // The buttons on the Live Activity (iPhone, iOS 17+): change the set you're on, log it, or skip the rest, without
   // opening the app. They read the latest workout from a ref, so the listener is set up once.
@@ -155,7 +155,7 @@ function LiveActivity() {
         // A glass of water goes to today's water, like the water button on the workout screen.
         if (a === 'water') return void food.addWater(250, 'Water', food.today);
         if (a === 'skip') return train.setRest(null);
-        const cur = currentSet(s);
+        const cur = currentSet(s, train.focus);
         if (!cur) return;
         const x = s.ex[cur.ei];
         const st = x.sets[cur.si];

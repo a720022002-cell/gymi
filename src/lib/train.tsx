@@ -120,6 +120,9 @@ type Train = {
   /** Heaviest weight in your last few normal (not lighter or deload) sessions on each exercise. */
   top: Record<string, number>;
   session: Session | null;
+  /** The exercise open on the workout screen (its index), so the Live Activity follows it. Null: the first one with sets left. */
+  focus: number | null;
+  setFocus: (i: number | null) => void;
   /** The rest timer between sets (the workout screen and the Live Activity share it). */
   rest: Rest | null;
   setRest: (r: Rest | null) => void;
@@ -227,6 +230,7 @@ export function TrainProvider({ children }: PropsWithChildren) {
   const [plan, setPlan] = useState<TrainPlan | null>(null);
   const [logs, setLogs] = useState<WorkoutLog[]>([]);
   const [session, setSessionState] = useState<Session | null>(null);
+  const [focus, setFocus] = useState<number | null>(null);
   const [rest, setRest] = useState<Rest | null>(null);
   // Plate jumps in your unit (2.5 kg or 5 lb), kept in kg.
   const { unit } = useSettings();
@@ -638,7 +642,10 @@ export function TrainProvider({ children }: PropsWithChildren) {
     (s: Session | null) => {
       setSessionState(s);
       // No workout, no rest.
-      if (!s) setRest(null);
+      if (!s) {
+        setRest(null);
+        setFocus(null);
+      }
       if (!userId) return;
       if (s) AsyncStorage.setItem(`${SESSION_KEY}.${userId}`, JSON.stringify(s)).catch(() => {});
       else AsyncStorage.removeItem(`${SESSION_KEY}.${userId}`).catch(() => {});
@@ -981,8 +988,8 @@ export function TrainProvider({ children }: PropsWithChildren) {
   );
 
   const value = useMemo<Train>(
-    () => ({ ready, loadError, reload: () => setLoadTry((n) => n + 1), setupDone, plan, savePlan, changePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, lastNotes, best, top, session, rest, setRest, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, coachOffer, coachProgram: offer, acceptCoach, declineCoach, recTools, setRecTools, addLog, editLog, deleteLog, preg, setPreg }),
-    [ready, loadError, setupDone, plan, savePlan, changePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, lastNotes, best, top, session, rest, setRest, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, coachOffer, offer, acceptCoach, declineCoach, recTools, setRecTools, addLog, editLog, deleteLog, preg, setPreg],
+    () => ({ ready, loadError, reload: () => setLoadTry((n) => n + 1), setupDone, plan, savePlan, changePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, lastNotes, best, top, session, focus, setFocus, rest, setRest, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, coachOffer, coachProgram: offer, acceptCoach, declineCoach, recTools, setRecTools, addLog, editLog, deleteLog, preg, setPreg }),
+    [ready, loadError, setupDone, plan, savePlan, changePlan, updatePlan, today, todayIdx, week, setWeek, editWeek, doneIdx, todayName, todayLog, logs, last, lastNotes, best, top, session, focus, setFocus, rest, setRest, stale, discardSession, startWorkout, setSession, finishWorkout, streak, bestStreak, history, coach, coachOffer, offer, acceptCoach, declineCoach, recTools, setRecTools, addLog, editLog, deleteLog, preg, setPreg],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
