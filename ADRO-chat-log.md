@@ -1170,6 +1170,8 @@ Passwords and keys are left out on purpose.
 
 - **Adro QR code (4 Nov 2026):** docs/brand/qr: branded QR (round dots, the adro ring in the middle, error correction H) in white, white with "Get adro", dark and blue, SVG + PNG; all checked to scan. It opens adroapp.com/get (new page public/site/get.html + middleware route): the website before launch; on launch day set LIVE = true there and iPhones go to the App Store (id6826500429). Apple's App Clip codes need an App Clip in the app and are made by Apple, so this uses a normal QR.
 
+- **adroapp.com/get page (4 Nov 2026):** the QR's page now shows two buttons, App Store and Google Play (English/Arabic by phone language, your phone's store first in blue). Both say "Soon" until their links are set at the top of public/site/get.html (IOS / ANDROID).
+
 ---
 
 

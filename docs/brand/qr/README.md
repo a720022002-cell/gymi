@@ -14,8 +14,8 @@ The SVG files are for print (sharp at any size). Keep the code at least 2 cm wid
 
 ## Where it goes
 
-adroapp.com/get is a small page (public/site/get.html):
-- **Before launch** (now): opens the website, adroapp.com.
-- **On launch day:** change `LIVE = false` to `LIVE = true` in public/site/get.html. Then iPhones go straight to the App Store page (apps.apple.com/app/id6826500429) and everyone else to the website.
+adroapp.com/get (public/site/get.html) is a small page with two buttons, **App Store** and **Google Play**, in English or Arabic (from the phone's language). The button for your own phone comes first, in blue.
+- **Now:** both say "Soon".
+- **When a store is live:** put its link at the top of public/site/get.html (`IOS = '…'`, `ANDROID = '…'`). The App Store link is `https://apps.apple.com/app/id6826500429`.
 
-The printed code never has to change: only the page behind it does. Android can be added the same way when the Play Store link exists.
+The printed code never has to change: only the page behind it does.

@@ -1,16 +1,85 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Get Adro</title>
 <meta name="robots" content="noindex">
-<style>html,body{margin:0;height:100%;background:#0d0e12;color:#fff;font-family:-apple-system,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;text-align:center}a{color:#6f86ff}</style>
+<meta name="theme-color" content="#0d0e12">
+<link rel="icon" href="/site/img/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&family=Manrope:wght@400;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#3355FF;--ink:#0d0e12;--sec:#9aa0ad;--card:#16181f;--line:#262a33}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--ink);color:#fff;font-family:Manrope,'IBM Plex Sans Arabic',system-ui,sans-serif}
+html[lang=ar] body{font-family:'IBM Plex Sans Arabic',Manrope,system-ui,sans-serif}
+body{display:flex;align-items:center;justify-content:center;padding:32px 20px;min-height:100vh;
+  background:radial-gradient(60% 45% at 50% 30%,rgba(51,85,255,.28),rgba(51,85,255,0) 70%),var(--ink)}
+main{width:100%;max-width:400px;text-align:center}
+.logo{width:150px;height:auto;display:block;margin:0 auto 22px}
+h1{font-family:Sora,'IBM Plex Sans Arabic',sans-serif;font-size:26px;line-height:1.2;margin:0 0 8px;letter-spacing:-.02em}
+html[lang=ar] h1{font-family:'IBM Plex Sans Arabic',sans-serif;letter-spacing:0}
+p{color:var(--sec);margin:0 0 28px;font-size:15px;line-height:1.5}
+.btn{display:flex;align-items:center;gap:14px;width:100%;height:64px;padding:0 20px;border-radius:20px;text-decoration:none;color:#fff;margin-bottom:12px;
+  background:var(--card);border:1px solid var(--line);transition:transform .15s}
+.btn:active{transform:scale(.98)}
+.btn.first{background:var(--blue);border-color:var(--blue)}
+.btn svg{flex:none}
+.btn .t{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15}
+html[lang=ar] .btn .t{align-items:flex-end}
+.btn small{font-size:12px;opacity:.75}
+.btn b{font-size:18px;font-family:Sora,'IBM Plex Sans Arabic',sans-serif}
+.btn.soon{opacity:.55;pointer-events:none}
+.btn .tag{margin-inline-start:auto;font-size:12px;font-weight:700;padding:5px 10px;border-radius:12px;background:rgba(255,255,255,.12)}
+.site{display:inline-block;margin-top:14px;color:var(--sec);font-size:14px;text-decoration:none}
+</style>
 <script>
 // The QR code on the box and in print opens adroapp.com/get. It never changes; this page decides where it goes.
-// LIVE: true once Adro is on the App Store (flip it on launch day). Until then everyone lands on the website.
-var LIVE = false;
-var IOS = 'https://apps.apple.com/app/id6826500429';
-var SITE = 'https://adroapp.com/';
+// Put each store's link here when the app is live there (empty = "Coming soon").
+var IOS = '';       // on launch day: 'https://apps.apple.com/app/id6826500429'
+var ANDROID = '';   // when Adro is on Google Play: 'https://play.google.com/store/apps/details?id=com.adroapp.app'
+</script>
+</head>
+<body>
+<main>
+  <svg class="logo" viewBox="0 0 2229 775" aria-label="adro" role="img"><path id="letters" fill="#fff"/><circle cx="1923.5" cy="473.5" r="228.5" fill="none" stroke="#3355FF" stroke-width="130" stroke-linecap="round" stroke-dasharray="1148 9999" transform="rotate(-90 1923.5 473.5)"/></svg>
+  <h1 id="h">Get the Adro app</h1>
+  <p id="sub">Your food, training and sleep, with an AI coach. Choose your phone.</p>
+
+  <a class="btn" id="ios" href="#">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M16.4 12.6c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9s-1.9-.9-3.1-.8c-1.6 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7c1.3 0 2.1-1.1 2.8-2.3.9-1.3 1.3-2.6 1.3-2.6s-2.4-.9-2.4-3.8zM14.1 5.8c.6-.8 1.1-1.9 1-3-1 0-2.1.7-2.8 1.4-.6.7-1.2 1.8-1 2.9 1.1.1 2.1-.5 2.8-1.3z"/></svg>
+    <span class="t"><small id="ios-s">Download on the</small><b>App Store</b></span>
+    <span class="tag" id="ios-tag" hidden>Soon</span>
+  </a>
+  <a class="btn" id="android" href="#">
+    <svg width="24" height="26" viewBox="0 0 24 26" aria-hidden="true"><path d="M3 2.2v21.6c0 .5.5.8.9.6L22 14c.4-.2.4-.8 0-1L3.9 1.6c-.4-.2-.9.1-.9.6z" fill="#fff"/></svg>
+    <span class="t"><small id="and-s">Get it on</small><b>Google Play</b></span>
+    <span class="tag" id="and-tag" hidden>Soon</span>
+  </a>
+  <a class="site" id="site" href="https://adroapp.com/">adroapp.com</a>
+</main>
+<script src="/site/get-letters.js"></script>
+<script>
+var ar = /^ar/i.test(navigator.language || '');
+if (ar) {
+  document.documentElement.lang = 'ar'; document.documentElement.dir = 'rtl';
+  document.getElementById('h').textContent = 'حمّل تطبيق Adro';
+  document.getElementById('sub').textContent = 'أكلك وتمرينك ونومك، مع مدرب ذكاء اصطناعي. اختر جوالك.';
+  document.getElementById('ios-s').textContent = 'حمّله من';
+  document.getElementById('and-s').textContent = 'حمّله من';
+}
 var ua = navigator.userAgent || '';
 var apple = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && 'ontouchend' in document);
-location.replace(LIVE && apple ? IOS : SITE);
-</script></head>
-<body><p>Opening Adro… <a href="https://adroapp.com/">adroapp.com</a></p></body></html>
+var android = /Android/i.test(ua);
+function setUp(id, url, tag) {
+  var a = document.getElementById(id);
+  if (url) a.href = url;
+  else { a.classList.add('soon'); a.removeAttribute('href'); var t = document.getElementById(tag); t.hidden = false; t.textContent = ar ? 'قريباً' : 'Soon'; }
+}
+setUp('ios', IOS, 'ios-tag');
+setUp('android', ANDROID, 'and-tag');
+// Your phone's store first, in blue.
+var mine = android ? 'android' : 'ios';
+var el = document.getElementById(mine);
+el.classList.add('first');
+if (android) el.parentNode.insertBefore(el, document.getElementById('ios'));
+</script>
+</body></html>
