@@ -1166,6 +1166,8 @@ Passwords and keys are left out on purpose.
 ### 4 Nov 2026: OTA (حدثه) for build 21
 - Update group c6ecc136 (main b78cfa9, runtime ebc81514): Live Activity follows the open exercise, Add exercise, green Finish, health alerts, Arabic digits to 0-9.
 
+- **Meal photo waits for Analyze (4 Nov 2026):** after taking a meal photo (or choosing one), it shows the photo with the "Describe the dish" box still there, plus "Analyze meal" and "Retake photo". Nothing goes to the AI until Analyze. Label photos and photos picked for another screen still go straight on. Needs "حدثه".
+
 ---
 
 

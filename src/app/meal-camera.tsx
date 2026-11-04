@@ -1,4 +1,5 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import { ActivityIndicator, Linking, View } from 'react-native';
@@ -25,21 +26,26 @@ export default function MealCamera() {
   // What the dish is, in your words (optional): the AI trusts it over the photo, so the numbers come out closer.
   const [desc, setDesc] = useState('');
   const cam = useRef<CameraView>(null);
+  // A meal photo waits here until you tap Analyze, so you can add a note first (or take it again).
+  const [shot, setShot] = useState<Photo | null>(null);
   // `pick`: opened by a screen that wants the photo back ("Add an ingredient", reading a label into a product form)
   // instead of logging it.
   const { pick, kind: kindParam } = useLocalSearchParams<{ pick?: string; kind?: string }>();
   const kind = kindParam === 'label' ? 'label' : 'meal';
   const label = kind === 'label';
+  const send = (p: Photo) => {
+    setPendingPhoto(p);
+    router.replace(label ? '/label-result' : { pathname: '/meal-result', params: desc.trim() ? { desc: desc.trim() } : {} });
+  };
   const done = (p: Photo | null) => {
     setBusy(false);
     if (!p) return;
+    // A meal: show it first; the AI reads it when you tap Analyze.
+    if (!pick && !label) return setShot(p);
     if (pick) {
       setPendingCapture({ kind, photo: p });
       goBack();
-    } else {
-      setPendingPhoto(p);
-      router.replace(label ? '/label-result' : { pathname: '/meal-result', params: desc.trim() ? { desc: desc.trim() } : {} });
-    }
+    } else send(p);
   };
   const shoot = async () => {
     if (busy || !cam.current) return;
@@ -54,7 +60,11 @@ export default function MealCamera() {
 
   return (
     <Screen title={t(label ? 'Label photo' : 'Meal photo')} back>
-      {perm?.granted ? (
+      {shot ? (
+        <View style={{ height: 460, borderRadius: 28, overflow: 'hidden', backgroundColor: '#000' }}>
+          <Image source={{ uri: shot.uri }} style={{ flex: 1 }} contentFit="cover" />
+        </View>
+      ) : perm?.granted ? (
         <View style={{ height: 460, borderRadius: 28, overflow: 'hidden', backgroundColor: '#000' }}>
           <CameraView ref={cam} style={{ flex: 1 }} facing="back" mode="picture" enableTorch={torch} />
           <View pointerEvents="none" style={{ position: 'absolute', left: 28, right: 28, top: 56, bottom: 104, borderRadius: 24, borderWidth: 3, borderColor: 'rgba(255,255,255,0.9)' }} />
@@ -102,10 +112,19 @@ export default function MealCamera() {
           <Field label={t('Describe the dish')} optional={t('(optional)')} value={desc} onChangeText={setDesc} maxLength={300} returnKeyType="done" placeholder={t('For example: chicken kabsa, half a plate of rice, grilled chicken thigh.')} />
         </View>
       )}
-      <Text color="sec" center style={{ marginTop: 12 }}>
-        {t(label ? 'Fit the nutrition facts table in the frame, flat and sharp. The AI reads the numbers.' : 'Fit the whole plate in the frame, from a little above. The AI finds what’s on it.')}
-      </Text>
-      <Button kind="glass" icon="image" title={t('Choose from photos')} disabled={busy} style={{ marginTop: 12 }} onPress={gallery} />
+      {shot ? (
+        <>
+          <Button icon="sparkle" title={t('Analyze meal')} style={{ marginTop: 12 }} onPress={() => send(shot)} />
+          <Button kind="glass" icon="camera" title={t('Retake photo')} style={{ marginTop: 8 }} onPress={() => setShot(null)} />
+        </>
+      ) : (
+        <>
+          <Text color="sec" center style={{ marginTop: 12 }}>
+            {t(label ? 'Fit the nutrition facts table in the frame, flat and sharp. The AI reads the numbers.' : 'Fit the whole plate in the frame, from a little above. The AI finds what’s on it.')}
+          </Text>
+          <Button kind="glass" icon="image" title={t('Choose from photos')} disabled={busy} style={{ marginTop: 12 }} onPress={gallery} />
+        </>
+      )}
     </Screen>
   );
 }

@@ -5619,4 +5619,5 @@ export const AR: Record<string, string> = {
   "Your resting heart rate was {n} bpm above your usual last night. Stress, short sleep, hard training or getting sick can do this. Keep training lighter and sleep well today.": "نبضك وقت الراحة كان أعلى من معدّلك بـ {n} نبضات أمس بالليل. الضغط أو قلة النوم أو التمرين القوي أو بداية مرض ممكن تسبب هذا. خفّف التمرين اليوم ونام زين.",
   "Your HRV was {n}% under your usual last night. Your body needs more rest: a lighter workout, more sleep and less caffeine late in the day.": "الـ HRV عندك كان أقل من معدّلك بـ {n}% أمس بالليل. جسمك يحتاج راحة أكثر: تمرين أخف، ونوم أكثر، وكافيين أقل آخر اليوم.",
   "About {h} h last night. Most adults need 7 to 9. Short sleep slows recovery, raises hunger and weakens your workouts. Try going to bed {m} min earlier tonight.": "حوالي {h} ساعات أمس بالليل. أغلب الناس يحتاجون من 7 إلى 9. قلة النوم تبطّئ الاستشفاء، وتزيد الجوع، وتضعّف تمرينك. جرّب تنام أبدر بـ {m} دقيقة الليلة.",
+  "Analyze meal": "حلّل الوجبة",
 };
