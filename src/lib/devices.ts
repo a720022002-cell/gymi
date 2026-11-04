@@ -376,9 +376,8 @@ export function illnessCheck(days: DeviceDay[], today = localDay(), opts?: { lut
   const vUsual = usual('hrv');
   if (night.hrv != null && vUsual && night.hrv / vUsual <= 0.85) add('hrv', `HRV ${Math.round((1 - night.hrv / vUsual) * 100)}% under usual`);
   if (night.spo2 != null && night.spo2 < 94) add('spo2', `blood oxygen ${r1(night.spo2)}%`);
-  // Very low oxygen counts alone only two nights in a row (one low night is often a loose watch).
-  const prev = days.find((d) => d.day === addDays(today, -1));
-  const veryLow = night.spo2 != null && night.spo2 < 90 && prev?.spo2 != null && prev.spo2 < 90;
+  // The night's oxygen is the middle of 3+ readings, so one very low night is enough.
+  const veryLow = night.spo2 != null && night.spo2 < 90;
   // Resting heart rate up and HRV down alone are as likely from hard training or a short night (that's readiness);
   // getting sick needs a body sign too: temperature, breathing or oxygen.
   const bodySign = keys.some((k) => k === 'temp' || k === 'resp' || k === 'spo2');
@@ -396,57 +395,54 @@ export type HealthAlert = {
 };
 
 /**
- * What the watch says about your health lately, most important first. Each one is compared with your own usual (the
- * 30 days before), not with other people, and most need it to last a few nights, so one odd night doesn't raise it.
+ * What the watch says about your health, most important first, from last night's readings as soon as they arrive.
+ * Compared with your own usual (the 30 days before), except oxygen and a very high heart rate, which use fixed limits.
  * Never a diagnosis. In the luteal phase temperature and resting heart rate rise by themselves (`luteal`).
  */
 export function healthAlerts(days: DeviceDay[], today = localDay(), opts?: { luteal?: boolean }): HealthAlert[] {
-  const by = new Map(days.map((d) => [d.day, d]));
-  const night = (n: number) => by.get(addDays(today, -n));
-  if (!night(0)) return [];
-  const before = days.filter((d) => d.day < addDays(today, -2) && d.day >= addDays(today, -32));
+  // Each one is raised from last night's readings as soon as they arrive, so you can act early (not after days).
+  const n0 = days.find((d) => d.day === today);
+  if (!n0) return [];
+  const before = days.filter((d) => d.day < today && d.day >= addDays(today, -30));
   const usual = (k: 'wrist_temp' | 'resp_rate' | 'hr_rest' | 'hrv' | 'sleep_h') => {
     const xs = before.map((d) => d[k]).filter((v): v is number => v != null);
-    return xs.length >= 7 ? (avg(xs) as number) : null;
+    return xs.length >= 5 ? (avg(xs) as number) : null;
   };
-  const last = (k: 'hr_rest' | 'hrv' | 'resp_rate' | 'spo2' | 'sleep_h', n: number) => Array.from({ length: n }, (_, i) => night(i)?.[k] ?? null);
   const out: HealthAlert[] = [];
   const add = (a: HealthAlert) => out.push(a);
-  const ill = illnessCheck(days, today, opts);
+  // Low oxygen on its own gets its own clearer alert below, not "fighting something".
+  const ill0 = illnessCheck(days, today, opts);
+  const ill = ill0 && !(ill0.keys.length === 1 && ill0.keys[0] === 'spo2') ? ill0 : null;
   if (ill) add({ key: 'ill', level: 'high', title: 'Your body may be fighting something', body: 'Your watch saw this last night: {w}. Rest, drink water and sleep early. If you feel unwell, see a doctor.', v: { w: ill.keys.join(',') } });
+  // Signs already in the illness warning aren't repeated on their own.
   const has = (k: string) => !!ill?.keys.includes(k);
-  // A clear temperature rise on its own (more than a normal night-to-night change).
-  const n0 = night(0)!;
+  // Temperature over your usual.
   const tU = usual('wrist_temp');
   const tUp = n0.temp_dev != null ? n0.temp_dev : n0.wrist_temp != null && tU != null ? n0.wrist_temp - tU : null;
-  if (!ill && tUp != null && tUp >= (opts?.luteal ? 1.3 : 1)) add({ key: 'temp', level: 'high', title: 'Your temperature is up', body: 'About +{n} °C over your usual last night. Drink water and rest. If you feel hot, achy or unwell, check with a thermometer or see a doctor.', v: { n: r1(tUp) } });
-  // Low oxygen two nights in a row.
-  const [o0, o1] = last('spo2', 2);
-  if (!has('spo2') && o0 != null && o1 != null && o0 < 92 && o1 < 92) add({ key: 'spo2', level: 'high', title: 'Blood oxygen low two nights in a row', body: 'Your watch read {a}% and {b}%. A loose watch often causes this, so wear it snug tonight. If it stays low or you feel short of breath, see a doctor.', v: { a: r1(o0), b: r1(o1) } });
-  // A very high resting heart rate (normal is under 100), two of the last three nights.
-  const rr = last('hr_rest', 3).filter((x): x is number => x != null);
-  if (rr.filter((x) => x >= 100).length >= 2) add({ key: 'rhr_high', level: 'high', title: 'Your resting heart rate is very high', body: 'It was {n} bpm at rest. A normal resting heart rate is under 100. If it stays this high, or you feel dizzy, faint or short of breath, see a doctor.', v: { n: Math.round(rr[0]) } });
-  // Resting heart rate above your usual three days running.
+  const tMin = opts?.luteal ? 0.9 : 0.5;
+  if (!has('temp') && tUp != null && tUp >= tMin)
+    add({ key: 'temp', level: tUp >= tMin + 0.5 ? 'high' : 'warn', title: 'Your temperature is up', body: 'About +{n} °C over your usual last night. Drink water and rest. If you feel hot, achy or unwell, check with a thermometer or see a doctor.', v: { n: r1(tUp) } });
+  // Blood oxygen: the night's middle reading against a fixed limit (healthy is 95% and over).
+  if (!has('spo2') && n0.spo2 != null && n0.spo2 < 94)
+    add({ key: 'spo2', level: n0.spo2 < 92 ? 'high' : 'warn', title: 'Your blood oxygen was low last night', body: 'Your watch read {a}% (healthy is 95% or more). A loose watch can cause this, so wear it snug tonight. If it stays low or you feel short of breath, see a doctor.', v: { a: r1(n0.spo2) } });
+  // A very high resting heart rate (normal is under 100).
+  if (n0.hr_rest != null && n0.hr_rest >= 100) add({ key: 'rhr_high', level: 'high', title: 'Your resting heart rate is very high', body: 'It was {n} bpm at rest. A normal resting heart rate is under 100. If it stays this high, or you feel dizzy, faint or short of breath, see a doctor.', v: { n: Math.round(n0.hr_rest) } });
+  // Resting heart rate above your usual.
   const hU = usual('hr_rest');
-  const h3 = last('hr_rest', 3);
-  if (!ill && hU != null && h3.every((x) => x != null && x - hU >= (opts?.luteal ? 7 : 5)) && !out.some((a) => a.key === 'rhr_high'))
-    add({ key: 'rhr_up', level: 'warn', title: 'Your heart is working harder than usual', body: 'Your resting heart rate has been about {n} bpm above your usual for 3 days. Stress, short sleep, hard training or getting sick can do this. Keep training lighter and sleep well until it settles.', v: { n: Math.round(avg(h3 as number[])! - hU) } });
-  // HRV under your usual three days running: your body hasn't caught up.
+  if (!has('rhr') && hU != null && n0.hr_rest != null && n0.hr_rest < 100 && n0.hr_rest - hU >= (opts?.luteal ? 7 : 5))
+    add({ key: 'rhr_up', level: 'warn', title: 'Your heart is working harder than usual', body: 'Your resting heart rate was {n} bpm above your usual last night. Stress, short sleep, hard training or getting sick can do this. Keep training lighter and sleep well today.', v: { n: Math.round(n0.hr_rest - hU) } });
+  // HRV under your usual: your body hasn't caught up.
   const vU = usual('hrv');
-  const v3 = last('hrv', 3);
-  if (!ill && vU && v3.every((x) => x != null && x / vU <= 0.85))
-    add({ key: 'hrv_down', level: 'warn', title: 'Your recovery is running low', body: 'Your HRV has been about {n}% under your usual for 3 days. Your body needs more rest: a lighter workout, more sleep and less caffeine late in the day.', v: { n: Math.round((1 - avg(v3 as number[])! / vU) * 100) } });
-  // Breathing faster than usual two nights running.
+  if (!has('hrv') && vU && n0.hrv != null && n0.hrv / vU <= 0.85)
+    add({ key: 'hrv_down', level: 'warn', title: 'Your recovery is running low', body: 'Your HRV was {n}% under your usual last night. Your body needs more rest: a lighter workout, more sleep and less caffeine late in the day.', v: { n: Math.round((1 - n0.hrv / vU) * 100) } });
+  // Breathing faster than usual while asleep.
   const bU = usual('resp_rate');
-  const b2 = last('resp_rate', 2);
-  if (!has('resp') && bU != null && b2.every((x) => x != null && x - bU >= 2))
-    add({ key: 'resp', level: 'warn', title: 'You’re breathing faster at night', body: 'About {n} breaths a minute while asleep, your usual is {u}. A cold, allergies or stress can do this. If you also have a cough, fever or feel short of breath, see a doctor.', v: { n: r1(b2[0]!), u: r1(bU) } });
-  // Short on sleep: under 6 hours a night over the last three nights.
-  const s3 = last('sleep_h', 3).filter((x): x is number => x != null);
-  const sAvg = s3.length >= 2 ? avg(s3)! : null;
-  if (sAvg != null && sAvg < 6) {
+  if (!has('resp') && bU != null && n0.resp_rate != null && n0.resp_rate - bU >= 2)
+    add({ key: 'resp', level: 'warn', title: 'You’re breathing faster at night', body: 'About {n} breaths a minute while asleep, your usual is {u}. A cold, allergies or stress can do this. If you also have a cough, fever or feel short of breath, see a doctor.', v: { n: r1(n0.resp_rate), u: r1(bU) } });
+  // Short sleep last night.
+  if (n0.sleep_h != null && n0.sleep_h < 6) {
     const sU = usual('sleep_h');
-    add({ key: 'sleep_debt', level: 'warn', title: 'You’re short on sleep', body: 'About {h} h a night lately. Most adults need 7 to 9. Short sleep slows recovery, raises hunger and weakens your workouts. Try going to bed {m} min earlier tonight.', v: { h: r1(sAvg), m: Math.max(30, Math.min(90, Math.round(((sU != null && sU > sAvg ? sU : 7) - sAvg) * 60 / 15) * 15)) } });
+    add({ key: 'sleep_debt', level: 'warn', title: 'You’re short on sleep', body: 'About {h} h last night. Most adults need 7 to 9. Short sleep slows recovery, raises hunger and weakens your workouts. Try going to bed {m} min earlier tonight.', v: { h: r1(n0.sleep_h), m: Math.max(30, Math.min(90, Math.round((((sU != null && sU > n0.sleep_h ? sU : 7) - n0.sleep_h) * 60) / 15) * 15)) } });
   }
   // Bedtime that moves a lot through the week.
   const sd = sleepDetail(days, today);

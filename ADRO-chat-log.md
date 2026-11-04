@@ -1159,6 +1159,8 @@ Passwords and keys are left out on purpose.
   - Oxygen: the night's middle value (median) of 3+ readings with fixed limits, not an average; one low night no longer warns (a loose watch). Very low oxygen alone needs two nights.
   - Connections toggle renamed "Health alerts"; the morning notification uses the top serious alert. Needs "حدثه".
 
+- **Health alerts from one night (4 Nov 2026, owner):** every alert now comes from last night's readings as soon as they arrive (to act early), not after several nights. Oxygen: night median of 3+ readings, under 94% = warn, under 92% = high (fixed limits); oxygen alone shows its own alert, not "fighting something". Temperature +0.5 warn / +1.0 high; resting HR 100+ high, +5 over usual warn; HRV 15% under usual warn; breathing +2 warn; under 6 h sleep warn. Needs "حدثه".
+
 ---
 
 
