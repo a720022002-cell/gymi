@@ -1,0 +1,22 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}html,body{width:2400px;height:1500px;overflow:hidden;background:radial-gradient(ellipse at 50% 40%,#2b2f3a,#0b0c10 70%)}
+.box{position:absolute;width:0;height:0;transform-style:preserve-3d}
+.f{position:absolute;background-size:100% 100%}
+.shadow{position:absolute;border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.7),rgba(0,0,0,0));filter:blur(20px)}
+.cap{position:absolute;bottom:60px;width:100%;text-align:center;font:400 30px Sora,sans-serif;color:#8d93a3;letter-spacing:3px}
+.scene{position:absolute;inset:0;perspective:3400px;transform-style:preserve-3d}
+</style><link href="https://fonts.googleapis.com/css2?family=Sora:wght@400&display=swap" rel="stylesheet"></head><body>
+<div class="shadow" style="left:640px;top:840px;width:1150px;height:240px"></div>
+
+<div class="scene" id="sc"></div>
+<div class="cap">adro band — back side</div>
+<script>const P=new URLSearchParams(location.search).get('p')||'m';
+function face(p,o){const e=document.createElement('div');e.className='f';Object.assign(e.style,o);p.appendChild(e);return e}
+function box(x,y,rot,W,D,H){const b=document.createElement('div');b.className='box';b.style.left=x+'px';b.style.top=y+'px';b.style.transform=rot;document.getElementById('sc').appendChild(b);return b}
+// closed box (lid on): W:D:H = 378:198:85 from the dieline, x2
+const W=1134,D=594,H=255;
+let b=box(1200,700,'rotateX(62deg) rotateZ(-18deg)');
+face(b,{width:W+'px',height:D+'px',left:-W/2+'px',top:-D/2+'px',backgroundImage:'url('+P+'_top.png)',transform:`translateZ(${H}px)`});
+face(b,{width:W+'px',height:H+'px',left:-W/2+'px',top:'0px',transformOrigin:'50% 0',backgroundImage:'url('+P+'_front.png)',filter:'brightness(.8)',transform:`translate3d(0,${D/2}px,${H}px) rotateX(-90deg)`});
+face(b,{width:D+'px',height:H+'px',left:-D/2+'px',top:'0px',transformOrigin:'50% 0',backgroundImage:'url('+P+'_right.png)',filter:'brightness(.62)',transform:`translate3d(${W/2}px,0,${H}px) rotateZ(-90deg) rotateX(-90deg)`});
+</script></body></html>
