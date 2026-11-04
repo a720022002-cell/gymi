@@ -36,17 +36,15 @@ if(SIDE==='out'){
     h+=text(cx,cy+34,'Always with you.',{size:9,fill:'#c9cdd8',w:300,ls:.3});
     // front wall (below the top): name; back wall (above, upside down): site
     h+=text(cx,mid(L.y1,L.wb),'adro band',{size:9,w:600,ls:2.5,fill:'#e8eaf0'});
-    // back wall: the two lines (upside down on the flat sheet, upright once folded)
-    { const wy=mid(L.wt,L.y0); h+=`<g transform="rotate(180 ${cx} ${wy})">`+text(cx,wy-6,'Beyond what you see',{size:7.5,w:300,ls:.6,fill:'#c9cdd8'})+text(cx,wy+6,'Closer to what you feel',{size:7.5,w:600,ls:.6,fill:'#e8eaf0'})+'</g>'; }
+    h+=text(cx,mid(L.wt,L.y0),'adroapp.com',{size:7.5,w:400,ls:1.5,fill:'#9aa0ad',rot:180});
     // end walls: the ring
     h+=ringIcon(mid(L.wl,L.x0),cy,12,90)+ringIcon(mid(L.x1,L.wr),cy,12,-90);
   }
   for(const B of BASES){const cx=mid(B.x0,B.x1)+(B.marks==='r'?-14:14),cy=mid(B.y0,B.y1);
     h+=logo(cx,B.y0+40,92);
     h+=text(cx,B.y0+68,'Smart fitness band',{size:8,w:600,fill:'#e8eaf0',ls:.5});
-    h+=text(cx,B.y0+84,'Sleep  ·  Heart rate  ·  Steps  ·  Recovery',{size:6.4,fill:'#9aa0ad'});
-    h+=text(cx,B.y0+106,'Works with the Adro app.',{size:6.4,fill:'#c9cdd8'});
-    h+=text(cx,B.y0+118,'Not a medical device.',{size:5.6,fill:'#7d8391'});
+    h+=text(cx,B.y0+96,'Works with the Adro app.',{size:6.4,fill:'#c9cdd8'});
+    h+=text(cx,B.y0+108,'Not a medical device.',{size:4.2,fill:'#6b7080'});
     h+=`<line x1="${cx-70}" x2="${cx+70}" y1="${B.y0+134}" y2="${B.y0+134}" stroke="#2a2d36" stroke-width=".8"/>`;
     h+=text(cx,B.y0+148,'Designed in Saudi, By adro',{size:5.6,fill:'#9aa0ad',ls:.3});
     h+=text(cx,B.y0+160,'adroapp.com',{size:6,fill:BLUE,w:600,ls:.8});
