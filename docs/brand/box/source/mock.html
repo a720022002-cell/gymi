@@ -10,20 +10,20 @@
 <div class="shadow" style="left:1380px;top:760px;width:900px;height:200px"></div>
 <div class="scene" id="sc"></div>
 <div class="cap">adro band — box concept</div>
-<script>
+<script>const P=new URLSearchParams(location.search).get('p')||'m';
 function face(p,o){const e=document.createElement('div');e.className='f';Object.assign(e.style,o);p.appendChild(e);return e}
 function box(x,y,rot,W,D,H){const b=document.createElement('div');b.className='box';b.style.left=x+'px';b.style.top=y+'px';b.style.transform=rot;document.getElementById('sc').appendChild(b);return b}
 // closed box (lid on): W:D:H = 378:198:85 from the dieline, x2
 const W=756,D=396,H=170;
 let b=box(720,640,'rotateX(58deg) rotateZ(-30deg)');
-face(b,{width:W+'px',height:D+'px',left:-W/2+'px',top:-D/2+'px',backgroundImage:'url(m_top.png)',transform:`translateZ(${H}px)`});
-face(b,{width:W+'px',height:H+'px',left:-W/2+'px',top:'0px',transformOrigin:'50% 0',backgroundImage:'url(m_front.png)',transform:`translate3d(0,${D/2}px,${H}px) rotateX(-90deg)`});
-face(b,{width:D+'px',height:H+'px',left:-D/2+'px',top:'0px',transformOrigin:'50% 0',backgroundImage:'url(m_right.png)',transform:`translate3d(${W/2}px,0,${H}px) rotateZ(-90deg) rotateX(-90deg)`});
+face(b,{width:W+'px',height:D+'px',left:-W/2+'px',top:-D/2+'px',backgroundImage:'url('+P+'_top.png)',transform:`translateZ(${H}px)`});
+face(b,{width:W+'px',height:H+'px',left:-W/2+'px',top:'0px',transformOrigin:'50% 0',backgroundImage:'url('+P+'_front.png)',filter:'brightness(.8)',transform:`translate3d(0,${D/2}px,${H}px) rotateX(-90deg)`});
+face(b,{width:D+'px',height:H+'px',left:-D/2+'px',top:'0px',transformOrigin:'50% 0',backgroundImage:'url('+P+'_right.png)',filter:'brightness(.62)',transform:`translate3d(${W/2}px,0,${H}px) rotateZ(-90deg) rotateX(-90deg)`});
 // open base with the lid leaning behind it
 const w=732,d=376,h=150;
 b=box(1790,700,'rotateX(56deg) rotateZ(26deg)');
-face(b,{width:w+'px',height:d+'px',left:-w/2+'px',top:-d/2+'px',backgroundImage:'url(m_basein.png)',transform:'translateZ(6px)'});
+face(b,{width:w+'px',height:d+'px',left:-w/2+'px',top:-d/2+'px',backgroundImage:'url('+P+'_basein.png)',transform:'translateZ(6px)'});
 face(b,{width:w+'px',height:h+'px',left:-w/2+'px',top:'0px',transformOrigin:'50% 0',background:'linear-gradient(#16181f,#0d0e12)',transform:`translate3d(0,${d/2}px,${h}px) rotateX(-90deg)`});
 face(b,{width:d+'px',height:h+'px',left:-d/2+'px',top:'0px',transformOrigin:'50% 0',background:'#101218',transform:`translate3d(${-w/2}px,0,${h}px) rotateZ(90deg) rotateX(-90deg)`});
-face(b,{width:W+'px',height:D+'px',left:-W/2+'px',top:-D+'px',transformOrigin:'50% 100%',backgroundImage:'url(m_lidin.png)',transform:`translate3d(0,${-d/2}px,${h}px) rotateX(-70deg)`});
+face(b,{width:W+'px',height:D+'px',left:-W/2+'px',top:-D+'px',transformOrigin:'50% 100%',backgroundImage:'url('+P+'_lidin.png)',transform:`translate3d(0,${-d/2}px,${h}px) rotateX(-70deg)`});
 </script></body></html>
