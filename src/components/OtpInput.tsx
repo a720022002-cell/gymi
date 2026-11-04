@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { TextInput } from '@/components/TextInput';
 
 import { useT } from '@/i18n';
 import { useSettings } from '@/theme/settings';

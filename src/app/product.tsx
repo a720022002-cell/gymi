@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
+import { TextInput } from '@/components/TextInput';
 
 import { Field } from '@/components/Field';
 import { AllergyWarn } from '@/components/food/AllergyWarn';

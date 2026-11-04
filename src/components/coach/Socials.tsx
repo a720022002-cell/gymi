@@ -1,4 +1,5 @@
-import { TextInput, View } from 'react-native';
+import { View } from 'react-native';
+import { TextInput } from '@/components/TextInput';
 
 import { useT } from '@/i18n';
 import { SOCIALS } from '@/lib/coaching';

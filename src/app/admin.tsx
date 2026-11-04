@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Linking, TextInput, View } from 'react-native';
+import { Linking, View } from 'react-native';
+import { TextInput } from '@/components/TextInput';
 
 import { ModerateSheet } from '@/components/admin/ModerateSheet';
 import { hoursText } from '@/components/coach/GymHours';

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ActivityIndicator, Platform, ScrollView, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, ScrollView, View } from 'react-native';
+import { TextInput } from '@/components/TextInput';
 
 import { useT } from '@/i18n';
 import { type AiError, aiErrorText, askAI } from '@/lib/ai';

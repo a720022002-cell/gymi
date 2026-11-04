@@ -1,6 +1,7 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { View } from 'react-native';
+import { TextInput } from '@/components/TextInput';
 
 import { Thinking } from '@/components/food/Thinking';
 import { Icon } from '@/components/Icon';

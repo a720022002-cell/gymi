@@ -1,7 +1,8 @@
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Animated, Easing, Share, TextInput, View } from 'react-native';
+import { Animated, Easing, Share, View } from 'react-native';
+import { TextInput } from '@/components/TextInput';
 
 import { Icon, Mark } from '@/components/Icon';
 import { Screen } from '@/components/Screen';

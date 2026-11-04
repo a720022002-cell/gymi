@@ -1,5 +1,6 @@
 import { forwardRef, type ReactNode, useState } from 'react';
-import { Pressable, TextInput, type TextInputProps, View } from 'react-native';
+import { Pressable, type TextInputProps, View } from 'react-native';
+import { TextInput } from '@/components/TextInput';
 
 import { useT } from '@/i18n';
 import { side } from '@/lib/rtl';

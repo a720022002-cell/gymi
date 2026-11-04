@@ -1,7 +1,8 @@
 import * as Clipboard from 'expo-clipboard';
 import { router, useFocusEffect } from 'expo-router';
 import { type Dispatch, type SetStateAction, useCallback, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { View } from 'react-native';
+import { TextInput } from '@/components/TextInput';
 
 import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';

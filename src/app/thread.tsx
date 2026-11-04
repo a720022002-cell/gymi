@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { type ScrollView, TextInput, View } from 'react-native';
+import { type ScrollView, View } from 'react-native';
+import { TextInput } from '@/components/TextInput';
 
 import { Screen } from '@/components/Screen';
 import { ReportSheet } from '@/components/social/ReportSheet';

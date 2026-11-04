@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Modal, ScrollView, TextInput, View } from 'react-native';
+import { Modal, ScrollView, View } from 'react-native';
+import { TextInput } from '@/components/TextInput';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useT } from '@/i18n';

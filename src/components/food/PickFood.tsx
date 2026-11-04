@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, TextInput, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
+import { TextInput } from '@/components/TextInput';
 
 import { Field } from '@/components/Field';
 import { Icon } from '@/components/Icon';

@@ -1,4 +1,5 @@
-import { TextInput, View } from 'react-native';
+import { View } from 'react-native';
+import { TextInput } from '@/components/TextInput';
 
 import { Icon } from '@/components/Icon';
 import { fontFor, Text } from '@/components/Text';

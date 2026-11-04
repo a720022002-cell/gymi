@@ -1,6 +1,7 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { View } from 'react-native';
+import { TextInput } from '@/components/TextInput';
 
 import { Stepper } from '@/components/food/Stepper';
 import { Thinking } from '@/components/food/Thinking';

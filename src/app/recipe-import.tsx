@@ -1,7 +1,8 @@
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Platform, TextInput, View } from 'react-native';
+import { Platform, View } from 'react-native';
+import { TextInput } from '@/components/TextInput';
 
 import { Field } from '@/components/Field';
 import { AllergyWarn, useAllergyCheck } from '@/components/food/AllergyWarn';

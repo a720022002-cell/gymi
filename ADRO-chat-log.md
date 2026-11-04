@@ -1161,6 +1161,8 @@ Passwords and keys are left out on purpose.
 
 - **Health alerts from one night (4 Nov 2026, owner):** every alert now comes from last night's readings as soon as they arrive (to act early), not after several nights. Oxygen: night median of 3+ readings, under 94% = warn, under 92% = high (fixed limits); oxygen alone shows its own alert, not "fighting something". Temperature +0.5 warn / +1.0 high; resting HR 100+ high, +5 over usual warn; HRV 15% under usual warn; breathing +2 warn; under 6 h sleep warn. Needs "حدثه".
 
+- **Arabic digits in every field (4 Nov 2026):** one app text box (src/components/TextInput.tsx) used by every screen (45 files): numbers typed on an Arabic keyboard (٠–٩, ۰–۹) become 0–9 as you type, in every field. In number fields the Arabic decimal mark ٫ and a comma become "." and ٬ goes (٢٢٫٥ → 22.5). Needs "حدثه".
+
 ---
 
 

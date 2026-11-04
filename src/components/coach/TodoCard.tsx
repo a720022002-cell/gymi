@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { View } from 'react-native';
+import { TextInput } from '@/components/TextInput';
 
 import { useT } from '@/i18n';
 import { addTodo, deleteTodo, listTodos, setTodoDone, type Todo, TODO_DUE } from '@/lib/coaching';

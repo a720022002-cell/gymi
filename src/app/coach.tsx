@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, TextInput, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
+import { TextInput } from '@/components/TextInput';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Thinking } from '@/components/food/Thinking';

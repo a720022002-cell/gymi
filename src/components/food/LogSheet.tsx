@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Platform, TextInput, View } from 'react-native';
+import { Platform, View } from 'react-native';
+import { TextInput } from '@/components/TextInput';
 
 import { useT } from '@/i18n';
 import { appleScan } from '@/lib/appleScan';

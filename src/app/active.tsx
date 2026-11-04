@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { type ComponentProps, useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, TextInput, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
+import { TextInput } from '@/components/TextInput';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Glass } from '@/components/Glass';

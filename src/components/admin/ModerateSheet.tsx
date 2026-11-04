@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { View } from 'react-native';
+import { TextInput } from '@/components/TextInput';
 
 import { Thinking } from '@/components/food/Thinking';
 import { Sheet } from '@/components/Sheet';

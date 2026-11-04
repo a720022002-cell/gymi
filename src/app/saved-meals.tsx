@@ -1,7 +1,8 @@
 import * as Clipboard from 'expo-clipboard';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Platform, Share, TextInput, View } from 'react-native';
+import { Platform, Share, View } from 'react-native';
+import { TextInput } from '@/components/TextInput';
 
 import { Field } from '@/components/Field';
 import { Icon } from '@/components/Icon';

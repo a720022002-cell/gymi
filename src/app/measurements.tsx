@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ScrollView, TextInput, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
+import { TextInput } from '@/components/TextInput';
 
 import { LineChart } from '@/components/Charts';
 import { Screen } from '@/components/Screen';
