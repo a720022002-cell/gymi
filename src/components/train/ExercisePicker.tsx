@@ -57,6 +57,7 @@ export function ExercisePicker({
   injuries,
   onClose,
   onPick,
+  onPhoto,
 }: {
   open: boolean;
   title: string;
@@ -66,6 +67,8 @@ export function ExercisePicker({
   injuries?: string[];
   onClose: () => void;
   onPick: (e: DbExercise) => void;
+  /** Shows "Don’t know a machine?" at the top: take a photo instead of searching. */
+  onPhoto?: () => void;
 }) {
   const { t, lang } = useT();
   const { colors: c } = useSettings();
@@ -211,6 +214,20 @@ export function ExercisePicker({
   return (
     <Sheet open={open} onClose={close}>
       <Text variant="h2">{title}</Text>
+      {onPhoto ? (
+        <Springy onPress={onPhoto} accessibilityRole="button" accessibilityLabel={t('Don’t know a machine?')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12, marginBottom: 4, padding: 12, borderRadius: 18, backgroundColor: c.inset }}>
+          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: c.card, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="camera" size={18} color={c.cobalt} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text weight={700}>{t('Don’t know a machine?')}</Text>
+            <Text variant="small" color="sec">
+              {t('Take a photo. I’ll name it and add it to this workout.')}
+            </Text>
+          </View>
+          <Icon name="chev" size={16} color={c.sec} />
+        </Springy>
+      ) : null}
       <Field value={q} onChangeText={setQ} placeholder={t('Search exercises')} autoCorrect={false} />
       <Row gap={8} style={{ flexWrap: 'wrap', marginTop: 10 }}>
         {[null, ...FILTER_MUSCLES].map((x) => (

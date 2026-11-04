@@ -153,7 +153,7 @@ export const AR: Record<string, string> = {
   "Add at least one friend": "أضف صديق واحد على الأقل",
   "Add at least one ingredient": "أضف مكون واحد على الأقل",
   "Add every sleep in the day, like your night and a nap.": "أضف كل نوم في اليوم، مثل نوم الليل والقيلولة.",
-  "Add exercise": "أضف التمرين",
+  "Add exercise": "أضف تمرين",
   "Add exercises": "أضف تمارين",
   "Add exercises to this workout": "أضف تمارين لهذا اليوم",
   "Add food to this day": "أضف أكل لهذا اليوم",
@@ -5596,4 +5596,7 @@ export const AR: Record<string, string> = {
   "No one on the list yet.": "ما فيه أحد في القائمة للحين.",
   "Your email": "إيميلك",
   "Friend’s code (optional)": "رمز صديقك (اختياري)",
+  "Search for one, or take a photo of a machine.": "ابحث عن تمرين، أو صوّر الجهاز.",
+  "Add it to every {w} workout in your weekly plan, or just today?": "تبي تضيفه لكل تمرين {w} في جدولك الأسبوعي، ولا بس اليوم؟",
+  "Add to my weekly plan": "أضفه لجدولي الأسبوعي",
 };

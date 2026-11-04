@@ -7,6 +7,7 @@ import { Field } from '@/components/Field';
 import { Thinking } from '@/components/food/Thinking';
 import { Icon, Mark } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
+import { Sheet } from '@/components/Sheet';
 import { Text } from '@/components/Text';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Chip, Row } from '@/components/ui';
@@ -113,12 +114,28 @@ export default function MachineScreen() {
   // Your injuries that this exercise is hard on (the workout swaps it for you when there's a safer one).
   const hurts = match ? (EX[match.id]?.stress ?? []).filter((x) => train.plan?.injuries.includes(x)) : [];
 
+  // After adding a machine to the workout in progress: today only, or the weekly plan too.
+  const [ask, setAsk] = useState<{ pe: PlanEx; label: string; day: string } | null>(null);
+  const keepInPlan = () => {
+    const p = train.plan;
+    const W = ask ? p?.workouts[ask.day] : undefined;
+    if (ask && p && W && !W.ex.some((x) => x.id === ask.pe.id)) {
+      const ex = [...W.ex, ask.pe];
+      train.updatePlan({ workouts: { ...p.workouts, [ask.day]: { ...W, ex, min: workoutMinutes(ex) } } });
+      toast(t('{x} added to {w}', { x: ask.label, w: t(ask.day) }), { ai: true });
+    }
+    setAsk(null);
+    goBack();
+  };
   const add = (pe: PlanEx, label: string) => {
     const s = train.session;
     if (live && s) {
       if (s.ex.some((x) => x.id === pe.id)) return toast(t('{x} is already in this workout', { x: label }), { icon: 'info' });
       const { sets, ...rest } = pe;
       train.setSession({ ...s, ex: [...s.ex, { ...rest, tip: false, sets: Array.from({ length: Math.max(1, sets) }, () => ({ w: '', r: '', done: false, lw: 0, lr: topReps(pe.reps) })) }] });
+      train.setFocus(s.ex.length);
+      // Today's workout is one of your plan's days: ask if it goes into the weekly plan too.
+      if (!s.home && train.plan?.workouts[s.name]) return setAsk({ pe, label, day: s.name });
       toast(t('{x} added to this workout', { x: label }), { ai: true });
       return goBack();
     }
@@ -354,6 +371,26 @@ export default function MachineScreen() {
           ) : null}
         </View>
       )}
+      <Sheet
+        open={!!ask}
+        onClose={() => {
+          setAsk(null);
+          goBack();
+        }}>
+        <Text variant="h2">{t('{x} added to this workout', { x: ask?.label ?? '' })}</Text>
+        <Text color="sec" style={{ marginTop: 4 }}>
+          {t('Add it to every {w} workout in your weekly plan, or just today?', { w: t(ask?.day ?? '') })}
+        </Text>
+        <Button
+          title={t('Only this time')}
+          style={{ marginTop: 16 }}
+          onPress={() => {
+            setAsk(null);
+            goBack();
+          }}
+        />
+        <Button kind="soft" icon="check" title={t('Add to my weekly plan')} color={c.text} style={{ marginTop: 8 }} onPress={keepInPlan} />
+      </Sheet>
     </Screen>
   );
 }

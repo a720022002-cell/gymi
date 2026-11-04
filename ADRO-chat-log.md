@@ -1148,6 +1148,8 @@ Passwords and keys are left out on purpose.
 
 - **Live Activity follows the open exercise (4 Nov 2026):** tapping an exercise in the top bar of the workout now updates the Lock Screen / Dynamic Island right away, before any set is logged (train focus + currentSet(s, focus)); its buttons act on that exercise too. Removing an exercise resets it to the first one with sets left. Needs "حدثه".
 
+- **Add exercise during a workout (4 Nov 2026):** the "Don’t know a machine?" card is now "Add exercise". It opens the exercise search with "Don’t know a machine? Take a photo" at the top. After adding (from the search or the photo), if today's workout is one of the plan's days it asks: "Only this time" or "Add to my weekly plan" (adds it to that day in the plan). The new exercise opens right away with last time's numbers. Needs "حدثه".
+
 ---
 
 

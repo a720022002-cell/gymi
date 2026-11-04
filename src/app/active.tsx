@@ -20,7 +20,7 @@ import { toPlanEx } from '@/lib/exercisesDb';
 import { type Rest, type Session, type SessionEx, useTrain, vsLastTime } from '@/lib/train';
 import { WaterButton } from '@/components/train/WaterButton';
 import { useHealth } from '@/lib/health';
-import { armGap, exInfo, isOneArm, type PlanEx, topReps } from '@/lib/training';
+import { armGap, exInfo, isOneArm, type PlanEx, topReps, workoutMinutes } from '@/lib/training';
 import { useExerciseWeight, type useWeight } from '@/lib/units';
 import { useSettings } from '@/theme/settings';
 import { goBack } from '@/lib/nav';
@@ -66,6 +66,9 @@ export default function Active() {
   // Swapping an exercise mid-workout: which one, then whether to keep the change in your plan.
   const [swapFor, setSwapFor] = useState<number | null>(null);
   const [swapped, setSwapped] = useState<{ oldId: string; ex: PlanEx; name: string } | null>(null);
+  // "Add exercise": the search (with the machine photo inside), then today only or the plan too.
+  const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState<{ ex: PlanEx; name: string } | null>(null);
   // The exercise whose trash button was tapped: remove it today, or from your plan too.
   const [removeFor, setRemoveFor] = useState<number | null>(null);
   // The note being written: an exercise ("2") or one of its sets ("2:1").
@@ -193,6 +196,36 @@ export default function Active() {
     toast(t(fromPlan ? 'Removed {x} from your plan' : 'Removed {x}', { x: exInfo(old, lang).name }), { icon: 'trash' });
   };
   const canAlways = (oldId: string) => !s.home && !!train.plan?.workouts[s.name]?.ex.some((y) => y.id === oldId);
+  // A new exercise at the end of today's workout, with last time's numbers when there are any.
+  const addEx = (pe: PlanEx, name: string) => {
+    if (s.ex.some((x) => x.id === pe.id)) return toast(t('{x} is already in this workout', { x: name }), { icon: 'info' });
+    const prev = train.last[pe.id] ?? [];
+    const { sets: n, ...rest } = pe;
+    const sets = Array.from({ length: Math.max(1, n) }, (_, k) => {
+      const l = prev[k] ?? prev[prev.length - 1];
+      return { w: '', r: '', done: false, lw: l?.w ?? 0, lr: l?.r ?? topReps(pe.reps), ...(l ? { pw: l.w, pr: l.r } : {}) };
+    });
+    const at = s.ex.length;
+    train.setSession({ ...s, ex: [...s.ex, { ...rest, tip: false, sets }] });
+    // Open its page (set here, not through goPage, which still sees the workout without it).
+    setNoteAt(null);
+    setPageSel(at);
+    train.setFocus(at);
+    // Ask about the plan only when today's workout is one of your plan's days.
+    if (!s.home && train.plan?.workouts[s.name]) afterSheet(() => setAdded({ ex: pe, name }));
+    else toast(t('{x} added to this workout', { x: name }), { ai: true });
+  };
+  // "Always": it goes into every workout of this day in your weekly plan too.
+  const addToPlan = () => {
+    const p = train.plan;
+    const w = p?.workouts[s.name];
+    if (added && p && w && !w.ex.some((y) => y.id === added.ex.id)) {
+      const ex = [...w.ex, added.ex];
+      train.updatePlan({ workouts: { ...p.workouts, [s.name]: { ...w, ex, min: workoutMinutes(ex) } } });
+      toast(t('{x} added to {w}', { x: added.name, w: t(s.name) }), { ai: true });
+    }
+    setAdded(null);
+  };
   const keepAlways = () => {
     const p = train.plan;
     const w = p?.workouts[s.name];
@@ -517,14 +550,14 @@ export default function Active() {
             <View key={i} style={{ width: i === page ? 20 : 7, height: 7, borderRadius: 4, backgroundColor: i === page ? c.text : exDone(x) ? c.up : c.line }} />
           ))}
         </Row>
-        <Card onPress={() => router.push({ pathname: '/machine', params: { live: '1' } })} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <Card onPress={() => setAdding(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: c.inset, alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name="camera" size={20} color={c.cobalt} />
+            <Icon name="plus" size={20} color={c.cobalt} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text weight={700}>{t('Don’t know a machine?')}</Text>
+            <Text weight={700}>{t('Add exercise')}</Text>
             <Text variant="small" color="sec">
-              {t('Take a photo. I’ll name it and add it to this workout.')}
+              {t('Search for one, or take a photo of a machine.')}
             </Text>
           </View>
           <Icon name="chev" size={18} color={c.sec} />
@@ -619,6 +652,32 @@ export default function Active() {
             );
           })()
         ) : null}
+      </Sheet>
+
+      <ExercisePicker
+        open={adding}
+        title={t('Add exercise')}
+        exclude={s.ex.map((x) => x.id)}
+        injuries={train.plan?.injuries}
+        onClose={() => setAdding(false)}
+        onPhoto={() => {
+          setAdding(false);
+          // The camera screen opens once the list has closed.
+          afterSheet(() => router.push({ pathname: '/machine', params: { live: '1' } }));
+        }}
+        onPick={(e) => {
+          setAdding(false);
+          addEx(toPlanEx(e), e.name_ar && lang === 'ar' ? e.name_ar : e.name_en);
+        }}
+      />
+
+      <Sheet open={!!added} onClose={() => setAdded(null)}>
+        <Text variant="h2">{t('{x} added to this workout', { x: added?.name ?? '' })}</Text>
+        <Text color="sec" style={{ marginTop: 4 }}>
+          {t('Add it to every {w} workout in your weekly plan, or just today?', { w: t(s.name) })}
+        </Text>
+        <Button title={t('Only this time')} style={{ marginTop: 16 }} onPress={() => setAdded(null)} />
+        <Button kind="soft" icon="check" title={t('Add to my weekly plan')} color={c.text} style={{ marginTop: 8 }} onPress={addToPlan} />
       </Sheet>
 
       <ExercisePicker
