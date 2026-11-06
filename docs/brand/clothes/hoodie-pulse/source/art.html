@@ -79,6 +79,24 @@ if(P==='back'){
   W=30;H=330;h+=tx(15,165,'BEYOND WHAT YOU SEE',{size:11,w:700,ls:7,rot:90});
 }else if(P==='sleeveR'){
   W=30;H=330;h+=tx(15,165,'CLOSER TO WHAT YOU FEEL',{size:11,w:700,ls:5.5,rot:-90,fill:BLUE});
+}else if(P==='route'){
+  // A run route: one closed loop over faint contour lines, a blue start/finish mark, km marks, and the run's details.
+  W=260;H=230;const cx=130,cy=80;
+  const rad=(t,k)=>k*(1+.16*Math.sin(2*t+.6)+.11*Math.cos(3*t-1.1)+.06*Math.sin(5*t+.3));
+  const pathAt=(k,sx,sy,ph)=>{let d='';for(let i=0;i<=360;i++){const t=i/360*2*Math.PI,r=rad(t+ph,k);d+=(i?'L':'M')+(cx+Math.cos(t)*r*sx).toFixed(2)+' '+(cy+Math.sin(t)*r*sy).toFixed(2);}return d+'Z';};
+  // contours: wider, softer copies of the same land
+  for(let j=0;j<6;j++)h+=`<path d="${pathAt(24+j*10,1.18,.8,.35+j*.18)}" fill="none" stroke="${INK}" stroke-width=".35" opacity="${(.24-j*.03).toFixed(3)}"/>`;
+  // the route
+  const RK=50,rt=t=>{const r=rad(t,RK);return [cx+Math.cos(t)*r*1.05,cy+Math.sin(t)*r*.95];};
+  let d='';for(let i=0;i<=720;i++){const [x,y]=rt(i/720*2*Math.PI);d+=(i?'L':'M')+x.toFixed(2)+' '+y.toFixed(2);}
+  h+=`<path d="${d}Z" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linejoin="round"/>`;
+  // start / finish at the lower left, km marks along the way
+  const ts=2.45,[sx0,sy0]=rt(ts);
+  h+=`<circle cx="${sx0}" cy="${sy0}" r="5" fill="${BLUE}"/><circle cx="${sx0}" cy="${sy0}" r="7.2" fill="none" stroke="${BLUE}" stroke-width=".8" opacity=".7"/>`;
+  h+=tx(sx0-11,sy0+1.5,'START · FINISH',{size:4.2,w:600,ls:1.6,a:'end'});
+  for(const [tk,lab] of [[ts-2.15,'2 KM'],[ts-3.6,'4 KM']]){const [x,y]=rt(tk);h+=`<circle cx="${x}" cy="${y}" r="1.8" fill="${INK}"/>`+tx(x+5,y+1.5,lab,{size:3.8,w:500,ls:1,a:'start',fill:GREY});}
+  h+=tx(cx,192,'WADI HANIFAH LOOP',{size:12,w:600,ls:4});
+  h+=tx(cx,208,'5.2 KM  ·  05:40 AM  ·  RIYADH',{size:5.4,w:500,ls:2.4,fill:GREY});
 }else if(P==='seal'){
   // A round seal: the blue adro ring in the middle, the brand's lines running round it on a circle.
   W=150;H=150;const c=75,rt=60,ri=24,sw=ri*130/228.5;
