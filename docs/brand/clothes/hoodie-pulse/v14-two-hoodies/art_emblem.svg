@@ -1,0 +1,18 @@
+<svg id="s" xmlns="http://www.w3.org/2000/svg" width="2240" height="1760" viewBox="0 0 280 220">
+<!-- Back emblem: ADRO arched, Riyadh, three camels drawn like Arabian rock art, ENDURANCE. 1 unit = 1 mm. -->
+<defs>
+  <path id="arc" d="M 40 78 Q 140 18 240 78"></path>
+  <!-- one camel, a flat silhouette in the spirit of Arabian rock art, walking to the right -->
+  <g id="camel" fill="#ECECE6">
+    <path d="M -24 -6 C -22 -14 -14 -24 -4 -24 C 4 -24 8 -14 13 -11 C 18 -9 21 -16 23 -24 C 24 -29 28 -32 32 -31 L 36 -28 L 35 -26 L 30 -26 C 27 -25 26 -20 25 -14 C 23 -6 21 -2 18 0 L 19.5 22 L 16 22 L 14 4 L 11 4 L 11.5 22 L 8 22 L 7 4 L -10 4 L -11 22 L -14.5 22 L -14 4 L -17 3 L -19.5 22 L -23 22 L -21 1 C -23 -1 -24 -3 -24 -6 Z"></path>
+    <path d="M -24 -5 C -27 -2 -28 2 -27 7" fill="none" stroke="#ECECE6" stroke-width="1.6" stroke-linecap="round"></path>
+  </g>
+</defs>
+<text font-family="Cinzel" font-weight="700" font-size="34" letter-spacing="9" fill="#ECECE6" text-anchor="middle"><textPath href="#arc" startOffset="50%">ADRO</textPath></text>
+<text x="140" y="84" text-anchor="middle" font-family="Playfair Display" font-style="italic" font-size="9" fill="#ECECE6">Riyadh</text>
+<use href="#camel" transform="translate(76 132) scale(.95)"></use>
+<use href="#camel" transform="translate(138 132) scale(.95)"></use>
+<use href="#camel" transform="translate(200 132) scale(.95)"></use>
+<line x1="44" y1="156" x2="236" y2="156" stroke="#ECECE6" stroke-width=".8"></line>
+<text x="140" y="182" text-anchor="middle" font-family="Cinzel" font-weight="700" font-size="17" letter-spacing="7" fill="#ECECE6">ENDURANCE</text>
+</svg>
