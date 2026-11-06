@@ -5,3 +5,6 @@
 - Back: art_frame2.svg, about 30 x 30 cm, centered under the hood. A square with the blue ring on each 90° corner and "adr" along each side linking them; inside, 75 adro logos at random sizes and angles (off-white, and grey with dark-blue rings for depth). Change the layout with source/art.html?p=frame2&seed=N.
 
 Inks: off-white #ECECE6, grey #8D8D86, blue #3355FF, dark blue #2A3F9E. SVG units are mm.
+
+## Full-back version (chosen)
+The same art_frame2.svg printed at about 45 x 45 cm, covering the back panel from under the hood to above the rib hem, edge to edge between the shoulder seams (adro-hoodie-back-full.jpg). Needs an oversize screen or DTF; ask the factory for their largest print area.
