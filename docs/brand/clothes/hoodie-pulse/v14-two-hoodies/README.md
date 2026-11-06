@@ -4,6 +4,6 @@ Both: washed charcoal oversized hoodie, the blue adro ring centered on the chest
 
 Hoodie 1, ENDURANCE (back, art_emblem.svg, about 32 cm wide): ADRO arched in Roman capitals, Riyadh in italics, three camels in the spirit of Arabian rock art, a rule, ENDURANCE. Fonts: Cinzel, Playfair Display italic.
 
-Hoodie 2, ADRO SOCIETY (back, art_society.svg, about 38 cm wide): ADRO SOCIETY arched, 20 ✦ 26 with a Najdi star, NOTES TO SELF and the short note. Font: Playfair Display.
+Hoodie 2, ADRO SOCIETY (back, art_society.svg, about 44 cm wide, big like the EME reference: the arch spans shoulder to shoulder, starting about 4 cm under the hood): ADRO SOCIETY arched, 20 ✦ 26 with a Najdi star, NOTES TO SELF and the short note. Font: Playfair Display.
 
 Ink: off-white #ECECE6 (backs), blue #3355FF (ring, one sleeve). All vector, drawn by hand (no AI images).
