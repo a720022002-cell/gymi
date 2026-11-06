@@ -34,6 +34,18 @@ if(P==='back'){
   h+=tx(cx,380,'ADRO  ·  RIYADH  ·  EST. 2026',{size:5,w:400,ls:3,fill:GREY});
 }else if(P==='chest'){
   W=100;H=40;h+=logo(50,20,90,INK);
+}else if(P==='back2'){
+  // Every rep. Every meal. Every night. It all connects. (The teaser's lines.) Dim EVERY, bright word, blue answer.
+  W=300;H=250;const L=(y,word)=>`<text x="12" y="${y}" font-family="Sora" font-weight="800" font-size="36" letter-spacing="1" fill="#77776f">EVERY</text>`+`<text x="146" y="${y}" font-family="Sora" font-weight="800" font-size="36" letter-spacing="1" fill="${INK}">${word}.</text>`;
+  h+=tx(12,14,'FIRST COLLECTION',{size:5.6,w:600,ls:2.4,a:'start',fill:GREY})+tx(288,14,'DROP 001',{size:5.6,w:600,ls:2.4,a:'end',fill:GREY});
+  h+=`<line x1="12" y1="22" x2="288" y2="22" stroke="${INK}" stroke-width=".6" opacity=".5"/>`;
+  h+=L(66,'REP')+L(110,'MEAL')+L(154,'NIGHT');
+  h+=`<line x1="12" y1="174" x2="288" y2="174" stroke="${INK}" stroke-width=".6" opacity=".5"/>`;
+  h+=tx(12,204,'IT ALL CONNECTS.',{size:21,w:800,ls:1.5,a:'start',fill:BLUE});
+  h+=`<circle cx="276" cy="196.5" r="7.5" fill="none" stroke="${BLUE}" stroke-width="4.2" stroke-linecap="round" stroke-dasharray="${2*Math.PI*7.5*.8} 99" transform="rotate(-90 276 196.5)"/>`;
+  h+=`<line x1="12" y1="220" x2="288" y2="220" stroke="${INK}" stroke-width=".6" opacity=".5"/>`;
+  h+=tx(12,234,'DESIGNED IN SAUDI, BY ADRO',{size:5.6,w:600,ls:2.2,a:'start'})+tx(288,234,'24.71° N 46.67° E',{size:5.6,w:400,ls:2.2,a:'end',fill:GREY});
+  h+=tx(12,244,'ALWAYS WITH YOU.',{size:5.6,w:600,ls:2.2,a:'start',fill:BLUE})+tx(288,244,'EST. 2026',{size:5.6,w:400,ls:2.2,a:'end',fill:GREY});
 }else if(P==='front1'){
   // Badge: logo, the line under it, and a thin rule with where and when.
   W=150;H=72;h+=logo(75,18,110,INK);
@@ -42,8 +54,8 @@ if(P==='back'){
   h+=tx(8,67,'EST. 2026',{size:4.6,w:500,ls:2,a:'start',fill:GREY})+tx(75,67,'●',{size:4,fill:BLUE})+tx(142,67,'RIYADH',{size:4.6,w:500,ls:2,a:'end',fill:GREY});
 }else if(P==='front2'){
   // Split: logo on the left chest, a small text block on the right chest.
-  W=280;H=40;h+=logo(42,16,78,INK);
-  const x=186;h+=`<line x1="${x-5}" y1="1" x2="${x-5}" y2="38" stroke="${BLUE}" stroke-width="1.4"/>`;
+  W=300;H=40;h+=logo(42,16,78,INK);
+  const x=196;h+=`<line x1="${x-5}" y1="1" x2="${x-5}" y2="38" stroke="${BLUE}" stroke-width="1.4"/>`;
   h+=tx(x,8,'DESIGNED IN SAUDI',{size:6.6,w:700,ls:1.4,a:'start'})+tx(x,18,'BY ADRO — EST. 2026',{size:6.6,w:500,ls:1.4,a:'start'})+tx(x,28,'24.71° N 46.67° E',{size:6.6,w:400,ls:1.4,a:'start',fill:GREY})+tx(x,38,'ALWAYS WITH YOU.',{size:6.6,w:600,ls:1.4,a:'start',fill:BLUE});
 }else if(P==='front3'){
   // Big: the logo across the chest, a quiet line above it and a small one under it.
