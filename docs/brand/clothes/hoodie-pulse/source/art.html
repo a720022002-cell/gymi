@@ -1,0 +1,49 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0}html,body{background:transparent}svg{display:block}</style></head><body>
+<svg id="s" xmlns="http://www.w3.org/2000/svg"></svg>
+<script src="letters.js"></script>
+<script>
+// Adro "Pulse" hoodie artwork. ?p=back | chest | sleeveL | sleeveR | hood | label. 1 unit = 1 mm on the garment.
+const q=new URLSearchParams(location.search),P=q.get('p')||'back',INK=q.get('ink')||'#ECECE6',BLUE='#3355FF',GREY='#a9a9a2';
+const S=document.getElementById('s');
+const WM={x0:30,y0:-745,w:2229,h:775,ring:{cx:1953.5,cy:-271.5,r:228.5,stroke:130}};
+const logo=(cx,cy,w,col,ring=BLUE)=>{const k=w/WM.w;return `<g transform="translate(${cx} ${cy}) scale(${k}) translate(${-WM.x0-WM.w/2} ${-WM.y0-WM.h/2})"><path fill="${col}" d="${window.LETTERS}"/><circle cx="${WM.ring.cx}" cy="${WM.ring.cy}" r="${WM.ring.r}" fill="none" stroke="${ring}" stroke-width="${WM.ring.stroke}" stroke-linecap="round" stroke-dasharray="${2*Math.PI*WM.ring.r*.8} 9999" transform="rotate(-90 ${WM.ring.cx} ${WM.ring.cy})"/></g>`;};
+const tx=(x,y,s,o={})=>`<text x="${x}" y="${y}" text-anchor="${o.a||'middle'}" font-family="Sora" font-weight="${o.w||600}" font-size="${o.size||6}" letter-spacing="${o.ls||0}" fill="${o.fill||INK}" ${o.rot!=null?`transform="rotate(${o.rot} ${x} ${y})"`:''}>${s}</text>`;
+// One heartbeat as points (mm along the line, mm off the ring; + = outward). Sharp QRS, soft P and T.
+const ECG=[[0,0],[6,0],[8,1.6],[10,2.4],[12,1.6],[14,0],[19,0],[21,-4.5],[25.5,25],[30,-9],[32.5,0],[38,0],[41,3],[44,5],[47,3],[50,0],[58,0]];
+const ecgAt=s=>{for(let i=1;i<ECG.length;i++){const[a0,b0]=ECG[i-1],[a1,b1]=ECG[i];if(s<=a1)return b0+(b1-b0)*(s-a0)/(a1-a0);}return 0;};
+let W,H,h='';
+if(P==='back'){
+  // The open adro ring, calm and smooth, until its end turns into a blue heartbeat and stops on a dot: you, right now.
+  W=330;H=390;const cx=165,cy=158,R=122,arc=.8,SW=4.6,len=2*Math.PI*R*arc,beatLen=58,beats=2,bStart=len-beatLen*beats-14;
+  const pt=s=>{const a=-Math.PI/2+(s/len)*arc*Math.PI*2,k=s-bStart,off=k>0&&k<beatLen*beats?ecgAt(k%beatLen):0,r=R+off;return [cx+Math.cos(a)*r,cy+Math.sin(a)*r];};
+  let d1='',d2='';
+  for(let s=0;s<=len+1e-6;s+=.25){const [x,y]=pt(Math.min(s,len)),p=`${x.toFixed(2)} ${y.toFixed(2)}`;
+    if(s<=bStart)d1+=(d1?'L':'M')+p;if(s>=bStart)d2+=(d2?'L':'M')+p;}
+  h+=`<path d="${d1}" fill="none" stroke="${INK}" stroke-width="${SW}" stroke-linejoin="round" stroke-linecap="round"/>`;
+  h+=`<path d="${d2}" fill="none" stroke="${BLUE}" stroke-width="${SW}" stroke-linejoin="round" stroke-linecap="round"/>`;
+  const [ex,ey]=pt(len);h+=`<circle cx="${ex}" cy="${ey}" r="8" fill="${BLUE}"/><circle cx="${ex}" cy="${ey}" r="14" fill="none" stroke="${BLUE}" stroke-width="1.2" opacity=".55"/>`;
+  // inside the ring
+  h+=tx(cx,cy-4,'ALWAYS',{size:25,w:800,ls:3});
+  h+=tx(cx,cy+24,'WITH YOU.',{size:25,w:800,ls:3});
+  h+=tx(cx,cy+44,'EVERY BEAT  ·  EVERY REP  ·  EVERY NIGHT',{size:5.6,w:500,ls:1.6,fill:GREY});
+  // under the ring
+  h+=tx(cx,342,'BEYOND WHAT YOU SEE',{size:9,w:600,ls:5});
+  h+=tx(cx,358,'CLOSER TO WHAT YOU FEEL',{size:9,w:600,ls:5,fill:BLUE});
+  h+=tx(cx,380,'ADRO  ·  RIYADH  ·  EST. 2026',{size:5,w:400,ls:3,fill:GREY});
+}else if(P==='chest'){
+  W=100;H=40;h+=logo(50,20,90,INK);
+}else if(P==='sleeveL'){
+  W=30;H=330;h+=tx(15,165,'BEYOND WHAT YOU SEE',{size:11,w:700,ls:7,rot:90});
+}else if(P==='sleeveR'){
+  W=30;H=330;h+=tx(15,165,'CLOSER TO WHAT YOU FEEL',{size:11,w:700,ls:5.5,rot:-90,fill:BLUE});
+}else if(P==='hood'){
+  // small open ring on the back of the hood, a single beat inside it
+  W=60;H=60;const c=30,r=22;
+  h+=`<circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${BLUE}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${2*Math.PI*r*.8} 9999" transform="rotate(-90 ${c} ${c})"/>`;
+}else if(P==='label'){
+  W=70;H=46;h+=logo(35,12,40,INK)+tx(35,27,'Designed in Saudi, By adro',{size:4,w:400})+tx(35,35,'THE PULSE HOODIE',{size:3.4,w:600,ls:1.4,fill:GREY})+tx(35,42,'Always with you.',{size:3.4,w:300,fill:GREY});
+}
+S.setAttribute('width',W*8);S.setAttribute('height',H*8);S.setAttribute('viewBox',`0 0 ${W} ${H}`);S.innerHTML=h;
+</script></body></html>
