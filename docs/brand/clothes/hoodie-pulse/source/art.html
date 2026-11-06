@@ -135,7 +135,7 @@ if(P==='back'){
     return `<g transform="translate(${cx-ox} ${cy-oy}) rotate(${rot})">`+(BOX?`<rect x="${-bw/2}" y="${-bh/2}" width="${bw}" height="${bh}" fill="${BOX}"/>`:'')+
       `<g transform="scale(${k}) translate(${-WM.x0-WM.w/2} ${-WM.y0-WM.h/2})"><path fill="${INK}" d="${window.LETTERS}"/><circle cx="${WM.ring.cx}" cy="${WM.ring.cy}" r="${WM.ring.r}" fill="none" stroke="${BLUE}" stroke-width="${WM.ring.stroke}" stroke-linecap="round" stroke-dasharray="${2*Math.PI*WM.ring.r*.8} 9999" transform="rotate(-90 ${WM.ring.cx} ${WM.ring.cy})"/></g></g>`;};
   h+=boxed(451,692,270,0)+boxed(672,900,270,90)+boxed(450,1110,270,180)+boxed(248,900,270,270);
-  h+=boxed(362,797,105,0)+boxed(488,914,205,0)+boxed(356,871,98,20)+boxed(484,868,68,-38);
+  if(q.get('inner')!=='0') h+=boxed(362,797,105,0)+boxed(488,914,205,0)+boxed(356,871,98,20)+boxed(484,868,68,-38);
 }else if(P==='frame2'){
   // A square with a ring on each 90° corner and "adr" running along each side to it; inside, many logos scattered at random.
   const k=.1,D=2300*k,T=Math.ceil(D+2*293.5*k+4),c=T/2; W=T;H=T;
