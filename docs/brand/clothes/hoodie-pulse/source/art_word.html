@@ -1,0 +1,18 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600&display=swap" rel="stylesheet"><script src="letters.js"></script>
+<style>*{margin:0}html,body{background:transparent}svg{display:block}</style></head><body>
+<svg id="s" xmlns="http://www.w3.org/2000/svg"></svg>
+<script>
+// ?p=under: the ring with the small word "adro" under it (lockup) | word: the word alone (for the back neck) | tab: a woven hem tab
+const q=new URLSearchParams(location.search),P=q.get('p'),INK='#ECECE6',BLUE='#3355FF',S=document.getElementById('s');
+const WM={x0:30,y0:-745,w:2229,h:775};
+// the letters "adr" + a ring as "o", built from the logo, in one colour
+const word=(cx,cy,w,col,ring)=>{const k=w/WM.w;return `<g transform="translate(${cx} ${cy}) scale(${k}) translate(${-WM.x0-WM.w/2} ${-WM.y0-WM.h/2})"><path fill="${col}" d="${window.LETTERS}"/><circle cx="1953.5" cy="-271.5" r="228.5" fill="none" stroke="${ring}" stroke-width="130" stroke-linecap="round" stroke-dasharray="${2*Math.PI*228.5*.8} 9999" transform="rotate(-90 1953.5 -271.5)"/></g>`;};
+let W,H,h='';
+if(P==='under'){W=60;H=70;const c=30,r=21,sw=r*130/228.5;
+  h+=`<circle cx="${c}" cy="25" r="${r}" fill="none" stroke="${BLUE}" stroke-width="${sw.toFixed(2)}" stroke-linecap="round" stroke-dasharray="${(2*Math.PI*r*.8).toFixed(2)} 9999" transform="rotate(-90 ${c} 25)"/>`;
+  h+=word(c,61,34,INK,INK);}
+else if(P==='word'){W=60;H=22;h+=word(30,11,52,INK,BLUE);}
+else if(P==='tab'){W=34;H=14;h+=`<rect x=".5" y=".5" width="33" height="13" rx="1.5" fill="#101012"/>`+word(17,7,22,INK,BLUE);}
+S.setAttribute('width',W*16);S.setAttribute('height',H*16);S.setAttribute('viewBox',`0 0 ${W} ${H}`);S.innerHTML=h;
+</script></body></html>
