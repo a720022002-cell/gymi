@@ -294,5 +294,16 @@ if(V==='e'){ h='';
   }
 }
 if(DIE) h+=`<image href="die_${SIDE}.png" x="0" y="0" width="1260" height="905"/>`;
+// Box size on the dieline pages: 17 x 9 x 3.8 cm (outside of the lid). Dimension lines on the first lid, and a size note.
+if(DIE&&q.get('dims')!=='0'){const L=LIDS[0],R='#e0115f',dl=(x1,y1,x2,y2,lab,vert)=>{const mx=(x1+x2)/2,my=(y1+y2)/2,a=6;
+    let o=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${R}" stroke-width="1"/>`;
+    o+=vert?`<path d="M${x1-a/2} ${y1+a}L${x1} ${y1}L${x1+a/2} ${y1+a}M${x2-a/2} ${y2-a}L${x2} ${y2}L${x2+a/2} ${y2-a}" fill="none" stroke="${R}" stroke-width="1"/>`
+           :`<path d="M${x1+a} ${y1-a/2}L${x1} ${y1}L${x1+a} ${y1+a/2}M${x2-a} ${y2-a/2}L${x2} ${y2}L${x2-a} ${y2+a/2}" fill="none" stroke="${R}" stroke-width="1"/>`;
+    o+=`<rect x="${mx-(vert?14:26)}" y="${my-7}" width="${vert?28:52}" height="14" rx="3" fill="#fff"/>`+text(mx,my+.5,lab,{size:8,w:700,fill:R});return o;};
+  h+=dl(L.x0,L.y0+22,L.x1,L.y0+22,'170 mm',false);
+  h+=dl(L.x0+30,L.y0,L.x0+30,L.y1,'90 mm',true);
+  h+=dl(L.x1+40,L.wt,L.x1+40,L.y0,'38 mm',true);
+  h+=`<rect x="420" y="868" width="420" height="28" rx="6" fill="#fff" stroke="${R}" stroke-width="1"/>`+text(630,882.5,'BOX SIZE (outside): 17 × 9 × 3.8 cm  ·  L 170 × W 90 × H 38 mm',{size:9,w:700,fill:R});
+}
 S.innerHTML=h;
 </script></body></html>
