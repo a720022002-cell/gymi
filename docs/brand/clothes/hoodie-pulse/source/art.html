@@ -46,6 +46,19 @@ if(P==='back'){
   h+=`<line x1="12" y1="220" x2="288" y2="220" stroke="${INK}" stroke-width=".6" opacity=".5"/>`;
   h+=tx(12,234,'DESIGNED IN SAUDI, BY ADRO',{size:5.6,w:600,ls:2.2,a:'start'})+tx(288,234,'24.71° N 46.67° E',{size:5.6,w:400,ls:2.2,a:'end',fill:GREY});
   h+=tx(12,244,'ALWAYS WITH YOU.',{size:5.6,w:600,ls:2.2,a:'start',fill:BLUE})+tx(288,244,'EST. 2026',{size:5.6,w:400,ls:2.2,a:'end',fill:GREY});
+}else if(P==='backA'){
+  // Tonal ring: the open adro ring big across the back in a shade just lighter than the fabric; only its end is blue.
+  W=300;H=300;const c=150,r=128,sw=26,C=2*Math.PI*r;
+  const e=(-90+.8*360)*Math.PI/180;
+  h+=`<circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="#4b4b46" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${C*.8} 9999" transform="rotate(-90 ${c} ${c})"/>`;
+  h+=`<circle cx="${(c+Math.cos(e)*r).toFixed(2)}" cy="${(c+Math.sin(e)*r).toFixed(2)}" r="${sw/2}" fill="${BLUE}"/>`;
+  h+=tx(c,c+3,'ALWAYS WITH YOU.',{size:8,w:600,ls:5,fill:'#6a6a64'});
+}else if(P==='backB'){
+  // Neck mark: small logo just under the hood, a quiet line under it.
+  W=90;H=36;h+=logo(45,13,70,INK)+tx(45,33,'ALWAYS WITH YOU.',{size:4.4,w:600,ls:2.6,fill:GREY});
+}else if(P==='backC'){
+  // Wordmark: adro across the upper back, one small line under it.
+  W=220;H=96;h+=logo(110,38,210,INK)+tx(110,90,'EST. 2026   ·   RIYADH',{size:6,w:500,ls:4,fill:GREY});
 }else if(P==='front1'){
   // Badge: logo, the line under it, and a thin rule with where and when.
   W=150;H=72;h+=logo(75,18,110,INK);
