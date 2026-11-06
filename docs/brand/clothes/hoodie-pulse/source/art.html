@@ -79,6 +79,31 @@ if(P==='back'){
   W=30;H=330;h+=tx(15,165,'BEYOND WHAT YOU SEE',{size:11,w:700,ls:7,rot:90});
 }else if(P==='sleeveR'){
   W=30;H=330;h+=tx(15,165,'CLOSER TO WHAT YOU FEEL',{size:11,w:700,ls:5.5,rot:-90,fill:BLUE});
+}else if(P==='frame2'){
+  // A square with a ring on each 90° corner and "adr" running along each side to it; inside, many logos scattered at random.
+  const k=.1,D=2300*k,T=Math.ceil(D+2*293.5*k+4),c=T/2; W=T;H=T;
+  const RCX=WM.ring.cx,RCY=WM.ring.cy;
+  const logoAt=(x,y,rot,kk,ink,ringCol)=>`<g transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${rot.toFixed(1)}) scale(${kk.toFixed(4)})"><path fill="${ink}" d="${window.LETTERS}"/><circle cx="${RCX}" cy="${RCY}" r="${WM.ring.r}" fill="none" stroke="${ringCol}" stroke-width="${WM.ring.stroke}" stroke-linecap="round" stroke-dasharray="${2*Math.PI*WM.ring.r*.8} 9999" transform="rotate(-90 ${RCX} ${RCY})"/></g>`;
+  // the frame: logo moved so its ring centre is at (0,0), ring on the top-right corner, then turned for each side
+  const side=`<g transform="translate(${c+D/2} ${c-D/2}) scale(${k}) translate(${-RCX} ${-RCY})"><path fill="${INK}" d="${window.LETTERS}"/><circle cx="${RCX}" cy="${RCY}" r="${WM.ring.r}" fill="none" stroke="${BLUE}" stroke-width="${WM.ring.stroke}" stroke-linecap="round" stroke-dasharray="${2*Math.PI*WM.ring.r*.8} 9999" transform="rotate(-90 ${RCX} ${RCY})"/></g>`;
+  for(const r of [0,90,180,270]) h+=`<g transform="rotate(${r} ${c} ${c})">${side}</g>`;
+  // scattered logos: seeded, random size and angle, no two touching, all inside the inner square
+  let seed=Number(q.get('seed')||5);const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};
+  const half=D/2-34,boxes=[];
+  const corners=(x,y,a,w,hh)=>{const ca=Math.cos(a),sa=Math.sin(a);return [[-w/2,-hh/2],[w/2,-hh/2],[w/2,hh/2],[-w/2,hh/2]].map(([u,v])=>[x+u*ca-v*sa,y+u*sa+v*ca]);};
+  const sep=(A,B)=>{for(const P of [A,B])for(let i=0;i<4;i++){const [x1,y1]=P[i],[x2,y2]=P[(i+1)%4],nx=y1-y2,ny=x2-x1;
+      const pa=A.map(p=>p[0]*nx+p[1]*ny),pb=B.map(p=>p[0]*nx+p[1]*ny);if(Math.max(...pa)<Math.min(...pb)||Math.max(...pb)<Math.min(...pa))return true;}return false;};
+  for(let tries=0;tries<6000&&boxes.length<75;tries++){
+    const w=20+Math.pow(rnd(),1.8)*58,hh=w*WM.h/WM.w,a=(rnd()*2-1)*Math.PI,x=c+(rnd()*2-1)*half,y=c+(rnd()*2-1)*half;
+    const P=corners(x,y,a,w*1.06,hh*1.12);
+    if(P.some(([px,py])=>Math.abs(px-c)>half||Math.abs(py-c)>half))continue;
+    if(boxes.some(b=>!sep(b,P)))continue;
+    boxes.push(P);const kk=w/WM.w,dim=rnd()<.35;
+    // place by centre: the logo's own centre is at (x0+w/2, y0+h/2)
+    const cxL=WM.x0+WM.w/2,cyL=WM.y0+WM.h/2,ca=Math.cos(a),sa=Math.sin(a);
+    const ox=x-(cxL*ca-cyL*sa)*kk,oy=y-(cxL*sa+cyL*ca)*kk;
+    h+=logoAt(ox,oy,a*180/Math.PI,kk,dim?'#8d8d86':INK,dim?'#2a3f9e':BLUE);
+  }
 }else if(P==='frame'){
   // Four adro logos in a pinwheel: each ring sits on a corner and each "adr" runs along a side to the next ring.
   // Logo length L and height hL; the open square inside is L - hL wide and is filled with text (added after layout).
