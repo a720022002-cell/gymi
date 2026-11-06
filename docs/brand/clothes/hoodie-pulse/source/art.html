@@ -79,6 +79,10 @@ if(P==='back'){
   W=30;H=330;h+=tx(15,165,'BEYOND WHAT YOU SEE',{size:11,w:700,ls:7,rot:90});
 }else if(P==='sleeveR'){
   W=30;H=330;h+=tx(15,165,'CLOSER TO WHAT YOU FEEL',{size:11,w:700,ls:5.5,rot:-90,fill:BLUE});
+}else if(P==='ring'){
+  // Front: only the ring of the adro logo, same proportions as in the logo (stroke 130 on radius 228.5).
+  W=60;H=60;const c=30,r=21,sw=r*130/228.5;
+  h+=`<circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${BLUE}" stroke-width="${sw.toFixed(2)}" stroke-linecap="round" stroke-dasharray="${(2*Math.PI*r*.8).toFixed(2)} 9999" transform="rotate(-90 ${c} ${c})"/>`;
 }else if(P==='hood'){
   // small open ring on the back of the hood, a single beat inside it
   W=60;H=60;const c=30,r=22;
