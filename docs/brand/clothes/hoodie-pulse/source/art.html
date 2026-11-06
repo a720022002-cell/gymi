@@ -79,6 +79,13 @@ if(P==='back'){
   W=30;H=330;h+=tx(15,165,'BEYOND WHAT YOU SEE',{size:11,w:700,ls:7,rot:90});
 }else if(P==='sleeveR'){
   W=30;H=330;h+=tx(15,165,'CLOSER TO WHAT YOU FEEL',{size:11,w:700,ls:5.5,rot:-90,fill:BLUE});
+}else if(P==='seal'){
+  // A round seal: the blue adro ring in the middle, the brand's lines running round it on a circle.
+  W=150;H=150;const c=75,rt=60,ri=24,sw=ri*130/228.5;
+  h+=`<defs><path id="circ" d="M ${c} ${c-rt} A ${rt} ${rt} 0 1 1 ${c-.01} ${c-rt}"/></defs>`;
+  h+=`<text font-family="Sora" font-weight="600" font-size="8.2" letter-spacing="3.1" fill="${INK}"><textPath href="#circ" textLength="${(2*Math.PI*rt-6).toFixed(1)}" lengthAdjust="spacing">ALWAYS WITH YOU · BEYOND WHAT YOU SEE · CLOSER TO WHAT YOU FEEL ·</textPath></text>`;
+  h+=`<circle cx="${c}" cy="${c}" r="${rt-12}" fill="none" stroke="${INK}" stroke-width=".5" opacity=".45"/>`;
+  h+=`<circle cx="${c}" cy="${c}" r="${ri}" fill="none" stroke="${BLUE}" stroke-width="${sw.toFixed(2)}" stroke-linecap="round" stroke-dasharray="${(2*Math.PI*ri*.8).toFixed(2)} 9999" transform="rotate(-90 ${c} ${c})"/>`;
 }else if(P==='frame3'){
   // The owner's layout, as drawn: four logos on black boxes around a square (ring leading each side round),
   // and four more inside, overlapping. Units are the owner's sketch pixels; the print is scaled to 300 mm wide.
