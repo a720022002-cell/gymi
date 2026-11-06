@@ -1,0 +1,49 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Playfair+Display:ital,wght@0,800;0,900;1,400&display=swap" rel="stylesheet">
+<style>*{margin:0}html,body{background:transparent}svg{display:block}</style></head><body>
+<svg id="s" xmlns="http://www.w3.org/2000/svg" width="2400" height="2160" viewBox="0 0 300 270"></svg>
+<script>
+// DESERT ATHLETIC CLUB: a club crest. A Najdi window (stepped crenellations on top) holding a night desert scene,
+// palm-frond laurels either side, a ribbon with the motto, ADRO arched above and the club's name below. 1 unit = 1 mm.
+const INK='#ECECE6',BG='#141414',S=document.getElementById('s');let h='';
+const cx=150,wx=52,wTop=62,wBot=166; // window half-width, top of the arch, bottom
+h+=`<defs><path id="arc" d="M 62 46 Q 150 0 238 46"/><clipPath id="win"><path d="M ${cx-wx} ${wBot} L ${cx-wx} ${wTop+wx} A ${wx} ${wx} 0 0 1 ${cx+wx} ${wTop+wx} L ${cx+wx} ${wBot} Z"/></clipPath></defs>`;
+h+=`<text font-family="Cinzel" font-weight="700" font-size="20" letter-spacing="9" fill="${INK}" text-anchor="middle"><textPath href="#arc" startOffset="50%">ADRO</textPath></text>`;
+// Najdi crenellations: a row of small stepped triangles riding the arch
+for(let i=0;i<=16;i++){const a=Math.PI+i/16*Math.PI,r=wx+6,x=cx+Math.cos(a)*r,y=wTop+wx+Math.sin(a)*r,n=a+Math.PI/2;
+  const p=(u,v)=>`${(x+Math.cos(a)*v+Math.cos(n)*u).toFixed(2)} ${(y+Math.sin(a)*v+Math.sin(n)*u).toFixed(2)}`;
+  h+=`<path d="M ${p(-3.2,0)} L ${p(-3.2,2.4)} L ${p(-1.6,2.4)} L ${p(-1.6,4.6)} L ${p(1.6,4.6)} L ${p(1.6,2.4)} L ${p(3.2,2.4)} L ${p(3.2,0)} Z" fill="${INK}"/>`;}
+// the window frame (double line)
+const frame=(o,w)=>`<path d="M ${cx-wx-o} ${wBot+o} L ${cx-wx-o} ${wTop+wx} A ${wx+o} ${wx+o} 0 0 1 ${cx+wx+o} ${wTop+wx} L ${cx+wx+o} ${wBot+o} Z" fill="none" stroke="${INK}" stroke-width="${w}"/>`;
+h+=frame(0,1.6)+frame(3.4,.6);
+// inside: night sky, crescent, stars, dunes, one palm
+let g='';
+g+=`<circle cx="${cx+20}" cy="${wTop+26}" r="11" fill="${INK}"/><circle cx="${cx+25}" cy="${wTop+22}" r="9.6" fill="${BG}"/>`;
+const stars=[[-30,40,1.3],[-14,24,.9],[-38,64,.8],[2,48,1.1],[34,58,.8],[-22,82,.7],[12,72,.6],[40,40,.6],[-6,62,.6]];
+for(const [sx,sy,r] of stars){const x=cx+sx,y=wTop+sy;g+=`<path d="M ${x} ${y-r*2.6} L ${x+r*.6} ${y-r*.6} L ${x+r*2.6} ${y} L ${x+r*.6} ${y+r*.6} L ${x} ${y+r*2.6} L ${x-r*.6} ${y+r*.6} L ${x-r*2.6} ${y} L ${x-r*.6} ${y-r*.6} Z" fill="${INK}"/>`;}
+g+=`<path d="M ${cx-wx} 140 Q ${cx-20} 126 ${cx+8} 138 T ${cx+wx} 132 L ${cx+wx} ${wBot} L ${cx-wx} ${wBot} Z" fill="${INK}"/>`;
+g+=`<path d="M ${cx-wx} 152 Q ${cx-10} 142 ${cx+wx} 154" fill="none" stroke="${BG}" stroke-width=".8"/><path d="M ${cx-wx} 160 Q ${cx+10} 151 ${cx+wx} 161" fill="none" stroke="${BG}" stroke-width=".6"/>`;
+// palm on the dune
+const px=cx-22,py=134,ht=40,lean=-4,tx=px+lean,ty=py-ht;
+g+=`<path d="M ${px-1.6} ${py} Q ${px+lean*.4-1.2} ${py-ht*.5} ${tx-.8} ${ty} L ${tx+.8} ${ty} Q ${px+lean*.4+1.2} ${py-ht*.5} ${px+1.6} ${py} Z" fill="${INK}"/>`;
+for(const [deg,len] of [[-160,15],[-135,17],[-105,15],[-75,16],[-45,17],[-20,15],[-178,11],[0,11]]){const a=deg*Math.PI/180,ex=tx+Math.cos(a)*len,ey=ty+Math.sin(a)*len+len*.6,mx=tx+Math.cos(a)*len*.55,my=ty+Math.sin(a)*len*.55-2.5;
+  g+=`<path d="M ${tx} ${ty} Q ${mx.toFixed(2)} ${my.toFixed(2)} ${ex.toFixed(2)} ${ey.toFixed(2)}" fill="none" stroke="${INK}" stroke-width="1.5" stroke-linecap="round"/>`;}
+h+=`<g clip-path="url(#win)">${g}</g>`;
+// palm-frond laurels either side of the window
+const laurel=(side)=>{let l='';const P0=[cx+side*(wx+11),wBot+2],P1=[cx+side*(wx+34),wTop+64],P2=[cx+side*(wx+16),wTop+14];
+  const B=t=>[(1-t)*(1-t)*P0[0]+2*(1-t)*t*P1[0]+t*t*P2[0],(1-t)*(1-t)*P0[1]+2*(1-t)*t*P1[1]+t*t*P2[1]];
+  const D=t=>[2*(1-t)*(P1[0]-P0[0])+2*t*(P2[0]-P1[0]),2*(1-t)*(P1[1]-P0[1])+2*t*(P2[1]-P1[1])];
+  l+=`<path d="M ${P0[0]} ${P0[1]} Q ${P1[0]} ${P1[1]} ${P2[0]} ${P2[1]}" fill="none" stroke="${INK}" stroke-width="1.2" stroke-linecap="round"/>`;
+  for(let i=1;i<=12;i++){const t=i/13,[x,y]=B(t),[dx,dy]=D(t),m=Math.hypot(dx,dy),ux=dx/m,uy=dy/m,L=8.5*(1-t*.45);
+    for(const sg of [1,-1]){const nx=-uy*sg,ny=ux*sg,ex=x+(ux*.75+nx*.8)*L,ey=y+(uy*.75+ny*.8)*L,qx=x+(ux*.1+nx*.75)*L,qy=y+(uy*.1+ny*.75)*L;
+      l+=`<path d="M ${x.toFixed(2)} ${y.toFixed(2)} Q ${qx.toFixed(2)} ${qy.toFixed(2)} ${ex.toFixed(2)} ${ey.toFixed(2)}" fill="none" stroke="${INK}" stroke-width="1.05" stroke-linecap="round"/>`;}}
+  return l;};
+h+=laurel(1)+laurel(-1);
+// ribbon with the motto
+const ry=182;h+=`<path d="M 70 ${ry} L 230 ${ry} L 222 ${ry+7} L 230 ${ry+14} L 70 ${ry+14} L 78 ${ry+7} Z" fill="none" stroke="${INK}" stroke-width="1.1"/>`;
+h+=`<text x="150" y="${ry+9.6}" text-anchor="middle" font-family="Cinzel" font-weight="700" font-size="6.6" letter-spacing="3" fill="${INK}">STRONGER BY NATURE</text>`;
+h+=`<text x="150" y="226" text-anchor="middle" font-family="Playfair Display" font-weight="900" font-size="20" letter-spacing=".4" fill="${INK}">DESERT ATHLETIC CLUB</text>`;
+h+=`<text x="150" y="242" text-anchor="middle" font-family="Playfair Display" font-style="italic" font-size="7.4" fill="${INK}">members since the first light of 2026</text>`;
+h+=`<text x="150" y="257" text-anchor="middle" font-family="Cinzel" font-weight="600" font-size="5.2" letter-spacing="3.2" fill="${INK}">RIYADH  ·  NAJD  ·  24.71° N</text>`;
+S.innerHTML=h;
+</script></body></html>
