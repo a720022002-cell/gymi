@@ -79,6 +79,13 @@ if(P==='back'){
   W=30;H=330;h+=tx(15,165,'BEYOND WHAT YOU SEE',{size:11,w:700,ls:7,rot:90});
 }else if(P==='sleeveR'){
   W=30;H=330;h+=tx(15,165,'CLOSER TO WHAT YOU FEEL',{size:11,w:700,ls:5.5,rot:-90,fill:BLUE});
+}else if(P==='frame'){
+  // Four adro logos in a pinwheel: each ring sits on a corner and each "adr" runs along a side to the next ring.
+  // Logo length L and height hL; the open square inside is L - hL wide and is filled with text (added after layout).
+  const L=222,k=L/WM.w,hL=WM.h*k,T=L+hL,c=T/2; W=T;H=T;
+  const one=`<g transform="scale(${k}) translate(${-WM.x0} ${-WM.y0})"><path fill="${INK}" d="${window.LETTERS}"/><circle cx="${WM.ring.cx}" cy="${WM.ring.cy}" r="${WM.ring.r}" fill="none" stroke="${BLUE}" stroke-width="${WM.ring.stroke}" stroke-linecap="round" stroke-dasharray="${2*Math.PI*WM.ring.r*.8} 9999" transform="rotate(-90 ${WM.ring.cx} ${WM.ring.cy})"/></g>`;
+  for(const r of [0,90,180,270]) h+=`<g transform="rotate(${r} ${c} ${c})">${one}</g>`;
+  window.FRAME={x:hL,y:hL,s:L-hL};
 }else if(P==='ring'){
   // Front: only the ring of the adro logo, same proportions as in the logo (stroke 130 on radius 228.5).
   W=60;H=60;const c=30,r=21,sw=r*130/228.5;
@@ -91,4 +98,18 @@ if(P==='back'){
   W=70;H=46;h+=logo(35,12,40,INK)+tx(35,27,'Designed in Saudi, By adro',{size:4,w:400})+tx(35,35,'THE PULSE HOODIE',{size:3.4,w:600,ls:1.4,fill:GREY})+tx(35,42,'Always with you.',{size:3.4,w:300,fill:GREY});
 }
 S.setAttribute('width',W*8);S.setAttribute('height',H*8);S.setAttribute('viewBox',`0 0 ${W} ${H}`);S.innerHTML=h;
+if(P==='frame') document.fonts.ready.then(()=>{
+  const F=window.FRAME,pad=6,x0=F.x+pad,w=F.s-pad*2,size=4.1,lead=5.7,ls=.7;
+  const lines=Math.floor((F.s-pad*2+lead-size)/lead);
+  const words=[['ALWAYS','b'],['WITH','b'],['YOU.','b'],'BEYOND','WHAT','YOU','SEE.','CLOSER','TO','WHAT','YOU','FEEL.','EVERY','REP','COUNTS.','EVERY','MEAL','COUNTS.','EVERY','NIGHT','COUNTS.','WHAT','IF','IT','ALL','CONNECTED?',['ADRO.','b'],'YOUR','FOOD.','YOUR','TRAINING.','YOUR','SLEEP.','ONE','COACH.','DAY','AND','NIGHT.','DESIGNED','IN','SAUDI,','BY','ADRO.','RIYADH','24.71°N','46.67°E.','EST.','2026.','FIRST','COLLECTION.','KEEP','GOING.','SHOW','UP.','REST','WELL.','EAT','WELL.','MOVE','MORE.','FEEL','BETTER.','LISTEN','TO','YOUR','BODY.','IT','ALL','CONNECTS.'];
+  const T=words.map(x=>Array.isArray(x)?{t:x[0],b:1}:{t:x,b:0});
+  const meas=document.createElementNS('http://www.w3.org/2000/svg','text');meas.setAttribute('font-family','Sora');meas.setAttribute('font-weight','600');meas.setAttribute('font-size',size);meas.setAttribute('letter-spacing',ls);S.appendChild(meas);
+  const wd=t=>{meas.textContent=t;return meas.getComputedTextLength();};
+  const space=size*.75;let i=0,out='';
+  for(let ln=0;ln<lines;ln++){const row=[];let len=0;
+    while(true){const t=T[i%T.length],l=wd(t.t);if(row.length&&len+space+l>w)break;row.push(t);len+=(row.length>1?space:0)+l;i++;}
+    const y=F.y+pad+size+ln*lead,gap=row.length>1?(w-row.reduce((a,t)=>a+wd(t.t),0))/(row.length-1):0;let x=x0;
+    for(const t of row){out+=`<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="Sora" font-weight="600" font-size="${size}" letter-spacing="${ls}" fill="${t.b?BLUE:INK}" fill-opacity="${t.b?1:.82}">${t.t}</text>`;x+=wd(t.t)+gap;}}
+  meas.remove();S.insertAdjacentHTML('beforeend',out);document.body.dataset.done=1;
+});else document.body.dataset.done=1;
 </script></body></html>
