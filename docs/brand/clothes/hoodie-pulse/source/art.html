@@ -4,7 +4,7 @@
 <svg id="s" xmlns="http://www.w3.org/2000/svg"></svg>
 <script src="letters.js"></script>
 <script>
-// Adro "Pulse" hoodie artwork. ?p=back | chest | sleeveL | sleeveR | hood | label. 1 unit = 1 mm on the garment.
+// Adro "Pulse" hoodie artwork. ?p=back | chest | front1 | front2 | front3 | sleeveL | sleeveR | hood | label. 1 unit = 1 mm on the garment.
 const q=new URLSearchParams(location.search),P=q.get('p')||'back',INK=q.get('ink')||'#ECECE6',BLUE='#3355FF',GREY='#a9a9a2';
 const S=document.getElementById('s');
 const WM={x0:30,y0:-745,w:2229,h:775,ring:{cx:1953.5,cy:-271.5,r:228.5,stroke:130}};
@@ -34,6 +34,22 @@ if(P==='back'){
   h+=tx(cx,380,'ADRO  ·  RIYADH  ·  EST. 2026',{size:5,w:400,ls:3,fill:GREY});
 }else if(P==='chest'){
   W=100;H=40;h+=logo(50,20,90,INK);
+}else if(P==='front1'){
+  // Badge: logo, the line under it, and a thin rule with where and when.
+  W=150;H=72;h+=logo(75,18,110,INK);
+  h+=tx(75,47,'ALWAYS WITH YOU.',{size:7.2,w:600,ls:4.2});
+  h+=`<line x1="8" y1="58" x2="142" y2="58" stroke="${INK}" stroke-width=".5" opacity=".55"/>`;
+  h+=tx(8,67,'EST. 2026',{size:4.6,w:500,ls:2,a:'start',fill:GREY})+tx(75,67,'●',{size:4,fill:BLUE})+tx(142,67,'RIYADH',{size:4.6,w:500,ls:2,a:'end',fill:GREY});
+}else if(P==='front2'){
+  // Split: logo on the left chest, a small text block on the right chest.
+  W=280;H=40;h+=logo(42,16,78,INK);
+  const x=186;h+=`<line x1="${x-5}" y1="1" x2="${x-5}" y2="38" stroke="${BLUE}" stroke-width="1.4"/>`;
+  h+=tx(x,8,'DESIGNED IN SAUDI',{size:6.6,w:700,ls:1.4,a:'start'})+tx(x,18,'BY ADRO — EST. 2026',{size:6.6,w:500,ls:1.4,a:'start'})+tx(x,28,'24.71° N 46.67° E',{size:6.6,w:400,ls:1.4,a:'start',fill:GREY})+tx(x,38,'ALWAYS WITH YOU.',{size:6.6,w:600,ls:1.4,a:'start',fill:BLUE});
+}else if(P==='front3'){
+  // Big: the logo across the chest, a quiet line above it and a small one under it.
+  W=260;H=120;h+=tx(130,12,'ALWAYS WITH YOU.',{size:6.4,w:600,ls:6,fill:GREY});
+  h+=logo(130,58,236,INK);
+  h+=tx(10,112,'Nº 001',{size:5,w:600,ls:2,a:'start',fill:GREY})+tx(130,112,'DESIGNED IN SAUDI, BY ADRO',{size:5,w:500,ls:2.4,fill:GREY})+tx(250,112,'2026',{size:5,w:600,ls:2,a:'end',fill:BLUE});
 }else if(P==='sleeveL'){
   W=30;H=330;h+=tx(15,165,'BEYOND WHAT YOU SEE',{size:11,w:700,ls:7,rot:90});
 }else if(P==='sleeveR'){
